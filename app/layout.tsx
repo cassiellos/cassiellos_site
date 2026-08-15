@@ -8,6 +8,9 @@ import SiteNav from '@/components/site-nav'
 import SiteFooter from '@/components/site-footer'
 import { LeviProvider } from '@/components/levi-provider'
 import LeviWidget from '@/components/levi-widget'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -15,13 +18,11 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
-const SITE_URL = 'https://agencia-cassiellos-public.vercel.app'
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Cassiellos — Operações Criativas',
-  description: 'Marketing organizado, do planejamento à publicação.',
-  applicationName: 'Cassiellos',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   authors: [{ name: 'Agência Cassiellos' }],
   keywords: [
     'operações criativas',
@@ -35,14 +36,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'pt_BR',
     url: SITE_URL,
-    siteName: 'Cassiellos',
-    title: 'Cassiellos — Operações Criativas',
-    description: 'Marketing organizado, do planejamento à publicação.',
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cassiellos — Operações Criativas',
-    description: 'Marketing organizado, do planejamento à publicação.',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 }
 
@@ -70,6 +71,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteFooter />
           <LeviWidget />
         </LeviProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
