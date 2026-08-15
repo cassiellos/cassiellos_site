@@ -48,9 +48,23 @@ para Arial porque a família nunca era importada.
 - Sem JavaScript, um `<noscript>` neutraliza os estados iniciais das animações para que
   o conteúdo continue visível.
 
+## SEO e medição
+
+- `app/opengraph-image.tsx` gera o card de compartilhamento (1200×630) com a marca.
+  O Inter é buscado em TTF no momento do build, porque o Satori não lê o woff2 que o
+  `next/font` entrega; se a rede falhar, o card cai na fonte padrão em vez de quebrar.
+- `app/robots.ts` e `app/sitemap.ts` geram `/robots.txt` e `/sitemap.xml`.
+- Vercel Analytics e Speed Insights ativos no layout.
+
 ## Deploy
 
-O projeto atual na Vercel (`agencia-cassiellos-public`) serve um HTML estático.
-Para publicar esta versão, aponte o projeto para este diretório — a Vercel detecta o
-Next.js automaticamente; não é necessário `outputDirectory`. Os headers de segurança
-do `vercel.json` antigo foram transferidos para `next.config.mjs`.
+Projeto Vercel: `cassiellos-projects/agencia-cassiellos-public`.
+
+O `vercel.json` declara `framework: "nextjs"` — sem isso a plataforma servia a pasta
+`public/` (herança da versão em HTML estático) e a raiz respondia 404. Os headers de
+segurança do `vercel.json` antigo vivem agora em `next.config.mjs`.
+
+```bash
+npx vercel deploy          # preview
+npx vercel deploy --prod   # produção
+```
