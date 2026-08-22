@@ -17,7 +17,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
           <Reveal><span className="tag">01 / {en ? 'Essence' : 'Essência'}</span></Reveal>
           <Reveal delay={0.08}>
             <h2>{en ? 'Consistency to grow.' : 'Consistência para crescer.'}</h2>
-            <p>{en ? 'Cassiellos structures marketing for companies that need to move forward with direction, presence and continuity.' : 'A Cassiellos estrutura o marketing de empresas que precisam avançar com direção, presença e continuidade.'}</p>
+            <p>{en ? 'Fewer initiatives that start and stop. More planning, standards and continuity so your company can maintain momentum and move forward without relying on improvisation.' : 'Menos ações que começam e param. Mais planejamento, padrão e continuidade para sua empresa manter o ritmo e avançar sem depender do improviso.'}</p>
           </Reveal>
           <Reveal className="statementProof" delay={0.16}>
             <span>{en ? 'Strategy' : 'Estratégia'}</span><span>{en ? 'Creative' : 'Criação'}</span><span>{en ? 'Operations' : 'Operação'}</span>

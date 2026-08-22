@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import InfinityMark from './infinity-mark'
 import { EASE_OUT } from '@/lib/scroll'
+import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import type { Locale } from './home-content'
 
 export default function Hero({ lang }: { lang: Locale }) {
@@ -49,21 +50,19 @@ export default function Hero({ lang }: { lang: Locale }) {
           </motion.span>
 
           <motion.h1 {...enter(0.12)}>
-            {en ? 'Clarity to decide.' : 'Clareza para decidir.'}
-            <br />
-            <span className="grad">{en ? 'Momentum to deliver.' : 'Ritmo para executar.'}</span>
+            {en ? 'Your business already works. Now it needs to work better.' : 'Sua empresa já funciona. Agora ela precisa funcionar melhor.'}
           </motion.h1>
 
           <motion.p className="lead" {...enter(0.2)}>
-            {en ? 'Strategy, creative and execution connected to transform marketing into a consistent, traceable operation built to grow.' : 'Estratégia, criação e execução conectadas para transformar marketing em uma operação consistente, rastreável e pronta para crescer.'}
+            {en ? 'We organize your marketing to create more opportunities and sales, with greater efficiency and clearer results, without you having to coordinate everything yourself.' : 'Organizamos seu marketing para gerar mais oportunidades e vendas, com mais eficiência, clareza sobre os resultados e sem você precisar coordenar tudo sozinho.'}
           </motion.p>
 
           <motion.div className="actions" {...enter(0.28)}>
-            <a className="btn" href="#contato">
-              {en ? 'Schedule a diagnosis' : 'Agende um diagnóstico'}
+            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
+              {en ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
             </a>
-            <a className="btn ghost" href="#metodo">
-              {en ? 'See how we work' : 'Ver como operamos'}
+            <a className="btn ghost" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
+              {en ? 'I want to organize my marketing' : 'Quero organizar meu marketing'}
             </a>
           </motion.div>
         </motion.div>
