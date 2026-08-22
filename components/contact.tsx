@@ -24,7 +24,7 @@ export default function Contact() {
         <Reveal>
           <span className="tag">Vamos organizar o próximo passo</span>
           <h2>Seu marketing pode funcionar como um sistema.</h2>
-          <a className="btn" href="mailto:contato@agenciacassiellos.com.br">
+          <a className="btn" href="mailto:contato@agenciacassiellos.com.br" data-analytics-cta>
             Fale com a gente
           </a>
         </Reveal>

@@ -10,6 +10,7 @@ import { LeviProvider } from '@/components/levi-provider'
 import LeviWidget from '@/components/levi-widget'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import AnalyticsFlow from '@/components/analyticsflow'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
 const inter = Inter({
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </LeviProvider>
         <Analytics />
         <SpeedInsights />
+        <AnalyticsFlow />
       </body>
     </html>
   )
