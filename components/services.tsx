@@ -45,10 +45,10 @@ export default function Services({ lang }: { lang: Locale }) {
         <div className="intro">
           <Reveal>
             <span className="tag">02 / {en ? 'Expertise' : 'Atuação'}</span>
-            <h2>{en ? 'A complete creative operation.' : 'Uma operação criativa completa.'}</h2>
+            <h2>{en ? 'More clarity to grow.' : 'Mais clareza para crescer.'}</h2>
           </Reveal>
           <Reveal as="p" delay={0.1}>
-            {en ? 'Strategic thinking, production and follow-through connected by a shared method.' : 'Pensamento estratégico, produção e acompanhamento conectados por um método comum.'}
+            {en ? 'Everything connected to flow better, with fewer manual tasks and greater agility.' : 'Tudo conectado para fluir melhor, com menos tarefas manuais e mais agilidade.'}
           </Reveal>
         </div>
 

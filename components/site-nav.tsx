@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import InfinityMark from './infinity-mark'
 import SiteControls from './site-controls'
+import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 
 const LINKS = [
   { href: '#atuacao', label: 'Atuação' },
@@ -62,8 +63,8 @@ export default function SiteNav() {
         </nav>
 
         <SiteControls />
-        <a className="btn navCta" href="#contato">
-          {english ? 'Schedule a diagnosis' : 'Agendar diagnóstico'}
+        <a className="btn navCta" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
+          {english ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
         </a>
       </div>
     </header>
