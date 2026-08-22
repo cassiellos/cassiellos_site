@@ -11,6 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     { url: `${SITE_URL}/en`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/sobre`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/en/sobre`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${SITE_URL}/politica-de-privacidade`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/termos-de-uso`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/politica-de-cookies`, lastModified, changeFrequency: 'yearly', priority: 0.3 },

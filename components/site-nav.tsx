@@ -6,7 +6,7 @@ import InfinityMark from './infinity-mark'
 import SiteControls from './site-controls'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 
-const LINKS = [
+const SECTION_LINKS = [
   { href: '#atuacao', label: 'Atuação' },
   { href: '#metodo', label: 'Método' },
   { href: '#prova-social', label: 'Prova social' },
@@ -14,7 +14,14 @@ const LINKS = [
 ] as const
 
 export default function SiteNav() {
-  const english = usePathname().startsWith('/en')
+  const pathname = usePathname()
+  const english = pathname.startsWith('/en')
+  const isHome = pathname === '/' || pathname === '/en'
+  const aboutHref = english ? '/en/sobre' : '/sobre'
+  const links = [
+    ...SECTION_LINKS.map((link) => ({ ...link, href: isHome ? link.href : `${english ? '/en' : ''}/${link.href}` })),
+    { href: aboutHref, label: english ? 'About' : 'Sobre' },
+  ]
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>('')
 
@@ -27,7 +34,8 @@ export default function SiteNav() {
 
   // Destaque do item correspondente à seção em tela.
   useEffect(() => {
-    const sections = LINKS.map((link) => document.querySelector(link.href)).filter(
+    if (!isHome) return
+    const sections = SECTION_LINKS.map((link) => document.querySelector(link.href)).filter(
       (el): el is HTMLElement => el instanceof HTMLElement,
     )
     if (!sections.length) return
@@ -44,20 +52,20 @@ export default function SiteNav() {
 
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
-  }, [])
+  }, [isHome])
 
   return (
     <header className="nav" data-scrolled={scrolled}>
       <div className="wrap navin">
-        <a className="logo" href="#top">
+        <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'}>
           <InfinityMark />
           <span>Cassiellos</span>
         </a>
 
         <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
-          {LINKS.map((link) => (
-            <a key={link.href} href={link.href} data-active={active === link.href}>
-              {english ? ({ Atuação: 'Expertise', Método: 'Practice', 'Prova social': 'Proof', Levi: 'Levi' } as Record<string, string>)[link.label] : link.label}
+          {links.map((link) => (
+            <a key={link.href} href={link.href} data-active={active === link.href || (!isHome && link.href === pathname)}>
+              {english ? ({ Atuação: 'Expertise', Método: 'Practice', 'Prova social': 'Proof', Levi: 'Levi', About: 'About' } as Record<string, string>)[link.label] : link.label}
             </a>
           ))}
         </nav>

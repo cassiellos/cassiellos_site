@@ -5,6 +5,7 @@ import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'mo
 import { EASE_OUT } from '@/lib/scroll'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import type { Locale } from './home-content'
+import InfinityMark from './infinity-mark'
 
 const INFINITY_PATH = 'M5 16C5 9 10 5 16 5c8 0 11 11 16 11S40 5 48 5c6 0 11 4 11 11s-5 11-11 11c-8 0-11-11-16-11S24 27 16 27C10 27 5 23 5 16Z'
 
@@ -22,7 +23,6 @@ export default function Hero({ lang }: { lang: Locale }) {
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
   const smooth = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 })
   const meshY = useTransform(smooth, [0, 1], ['0%', '18%'])
-  const glowY = useTransform(smooth, [0, 1], ['0%', '-24%'])
   const orbitY = useTransform(smooth, [0, 1], ['0%', '-16%'])
   const orbitScale = useTransform(smooth, [0, 1], [1, 1.06])
   const copyY = useTransform(smooth, [0, 1], ['0%', '14%'])
@@ -47,8 +47,6 @@ export default function Hero({ lang }: { lang: Locale }) {
   return (
     <section className="hero" ref={ref}>
       <motion.i className="heroMesh" aria-hidden style={reduced ? still : { y: meshY }} />
-      <motion.i className="heroGlow" aria-hidden style={reduced ? still : { y: glowY }} />
-
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>Cassiellos / {en ? 'Creative operations' : 'Operações criativas'}</motion.span>
@@ -65,6 +63,7 @@ export default function Hero({ lang }: { lang: Locale }) {
           style={reduced ? still : { y: orbitY, scale: orbitScale }}
           {...(reduced ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 1.1, delay: 0.15, ease: EASE_OUT } })}
         >
+          <i className="infinityBlueGlow" aria-hidden />
           <motion.i
             className="masterAmbientHalo"
             aria-hidden
