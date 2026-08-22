@@ -42,18 +42,18 @@ export default function Hero() {
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>
-            Empresa de operações criativas
+            Cassiellos / Operações criativas
           </motion.span>
 
           <motion.h1 {...enter(0.12)}>
-            Marketing organizado,
+            Clareza para decidir.
             <br />
-            <span className="grad">do planejamento à publicação.</span>
+            <span className="grad">Ritmo para executar.</span>
           </motion.h1>
 
           <motion.p className="lead" {...enter(0.2)}>
-            Estratégia, conteúdo e operação em um só fluxo. Menos retrabalho, mais clareza e uma
-            marca consistente ao longo do mês.
+            Estratégia, criação e execução conectadas para transformar marketing em uma operação
+            consistente, rastreável e pronta para crescer.
           </motion.p>
 
           <motion.div className="actions" {...enter(0.28)}>
@@ -61,7 +61,7 @@ export default function Hero() {
               Agende um diagnóstico
             </a>
             <a className="btn ghost" href="#metodo">
-              Conheça o método
+              Ver como operamos
             </a>
           </motion.div>
         </motion.div>
@@ -81,6 +81,9 @@ export default function Hero() {
           <i className="ring r1" />
           <i className="ring r2" />
           <i className="ring r3" />
+          <span className="orbitLabel one">Estratégia</span>
+          <span className="orbitLabel two">Criação</span>
+          <span className="orbitLabel three">Operação</span>
         </motion.div>
       </div>
     </section>

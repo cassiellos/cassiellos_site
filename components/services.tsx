@@ -6,20 +6,20 @@ import Reveal from './reveal'
 const SERVICES = [
   {
     number: '01',
-    title: 'Estratégia de Marca',
-    text: 'Diagnóstico, posicionamento, identidade, campanhas, sites e landing pages.',
+    title: 'Direção estratégica',
+    text: 'Diagnóstico, posicionamento, identidade e decisões que organizam o crescimento da marca.',
     red: false,
   },
   {
     number: '02',
-    title: 'Conteúdo',
-    text: 'Planejamento editorial, design, vídeo, captação, motion e campanhas.',
+    title: 'Criação em movimento',
+    text: 'Conteúdo, design, audiovisual, campanhas e experiências digitais com uma linguagem consistente.',
     red: true,
   },
   {
     number: '03',
-    title: 'Operações',
-    text: 'Calendário, aprovações, assets, publicação, automações e relatórios.',
+    title: 'Operação contínua',
+    text: 'Planejamento, produção, aprovação, publicação, acompanhamento e aprendizado no mesmo fluxo.',
     red: false,
   },
 ] as const
@@ -33,15 +33,15 @@ export default function Services() {
   }
 
   return (
-    <section className="section" id="servicos">
+    <section className="section paperSection" id="atuacao">
       <div className="wrap">
         <div className="intro">
           <Reveal>
-            <span className="tag">02 / Serviços</span>
-            <h2>Uma agência. Três sistemas conectados.</h2>
+            <span className="tag">02 / Atuação</span>
+            <h2>Uma operação criativa completa.</h2>
           </Reveal>
           <Reveal as="p" delay={0.1}>
-            Da essência da marca à rotina de publicação.
+            Pensamento estratégico, produção e acompanhamento conectados por um método comum.
           </Reveal>
         </div>
 

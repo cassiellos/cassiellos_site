@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Inter_Tight } from 'next/font/google'
 import './globals.css'
 
 import SmoothScroll from '@/components/smooth-scroll'
@@ -16,6 +16,12 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
+})
+
+const interTight = Inter_Tight({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter-tight',
 })
 
 export const metadata: Metadata = {
@@ -55,7 +61,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html lang="pt-BR" className={`${inter.variable} ${interTight.variable}`}>
       <head>
         {/* Sem JS as animações não rodam: o conteúdo precisa aparecer mesmo assim. */}
         <noscript>

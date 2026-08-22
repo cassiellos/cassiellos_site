@@ -26,8 +26,8 @@ export default function Method() {
     <section className="section" id="metodo">
       <div className="wrap method">
         <Reveal>
-          <span className="tag">03 / Método</span>
-          <h2 className="h2md">Do briefing ao resultado, sem perder o fio.</h2>
+          <span className="tag">03 / Método Cassiellos</span>
+          <h2 className="h2md">O contexto acompanha o trabalho até o próximo ciclo.</h2>
         </Reveal>
 
         <div className="steps" ref={stepsRef}>

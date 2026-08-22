@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import InfinityMark from './infinity-mark'
 
 const LINKS = [
-  { href: '#servicos', label: 'Serviços' },
+  { href: '#atuacao', label: 'Atuação' },
   { href: '#metodo', label: 'Método' },
+  { href: '#operacao', label: 'Operação' },
   { href: '#levi', label: 'Levi' },
 ] as const
 
@@ -46,7 +47,7 @@ export default function SiteNav() {
       <div className="wrap navin">
         <a className="logo" href="#top">
           <InfinityMark />
-          Cassiellos
+          <span>Cassiellos</span>
         </a>
 
         <nav aria-label="Navegação principal">
@@ -58,7 +59,7 @@ export default function SiteNav() {
         </nav>
 
         <a className="btn" href="#contato">
-          Agende um diagnóstico
+          Agendar diagnóstico
         </a>
       </div>
     </header>

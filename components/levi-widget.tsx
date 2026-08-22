@@ -19,9 +19,8 @@ const GREETING: Message = {
 }
 
 const QUICK = [
-  { query: 'serviços', label: 'Quais serviços?' },
-  { query: 'cassiellos', label: 'O que é cassiellOS?' },
-  { query: 'projetos', label: 'Ver projetos' },
+  { query: 'serviços', label: 'Como vocês atuam?' },
+  { query: 'método', label: 'Conhecer o método' },
   { query: 'contato', label: 'Falar com a equipe' },
 ] as const
 
@@ -29,23 +28,18 @@ const QUICK = [
 function reply(question: string): [string, string | undefined] {
   const q = question.toLowerCase()
   if (q.includes('servi'))
-    return ['Atuamos em Estratégia de Marca, Conteúdo e Operações.', '#servicos']
-  if (q.includes('cassiell') || q.includes('sistema'))
-    return [
-      'O cassiellOS é o motor operacional da agência: organiza planejamento, produção, arquivos e acompanhamento.',
-      '#os',
-    ]
+    return ['Conectamos direção estratégica, criação em movimento e operação contínua.', '#atuacao']
+  if (q.includes('método') || q.includes('metodo') || q.includes('processo'))
+    return ['Nosso método conecta diagnóstico, direção, produção, aprovação e aprendizado.', '#metodo']
   if (q.includes('levi'))
     return [
       'Sou a interface conversacional do cassiellOS. Aqui, respondo dúvidas e ajudo na navegação.',
       '#levi',
     ]
-  if (q.includes('projeto') || q.includes('case'))
-    return ['Vou levar você para a seção de projetos.', '#projetos']
   if (q.includes('contato') || q.includes('falar'))
     return ['Vou levar você para o contato da equipe.', '#contato']
   return [
-    'Posso ajudar com serviços, método, cassiellOS, Levi, projetos, Brand Lab ou contato.',
+    'Posso ajudar com nossa atuação, método, Levi ou contato.',
     undefined,
   ]
 }
