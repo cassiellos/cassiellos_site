@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from 'react'
 import Reveal from './reveal'
+import type { Locale } from './home-content'
 
 const SERVICES = [
   {
@@ -24,7 +25,13 @@ const SERVICES = [
   },
 ] as const
 
-export default function Services() {
+export default function Services({ lang }: { lang: Locale }) {
+  const en = lang === 'en'
+  const services = en ? [
+    { number: '01', title: 'Strategic direction', text: 'Diagnosis, positioning, identity and decisions that organize brand growth.', red: false },
+    { number: '02', title: 'Creative in motion', text: 'Content, design, audiovisual, campaigns and digital experiences in one consistent language.', red: true },
+    { number: '03', title: 'Continuous operations', text: 'Planning, production, approval, publishing, monitoring and learning in the same flow.', red: false },
+  ] : SERVICES
   // Brilho que segue o cursor dentro do cartão.
   const onMove = (event: MouseEvent<HTMLElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -37,16 +44,16 @@ export default function Services() {
       <div className="wrap">
         <div className="intro">
           <Reveal>
-            <span className="tag">02 / Atuação</span>
-            <h2>Uma operação criativa completa.</h2>
+            <span className="tag">02 / {en ? 'Expertise' : 'Atuação'}</span>
+            <h2>{en ? 'A complete creative operation.' : 'Uma operação criativa completa.'}</h2>
           </Reveal>
           <Reveal as="p" delay={0.1}>
-            Pensamento estratégico, produção e acompanhamento conectados por um método comum.
+            {en ? 'Strategic thinking, production and follow-through connected by a shared method.' : 'Pensamento estratégico, produção e acompanhamento conectados por um método comum.'}
           </Reveal>
         </div>
 
         <div className="cards">
-          {SERVICES.map((service, index) => (
+          {services.map((service, index) => (
             <Reveal
               key={service.number}
               as="article"

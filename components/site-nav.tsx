@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import InfinityMark from './infinity-mark'
+import SiteControls from './site-controls'
 
 const LINKS = [
   { href: '#atuacao', label: 'Atuação' },
@@ -11,6 +13,7 @@ const LINKS = [
 ] as const
 
 export default function SiteNav() {
+  const english = usePathname().startsWith('/en')
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>('')
 
@@ -50,16 +53,17 @@ export default function SiteNav() {
           <span>Cassiellos</span>
         </a>
 
-        <nav aria-label="Navegação principal">
+        <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
           {LINKS.map((link) => (
             <a key={link.href} href={link.href} data-active={active === link.href}>
-              {link.label}
+              {english ? ({ Atuação: 'Expertise', Método: 'Method', Operação: 'Operations', Levi: 'Levi' } as Record<string, string>)[link.label] : link.label}
             </a>
           ))}
         </nav>
 
-        <a className="btn" href="#contato">
-          Agendar diagnóstico
+        <SiteControls />
+        <a className="btn navCta" href="#contato">
+          {english ? 'Schedule a diagnosis' : 'Agendar diagnóstico'}
         </a>
       </div>
     </header>

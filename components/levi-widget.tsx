@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { usePathname } from 'next/navigation'
 import { useLevi } from './levi-provider'
 import { EASE_OUT, scrollToId } from '@/lib/scroll'
 
@@ -25,30 +26,31 @@ const QUICK = [
 ] as const
 
 /** Mesma árvore de respostas do site original. */
-function reply(question: string): [string, string | undefined] {
+function reply(question: string, english = false): [string, string | undefined] {
   const q = question.toLowerCase()
   if (q.includes('servi'))
-    return ['Conectamos direção estratégica, criação em movimento e operação contínua.', '#atuacao']
-  if (q.includes('método') || q.includes('metodo') || q.includes('processo'))
-    return ['Nosso método conecta diagnóstico, direção, produção, aprovação e aprendizado.', '#metodo']
+    return [english ? 'We connect strategic direction, creative in motion and continuous operations.' : 'Conectamos direção estratégica, criação em movimento e operação contínua.', '#atuacao']
+  if (q.includes('método') || q.includes('metodo') || q.includes('processo') || q.includes('method'))
+    return [english ? 'Our method connects diagnosis, direction, production, approval and learning.' : 'Nosso método conecta diagnóstico, direção, produção, aprovação e aprendizado.', '#metodo']
   if (q.includes('levi'))
     return [
-      'Sou a interface conversacional do cassiellOS. Aqui, respondo dúvidas e ajudo na navegação.',
+      english ? 'I am the cassiellOS conversational interface. Here, I answer questions and help you navigate.' : 'Sou a interface conversacional do cassiellOS. Aqui, respondo dúvidas e ajudo na navegação.',
       '#levi',
     ]
-  if (q.includes('contato') || q.includes('falar'))
-    return ['Vou levar você para o contato da equipe.', '#contato']
+  if (q.includes('contato') || q.includes('falar') || q.includes('contact') || q.includes('talk'))
+    return [english ? "I'll take you to our team contact." : 'Vou levar você para o contato da equipe.', '#contato']
   return [
-    'Posso ajudar com nossa atuação, método, Levi ou contato.',
+    english ? 'I can help with our expertise, method, Levi or contact.' : 'Posso ajudar com nossa atuação, método, Levi ou contato.',
     undefined,
   ]
 }
 
 export default function LeviWidget() {
+  const english = usePathname().startsWith('/en')
   const { open, openChat, closeChat } = useLevi()
   const reduced = useReducedMotion()
 
-  const [messages, setMessages] = useState<Message[]>([GREETING])
+  const [messages, setMessages] = useState<Message[]>([english ? { ...GREETING, text: "Hi! I'm Levi. I can explain what Cassiellos does, introduce our services or take you to the right area of the site." } : GREETING])
   const [typing, setTyping] = useState(false)
   const [draft, setDraft] = useState('')
 
@@ -81,7 +83,7 @@ export default function LeviWidget() {
     setMessages((current) => [...current, { id: nextId.current++, role: 'user', text }])
     setTyping(true)
 
-    const [answer, target] = reply(text)
+    const [answer, target] = reply(text, english)
     setTimeout(() => {
       setTyping(false)
       setMessages((current) => [
@@ -104,7 +106,7 @@ export default function LeviWidget() {
 
   return (
     <>
-      <button className="launcher" aria-label="Abrir Levi" aria-expanded={open} onClick={openChat}>
+      <button className="launcher" aria-label={english ? 'Open Levi' : 'Abrir Levi'} aria-expanded={open} onClick={openChat}>
         <i className="lr a" />
         <i className="lr b" />
         <i className="lc" />
@@ -114,7 +116,7 @@ export default function LeviWidget() {
         {open && (
           <motion.section
             className="chat"
-            aria-label="Assistente Levi"
+            aria-label={english ? 'Levi assistant' : 'Assistente Levi'}
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.96 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.97 }}
@@ -125,10 +127,10 @@ export default function LeviWidget() {
                 <i className="miniOrb" />
                 <div>
                   <b>Levi</b>
-                  <small>Assistente da Cassiellos</small>
+                  <small>{english ? 'Cassiellos assistant' : 'Assistente da Cassiellos'}</small>
                 </div>
               </div>
-              <button className="close" onClick={closeChat} aria-label="Fechar Levi">
+              <button className="close" onClick={closeChat} aria-label={english ? 'Close Levi' : 'Fechar Levi'}>
                 ×
               </button>
             </header>
@@ -151,7 +153,7 @@ export default function LeviWidget() {
 
               {typing && (
                 <div className="bubble bot">
-                  <span className="typing" aria-label="Levi está digitando">
+                  <span className="typing" aria-label={english ? 'Levi is typing' : 'Levi está digitando'}>
                     <i />
                     <i />
                     <i />
@@ -160,7 +162,7 @@ export default function LeviWidget() {
               )}
 
               <div className="quick">
-                {QUICK.map((item) => (
+                {(english ? [{ query: 'services', label: 'How do you work?' }, { query: 'method', label: 'Explore the method' }, { query: 'contact', label: 'Talk to the team' }] : QUICK).map((item) => (
                   <button key={item.query} onClick={() => send(item.query)} type="button">
                     {item.label}
                   </button>
@@ -173,11 +175,11 @@ export default function LeviWidget() {
                 ref={inputRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Digite sua dúvida…"
+                placeholder={english ? 'Type your question…' : 'Digite sua dúvida…'}
                 autoComplete="off"
-                aria-label="Mensagem para o Levi"
+                aria-label={english ? 'Message to Levi' : 'Mensagem para o Levi'}
               />
-              <button type="submit" aria-label="Enviar">
+              <button type="submit" aria-label={english ? 'Send' : 'Enviar'}>
                 ↑
               </button>
             </form>

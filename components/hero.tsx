@@ -4,8 +4,10 @@ import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import InfinityMark from './infinity-mark'
 import { EASE_OUT } from '@/lib/scroll'
+import type { Locale } from './home-content'
 
-export default function Hero() {
+export default function Hero({ lang }: { lang: Locale }) {
+  const en = lang === 'en'
   const ref = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
 
@@ -42,26 +44,25 @@ export default function Hero() {
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>
-            Cassiellos / Operações criativas
+            Cassiellos / {en ? 'Creative operations' : 'Operações criativas'}
           </motion.span>
 
           <motion.h1 {...enter(0.12)}>
-            Clareza para decidir.
+            {en ? 'Clarity to decide.' : 'Clareza para decidir.'}
             <br />
-            <span className="grad">Ritmo para executar.</span>
+            <span className="grad">{en ? 'Momentum to deliver.' : 'Ritmo para executar.'}</span>
           </motion.h1>
 
           <motion.p className="lead" {...enter(0.2)}>
-            Estratégia, criação e execução conectadas para transformar marketing em uma operação
-            consistente, rastreável e pronta para crescer.
+            {en ? 'Strategy, creative and execution connected to transform marketing into a consistent, traceable operation built to grow.' : 'Estratégia, criação e execução conectadas para transformar marketing em uma operação consistente, rastreável e pronta para crescer.'}
           </motion.p>
 
           <motion.div className="actions" {...enter(0.28)}>
             <a className="btn" href="#contato">
-              Agende um diagnóstico
+              {en ? 'Schedule a diagnosis' : 'Agende um diagnóstico'}
             </a>
             <a className="btn ghost" href="#metodo">
-              Ver como operamos
+              {en ? 'See how we work' : 'Ver como operamos'}
             </a>
           </motion.div>
         </motion.div>
@@ -77,13 +78,14 @@ export default function Hero() {
                 transition: { duration: 1.1, delay: 0.15, ease: EASE_OUT },
               })}
         >
+          <i className="centerPulse" aria-hidden />
           <InfinityMark className="inf" />
           <i className="ring r1" />
           <i className="ring r2" />
           <i className="ring r3" />
-          <span className="orbitLabel one">Estratégia</span>
-          <span className="orbitLabel two">Criação</span>
-          <span className="orbitLabel three">Operação</span>
+          <span className="orbitLabel one">{en ? 'Strategy' : 'Estratégia'}</span>
+          <span className="orbitLabel two">{en ? 'Creative' : 'Criação'}</span>
+          <span className="orbitLabel three">{en ? 'Operations' : 'Operação'}</span>
         </motion.div>
       </div>
     </section>

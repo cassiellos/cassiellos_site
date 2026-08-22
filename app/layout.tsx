@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     'cassiellOS',
     'agência de marketing',
   ],
-  alternates: { canonical: '/' },
+  alternates: { canonical: '/', languages: { 'pt-BR': '/', en: '/en' } },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
