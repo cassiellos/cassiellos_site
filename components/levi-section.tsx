@@ -31,7 +31,7 @@ export default function LeviSection() {
         </motion.div>
 
         <Reveal>
-          <span className="tag">05 / Interface inteligente</span>
+          <span className="tag">04 / Interface inteligente</span>
           <h2>Conheça o Levi.</h2>
           <p className="lead">
             O Levi é a camada conversacional do cassiellOS. No site, ele responde dúvidas e ajuda na

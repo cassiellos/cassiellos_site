@@ -6,9 +6,7 @@ import InfinityMark from './infinity-mark'
 const LINKS = [
   { href: '#servicos', label: 'Serviços' },
   { href: '#metodo', label: 'Método' },
-  { href: '#os', label: 'cassiellOS' },
   { href: '#levi', label: 'Levi' },
-  { href: '#projetos', label: 'Projetos' },
 ] as const
 
 export default function SiteNav() {
@@ -57,9 +55,6 @@ export default function SiteNav() {
               {link.label}
             </a>
           ))}
-          <a href="https://cassiellos-brand-lab.vercel.app" target="_blank" rel="noopener">
-            Brand Lab
-          </a>
         </nav>
 
         <a className="btn" href="#contato">
