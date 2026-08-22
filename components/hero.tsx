@@ -69,7 +69,7 @@ export default function Hero({ lang }: { lang: Locale }) {
             className="masterAmbientHalo"
             aria-hidden
             initial={reduced ? false : { opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 0.18, scale: 1 }}
+            animate={{ opacity: 0.1, scale: 1 }}
             transition={reduced ? undefined : {
               opacity: { duration: 0.8, delay: 2.2, ease: EASE_OUT },
               scale: { duration: 1, delay: 2.2, ease: EASE_OUT },
@@ -129,7 +129,7 @@ export default function Hero({ lang }: { lang: Locale }) {
               aria-hidden
               focusable="false"
               initial={reduced ? false : { opacity: 0 }}
-              animate={{ opacity: 0.26 }}
+              animate={{ opacity: 0.16 }}
               transition={reduced ? undefined : { duration: 0.24, delay: 0.23, ease: EASE_OUT }}
             >
               <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
