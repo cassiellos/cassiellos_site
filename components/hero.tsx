@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
+import { useRef } from 'react'
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { EASE_OUT } from '@/lib/scroll'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import type { Locale } from './home-content'
@@ -14,23 +14,9 @@ const ORBITS = [
   { id: 3, labelPt: 'Operação', labelEn: 'Operations' },
 ] as const
 
-type DragState = {
-  pointerId: number
-  startX: number
-  startY: number
-  originX: number
-  originY: number
-}
-
 export default function Hero({ lang }: { lang: Locale }) {
   const en = lang === 'en'
   const ref = useRef<HTMLElement>(null)
-  const orbitRef = useRef<HTMLDivElement>(null)
-  const dragState = useRef<DragState | null>(null)
-  const symbolX = useMotionValue(0)
-  const symbolY = useMotionValue(0)
-  const [dragging, setDragging] = useState(false)
-  const [revealCycle, setRevealCycle] = useState(0)
   const reduced = useReducedMotion()
 
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
@@ -47,48 +33,6 @@ export default function Hero({ lang }: { lang: Locale }) {
     initial: { opacity: 0, y: 22 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.85, delay, ease: EASE_OUT },
-  }
-
-  const replayReveal = () => {
-    if (!reduced) setRevealCycle((cycle) => cycle + 1)
-  }
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || event.button !== 0) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragState.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: symbolX.get(),
-      originY: symbolY.get(),
-    }
-    setDragging(true)
-    replayReveal()
-  }
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const active = dragState.current
-    const orbit = orbitRef.current
-    if (!active || active.pointerId !== event.pointerId || !orbit) return
-    const orbitBox = orbit.getBoundingClientRect()
-    const symbolBox = event.currentTarget.getBoundingClientRect()
-    const maxX = Math.max(0, (orbitBox.width - symbolBox.width) / 2)
-    const maxY = Math.max(0, (orbitBox.height - symbolBox.height) / 2)
-    const nextX = active.originX + event.clientX - active.startX
-    const nextY = active.originY + event.clientY - active.startY
-    symbolX.set(Math.max(-maxX, Math.min(maxX, nextX)))
-    symbolY.set(Math.max(-maxY, Math.min(maxY, nextY)))
-  }
-
-  const finishDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragState.current?.pointerId !== event.pointerId) return
-    dragState.current = null
-    setDragging(false)
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
   }
 
   const mainPathMotion = reduced ? {
@@ -119,7 +63,6 @@ export default function Hero({ lang }: { lang: Locale }) {
         </motion.div>
 
         <motion.div
-          ref={orbitRef}
           className="orbit orbitInteractive"
           style={reduced ? still : { y: orbitY, scale: orbitScale }}
           {...(reduced ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 1.1, delay: 0.15, ease: EASE_OUT } })}
@@ -140,34 +83,22 @@ export default function Hero({ lang }: { lang: Locale }) {
             ))}
           </div>
 
-          <motion.div
-            className={`infinityDrag${dragging ? ' isDragging' : ''}`}
-            style={{ x: symbolX, y: symbolY }}
-            onPointerEnter={replayReveal}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={finishDrag}
-            onPointerCancel={finishDrag}
-            onLostPointerCapture={finishDrag}
-            aria-label={en ? 'Interactive Cassiellos symbol. Hover to replay and drag to move.' : 'Símbolo interativo Cassiellos. Passe o mouse para repetir e arraste para mover.'}
-          >
+          <div className="infinitySymbol" aria-hidden>
             <motion.div
               className="infinityFloat"
-              animate={reduced ? undefined : { y: [0, -14, 0], scale: [0.97, 1.03, 1] }}
+              animate={reduced ? undefined : { scale: [0.97, 1.03, 1] }}
               transition={reduced ? undefined : {
-                y: { duration: 5, delay: 2.3, ease: 'easeInOut', repeat: Infinity },
                 scale: { duration: 0.48, delay: 1.8, times: [0, 0.48, 1], ease: EASE_OUT },
               }}
             >
               <svg className="infinityReveal infinityGlow" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <motion.path key={`glow-${revealCycle}`} d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
+                <motion.path d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
               </svg>
               <svg className="infinityReveal infinityMain" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <motion.path key={`main-${revealCycle}`} d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
+                <motion.path d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
               </svg>
               <svg className="infinityReveal infinityHighlight" viewBox="0 0 64 32" aria-hidden focusable="false">
                 <motion.path
-                  key={`highlight-${revealCycle}`}
                   d={INFINITY_PATH}
                   pathLength={1}
                   initial={reduced ? false : { pathLength: 0, opacity: 0 }}
@@ -178,8 +109,11 @@ export default function Hero({ lang }: { lang: Locale }) {
                   }}
                 />
               </svg>
+              <svg className="infinityReveal infinitySweep" viewBox="0 0 64 32" aria-hidden focusable="false">
+                <path d={INFINITY_PATH} pathLength="1" />
+              </svg>
             </motion.div>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>
