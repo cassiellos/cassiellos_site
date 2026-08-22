@@ -9,9 +9,9 @@ import type { Locale } from './home-content'
 const INFINITY_PATH = 'M5 16C5 9 10 5 16 5c8 0 11 11 16 11S40 5 48 5c6 0 11 4 11 11s-5 11-11 11c-8 0-11-11-16-11S24 27 16 27C10 27 5 23 5 16Z'
 
 const ORBITS = [
-  { id: 1, labelPt: 'Estratégia', labelEn: 'Strategy' },
-  { id: 2, labelPt: 'Criação', labelEn: 'Creative' },
-  { id: 3, labelPt: 'Operação', labelEn: 'Operations' },
+  { id: 1, angle: 42, duration: 20, direction: 1 },
+  { id: 2, angle: 158, duration: 27, direction: -1 },
+  { id: 3, angle: 268, duration: 36, direction: 1 },
 ] as const
 
 export default function Hero({ lang }: { lang: Locale }) {
@@ -35,22 +35,20 @@ export default function Hero({ lang }: { lang: Locale }) {
     transition: { duration: 0.85, delay, ease: EASE_OUT },
   }
 
-  const mainPathMotion = reduced ? {
+  const pathReveal = reduced ? {
     initial: false as const,
-    animate: { pathLength: 1, opacity: 1 },
+    animate: { pathLength: 1 },
   } : {
-    initial: { pathLength: 0, opacity: 0 },
-    animate: { pathLength: 1, opacity: 1 },
-    transition: {
-      pathLength: { duration: 1.55, delay: 0.35, ease: EASE_OUT },
-      opacity: { duration: 0.12, delay: 0.35, ease: EASE_OUT },
-    },
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 1.55, delay: 0.35, ease: EASE_OUT },
   }
 
   return (
     <section className="hero" ref={ref}>
       <motion.i className="heroMesh" aria-hidden style={reduced ? still : { y: meshY }} />
       <motion.i className="heroGlow" aria-hidden style={reduced ? still : { y: glowY }} />
+
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>Cassiellos / {en ? 'Creative operations' : 'Operações criativas'}</motion.span>
@@ -63,57 +61,105 @@ export default function Hero({ lang }: { lang: Locale }) {
         </motion.div>
 
         <motion.div
-          className="orbit orbitInteractive"
+          className="orbit infinityMasterStage"
           style={reduced ? still : { y: orbitY, scale: orbitScale }}
           {...(reduced ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 1.1, delay: 0.15, ease: EASE_OUT } })}
         >
-          <i className="infinityAmbient" aria-hidden />
-          <i className="centerPulse" aria-hidden />
-          <div className="orbitSystem" aria-hidden>
+          <motion.i
+            className="masterAmbientHalo"
+            aria-hidden
+            initial={reduced ? false : { opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 0.18, scale: 1 }}
+            transition={reduced ? undefined : {
+              opacity: { duration: 0.8, delay: 2.2, ease: EASE_OUT },
+              scale: { duration: 1, delay: 2.2, ease: EASE_OUT },
+            }}
+          />
+
+          <div className="masterOrbitSystem" aria-hidden>
             {ORBITS.map((orbit) => (
-              <div className={`orbitLayer orbitLayer${orbit.id}`} key={orbit.id}>
-                <i className={`ring r${orbit.id} orbitRing`} />
-                <span className={`orbitRotor orbitRotor${orbit.id}`}>
-                  <span className={`orbitPayload orbitPayload${orbit.id}`}>
-                    <i className="orbitDot" />
-                    <span className="orbitCard">{en ? orbit.labelEn : orbit.labelPt}</span>
-                  </span>
-                </span>
-              </div>
+              <motion.div
+                className={`masterOrbitControl masterOrbitControl${orbit.id}`}
+                key={orbit.id}
+                initial={reduced ? false : { rotate: orbit.angle }}
+                animate={{ rotate: reduced ? orbit.angle : orbit.angle + orbit.direction * 360 }}
+                transition={reduced ? undefined : { duration: orbit.duration, delay: 2.2, ease: 'linear', repeat: Infinity }}
+              >
+                <motion.i
+                  className={`masterOrbitRing masterOrbitRing${orbit.id}`}
+                  initial={reduced ? false : { opacity: 0, scale: 0.84 }}
+                  animate={{ opacity: orbit.id === 3 ? 0.13 : 0.16, scale: 1 }}
+                  transition={reduced ? undefined : { duration: 0.9, delay: 1.98, ease: EASE_OUT }}
+                />
+                <motion.i
+                  className={`masterOrbitDot masterOrbitDot${orbit.id}`}
+                  initial={reduced ? false : { opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: reduced ? 1 : [0, 1.35, 1] }}
+                  transition={reduced ? undefined : {
+                    opacity: { duration: 0.72, delay: 2.2, ease: EASE_OUT },
+                    scale: { duration: 0.72, delay: 2.2, times: [0, 0.583, 1], ease: EASE_OUT },
+                  }}
+                />
+              </motion.div>
             ))}
           </div>
 
-          <div className="infinitySymbol" aria-hidden>
-            <motion.div
-              className="infinityFloat"
-              animate={reduced ? undefined : { scale: [0.97, 1.03, 1] }}
-              transition={reduced ? undefined : {
-                scale: { duration: 0.48, delay: 1.8, times: [0, 0.48, 1], ease: EASE_OUT },
-              }}
+          <motion.i
+            className="masterCenterPulse"
+            aria-hidden
+            initial={reduced ? false : { opacity: 0, scale: 0 }}
+            animate={reduced ? { opacity: 0 } : { opacity: [0, 0.62, 0], scale: [0, 1.45, 3.6] }}
+            transition={reduced ? undefined : { duration: 0.58, delay: 1.87, times: [0, 0.31, 1], ease: EASE_OUT }}
+          />
+
+          <motion.div
+            className="infinityMasterSymbol"
+            animate={reduced ? undefined : {
+              y: [0, -14, 0, 14, 0],
+              scale: [0.97, 1.03, 1],
+            }}
+            transition={reduced ? undefined : {
+              y: { duration: 5, delay: 2.3, times: [0, 0.25, 0.5, 0.75, 1], ease: 'linear', repeat: Infinity },
+              scale: { duration: 0.48, delay: 1.8, times: [0, 0.479, 1], ease: EASE_OUT },
+            }}
+          >
+            <motion.svg
+              className="infinityMasterLayer infinityMasterGlow"
+              viewBox="0 0 64 32"
+              aria-hidden
+              focusable="false"
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 0.26 }}
+              transition={reduced ? undefined : { duration: 0.24, delay: 0.23, ease: EASE_OUT }}
             >
-              <svg className="infinityReveal infinityGlow" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <motion.path d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
-              </svg>
-              <svg className="infinityReveal infinityMain" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <motion.path d={INFINITY_PATH} pathLength={1} {...mainPathMotion} />
-              </svg>
-              <svg className="infinityReveal infinityHighlight" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <motion.path
-                  d={INFINITY_PATH}
-                  pathLength={1}
-                  initial={reduced ? false : { pathLength: 0, opacity: 0 }}
-                  animate={reduced ? { opacity: 0 } : { pathLength: 1, opacity: [0, 0.42, 0] }}
-                  transition={reduced ? undefined : {
-                    pathLength: { duration: 1.49, delay: 0.53, ease: EASE_OUT },
-                    opacity: { duration: 1.8, delay: 0.35, times: [0, 0.16, 1], ease: EASE_OUT },
-                  }}
-                />
-              </svg>
-              <svg className="infinityReveal infinitySweep" viewBox="0 0 64 32" aria-hidden focusable="false">
-                <path d={INFINITY_PATH} pathLength="1" />
-              </svg>
-            </motion.div>
-          </div>
+              <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
+            </motion.svg>
+
+            <motion.svg
+              className="infinityMasterLayer infinityMasterMain"
+              viewBox="0 0 64 32"
+              aria-hidden
+              focusable="false"
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={reduced ? undefined : { duration: 0.24, delay: 0.23, ease: EASE_OUT }}
+            >
+              <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
+            </motion.svg>
+
+            <motion.svg className="infinityMasterLayer infinityMasterHighlight" viewBox="0 0 64 32" aria-hidden focusable="false">
+              <motion.path
+                d={INFINITY_PATH}
+                pathLength={1}
+                initial={reduced ? false : { pathLength: 0, opacity: 0 }}
+                animate={reduced ? { opacity: 0 } : { pathLength: 1, opacity: [0, 0.42, 0] }}
+                transition={reduced ? undefined : {
+                  pathLength: { duration: 1.49, delay: 0.53, ease: EASE_OUT },
+                  opacity: { duration: 1.8, delay: 0.35, times: [0, 0.156, 1], ease: EASE_OUT },
+                }}
+              />
+            </motion.svg>
+          </motion.div>
         </motion.div>
       </div>
     </section>
