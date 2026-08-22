@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await generateText({
-      model: process.env.LEVI_MODEL ?? 'openai/gpt-5.6-sol',
+      model: process.env.LEVI_MODEL ?? 'openai/gpt-5.4',
       instructions: leviInstructions(locale),
       messages,
       output: Output.object({
@@ -87,7 +87,6 @@ export async function POST(request: Request) {
         description: 'Structured response for Cassiellos public business pre-diagnosis.',
       }),
       maxOutputTokens: 900,
-      temperature: 0.25,
       maxRetries: 1,
       timeout: { totalMs: 22_000 },
       providerOptions: {
