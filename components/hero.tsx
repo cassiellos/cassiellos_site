@@ -57,10 +57,10 @@ export default function Hero() {
           </motion.p>
 
           <motion.div className="actions" {...enter(0.28)}>
-            <a className="btn" href="#contato">
+            <a className="btn" href="#contato" data-analytics-cta>
               Agende um diagnóstico
             </a>
-            <a className="btn ghost" href="#metodo">
+            <a className="btn ghost" href="#metodo" data-analytics-cta>
               Conheça o método
             </a>
           </motion.div>

@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/api/analytics/:path*",
+      "destination": "https://cassiellos-web.vercel.app/api/analytics/:path*"
+    }
+  ]
 }

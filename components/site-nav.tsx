@@ -62,7 +62,7 @@ export default function SiteNav() {
           </a>
         </nav>
 
-        <a className="btn" href="#contato">
+        <a className="btn" href="#contato" data-analytics-cta>
           Agende um diagnóstico
         </a>
       </div>
