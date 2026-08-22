@@ -7,19 +7,19 @@ import { useLevi } from './levi-provider'
 import type { Locale } from './home-content'
 
 const FEATURES = [
-  { title: 'Explica', text: 'Serviços, método e posicionamento.' },
-  { title: 'Navega', text: 'Leva o visitante ao ponto certo.' },
-  { title: 'Contextualiza', text: 'Conecta Cassiellos e cassiellOS.' },
-  { title: 'Respeita limites', text: 'Não inventa execução ou acesso.' },
+  { title: 'Entende o contexto', text: 'Conhece sua empresa, objetivo e momento atual.' },
+  { title: 'Organiza os gargalos', text: 'Conecta marketing, atendimento, vendas e operação.' },
+  { title: 'Sugere prioridades', text: 'Apresenta hipóteses e próximos passos em ordem.' },
+  { title: 'Respeita limites', text: 'Declara pendências, fontes e nível de confiança.' },
 ] as const
 
 export default function LeviSection({ lang }: { lang: Locale }) {
   const en = lang === 'en'
   const features = en ? [
-    { title: 'Explains', text: 'Services, method and positioning.' },
-    { title: 'Navigates', text: 'Takes visitors to the right place.' },
-    { title: 'Adds context', text: 'Connects Cassiellos and cassiellOS.' },
-    { title: 'Respects limits', text: 'Never invents execution or access.' },
+    { title: 'Understands context', text: 'Learns about your company, objective and current moment.' },
+    { title: 'Organizes bottlenecks', text: 'Connects marketing, service, sales and operations.' },
+    { title: 'Suggests priorities', text: 'Presents hypotheses and next steps in order.' },
+    { title: 'Respects limits', text: 'Declares missing data, sources and confidence.' },
   ] : FEATURES
   const ref = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
@@ -44,7 +44,11 @@ export default function LeviSection({ lang }: { lang: Locale }) {
             LEVI <span>by CASSIELLOS</span>
           </h2>
           <p className="lead">
-            {en ? 'Levi brings people, context and operations closer together. On the site, he answers questions, guides navigation and clearly presents the Cassiellos ecosystem.' : 'Levi aproxima pessoas, contexto e operação. No site, ele responde dúvidas, orienta a navegação e apresenta o ecossistema Cassiellos com clareza.'}
+            {en ? 'Talk to Levi now and receive a free, no-obligation pre-diagnosis. In a few guided questions, he organizes your current situation, identifies likely bottlenecks and suggests the most useful next steps.' : 'Converse com o Levi agora e receba um pré-diagnóstico gratuito, sem compromisso. Em poucas perguntas guiadas, ele organiza seu cenário atual, identifica gargalos prováveis e sugere os próximos passos mais úteis.'}
+          </p>
+
+          <p className="leviDisclosure">
+            {en ? 'Public suggestion mode, with no access to your internal systems and no external actions.' : 'Modo público de sugestão, sem acesso aos seus sistemas internos e sem executar ações externas.'}
           </p>
 
           <div className="features">
@@ -57,7 +61,7 @@ export default function LeviSection({ lang }: { lang: Locale }) {
           </div>
 
           <button className="btn" style={{ marginTop: 24 }} onClick={openChat}>
-            {en ? 'Talk to Levi' : 'Conversar com o Levi'}
+            {en ? 'Start free pre-diagnosis' : 'Iniciar pré-diagnóstico gratuito'}
           </button>
         </Reveal>
       </div>

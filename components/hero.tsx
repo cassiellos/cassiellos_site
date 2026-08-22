@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import InfinityMark from './infinity-mark'
 import { EASE_OUT } from '@/lib/scroll'
@@ -9,6 +9,8 @@ import type { Locale } from './home-content'
 export default function Hero({ lang }: { lang: Locale }) {
   const en = lang === 'en'
   const ref = useRef<HTMLElement>(null)
+  const orbitRef = useRef<HTMLDivElement>(null)
+  const [infinityHot, setInfinityHot] = useState(false)
   const reduced = useReducedMotion()
 
   const { scrollYProgress } = useScroll({
@@ -17,7 +19,6 @@ export default function Hero({ lang }: { lang: Locale }) {
   })
   const smooth = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 })
 
-  // Camadas em velocidades diferentes: fundo desce, órbita sobe, texto acompanha.
   const meshY = useTransform(smooth, [0, 1], ['0%', '18%'])
   const glowY = useTransform(smooth, [0, 1], ['0%', '-24%'])
   const orbitY = useTransform(smooth, [0, 1], ['0%', '-16%'])
@@ -68,7 +69,8 @@ export default function Hero({ lang }: { lang: Locale }) {
         </motion.div>
 
         <motion.div
-          className="orbit"
+          ref={orbitRef}
+          className={`orbit orbitInteractive${infinityHot ? ' isInfinityHot' : ''}`}
           style={reduced ? still : { y: orbitY, scale: orbitScale }}
           {...(reduced
             ? {}
@@ -79,13 +81,36 @@ export default function Hero({ lang }: { lang: Locale }) {
               })}
         >
           <i className="centerPulse" aria-hidden />
-          <InfinityMark className="inf" />
-          <i className="ring r1" />
-          <i className="ring r2" />
-          <i className="ring r3" />
-          <span className="orbitLabel one">{en ? 'Strategy' : 'Estratégia'}</span>
-          <span className="orbitLabel two">{en ? 'Creative' : 'Criação'}</span>
-          <span className="orbitLabel three">{en ? 'Operations' : 'Operação'}</span>
+          <div className="orbitSystem">
+            <i className="ring r1" />
+            <i className="ring r2" />
+            <i className="ring r3" />
+            <span className="labelOrbit labelOrbit1">
+              <span className="orbitLabel">{en ? 'Strategy' : 'Estratégia'}</span>
+            </span>
+            <span className="labelOrbit labelOrbit2">
+              <span className="orbitLabel">{en ? 'Creative' : 'Criação'}</span>
+            </span>
+            <span className="labelOrbit labelOrbit3">
+              <span className="orbitLabel">{en ? 'Operations' : 'Operação'}</span>
+            </span>
+          </div>
+          <motion.div
+            className="infinityDrag"
+            drag={!reduced}
+            dragConstraints={orbitRef}
+            dragElastic={0.16}
+            dragMomentum
+            dragTransition={{ bounceStiffness: 420, bounceDamping: 28 }}
+            whileHover={reduced ? undefined : { scale: 1.045 }}
+            whileDrag={reduced ? undefined : { scale: 1.08, cursor: 'grabbing' }}
+            onHoverStart={() => setInfinityHot(true)}
+            onHoverEnd={() => setInfinityHot(false)}
+            aria-label={en ? 'Interactive Cassiellos symbol - drag to move' : 'Símbolo interativo Cassiellos - arraste para mover'}
+          >
+            <InfinityMark className="inf" />
+            <InfinityMark className="inf loadingSweep" />
+          </motion.div>
         </motion.div>
       </div>
     </section>
