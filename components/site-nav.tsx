@@ -23,6 +23,12 @@ export default function SiteNav() {
   ]
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>('')
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const translatedLabel = (label: string) =>
+    english
+      ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Trabalhos: 'Work', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[label]
+      : label
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -52,10 +58,29 @@ export default function SiteNav() {
     return () => observer.disconnect()
   }, [isHome])
 
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
+
   return (
     <header className="nav" data-scrolled={scrolled}>
       <div className="wrap navin">
-        <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'} aria-label="Cassiellos">
+        <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'} aria-label="Cassiellos" onClick={() => setMobileOpen(false)}>
           <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" aria-hidden="true" width="40" height="20" />
           <span>Cassiellos</span>
         </a>
@@ -63,17 +88,49 @@ export default function SiteNav() {
         <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
           {links.map((link) => (
             <a key={link.href} href={link.href} data-active={active === link.href || (!isHome && link.href === pathname)}>
-              {english
-                ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Trabalhos: 'Work', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[link.label]
-                : link.label}
+              {translatedLabel(link.label)}
             </a>
           ))}
         </nav>
 
-        <SiteControls />
+        <div className="desktopSiteControls"><SiteControls /></div>
         <a className="btn navCta" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
           {english ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
         </a>
+
+        <button
+          type="button"
+          className="mobileMenuToggle"
+          aria-label={english ? 'Open navigation menu' : 'Abrir menu de navegação'}
+          aria-controls="mobile-navigation"
+          aria-expanded={mobileOpen}
+          onClick={() => setMobileOpen((open) => !open)}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
+      </div>
+
+      <div id="mobile-navigation" className="mobileNavPanel" data-open={mobileOpen} aria-hidden={!mobileOpen}>
+        <div className="mobileNavLinks" aria-label={english ? 'Mobile navigation' : 'Navegação mobile'}>
+          {links.map((link) => (
+            <a
+              key={`mobile-${link.href}`}
+              href={link.href}
+              data-active={active === link.href || (!isHome && link.href === pathname)}
+              onClick={() => setMobileOpen(false)}
+            >
+              {translatedLabel(link.label)}
+            </a>
+          ))}
+        </div>
+        <div className="mobileNavFooter">
+          <SiteControls />
+          <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
+            {english ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
+          </a>
+        </div>
       </div>
     </header>
   )
