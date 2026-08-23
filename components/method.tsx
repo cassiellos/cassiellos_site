@@ -6,19 +6,21 @@ import Reveal from './reveal'
 import type { Locale } from './home-content'
 
 const STEPS = [
-  { number: '01', label: 'Diagnóstico' },
-  { number: '02', label: 'Direção' },
-  { number: '03', label: 'Produção' },
-  { number: '04', label: 'Aprovação e publicação' },
-  { number: '05', label: 'Aprendizado' },
+  { number: '01', label: 'Clareza', text: 'Você sabe onde colocar energia.' },
+  { number: '02', label: 'Confiança', text: 'Sua marca transmite mais valor.' },
+  { number: '03', label: 'Alívio', text: 'Menos coisas dependendo de você.' },
+  { number: '04', label: 'Controle', text: 'Mais visibilidade sobre o que acontece.' },
+  { number: '05', label: 'Evolução real', text: 'Cada etapa deixa sua empresa mais preparada para crescer.' },
 ] as const
 
 export default function Method({ lang }: { lang: Locale }) {
   const en = lang === 'en'
   const steps = en ? [
-    { number: '01', label: 'Diagnosis' }, { number: '02', label: 'Direction' },
-    { number: '03', label: 'Production' }, { number: '04', label: 'Approval and publishing' },
-    { number: '05', label: 'Learning' },
+    { number: '01', label: 'Clarity', text: 'You know where to focus your energy.' },
+    { number: '02', label: 'Confidence', text: 'Your brand conveys more value.' },
+    { number: '03', label: 'Relief', text: 'Fewer things depend on you.' },
+    { number: '04', label: 'Control', text: 'More visibility into what is happening.' },
+    { number: '05', label: 'Real progress', text: 'Each stage leaves your company better prepared to grow.' },
   ] : STEPS
   const stepsRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
@@ -33,8 +35,8 @@ export default function Method({ lang }: { lang: Locale }) {
     <section className="section" id="metodo">
       <div className="wrap method">
         <Reveal>
-          <span className="tag">03 / {en ? 'Cassiellos Method' : 'Método Cassiellos'}</span>
-          <h2 className="h2md">{en ? 'Context follows the work into the next cycle.' : 'O contexto acompanha o trabalho até o próximo ciclo.'}</h2>
+          <span className="tag">03 / {en ? 'What changes in practice' : 'O que muda na prática'}</span>
+          <h2 className="h2md">{en ? 'Less weight on you. More strength for your business.' : 'Menos peso para você. Mais força para a sua empresa.'}</h2>
         </Reveal>
 
         <div className="steps" ref={stepsRef}>
@@ -48,7 +50,10 @@ export default function Method({ lang }: { lang: Locale }) {
           {steps.map((step, index) => (
             <Reveal key={step.number} className="step" delay={0.07 * index} y={18}>
               <b>{step.number}</b>
-              {step.label}
+              <div>
+                <strong>{step.label}</strong>
+                <p>{step.text}</p>
+              </div>
             </Reveal>
           ))}
         </div>

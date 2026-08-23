@@ -7,20 +7,23 @@ import type { Locale } from './home-content'
 const SERVICES = [
   {
     number: '01',
-    title: 'Direção estratégica',
-    text: 'Diagnóstico, posicionamento, identidade e decisões que organizam o crescimento da marca.',
+    title: 'Saiba o que fazer',
+    promise: 'Clareza para tomar decisões melhores.',
+    text: 'Analisamos seu negócio, identificamos o que precisa melhorar e definimos as prioridades para sua empresa avançar com mais segurança.',
     red: false,
   },
   {
     number: '02',
-    title: 'Criação em movimento',
-    text: 'Conteúdo, design, audiovisual, campanhas e experiências digitais com uma linguagem consistente.',
+    title: 'Comunique melhor',
+    promise: 'Uma marca mais profissional e preparada para vender.',
+    text: 'Criamos conteúdos, campanhas, design e vídeos que ajudam sua empresa a ser entendida, lembrada e valorizada pelo mercado.',
     red: true,
   },
   {
     number: '03',
-    title: 'Operação contínua',
-    text: 'Planejamento, produção, aprovação, publicação, acompanhamento e aprendizado no mesmo fluxo.',
+    title: 'Mantenha tudo funcionando',
+    promise: 'Menos improviso e mais continuidade.',
+    text: 'Organizamos planejamento, produção, aprovações, publicação e acompanhamento para que sua empresa avance sem depender de cobranças o tempo todo.',
     red: false,
   },
 ] as const
@@ -28,9 +31,9 @@ const SERVICES = [
 export default function Services({ lang }: { lang: Locale }) {
   const en = lang === 'en'
   const services = en ? [
-    { number: '01', title: 'Strategic direction', text: 'Diagnosis, positioning, identity and decisions that organize brand growth.', red: false },
-    { number: '02', title: 'Creative in motion', text: 'Content, design, audiovisual, campaigns and digital experiences in one consistent language.', red: true },
-    { number: '03', title: 'Continuous operations', text: 'Planning, production, approval, publishing, monitoring and learning in the same flow.', red: false },
+    { number: '01', title: 'Know what to do', promise: 'Clarity to make better decisions.', text: 'We analyze your business, identify what needs improvement and set the priorities so your company can move forward with greater confidence.', red: false },
+    { number: '02', title: 'Communicate better', promise: 'A more professional brand, ready to sell.', text: 'We create content, campaigns, design and video that help your company be understood, remembered and valued by the market.', red: true },
+    { number: '03', title: 'Keep everything running', promise: 'Less improvisation and more continuity.', text: 'We organize planning, production, approvals, publishing and monitoring so your company can move forward without constant follow-ups.', red: false },
   ] : SERVICES
   // Brilho que segue o cursor dentro do cartão.
   const onMove = (event: MouseEvent<HTMLElement>) => {
@@ -45,10 +48,10 @@ export default function Services({ lang }: { lang: Locale }) {
         <div className="intro">
           <Reveal>
             <span className="tag">02 / {en ? 'Expertise' : 'Atuação'}</span>
-            <h2>{en ? 'A complete creative operation.' : 'Uma operação criativa completa.'}</h2>
+            <h2>{en ? 'More clarity to grow.' : 'Mais clareza para crescer.'}</h2>
           </Reveal>
           <Reveal as="p" delay={0.1}>
-            {en ? 'Strategic thinking, production and follow-through connected by a shared method.' : 'Pensamento estratégico, produção e acompanhamento conectados por um método comum.'}
+            {en ? 'Everything connected to flow better, with fewer manual tasks and greater agility.' : 'Tudo conectado para fluir melhor, com menos tarefas manuais e mais agilidade.'}
           </Reveal>
         </div>
 
@@ -62,8 +65,11 @@ export default function Services({ lang }: { lang: Locale }) {
               onMouseMove={onMove}
             >
               <span className="tag">{service.number}</span>
-              <h3>{service.title}</h3>
-              <p>{service.text}</p>
+              <div className="cardCopy">
+                <h3>{service.title}</h3>
+                <strong className="cardPromise">{service.promise}</strong>
+                <p>{service.text}</p>
+              </div>
             </Reveal>
           ))}
         </div>
