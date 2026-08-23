@@ -9,7 +9,9 @@ const SECTION_LINKS = [
   { href: '#servicos', label: 'Serviços' },
   { href: '#como-funciona', label: 'Como funciona' },
   { href: '#clientes', label: 'Clientes' },
+  { href: '#cassiellos', label: 'Tecnologia' },
   { href: '#levi', label: 'Levi' },
+  { href: '#faq-title', label: 'FAQ' },
 ] as const
 
 export default function SiteNav() {
@@ -27,7 +29,15 @@ export default function SiteNav() {
 
   const translatedLabel = (label: string) =>
     english
-      ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Clientes: 'Clients', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[label]
+      ? ({
+          Serviços: 'Services',
+          'Como funciona': 'How it works',
+          Clientes: 'Clients',
+          Tecnologia: 'Technology',
+          Levi: 'Levi',
+          FAQ: 'FAQ',
+          Company: 'Company',
+        } as Record<string, string>)[label]
       : label
 
   useEffect(() => {
