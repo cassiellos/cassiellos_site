@@ -1,0 +1,227 @@
+/* Brand refinements — Home sections 02/05/07 + footer identity. */
+
+/* SECTION 02 — Signal Red editorial grid, inspired by the Cassiellos orbit/system language. */
+[class*="home-content_problem__"]{
+  isolation:isolate;
+  overflow:hidden;
+  background:var(--red)!important;
+  color:var(--navy)!important;
+}
+[class*="home-content_problem__"]:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(7,16,31,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(7,16,31,.055) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:linear-gradient(90deg,#000 0 72%,transparent 100%);
+}
+[class*="home-content_problem__"]:after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  width:520px;
+  height:520px;
+  border:1px dashed rgba(7,16,31,.28);
+  border-radius:50%;
+  right:-190px;
+  top:-180px;
+  pointer-events:none;
+}
+[class*="home-content_problem__"] [class*="home-content_sectionInner__"]{position:relative;z-index:1}
+[class*="home-content_problem__"] [class*="home-content_splitIntro__"]{align-items:start}
+[class*="home-content_problem__"] [class*="home-content_splitIntro__"]>p{color:rgba(7,16,31,.76)!important;max-width:510px;font-weight:540}
+[class*="home-content_problem__"] [class*="home-content_eyebrow__"]{color:var(--navy)!important}
+[class*="home-content_problem__"] [class*="home-content_problemGrid__"]{
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-top:54px!important;
+}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]{
+  position:relative;
+  min-height:235px!important;
+  padding:24px!important;
+  border:1px solid rgba(7,16,31,.22)!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.09)!important;
+  backdrop-filter:blur(8px);
+  color:var(--navy)!important;
+  overflow:hidden;
+}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:after{
+  content:"";
+  position:absolute;
+  width:88px;
+  height:88px;
+  border:1px solid rgba(7,16,31,.18);
+  border-radius:50%;
+  right:-38px;
+  top:-38px;
+}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(1){grid-column:span 5}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(2){grid-column:span 3}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3){grid-column:span 4;background:var(--navy)!important;color:var(--paper)!important;border-color:var(--navy)!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(4){grid-column:span 4}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(5){grid-column:span 8;background:var(--paper)!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]>span{color:var(--navy)!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3)>span{color:var(--red)!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"] h3{font-size:clamp(25px,2.4vw,36px);margin:auto 0 14px!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"] p{color:rgba(7,16,31,.72)!important}
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3) p{color:#b7c0d0!important}
+[class*="home-content_problem__"] [class*="home-content_problemClose__"]{
+  max-width:none!important;
+  margin-top:20px!important;
+  padding:24px 28px!important;
+  border:0!important;
+  border-radius:14px;
+  background:var(--navy)!important;
+  color:var(--paper)!important;
+}
+
+/* SECTION 05 — clients, with real official client logos as the visual proof. */
+[class*="home-content_proof__"]{background:#f0f3f8!important;color:var(--navy)!important}
+[class*="home-content_proof__"] [class*="home-content_splitIntro__"]>p{color:#596678!important}
+[class*="home-content_proof__"] [class*="home-content_caseGrid__"]{gap:14px!important;margin-top:44px!important}
+[class*="home-content_proof__"] [class*="home-content_caseCard__"]{
+  min-height:390px;
+  border:1px solid #d7deea!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 18px 46px rgba(7,16,31,.055);
+  transition:transform .24s var(--ease),box-shadow .24s var(--ease),border-color .24s var(--ease);
+}
+[class*="home-content_proof__"] [class*="home-content_caseCard__"]:hover{transform:translateY(-5px);border-color:#bcc8da!important;box-shadow:0 26px 62px rgba(7,16,31,.09)}
+[class*="home-content_proof__"] [class*="home-content_caseCard__"] figure{
+  aspect-ratio:16/9!important;
+  min-height:210px;
+  margin:0;
+  padding:38px;
+  display:grid;
+  place-items:center;
+  background:#fff!important;
+  border-bottom:1px solid #e0e6ef;
+}
+[class*="home-content_proof__"] [class*="home-content_caseCard__"] img{width:88%!important;height:100%!important;max-height:145px;object-fit:contain!important;object-position:center!important}
+[class*="home-content_proof__"] [class*="home-content_caseCard__"]:nth-child(3) img{width:auto!important;max-width:58%;max-height:170px}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"]{padding:22px 24px 24px!important}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"]>span{color:var(--red)!important}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"] small{display:none!important}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"] h3{font-size:clamp(26px,2.4vw,34px)!important;margin:14px 0 10px!important}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"] p{font-size:14px;line-height:1.55;color:#596678!important}
+[class*="home-content_proof__"] [class*="home-content_caseCopy__"] em{margin-top:18px!important;padding-top:14px!important;color:#536075!important}
+
+/* SECTION 07 — official cassiellOS lockup and distinct dark/light product surfaces. */
+[class*="home-content_osSection__"]{
+  background:#07101f!important;
+  color:var(--paper)!important;
+  border-top:1px solid rgba(220,227,238,.12);
+}
+[class*="home-content_osSection__"]:before{
+  width:860px!important;
+  height:860px!important;
+  right:-240px!important;
+  top:-120px!important;
+  background:radial-gradient(circle,rgba(34,199,242,.17) 0%,rgba(36,107,255,.12) 30%,rgba(123,53,245,.06) 48%,transparent 70%)!important;
+}
+[class*="home-content_osSection__"] [class*="home-content_osIntro__"]>p{color:#aeb9ca!important}
+[class*="home-content_osSection__"] [class*="home-content_osPanel__"]{
+  display:grid!important;
+  grid-template-columns:minmax(260px,4fr) minmax(0,8fr)!important;
+  gap:44px!important;
+  align-items:center!important;
+  margin-top:48px!important;
+  padding:34px!important;
+  border:1px solid rgba(34,199,242,.22)!important;
+  border-radius:22px!important;
+  background:linear-gradient(145deg,rgba(14,30,52,.96),rgba(7,16,31,.94))!important;
+  box-shadow:0 30px 80px rgba(0,0,0,.18);
+}
+[class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{
+  content:url('/brand/current/cassiellos-os-paper.svg');
+  width:min(360px,100%)!important;
+  height:auto!important;
+  align-self:center;
+}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"]{margin-top:0!important;gap:10px!important}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] article{
+  min-height:150px;
+  padding:20px!important;
+  border:1px solid rgba(34,199,242,.16)!important;
+  border-radius:14px!important;
+  background:rgba(246,248,255,.035)!important;
+}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] h3{color:var(--paper)}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] p{color:#aeb9ca!important}
+[class*="home-content_osSection__"] [class*="home-content_leviStrip__"]{background:#0b182b!important;border-color:rgba(123,53,245,.24)!important}
+
+html[data-theme=light] [class*="home-content_osSection__"]{
+  background:linear-gradient(180deg,#f6f8ff 0%,#edf4ff 100%)!important;
+  color:var(--navy)!important;
+  border-top-color:#d7deea!important;
+}
+html[data-theme=light] [class*="home-content_osSection__"]:before{background:radial-gradient(circle,rgba(34,199,242,.15) 0%,rgba(36,107,255,.11) 32%,rgba(123,53,245,.04) 50%,transparent 70%)!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osIntro__"]>p{color:#536075!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_systemEyebrow__"]{color:var(--blue)!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osPanel__"]{
+  background:rgba(255,255,255,.9)!important;
+  border-color:rgba(36,107,255,.2)!important;
+  box-shadow:0 24px 70px rgba(7,16,31,.08);
+}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{content:url('/brand/current/cassiellos-os-navy.svg')}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osItems__"] article{background:#f8fbff!important;border-color:#d7e1ee!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osItems__"] h3{color:var(--navy)!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_osItems__"] p{color:#536075!important}
+html[data-theme=light] [class*="home-content_osSection__"] [class*="home-content_leviStrip__"]{background:#fff!important;border-color:#d7deea!important;box-shadow:0 14px 44px rgba(7,16,31,.055)}
+
+/* FOOTER — metadata belongs to the brand signature, not as a detached third column. */
+.footin{grid-template-columns:minmax(0,1fr) auto!important;gap:28px!important}
+.footerIdentity{display:flex;align-items:center;gap:18px;min-width:0}
+.footerIdentity .footerMeta{display:flex!important;align-items:center!important;flex-direction:row!important;gap:0!important;color:#9da9ba;white-space:nowrap}
+.footerIdentity .footerMeta span{display:inline}
+.footerLegal{justify-self:end}
+html[data-theme=light] .footerIdentity .footerMeta{color:#5a6678}
+
+@media(max-width:960px){
+  [class*="home-content_problem__"] [class*="home-content_problemGrid__"]{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"],
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(n){grid-column:auto!important;min-height:205px!important}
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"]:last-child{grid-column:1/-1!important}
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]{grid-template-columns:1fr!important;gap:24px!important}
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{width:min(330px,76%)!important}
+  .footerIdentity{gap:12px;flex-wrap:wrap}
+  .footerIdentity .footerMeta{white-space:normal}
+}
+
+@media(max-width:760px){
+  [class*="home-content_problem__"]:after{width:300px;height:300px;right:-150px;top:-120px}
+  [class*="home-content_problem__"] [class*="home-content_problemGrid__"]{margin-top:22px!important}
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"],
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(n){min-height:0!important;padding:14px!important}
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"] h3{font-size:19px!important;margin:28px 0 8px!important}
+  [class*="home-content_problem__"] [class*="home-content_problemCard__"] p{font-size:12px!important;line-height:1.42!important}
+  [class*="home-content_problem__"] [class*="home-content_problemClose__"]{padding:15px!important;font-size:16px!important}
+
+  [class*="home-content_proof__"] [class*="home-content_caseGrid__"]{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-top:24px!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCard__"]{min-height:0!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCard__"]:last-child{grid-column:1/-1}
+  [class*="home-content_proof__"] [class*="home-content_caseCard__"] figure{min-height:120px!important;padding:18px!important;aspect-ratio:16/9!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCard__"] img{max-height:82px!important;width:92%!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCard__"]:nth-child(3) img{max-height:120px!important;max-width:38%!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCopy__"]{padding:12px!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCopy__"] h3{font-size:18px!important;margin:9px 0 7px!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCopy__"] p{font-size:11.5px!important;line-height:1.4!important}
+  [class*="home-content_proof__"] [class*="home-content_caseCopy__"] em{font-size:9px!important;margin-top:10px!important;padding-top:9px!important}
+
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]{padding:16px!important;margin-top:24px!important;gap:18px!important}
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{width:min(250px,82%)!important}
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] article{min-height:0!important;padding:13px!important}
+
+  .footin{grid-template-columns:1fr!important;gap:14px!important}
+  .footerIdentity{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
+  .footerIdentity .footerBrand{grid-row:1/3}
+  .footerIdentity .footerMeta{font-size:11px;line-height:1.35;white-space:normal}
+  .footerLegal{justify-self:start;display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;gap:8px 16px!important}
+}

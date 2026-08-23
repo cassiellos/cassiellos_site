@@ -46,13 +46,13 @@ const PT = {
     close: ['Mais clareza para decidir.', 'Mais consistência para aparecer.', 'Mais tempo para cuidar da sua empresa.'],
   },
   proof: {
-    eyebrow: '05 / Trabalho real',
-    title: 'Veja o que já colocamos em movimento.',
-    body: 'Projetos reais, clientes reais e entregas reais. Aqui, o foco é mostrar o que fizemos e como ajudamos cada operação.',
+    eyebrow: '05 / Clientes',
+    title: 'Empresas que confiam na Cassiellos.',
+    body: 'Trabalhamos ao lado de empresas de diferentes segmentos, construindo relações próximas e uma comunicação que acompanha o momento real de cada negócio.',
     cases: [
-      { client: 'Minds English School', image: '/case-work/minds-intercambio.webp', alt: 'Peça de campanha criada para Minds English School', label: 'Campanhas, conteúdo e comunicação', title: 'Comunicação para campanhas, matrículas, produtos e posicionamento.', text: 'Planejamento e produção de peças com estratégia, copy, direção visual, conteúdo, criativos e campanhas.', services: 'Estratégia · Copy · Direção visual · Conteúdo · Criativos · Campanhas' },
-      { client: 'Gira Moto Peças', image: '/case-work/gira-motopecas.webp', alt: 'Peça de conteúdo criada para Gira Moto Peças', label: 'Posicionamento, conteúdo e audiovisual', title: 'Uma linguagem para loja, oficina e diferentes públicos do mesmo negócio.', text: 'Comunicação construída para organizar produto, oficina e posicionamento dentro de uma presença mais forte e consistente.', services: 'Planejamento · Conteúdo · Design · Vídeo · Campanhas · Direção visual' },
-      { client: 'Escola Santa Rita', image: '/case-work/santa-rita.webp', alt: 'Peça criada para Escola de Enfermagem Santa Rita', label: 'Comunicação educacional e geração de demanda', title: 'Conteúdo e campanhas voltados a cursos, matrículas e relacionamento.', text: 'Estratégia, conteúdo, copy, design, vídeos e campanhas trabalhando para divulgar a escola com clareza e consistência.', services: 'Estratégia · Conteúdo · Copy · Design · Vídeos · Campanhas' },
+      { client: 'Minds English School', image: '/client-logos/current/minds.png', alt: 'Logo da Minds English School', label: 'Educação · Idiomas', title: 'Minds English School', text: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', services: 'Cliente Cassiellos' },
+      { client: 'Gira Moto Peças', image: '/client-logos/current/gira.png', alt: 'Logo da Gira Moto Peças', label: 'Varejo · Motopeças', title: 'Gira Moto Peças', text: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', services: 'Cliente Cassiellos' },
+      { client: 'Escola Santa Rita', image: '/client-logos/current/santa-rita.png', alt: 'Logo da Escola de Enfermagem Santa Rita', label: 'Educação · Saúde', title: 'Escola Santa Rita', text: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', services: 'Cliente Cassiellos' },
     ],
   },
   method: {
@@ -156,13 +156,13 @@ const EN = {
     close: ['More clarity to decide.', 'More consistency to show up.', 'More time to run your company.'],
   },
   proof: {
-    eyebrow: '05 / Real work',
-    title: 'See what we have already put in motion.',
-    body: 'Real projects, real clients and real deliverables. The focus here is what we did and how we helped each operation.',
+    eyebrow: '05 / Clients',
+    title: 'Companies that trust Cassiellos.',
+    body: 'We work alongside companies from different industries, building close relationships and communication that follows the real moment of each business.',
     cases: [
-      { client: 'Minds English School', image: '/case-work/minds-intercambio.webp', alt: 'Campaign piece created for Minds English School', label: 'Campaigns, content and communication', title: 'Communication for campaigns, enrollment, products and positioning.', text: 'Planning and production combining strategy, copy, visual direction, content, creative and campaigns.', services: 'Strategy · Copy · Visual direction · Content · Creative · Campaigns' },
-      { client: 'Gira Moto Peças', image: '/case-work/gira-motopecas.webp', alt: 'Content piece created for Gira Moto Peças', label: 'Positioning, content and audiovisual', title: 'One language for store, workshop and different audiences.', text: 'Communication built to organize products, services and positioning into a stronger and more consistent presence.', services: 'Planning · Content · Design · Video · Campaigns · Visual direction' },
-      { client: 'Escola Santa Rita', image: '/case-work/santa-rita.webp', alt: 'Piece created for Escola de Enfermagem Santa Rita', label: 'Educational communication and demand generation', title: 'Content and campaigns for courses, enrollment and relationships.', text: 'Strategy, content, copy, design, video and campaigns working together to communicate the school clearly and consistently.', services: 'Strategy · Content · Copy · Design · Video · Campaigns' },
+      { client: 'Minds English School', image: '/client-logos/current/minds.png', alt: 'Minds English School logo', label: 'Education · Languages', title: 'Minds English School', text: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', services: 'Cassiellos client' },
+      { client: 'Gira Moto Peças', image: '/client-logos/current/gira.png', alt: 'Gira Moto Peças logo', label: 'Retail · Motorcycle parts', title: 'Gira Moto Peças', text: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', services: 'Cassiellos client' },
+      { client: 'Escola Santa Rita', image: '/client-logos/current/santa-rita.png', alt: 'Escola Santa Rita logo', label: 'Education · Healthcare', title: 'Escola Santa Rita', text: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', services: 'Cassiellos client' },
     ],
   },
   method: {
@@ -310,7 +310,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.proof}`} id="trabalhos" aria-labelledby="proof-title">
+      <section className={`${styles.section} ${styles.proof}`} id="clientes" aria-labelledby="proof-title">
         <div className={`wrap ${styles.sectionInner}`}>
           <div className={styles.splitIntro}>
             <motion.div {...reveal()}>
@@ -364,7 +364,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
             <motion.p {...reveal(0.08)}>{c.os.body}</motion.p>
           </div>
           <motion.div className={styles.osPanel} {...reveal(0.12, 18)}>
-            <img src="/brand/cassiellos-os-lockup.svg" alt="cassiellOS" />
+            <img src="/brand/current/cassiellos-os-paper.svg" alt="cassiellOS" />
             <div className={styles.osItems}>
               {c.os.items.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}
             </div>
