@@ -6,6 +6,7 @@ import './brand-refinements.css'
 import './section02-brandbook.css'
 import './theme-system-v2.css'
 import './about-team.css'
+import './navigation-client-fixes.css'
 
 import SmoothScroll from '@/components/smooth-scroll'
 import ScrollProgress from '@/components/scroll-progress'
