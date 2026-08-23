@@ -1,5 +1,5 @@
-/** Origem canônica do site. Em preview a Vercel injeta VERCEL_URL. */
-export const SITE_URL = 'https://agencia-cassiellos-public.vercel.app'
+/** Origem canônica do site oficial. */
+export const SITE_URL = 'https://cassiellos.com.br'
 
 export const SITE_NAME = 'Cassiellos'
 export const SITE_TITLE = 'Cassiellos — Operações Criativas'
