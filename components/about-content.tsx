@@ -16,140 +16,150 @@ const TEAM = [
 const COPY = {
   pt: {
     hero: {
-      eyebrow: 'Cassiellos / Sobre',
+      eyebrow: 'Cassiellos / A Empresa',
       title: 'Clareza em movimento.',
-      body: 'A Cassiellos é uma empresa de operações criativas. Reunimos estratégia, criação, tecnologia e acompanhamento em um sistema contínuo para fazer boas ideias avançarem com contexto, qualidade e ritmo.',
-      meta: ['Belo Horizonte / MG', 'Estratégia', 'Conteúdo', 'Operações'],
-      motionCaption: 'Motion oficial / órbita institucional',
+      body: 'Somos uma empresa mineira de operações criativas, construída por pessoas que trabalham entre estratégia, comunicação, design, audiovisual e tecnologia. Gostamos de entender os negócios com que nos envolvemos, construir relações próximas e fazer o trabalho evoluir com consistência.',
+      meta: ['Belo Horizonte / MG', 'Criatividade', 'Proximidade', 'Tecnologia'],
     },
-    thesis: {
-      title: 'Boas ideias precisam de um sistema para avançar.',
+    identity: {
+      title: 'Quem somos aparece no jeito como trabalhamos.',
       paragraphs: [
-        'Marketing envolve decisões, pessoas, arquivos, versões, prazos, aprovações, canais e aprendizado. Quando esse contexto se perde entre ferramentas e demandas isoladas, a criatividade também perde ritmo.',
-        'A Cassiellos cresceu reunindo capacidades que antes apareciam separadas. Estratégia, design, conteúdo, audiovisual, tecnologia e operação passaram a compartilhar o mesmo contexto.',
-        'É dessa integração que nasce nossa forma de trabalhar.',
+        'Gostamos de conhecer o negócio antes de propor caminhos. Entender as pessoas, a realidade da empresa e o que está acontecendo ao redor faz parte do nosso trabalho.',
+        'Para nós, criatividade também significa dar direção às ideias, assumir responsabilidade pelo que colocamos no mundo e continuar melhorando depois da primeira entrega.',
+        '“Clareza em movimento” resume essa visão: entender bem, decidir com intenção e transformar pensamento em ação.',
       ],
-      flow: ['Estratégia', 'Criação', 'Operação', 'Aprendizado ↻'],
+      flow: ['Curiosidade', 'Clareza', 'Responsabilidade', 'Evolução ↻'],
     },
-    capability: {
-      eyebrow: 'Cassiellos / Operação',
-      title: 'Planejamos, criamos e operamos.',
-      support: 'A sequência muda conforme o projeto. A leitura do contexto permanece conectada.',
-      close: 'Cada projeto pede uma sequência diferente. O contexto permanece conectado.',
+    culture: {
+      eyebrow: 'Cassiellos / Por dentro',
+      title: 'O jeito como fazemos importa tanto quanto o que entregamos.',
+      support: 'Queremos crescer sem perder aquilo que torna o trabalho bom de verdade: proximidade, responsabilidade e vontade de fazer melhor.',
+      close: 'A forma como uma empresa trabalha também é parte do que ela entrega.',
       items: [
-        ['Direção', 'Entender o negócio, organizar prioridades e definir o que precisa avançar.'],
-        ['Expressão', 'Transformar estratégia em identidade, conteúdo, design, audiovisual e experiências.'],
-        ['Operação', 'Conectar planejamento, produção, aprovação, publicação, acompanhamento e aprendizado.'],
+        ['Proximidade', 'Trabalhamos melhor quando conhecemos as pessoas, o negócio e a realidade por trás de cada decisão.'],
+        ['Criatividade com disciplina', 'Ideias ganham força quando existe direção, cuidado, repertório e capacidade de executar bem.'],
+        ['Transparência', 'Preferimos conversas claras, expectativas compreensíveis e relações em que as pessoas sabem onde estão.'],
       ],
-    },
-    tech: {
-      eyebrow: 'Cassiellos / Sistema operacional',
-      title: ['Tecnologia nos bastidores.', 'Contexto na frente.'],
-      body: 'Construímos nossa própria infraestrutura operacional para conectar clientes, planejamentos, tarefas, arquivos, aprovações, histórico e automações.',
-      body2: 'O cassiellOS ajuda a preservar contexto e tornar o trabalho visível. Levi aproxima pessoas e sistema por conversa, orientação e ações controladas.',
-      close: 'A tecnologia entra onde reduz fricção. O julgamento, a direção e a criação continuam humanos.',
-      osLabel: 'Infraestrutura operacional',
-      osName: 'cassiellOS',
-      osDesc: 'Organiza o estado da operação sem competir com a marca principal.',
-      leviLabel: 'Interface inteligente',
-      leviName: 'Levi',
-      leviDesc: 'Aproxima pessoas e sistema por contexto, orientação e ações controladas.',
-      nodes: ['Clientes', 'Planejamentos', 'Tarefas', 'Arquivos', 'Aprovações', 'Histórico'],
     },
     people: {
       eyebrow: 'Pessoas',
-      title: 'Pessoas que mantêm o movimento.',
-      body: 'A liderança aparece com presença editorial. Os retratos oficiais entram aqui quando estiverem disponíveis no projeto.',
-      placeholder: 'Retrato oficial 3:4',
-      pending: 'Foto oficial pendente',
+      title: 'Pessoas que constroem a Cassiellos.',
+      body: 'A Cassiellos é feita por pessoas. Hoje, nossa liderança reúne marketing e design na construção da empresa e na condução do trabalho.',
+    },
+    tech: {
+      eyebrow: 'Cassiellos / Tecnologia com propósito',
+      title: ['Quando as ferramentas não acompanham,', 'começamos a construir as nossas.'],
+      body: 'Tecnologia faz parte de quem somos porque gostamos de organizar, conectar e melhorar o trabalho que acontece todos os dias.',
+      body2: 'O cassiellOS reúne a operação da Cassiellos em um mesmo ambiente. Levi é a interface inteligente que ajuda pessoas a encontrar informações, entender o que está acontecendo e conversar com o sistema de forma mais simples.',
+      close: 'Construímos tecnologia para apoiar pessoas e manter pessoas no centro das decisões.',
+      osLabel: 'Tecnologia criada dentro da Cassiellos',
+      osName: 'cassiellOS',
+      osDesc: 'Organiza tarefas, materiais, histórico e acompanhamento para que o trabalho continue conectado.',
+      leviLabel: 'Assistente da Cassiellos',
+      leviName: 'Levi',
+      leviDesc: 'Ajuda a acessar informações, orientação e contexto com mais naturalidade.',
+      nodes: ['Organização', 'Materiais', 'Histórico', 'Acompanhamento'],
     },
     principles: {
-      eyebrow: 'Princípios operacionais',
-      title: 'O que precisa continuar verdadeiro enquanto crescemos.',
-      body: 'Os valores da marca aparecem como critérios de operação, decisão e relacionamento.',
+      eyebrow: 'Nosso código',
+      title: 'O que queremos continuar sendo, mesmo enquanto crescemos.',
+      body: 'Esses princípios orientam a forma como nos relacionamos, decidimos e construímos.',
       items: [
-        ['Clareza', 'Objetivos, responsáveis, etapas, decisões e próximos passos compreensíveis.'],
-        ['Continuidade', 'Marcas fortes são construídas por repetição coerente, acompanhamento e evolução.'],
-        ['Criatividade com disciplina', 'Ideias fortes precisam de direção, processo e capacidade de execução.'],
-        ['Proximidade', 'Conhecer o cliente, sua operação e seu contexto faz parte da entrega.'],
-        ['Tecnologia com propósito', 'Reduzir fricção, preservar contexto e automatizar o repetível.'],
-        ['Transparência', 'Tornar status, responsabilidades, decisões e resultados visíveis e rastreáveis.'],
+        ['Clareza', 'Entender, explicar e decidir de um jeito que as pessoas consigam acompanhar.'],
+        ['Continuidade', 'Construir relações, marcas e trabalhos que evoluem com o tempo.'],
+        ['Criatividade com disciplina', 'Dar espaço para boas ideias e estrutura suficiente para fazê-las acontecer.'],
+        ['Proximidade', 'Conhecer as pessoas e os negócios com que escolhemos trabalhar.'],
+        ['Tecnologia com propósito', 'Criar ferramentas quando elas tornam o trabalho mais simples, conectado e útil.'],
+        ['Transparência', 'Tratar expectativas, decisões, responsabilidades e resultados com clareza.'],
+      ],
+    },
+    future: {
+      eyebrow: 'Próximo capítulo',
+      title: 'Ainda estamos construindo.',
+      paragraphs: [
+        'A Cassiellos continua evoluindo. Nossa ambição é aproximar criatividade, estratégia, operação e tecnologia cada vez mais, sem perder a proximidade e o cuidado que existem quando pessoas boas trabalham juntas em um problema real.',
+        'Queremos que novas capacidades, produtos e pessoas ampliem o que conseguimos construir, enquanto a essência da empresa continua reconhecível em cada novo movimento.',
       ],
     },
     cta: {
       eyebrow: 'Próximo movimento',
-      title: ['Clareza para decidir.', 'Ritmo para executar.', 'Consistência para crescer.'],
-      body: 'Conte o momento da sua empresa. A primeira conversa começa pelo contexto.',
-      button: 'Agendar diagnóstico',
+      title: ['Talvez o próximo', 'movimento possa ser junto.'],
+      body: 'Se você se identifica com a forma como pensamos e quer conversar sobre o momento da sua empresa, estamos por aqui.',
+      button: 'Falar com a Cassiellos',
     },
   },
   en: {
     hero: {
-      eyebrow: 'Cassiellos / About',
+      eyebrow: 'Cassiellos / Company',
       title: 'Clarity in motion.',
-      body: 'Cassiellos is a creative operations company. We connect strategy, creative, technology and follow-through in a continuous system that helps strong ideas move forward with context, quality and rhythm.',
-      meta: ['Belo Horizonte / MG', 'Strategy', 'Content', 'Operations'],
-      motionCaption: 'Official motion / institutional orbit',
+      body: 'We are a creative operations company from Minas Gerais, built by people working across strategy, communication, design, audiovisual and technology. We like to understand the businesses we get involved with, build close relationships and help the work evolve consistently.',
+      meta: ['Belo Horizonte / MG', 'Creativity', 'Proximity', 'Technology'],
     },
-    thesis: {
-      title: 'Good ideas need a system to move forward.',
+    identity: {
+      title: 'Who we are shows in the way we work.',
       paragraphs: [
-        'Marketing involves decisions, people, files, versions, deadlines, approvals, channels and learning. When that context gets lost between tools and isolated requests, creativity loses momentum too.',
-        'Cassiellos grew by bringing together capabilities that used to appear separately. Strategy, design, content, audiovisual, technology and operations now share the same context.',
-        'That integration shapes the way we work.',
+        'We like to understand the business before proposing a direction. Knowing the people, the company’s reality and what is happening around it is part of the work.',
+        'For us, creativity also means giving ideas direction, taking responsibility for what we put into the world and continuing to improve after the first delivery.',
+        '“Clarity in motion” sums up that view: understand well, decide with intention and turn thinking into action.',
       ],
-      flow: ['Strategy', 'Creative', 'Operations', 'Learning ↻'],
+      flow: ['Curiosity', 'Clarity', 'Responsibility', 'Evolution ↻'],
     },
-    capability: {
-      eyebrow: 'Cassiellos / Operations',
-      title: 'We plan, create and operate.',
-      support: 'The sequence changes with the project. The context stays connected.',
-      close: 'Each project needs a different sequence. The context remains connected.',
+    culture: {
+      eyebrow: 'Cassiellos / From the inside',
+      title: 'How we do things matters as much as what we deliver.',
+      support: 'We want to grow without losing what makes good work genuinely good: proximity, responsibility and the desire to keep improving.',
+      close: 'The way a company works is also part of what it delivers.',
       items: [
-        ['Direction', 'Understand the business, organize priorities and define what needs to move forward.'],
-        ['Expression', 'Turn strategy into identity, content, design, audiovisual and experiences.'],
-        ['Operations', 'Connect planning, production, approval, publishing, follow-through and learning.'],
+        ['Proximity', 'We work better when we know the people, the business and the reality behind each decision.'],
+        ['Creativity with discipline', 'Ideas become stronger with direction, care, repertoire and the ability to execute well.'],
+        ['Transparency', 'We prefer clear conversations, understandable expectations and relationships where people know where they stand.'],
       ],
-    },
-    tech: {
-      eyebrow: 'Cassiellos / Operating system',
-      title: ['Technology behind the scenes.', 'Context at the front.'],
-      body: 'We are building our own operational infrastructure to connect clients, plans, tasks, files, approvals, history and automations.',
-      body2: 'cassiellOS helps preserve context and make work visible. Levi brings people and system closer through conversation, guidance and controlled actions.',
-      close: 'Technology enters where it reduces friction. Judgment, direction and creation remain human.',
-      osLabel: 'Operational infrastructure',
-      osName: 'cassiellOS',
-      osDesc: 'Organizes operational state without competing with the primary brand.',
-      leviLabel: 'Intelligent interface',
-      leviName: 'Levi',
-      leviDesc: 'Connects people and system through context, guidance and controlled actions.',
-      nodes: ['Clients', 'Plans', 'Tasks', 'Files', 'Approvals', 'History'],
     },
     people: {
       eyebrow: 'People',
-      title: 'People who keep things moving.',
-      body: 'Leadership is presented with an editorial presence. Official portraits will be placed here when they are available in the project.',
-      placeholder: 'Official 3:4 portrait',
-      pending: 'Official photo pending',
+      title: 'People who build Cassiellos.',
+      body: 'Cassiellos is made by people. Today, our leadership brings marketing and design together in building the company and guiding the work.',
+    },
+    tech: {
+      eyebrow: 'Cassiellos / Technology with purpose',
+      title: ['When tools cannot keep up,', 'we start building our own.'],
+      body: 'Technology is part of who we are because we like to organize, connect and improve the work that happens every day.',
+      body2: 'cassiellOS brings Cassiellos operations into one environment. Levi is the intelligent interface that helps people find information, understand what is happening and interact with the system more naturally.',
+      close: 'We build technology to support people and keep people at the center of decisions.',
+      osLabel: 'Technology created inside Cassiellos',
+      osName: 'cassiellOS',
+      osDesc: 'Organizes tasks, materials, history and follow-through so work stays connected.',
+      leviLabel: 'Cassiellos assistant',
+      leviName: 'Levi',
+      leviDesc: 'Helps people access information, guidance and context more naturally.',
+      nodes: ['Organization', 'Materials', 'History', 'Follow-through'],
     },
     principles: {
-      eyebrow: 'Operating principles',
-      title: 'What must remain true as we grow.',
-      body: 'Brand values become criteria for operations, decisions and relationships.',
+      eyebrow: 'Our code',
+      title: 'What we want to remain as we grow.',
+      body: 'These principles guide how we relate, decide and build.',
       items: [
-        ['Clarity', 'Objectives, owners, stages, decisions and next steps remain understandable.'],
-        ['Continuity', 'Strong brands are built through coherent repetition, follow-through and evolution.'],
-        ['Creativity with discipline', 'Strong ideas need direction, process and the ability to execute.'],
-        ['Proximity', 'Understanding the client, their operations and context is part of the work.'],
-        ['Technology with purpose', 'Reduce friction, preserve context and automate what is repeatable.'],
-        ['Transparency', 'Make status, responsibilities, decisions and results visible and traceable.'],
+        ['Clarity', 'Understand, explain and decide in ways people can follow.'],
+        ['Continuity', 'Build relationships, brands and work that evolve over time.'],
+        ['Creativity with discipline', 'Give good ideas room and enough structure to make them happen.'],
+        ['Proximity', 'Know the people and businesses we choose to work with.'],
+        ['Technology with purpose', 'Build tools when they make work simpler, more connected and more useful.'],
+        ['Transparency', 'Treat expectations, decisions, responsibilities and results with clarity.'],
+      ],
+    },
+    future: {
+      eyebrow: 'Next chapter',
+      title: 'We are still building.',
+      paragraphs: [
+        'Cassiellos keeps evolving. Our ambition is to bring creativity, strategy, operations and technology closer together without losing the proximity and care that exist when good people work together on a real problem.',
+        'We want new capabilities, products and people to expand what we can build while the essence of the company remains recognizable in every new move.',
       ],
     },
     cta: {
       eyebrow: 'Next move',
-      title: ['Clarity to decide.', 'Rhythm to execute.', 'Consistency to grow.'],
-      body: 'Tell us where your business is today. The first conversation starts with context.',
-      button: 'Schedule a diagnostic',
+      title: ['Maybe the next', 'move can be together.'],
+      body: 'If you identify with the way we think and want to talk about your company, we are here.',
+      button: 'Talk to Cassiellos',
     },
   },
 } as const
@@ -178,7 +188,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
             <span className={`tag ${styles.eyebrow}`}>{c.hero.eyebrow}</span>
             <h1 id="about-hero-title" className={styles.display}>{c.hero.title}</h1>
             <p>{c.hero.body}</p>
-            <div className={styles.heroMeta} aria-label={lang === 'pt' ? 'Local e áreas de atuação' : 'Location and areas of work'}>
+            <div className={styles.heroMeta} aria-label={lang === 'pt' ? 'Origem e características da Cassiellos' : 'Cassiellos origin and characteristics'}>
               {c.hero.meta.map((item) => <span key={item}>{item}</span>)}
             </div>
           </motion.div>
@@ -188,24 +198,23 @@ export default function AboutContent({ lang }: { lang: Locale }) {
             <i className={`${styles.brandRing} ${styles.ringTwo}`} />
             <i className={`${styles.brandRing} ${styles.ringThree}`} />
             <InfinityMark className={styles.heroSymbol} />
-            <small className={styles.motionCaption}>{c.hero.motionCaption}</small>
           </motion.div>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-thesis-title">
+      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-identity-title">
         <div className={`wrap ${styles.sectionInner}`}>
           <div className={styles.thesisIntro}>
-            <motion.h2 id="about-thesis-title" className={`${styles.display} ${styles.sectionTitle}`} {...reveal(0)}>
-              {c.thesis.title}
+            <motion.h2 id="about-identity-title" className={`${styles.display} ${styles.sectionTitle}`} {...reveal(0)}>
+              {c.identity.title}
             </motion.h2>
             <motion.div className={styles.thesisCopy} {...reveal(0.08)}>
-              {c.thesis.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {c.identity.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             </motion.div>
           </div>
 
-          <div className={styles.editorialFlow} aria-label={lang === 'pt' ? 'Fluxo estratégico da Cassiellos' : 'Cassiellos strategic flow'}>
-            {c.thesis.flow.map((step, index) => (
+          <div className={styles.editorialFlow} aria-label={lang === 'pt' ? 'Traços da forma de pensar da Cassiellos' : 'Traits of the Cassiellos mindset'}>
+            {c.identity.flow.map((step, index) => (
               <motion.div className={styles.flowStep} key={step} {...reveal(index * 0.06, 14)}>
                 <span className={styles.flowIndex}>{String(index + 1).padStart(2, '0')}</span>
                 <i className={styles.flowNode} aria-hidden />
@@ -216,18 +225,18 @@ export default function AboutContent({ lang }: { lang: Locale }) {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.navy}`} aria-labelledby="about-capabilities-title">
+      <section className={`${styles.section} ${styles.navy}`} aria-labelledby="about-culture-title">
         <div className={`wrap ${styles.sectionInner}`}>
           <div className={styles.capabilitiesHeader}>
             <motion.div {...reveal(0)}>
-              <span className={`tag ${styles.eyebrow}`}>{c.capability.eyebrow}</span>
-              <h2 id="about-capabilities-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.capability.title}</h2>
+              <span className={`tag ${styles.eyebrow}`}>{c.culture.eyebrow}</span>
+              <h2 id="about-culture-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.culture.title}</h2>
             </motion.div>
-            <motion.p {...reveal(0.08)}>{c.capability.support}</motion.p>
+            <motion.p {...reveal(0.08)}>{c.culture.support}</motion.p>
           </div>
 
           <div className={styles.capabilities}>
-            {c.capability.items.map(([title, description], index) => (
+            {c.culture.items.map(([title, description], index) => (
               <motion.article className={styles.capability} key={title} {...reveal(index * 0.06, 18)}>
                 <span className={styles.capabilityIndex}>{String(index + 1).padStart(2, '0')}</span>
                 <h3 className={styles.display}>{title}</h3>
@@ -235,7 +244,31 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
-          <motion.p className={styles.capabilityClose} {...reveal(0.1)}>{c.capability.close}</motion.p>
+          <motion.p className={styles.capabilityClose} {...reveal(0.1)}>{c.culture.close}</motion.p>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-people-title">
+        <div className={`wrap ${styles.sectionInner}`}>
+          <div className={styles.peopleIntro}>
+            <motion.div {...reveal(0)}>
+              <span className={`tag ${styles.eyebrow}`}>{c.people.eyebrow}</span>
+              <h2 id="about-people-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.people.title}</h2>
+            </motion.div>
+            <motion.p {...reveal(0.08)}>{c.people.body}</motion.p>
+          </div>
+
+          <div className={styles.peopleGrid}>
+            {TEAM.map((person, index) => (
+              <motion.article className={styles.person} key={person.name} {...reveal(index * 0.06, 18)}>
+                <div className={styles.personCopy}>
+                  <span className={styles.capabilityIndex}>{String(index + 1).padStart(2, '0')}</span>
+                  <h3 className={styles.display}>{person.name}</h3>
+                  <p>{person.role[lang]}</p>
+                </div>
+              </motion.article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -281,35 +314,6 @@ export default function AboutContent({ lang }: { lang: Locale }) {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-people-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.peopleIntro}>
-            <motion.div {...reveal(0)}>
-              <span className={`tag ${styles.eyebrow}`}>{c.people.eyebrow}</span>
-              <h2 id="about-people-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.people.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.people.body}</motion.p>
-          </div>
-
-          <div className={styles.peopleGrid}>
-            {TEAM.map((person, index) => (
-              <motion.article className={styles.person} key={person.name} {...reveal(index * 0.06, 18)}>
-                <div className={styles.portraitPlaceholder} role="img" aria-label={`${c.people.pending}: ${person.name}`}>
-                  <div className={styles.portraitNote}>
-                    <small>{c.people.placeholder}</small>
-                    <span>{c.people.pending}</span>
-                  </div>
-                </div>
-                <div className={styles.personCopy}>
-                  <h3 className={styles.display}>{person.name}</h3>
-                  <p>{person.role[lang]}</p>
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className={`${styles.section} ${styles.navy}`} aria-labelledby="about-principles-title">
         <div className={`wrap ${styles.sectionInner}`}>
           <div className={styles.principlesIntro}>
@@ -328,6 +332,20 @@ export default function AboutContent({ lang }: { lang: Locale }) {
                 <p>{description}</p>
               </motion.article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-future-title">
+        <div className={`wrap ${styles.sectionInner}`}>
+          <div className={styles.thesisIntro}>
+            <motion.div {...reveal(0)}>
+              <span className={`tag ${styles.eyebrow}`}>{c.future.eyebrow}</span>
+              <h2 id="about-future-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.future.title}</h2>
+            </motion.div>
+            <motion.div className={styles.thesisCopy} {...reveal(0.08)}>
+              {c.future.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </motion.div>
           </div>
         </div>
       </section>
