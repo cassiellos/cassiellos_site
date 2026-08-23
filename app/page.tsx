@@ -1,11 +1,11 @@
 import HomeContent from '@/components/home-content'
-import ContactIntakeForm from '@/components/contact/ContactIntakeForm'
+import ContactIntakeSection from '@/components/contact/ContactIntakeSection'
 
 export default function Home() {
   return (
     <>
       <HomeContent lang="pt" />
-      <ContactIntakeForm lang="pt" />
+      <ContactIntakeSection lang="pt" />
     </>
   )
 }
