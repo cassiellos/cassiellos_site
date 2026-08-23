@@ -4,8 +4,8 @@ import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { EASE_OUT } from '@/lib/scroll'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
-import type { Locale } from './home-content'
-import InfinityMark from './infinity-mark'
+
+type Locale = 'pt' | 'en'
 
 const INFINITY_PATH = 'M5 16C5 9 10 5 16 5c8 0 11 11 16 11S40 5 48 5c6 0 11 4 11 11s-5 11-11 11c-8 0-11-11-16-11S24 27 16 27C10 27 5 23 5 16Z'
 
@@ -45,16 +45,20 @@ export default function Hero({ lang }: { lang: Locale }) {
   }
 
   return (
-    <section className="hero" ref={ref}>
+    <section className="hero" ref={ref} aria-labelledby="home-hero-title">
       <motion.i className="heroMesh" aria-hidden style={reduced ? still : { y: meshY }} />
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>Cassiellos / {en ? 'Creative operations' : 'Operações criativas'}</motion.span>
-          <motion.h1 {...enter(0.12)}>{en ? <>Your business already works. Now it needs to <span className="heroTitleGradient">work better.</span></> : <>Sua empresa já funciona. Agora ela precisa <span className="heroTitleGradient">funcionar melhor.</span></>}</motion.h1>
-          <motion.p className="lead" {...enter(0.2)}>{en ? 'We organize your marketing to create more opportunities and sales, with greater efficiency and clearer results, without you having to coordinate everything yourself.' : 'Organizamos seu marketing para gerar mais oportunidades e vendas, com mais eficiência, clareza sobre os resultados e sem você precisar coordenar tudo sozinho.'}</motion.p>
+          <motion.h1 id="home-hero-title" {...enter(0.12)}>
+            {en ? <><span>Your company already works.</span> <span className="heroTitleGradient">Now it needs to work better.</span></> : <><span>Sua empresa já funciona.</span> <span className="heroTitleGradient">Agora ela precisa funcionar melhor.</span></>}
+          </motion.h1>
+          <motion.p className="lead" {...enter(0.2)}>
+            {en ? 'Strategy, content, creative and operations connected in one flow so your company can grow with more clarity, consistency and rhythm.' : 'Estratégia, conteúdo, criação e operação conectados em um só fluxo para sua empresa crescer com mais clareza, consistência e ritmo.'}
+          </motion.p>
           <motion.div className="actions" {...enter(0.28)}>
-            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}</a>
-            <a className="btn ghost" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'I want to organize my marketing' : 'Quero organizar meu marketing'}</a>
+            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Schedule a diagnostic' : 'Agendar diagnóstico'}</a>
+            <a className="btn ghost" href={en ? '/en/sobre' : '/sobre'}>{en ? 'Meet Cassiellos' : 'Conhecer a Cassiellos'}</a>
           </motion.div>
         </motion.div>
 
@@ -114,7 +118,6 @@ export default function Hero({ lang }: { lang: Locale }) {
             >
               <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
             </motion.svg>
-
           </motion.div>
         </motion.div>
       </div>

@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { useLevi } from './levi-provider'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
+import Hero from './hero'
 import styles from './home-content.module.css'
 
 export type Locale = 'pt' | 'en'
@@ -222,27 +223,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
 
   return (
     <main id="top" className={styles.page}>
-      <section className={styles.hero} aria-labelledby="home-hero-title">
-        <div className={styles.gridTexture} aria-hidden="true" />
-        <div className={`wrap ${styles.heroGrid}`}>
-          <motion.div className={styles.heroCopy} {...reveal(0)}>
-            <span className={`tag ${styles.eyebrow}`}>{c.hero.eyebrow}</span>
-            <h1 id="home-hero-title"><span>{c.hero.titleA}</span><span className={styles.heroAccent}>{c.hero.titleB}</span></h1>
-            <p>{c.hero.body}</p>
-            <div className={styles.actions}>
-              <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{c.hero.primary}</a>
-              <a className={`btn ghost ${styles.secondaryButton}`} href={lang === 'en' ? '/en/sobre' : '/sobre'}>{c.hero.secondary}</a>
-            </div>
-          </motion.div>
-
-          <motion.div className={styles.orbitStage} {...reveal(0.08, 0)} aria-hidden="true">
-            <i className={`${styles.brandRing} ${styles.ringOne}`} />
-            <i className={`${styles.brandRing} ${styles.ringTwo}`} />
-            <i className={`${styles.brandRing} ${styles.ringThree}`} />
-            <img className={styles.heroSymbol} src="/brand/cassiellos-symbol-signal-red.svg" alt="" />
-          </motion.div>
-        </div>
-      </section>
+      <Hero lang={lang} />
 
       <section className={`${styles.section} ${styles.essence}`} aria-labelledby="essence-title">
         <div className={`wrap ${styles.sectionInner}`}>
@@ -328,7 +309,9 @@ export default function HomeContent({ lang }: { lang: Locale }) {
       <section className={`${styles.section} ${styles.leviSection}`} id="levi" aria-labelledby="levi-title">
         <div className={`wrap ${styles.leviGrid}`}>
           <motion.div className={styles.leviVisual} {...reveal(0, 0)} aria-hidden="true">
-            <i className={`${styles.leviRing} ${styles.leviRingOne}`} /><i className={`${styles.leviRing} ${styles.leviRingTwo}`} /><i className={styles.leviCore} />
+            <i className={`${styles.leviRing} ${styles.leviRingOne}`} style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', transformOrigin: 'center' }} />
+            <i className={`${styles.leviRing} ${styles.leviRingTwo}`} style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', transformOrigin: 'center' }} />
+            <i className={styles.leviCore} />
           </motion.div>
           <motion.div className={styles.leviCopy} {...reveal(0.08)}>
             <span className={`tag ${styles.systemEyebrow}`}>{c.levi.eyebrow}</span>

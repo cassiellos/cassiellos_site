@@ -56,14 +56,6 @@ const COPY = {
       leviDesc: 'Aproxima pessoas e sistema por contexto, orientação e ações controladas.',
       nodes: ['Clientes', 'Planejamentos', 'Tarefas', 'Arquivos', 'Aprovações', 'Histórico'],
     },
-    process: {
-      eyebrow: 'Processo visível',
-      title: 'Processo visível. Trabalho real.',
-      body: 'A direção de imagem da Cassiellos prioriza gesto, concentração, colaboração, profundidade e situações reais de trabalho.',
-      line: 'Planejamento / direção / design / audiovisual / tecnologia / acompanhamento',
-      placeholder: 'Slot para imagem real',
-      slots: ['Planejamento', 'Captação', 'Criação', 'Revisão', 'Tecnologia em uso', 'Bastidores'],
-    },
     people: {
       eyebrow: 'Pessoas',
       title: 'Pessoas que mantêm o movimento.',
@@ -133,14 +125,6 @@ const COPY = {
       leviDesc: 'Connects people and system through context, guidance and controlled actions.',
       nodes: ['Clients', 'Plans', 'Tasks', 'Files', 'Approvals', 'History'],
     },
-    process: {
-      eyebrow: 'Visible process',
-      title: 'Visible process. Real work.',
-      body: 'Cassiellos image direction prioritizes gesture, focus, collaboration, depth and real working situations.',
-      line: 'Planning / direction / design / audiovisual / technology / follow-through',
-      placeholder: 'Real image slot',
-      slots: ['Planning', 'Production', 'Creative', 'Review', 'Technology in use', 'Behind the scenes'],
-    },
     people: {
       eyebrow: 'People',
       title: 'People who keep things moving.',
@@ -170,7 +154,6 @@ const COPY = {
   },
 } as const
 
-const SLOT_CLASSES = ['slotWide', 'slotTall', 'slotMedium', 'slotSquare', 'slotLong', 'slotSmall'] as const
 const EASE = [0.22, 1, 0.36, 1] as const
 
 export default function AboutContent({ lang }: { lang: Locale }) {
@@ -295,36 +278,6 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               </div>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="about-process-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.processHeader}>
-            <motion.div {...reveal(0)}>
-              <span className={`tag ${styles.eyebrow}`}>{c.process.eyebrow}</span>
-              <h2 id="about-process-title" className={`${styles.display} ${styles.sectionTitle}`}>{c.process.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.process.body}</motion.p>
-          </div>
-          <motion.div className={styles.processLine} {...reveal(0.08)}>{c.process.line}</motion.div>
-
-          <div className={styles.processMosaic}>
-            {c.process.slots.map((label, index) => (
-              <motion.div
-                key={label}
-                className={`${styles.mediaSlot} ${styles[SLOT_CLASSES[index]]}`}
-                role="img"
-                aria-label={`${c.process.placeholder}: ${label}`}
-                {...reveal(index * 0.05, 16)}
-              >
-                <div className={styles.mediaSlotText}>
-                  <small>{c.process.placeholder}</small>
-                  <strong>{label}</strong>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
