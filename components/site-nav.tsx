@@ -6,9 +6,9 @@ import SiteControls from './site-controls'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 
 const SECTION_LINKS = [
-  { href: '#atuacao', label: 'Atuação' },
-  { href: '#metodo', label: 'Método' },
-  { href: '#prova-social', label: 'Prova social' },
+  { href: '#servicos', label: 'Serviços' },
+  { href: '#como-funciona', label: 'Como funciona' },
+  { href: '#trabalhos', label: 'Trabalhos' },
   { href: '#levi', label: 'Levi' },
 ] as const
 
@@ -31,7 +31,6 @@ export default function SiteNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Destaque do item correspondente à seção em tela.
   useEffect(() => {
     if (!isHome) return
     const sections = SECTION_LINKS.map((link) => document.querySelector(link.href)).filter(
@@ -57,20 +56,16 @@ export default function SiteNav() {
     <header className="nav" data-scrolled={scrolled}>
       <div className="wrap navin">
         <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'} aria-label="Cassiellos">
-          <img
-            src="/brand/cassiellos-symbol-signal-red.svg"
-            alt=""
-            aria-hidden="true"
-            width="40"
-            height="20"
-          />
+          <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" aria-hidden="true" width="40" height="20" />
           <span>Cassiellos</span>
         </a>
 
         <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
           {links.map((link) => (
             <a key={link.href} href={link.href} data-active={active === link.href || (!isHome && link.href === pathname)}>
-              {english ? ({ Atuação: 'Expertise', Método: 'Practice', 'Prova social': 'Proof', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[link.label] : link.label}
+              {english
+                ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Trabalhos: 'Work', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[link.label]
+                : link.label}
             </a>
           ))}
         </nav>
