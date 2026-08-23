@@ -7,8 +7,6 @@ import styles from './home-content.module.css'
 
 export type Locale = 'pt' | 'en'
 
-type Copy = typeof PT
-
 const PT = {
   hero: {
     eyebrow: 'Cassiellos / Operações criativas',
@@ -124,7 +122,7 @@ const PT = {
   },
 } as const
 
-const EN: Copy = {
+const EN = {
   hero: {
     eyebrow: 'Cassiellos / Creative operations',
     titleA: 'Your company already works.',
@@ -207,7 +205,7 @@ const EN: Copy = {
     button: 'Schedule a diagnostic',
     close: ['Clarity to decide.', 'Rhythm to execute.', 'Consistency to grow.'],
   },
-}
+} as const
 
 const ease = [0.22, 1, 0.36, 1] as const
 
