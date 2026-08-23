@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import InfinityMark from './infinity-mark'
 import SiteControls from './site-controls'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 
@@ -57,8 +56,14 @@ export default function SiteNav() {
   return (
     <header className="nav" data-scrolled={scrolled}>
       <div className="wrap navin">
-        <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'}>
-          <InfinityMark />
+        <a className="logo" href={isHome ? '#top' : english ? '/en' : '/'} aria-label="Cassiellos">
+          <img
+            src="/brand/cassiellos-symbol-signal-red.svg"
+            alt=""
+            aria-hidden="true"
+            width="40"
+            height="20"
+          />
           <span>Cassiellos</span>
         </a>
 
