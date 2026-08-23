@@ -50,7 +50,7 @@ export default function Hero({ lang }: { lang: Locale }) {
       <div className="wrap heroGrid">
         <motion.div style={reduced ? still : { y: copyY, opacity: copyOpacity }}>
           <motion.span className="tag" {...enter(0.05)}>Cassiellos / {en ? 'Creative operations' : 'Operações criativas'}</motion.span>
-          <motion.h1 {...enter(0.12)}>{en ? 'Your business already works. Now it needs to work better.' : 'Sua empresa já funciona. Agora ela precisa funcionar melhor.'}</motion.h1>
+          <motion.h1 {...enter(0.12)}>{en ? <>Your business already works. Now it needs to <span className="heroTitleGradient">work better.</span></> : <>Sua empresa já funciona. Agora ela precisa <span className="heroTitleGradient">funcionar melhor.</span></>}</motion.h1>
           <motion.p className="lead" {...enter(0.2)}>{en ? 'We organize your marketing to create more opportunities and sales, with greater efficiency and clearer results, without you having to coordinate everything yourself.' : 'Organizamos seu marketing para gerar mais oportunidades e vendas, com mais eficiência, clareza sobre os resultados e sem você precisar coordenar tudo sozinho.'}</motion.p>
           <motion.div className="actions" {...enter(0.28)}>
             <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}</a>
@@ -64,17 +64,6 @@ export default function Hero({ lang }: { lang: Locale }) {
           {...(reduced ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 1.1, delay: 0.15, ease: EASE_OUT } })}
         >
           <i className="infinityBlueGlow" aria-hidden />
-          <motion.i
-            className="masterAmbientHalo"
-            aria-hidden
-            initial={reduced ? false : { opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 0.1, scale: 1 }}
-            transition={reduced ? undefined : {
-              opacity: { duration: 0.8, delay: 2.2, ease: EASE_OUT },
-              scale: { duration: 1, delay: 2.2, ease: EASE_OUT },
-            }}
-          />
-
           <div className="masterOrbitSystem" aria-hidden>
             {ORBITS.map((orbit) => (
               <motion.div
@@ -103,14 +92,6 @@ export default function Hero({ lang }: { lang: Locale }) {
             ))}
           </div>
 
-          <motion.i
-            className="masterCenterPulse"
-            aria-hidden
-            initial={reduced ? false : { opacity: 0, scale: 0 }}
-            animate={reduced ? { opacity: 0 } : { opacity: [0, 0.62, 0], scale: [0, 1.45, 3.6] }}
-            transition={reduced ? undefined : { duration: 0.58, delay: 1.87, times: [0, 0.31, 1], ease: EASE_OUT }}
-          />
-
           <motion.div
             className="infinityMasterSymbol"
             animate={reduced ? undefined : {
@@ -123,18 +104,6 @@ export default function Hero({ lang }: { lang: Locale }) {
             }}
           >
             <motion.svg
-              className="infinityMasterLayer infinityMasterGlow"
-              viewBox="0 0 64 32"
-              aria-hidden
-              focusable="false"
-              initial={reduced ? false : { opacity: 0 }}
-              animate={{ opacity: 0.16 }}
-              transition={reduced ? undefined : { duration: 0.24, delay: 0.23, ease: EASE_OUT }}
-            >
-              <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
-            </motion.svg>
-
-            <motion.svg
               className="infinityMasterLayer infinityMasterMain"
               viewBox="0 0 64 32"
               aria-hidden
@@ -146,18 +115,6 @@ export default function Hero({ lang }: { lang: Locale }) {
               <motion.path d={INFINITY_PATH} pathLength={1} {...pathReveal} />
             </motion.svg>
 
-            <motion.svg className="infinityMasterLayer infinityMasterHighlight" viewBox="0 0 64 32" aria-hidden focusable="false">
-              <motion.path
-                d={INFINITY_PATH}
-                pathLength={1}
-                initial={reduced ? false : { pathLength: 0, opacity: 0 }}
-                animate={reduced ? { opacity: 0 } : { pathLength: 1, opacity: [0, 0.42, 0] }}
-                transition={reduced ? undefined : {
-                  pathLength: { duration: 1.49, delay: 0.53, ease: EASE_OUT },
-                  opacity: { duration: 1.8, delay: 0.35, times: [0, 0.156, 1], ease: EASE_OUT },
-                }}
-              />
-            </motion.svg>
           </motion.div>
         </motion.div>
       </div>
