@@ -1,0 +1,10 @@
+/* About / Time — editorial hierarchy for leadership cards. */
+[class*="about-content_personCopy__"] p{margin-top:14px!important}
+[class*="about-content_personCopy__"] p strong{display:block;color:var(--theme-text);font:750 15px/1.25 var(--font-inter-tight);letter-spacing:-.015em}
+[class*="about-content_personCopy__"] p span{display:block;margin-top:9px;color:var(--theme-muted);font-size:13px;line-height:1.55;max-width:34ch}
+html[data-theme="light"] [class*="about-content_personCopy__"] p strong{color:var(--navy)}
+html:not([data-theme="light"]) [class*="about-content_personCopy__"] p strong{color:var(--paper)}
+@media(max-width:720px){
+  [class*="about-content_personCopy__"] p strong{font-size:13px}
+  [class*="about-content_personCopy__"] p span{font-size:11.5px;line-height:1.45;margin-top:6px}
+}
