@@ -19,7 +19,7 @@ export default function SiteNav() {
   const aboutHref = english ? '/en/sobre' : '/sobre'
   const links = [
     ...SECTION_LINKS.map((link) => ({ ...link, href: isHome ? link.href : `${english ? '/en' : ''}/${link.href}` })),
-    { href: aboutHref, label: english ? 'About' : 'Sobre' },
+    { href: aboutHref, label: english ? 'Company' : 'A Empresa' },
   ]
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>('')
@@ -70,7 +70,7 @@ export default function SiteNav() {
         <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
           {links.map((link) => (
             <a key={link.href} href={link.href} data-active={active === link.href || (!isHome && link.href === pathname)}>
-              {english ? ({ Atuação: 'Expertise', Método: 'Practice', 'Prova social': 'Proof', Levi: 'Levi', About: 'About' } as Record<string, string>)[link.label] : link.label}
+              {english ? ({ Atuação: 'Expertise', Método: 'Practice', 'Prova social': 'Proof', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[link.label] : link.label}
             </a>
           ))}
         </nav>
