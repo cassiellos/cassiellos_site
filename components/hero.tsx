@@ -54,11 +54,13 @@ export default function Hero({ lang }: { lang: Locale }) {
             {en ? <><span>Your company already works.</span> <span className="heroTitleGradient">Now it needs to work better.</span></> : <><span>Sua empresa já funciona.</span> <span className="heroTitleGradient">Agora ela precisa funcionar melhor.</span></>}
           </motion.h1>
           <motion.p className="lead" {...enter(0.2)}>
-            {en ? 'We organize your marketing to create more opportunities and sales, with greater efficiency, clearer results and without you having to coordinate everything yourself.' : 'Organizamos seu marketing para gerar mais oportunidades e vendas, com mais eficiência, clareza sobre os resultados e sem você precisar coordenar tudo sozinho.'}
+            {en
+              ? 'We plan, create and take care of your company’s marketing — strategy, content, campaigns, design, video and operations — to generate more opportunities and sales without everything depending on you.'
+              : 'Planejamos, criamos e cuidamos do marketing da sua empresa — estratégia, conteúdo, campanhas, design, vídeos e operação — para gerar mais oportunidades e vendas sem tudo depender de você.'}
           </motion.p>
           <motion.div className="actions" {...enter(0.28)}>
-            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}</a>
-            <a className="btn ghost" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'I want to organize my marketing' : 'Quero organizar meu marketing'}</a>
+            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'I want to improve my marketing' : 'Quero melhorar meu marketing'}</a>
+            <a className="btn ghost" href="#servicos">{en ? 'Meet Cassiellos' : 'Conhecer a Cassiellos'}</a>
           </motion.div>
         </motion.div>
 
