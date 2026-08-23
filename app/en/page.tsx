@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import HomeContent from '@/components/home-content'
-import ContactIntakeForm from '@/components/contact/ContactIntakeForm'
+import ContactIntakeSection from '@/components/contact/ContactIntakeSection'
 
 const title = 'Cassiellos — Creative Operations'
 const description = 'Strategy, content, creative and operations connected in one flow so companies can grow with more clarity, consistency and rhythm.'
@@ -27,7 +27,7 @@ export default function EnglishHome() {
   return (
     <>
       <HomeContent lang="en" />
-      <ContactIntakeForm lang="en" />
+      <ContactIntakeSection lang="en" />
     </>
   )
 }
