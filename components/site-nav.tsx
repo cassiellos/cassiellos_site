@@ -10,7 +10,7 @@ const SECTION_LINKS = [
   { href: '#clientes', label: 'Clientes' },
   { href: '#como-funciona', label: 'Como funciona' },
   { href: '#cassiellos', label: 'Tecnologia' },
-  { href: '#faq', label: 'FAQ' },
+  { href: '#faq-title', label: 'FAQ' },
 ] as const
 
 export default function SiteNav() {
