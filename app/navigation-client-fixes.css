@@ -1,0 +1,28 @@
+/* Navigation + client-logo corrections.
+   Uses the official Gira Moto Peças asset supplied in the client Drive folder. */
+
+/* The previous Gira raster was a light/white application on a white tile.
+   Keep the markup stable and replace only its visual source with the official full-color lockup. */
+[class*="home-content_caseCard__"] figure:has(> img[src="/client-logos/current/gira.png"]){
+  background:#fff url('/client-logos/current/gira-official.svg') center/78% auto no-repeat!important;
+}
+[class*="home-content_caseCard__"] figure:has(> img[src="/client-logos/current/gira.png"])>img{
+  opacity:0!important;
+}
+
+/* Seven destinations still fit cleanly on desktop without compressing the brand or CTA. */
+@media(min-width:961px){
+  .navin{gap:clamp(10px,1.25vw,24px)}
+  .nav nav{gap:clamp(10px,1.05vw,18px);font-size:12px;white-space:nowrap}
+  .navCta{min-height:44px;padding:0 14px;font-size:12.5px;white-space:nowrap}
+}
+
+@media(max-width:960px){
+  .mobileNavLinks a:last-child{grid-column:1/-1}
+}
+
+@media(max-width:760px){
+  [class*="home-content_caseCard__"] figure:has(> img[src="/client-logos/current/gira.png"]){
+    background-size:82% auto!important;
+  }
+}
