@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import AboutContent from '@/components/about-content'
 
-const title = 'About Cassiellos — Creative Operations Company'
-const description = 'Meet Cassiellos, a creative operations company connecting strategy, content, technology and follow-through to organize marketing from planning to publishing.'
+const title = 'Company — Cassiellos'
+const description = 'Meet Cassiellos: a creative operations company from Minas Gerais built by people working across strategy, communication, design, audiovisual and technology.'
 
 export const metadata: Metadata = {
   title,
