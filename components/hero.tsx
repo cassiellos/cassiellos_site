@@ -54,11 +54,11 @@ export default function Hero({ lang }: { lang: Locale }) {
             {en ? <><span>Your company already works.</span> <span className="heroTitleGradient">Now it needs to work better.</span></> : <><span>Sua empresa já funciona.</span> <span className="heroTitleGradient">Agora ela precisa funcionar melhor.</span></>}
           </motion.h1>
           <motion.p className="lead" {...enter(0.2)}>
-            {en ? 'Strategy, content, creative and operations connected in one flow so your company can grow with more clarity, consistency and rhythm.' : 'Estratégia, conteúdo, criação e operação conectados em um só fluxo para sua empresa crescer com mais clareza, consistência e ritmo.'}
+            {en ? 'We organize your marketing to create more opportunities and sales, with greater efficiency, clearer results and without you having to coordinate everything yourself.' : 'Organizamos seu marketing para gerar mais oportunidades e vendas, com mais eficiência, clareza sobre os resultados e sem você precisar coordenar tudo sozinho.'}
           </motion.p>
           <motion.div className="actions" {...enter(0.28)}>
-            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Schedule a diagnostic' : 'Agendar diagnóstico'}</a>
-            <a className="btn ghost" href={en ? '/en/sobre' : '/sobre'}>{en ? 'Meet Cassiellos' : 'Conhecer a Cassiellos'}</a>
+            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}</a>
+            <a className="btn ghost" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'I want to organize my marketing' : 'Quero organizar meu marketing'}</a>
           </motion.div>
         </motion.div>
 
