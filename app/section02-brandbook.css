@@ -1,0 +1,100 @@
+/* SECTION 02 — Brand Book Master: Navy/Paper como estrutura, Signal Red como ênfase controlada. */
+[class*="home-content_problem__"]{
+  background:var(--navy)!important;
+  color:var(--paper)!important;
+}
+
+[class*="home-content_problem__"]:before{
+  background-image:
+    linear-gradient(rgba(220,227,238,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(220,227,238,.045) 1px,transparent 1px)!important;
+  background-size:64px 64px!important;
+  mask-image:linear-gradient(90deg,#000 0 72%,transparent 100%)!important;
+}
+
+[class*="home-content_problem__"]:after{
+  border-color:rgba(220,227,238,.14)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_eyebrow__"],
+[class*="home-content_problem__"] [class*="home-content_darkEyebrow__"]{
+  color:var(--red)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_splitIntro__"] h2{
+  color:var(--paper)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_splitIntro__"]>p{
+  color:#aeb9ca!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]{
+  border-color:rgba(220,227,238,.14)!important;
+  background:#0b1627!important;
+  color:var(--paper)!important;
+  box-shadow:0 20px 48px rgba(0,0,0,.12);
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:after{
+  border-color:rgba(220,227,238,.10)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(2){
+  background:rgba(36,48,68,.56)!important;
+  border-color:rgba(220,227,238,.16)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3){
+  background:var(--paper)!important;
+  color:var(--navy)!important;
+  border-color:var(--paper)!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.16);
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(4){
+  background:#101c30!important;
+  border-color:rgba(220,227,238,.16)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(5){
+  background:linear-gradient(145deg,rgba(241,60,75,.12),rgba(246,248,255,.045))!important;
+  color:var(--paper)!important;
+  border-color:rgba(241,60,75,.28)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]>span{
+  color:var(--red)!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"] h3{
+  color:inherit!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"] p{
+  color:#aeb9ca!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3) p{
+  color:#5a6678!important;
+}
+
+[class*="home-content_problem__"] [class*="home-content_problemClose__"]{
+  background:rgba(241,60,75,.10)!important;
+  color:var(--paper)!important;
+  border:1px solid rgba(241,60,75,.26)!important;
+  border-left:3px solid var(--red)!important;
+  box-shadow:none!important;
+}
+
+/* A seção permanece Navy também no tema claro: é uma área institucional de alto contraste. */
+html[data-theme=light] [class*="home-content_problem__"]{
+  background:var(--navy)!important;
+  color:var(--paper)!important;
+}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_splitIntro__"] h2{color:var(--paper)!important}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_splitIntro__"]>p{color:#aeb9ca!important}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_problemCard__"]{color:var(--paper)!important}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3){color:var(--navy)!important}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_problemCard__"] p{color:#aeb9ca!important}
+html[data-theme=light] [class*="home-content_problem__"] [class*="home-content_problemCard__"]:nth-child(3) p{color:#5a6678!important}

@@ -3,6 +3,7 @@ import { Inter, Inter_Tight } from 'next/font/google'
 import './globals.css'
 import './responsive-polish.css'
 import './brand-refinements.css'
+import './section02-brandbook.css'
 
 import SmoothScroll from '@/components/smooth-scroll'
 import ScrollProgress from '@/components/scroll-progress'
