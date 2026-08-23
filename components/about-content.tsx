@@ -8,9 +8,30 @@ import styles from './about-content.module.css'
 type Locale = 'pt' | 'en'
 
 const TEAM = [
-  { name: 'Guilherme Cassim', role: { pt: 'CEO & Gerente de Marketing', en: 'CEO & Marketing Manager' } },
-  { name: 'Daniel Barcellos', role: { pt: 'CEO & Gerente de Marketing', en: 'CEO & Marketing Manager' } },
-  { name: 'Rafael Torres', role: { pt: 'Head Designer', en: 'Head Designer' } },
+  {
+    name: 'Guilherme Cassim',
+    role: { pt: 'Co-Founder & Co-CEO', en: 'Co-Founder & Co-CEO' },
+    description: {
+      pt: 'Estratégia, negócios, relacionamento e direção comercial.',
+      en: 'Strategy, business, relationships and commercial direction.',
+    },
+  },
+  {
+    name: 'Daniel Barcellos',
+    role: { pt: 'Co-Founder & Co-CEO', en: 'Co-Founder & Co-CEO' },
+    description: {
+      pt: 'Marketing, planejamento, operação e relacionamento com clientes.',
+      en: 'Marketing, planning, operations and client relationships.',
+    },
+  },
+  {
+    name: 'Rafael Torres',
+    role: { pt: 'Head of Design & Product', en: 'Head of Design & Product' },
+    description: {
+      pt: 'Branding, design, produtos digitais e tecnologia criativa.',
+      en: 'Branding, design, digital products and creative technology.',
+    },
+  },
 ] as const
 
 const COPY = {
@@ -42,9 +63,9 @@ const COPY = {
       ],
     },
     people: {
-      eyebrow: 'Pessoas',
-      title: 'Pessoas que constroem a Cassiellos.',
-      body: 'A Cassiellos é feita por pessoas. Hoje, nossa liderança reúne marketing e design na construção da empresa e na condução do trabalho.',
+      eyebrow: 'Time',
+      title: 'O time que constrói a Cassiellos.',
+      body: 'Nosso time reúne estratégia, negócios, marketing, design, produto e tecnologia na construção da empresa e na condução do trabalho.',
     },
     tech: {
       eyebrow: 'Cassiellos / Tecnologia com propósito',
@@ -116,9 +137,9 @@ const COPY = {
       ],
     },
     people: {
-      eyebrow: 'People',
-      title: 'People who build Cassiellos.',
-      body: 'Cassiellos is made by people. Today, our leadership brings marketing and design together in building the company and guiding the work.',
+      eyebrow: 'Team',
+      title: 'The team building Cassiellos.',
+      body: 'Our team brings strategy, business, marketing, design, product and technology together in building the company and guiding the work.',
     },
     tech: {
       eyebrow: 'Cassiellos / Technology with purpose',
@@ -264,7 +285,10 @@ export default function AboutContent({ lang }: { lang: Locale }) {
                 <div className={styles.personCopy}>
                   <span className={styles.capabilityIndex}>{String(index + 1).padStart(2, '0')}</span>
                   <h3 className={styles.display}>{person.name}</h3>
-                  <p>{person.role[lang]}</p>
+                  <p>
+                    <strong>{person.role[lang]}</strong>
+                    <span>{person.description[lang]}</span>
+                  </p>
                 </div>
               </motion.article>
             ))}
