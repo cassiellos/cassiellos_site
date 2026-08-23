@@ -1,6 +1,5 @@
 'use client'
 
-import InfinityMark from './infinity-mark'
 import { usePathname } from 'next/navigation'
 
 export default function SiteFooter() {
@@ -8,7 +7,16 @@ export default function SiteFooter() {
   return (
     <footer className="foot">
       <div className="wrap footin">
-        <div className="footerBrand"><InfinityMark className="footerMark" /><strong>Cassiellos</strong></div>
+        <div className="footerBrand">
+          <img
+            src="/brand/cassiellos-symbol-signal-red.svg"
+            alt=""
+            aria-hidden="true"
+            width="36"
+            height="18"
+          />
+          <strong>Cassiellos</strong>
+        </div>
         <nav className="footerLegal" aria-label={english ? 'Policies and terms' : 'Políticas e termos'}>
           <a href="/politica-de-privacidade">{english ? 'Privacy' : 'Privacidade'}</a>
           <a href="/termos-de-uso">{english ? 'Terms of Use' : 'Termos de Uso'}</a>
