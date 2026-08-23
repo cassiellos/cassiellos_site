@@ -8,7 +8,7 @@ import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 const SECTION_LINKS = [
   { href: '#servicos', label: 'Serviços' },
   { href: '#como-funciona', label: 'Como funciona' },
-  { href: '#trabalhos', label: 'Trabalhos' },
+  { href: '#clientes', label: 'Clientes' },
   { href: '#levi', label: 'Levi' },
 ] as const
 
@@ -27,7 +27,7 @@ export default function SiteNav() {
 
   const translatedLabel = (label: string) =>
     english
-      ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Trabalhos: 'Work', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[label]
+      ? ({ Serviços: 'Services', 'Como funciona': 'How it works', Clientes: 'Clients', Levi: 'Levi', Company: 'Company' } as Record<string, string>)[label]
       : label
 
   useEffect(() => {
