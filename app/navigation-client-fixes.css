@@ -1,5 +1,5 @@
 /* Navigation + client-logo corrections.
-   Uses the official Gira Moto Peças asset supplied in the client Drive folder. */
+   Uses official brand assets supplied for Cassiellos and its clients. */
 
 /* The previous Gira raster was a light/white application on a white tile.
    Keep the markup stable and replace only its visual source with the official full-color lockup. */
@@ -22,7 +22,161 @@
 }
 
 @media(max-width:760px){
-  [class*="home-content_caseCard__"] figure:has(> img[src="/client-logos/current/gira.png"]){
-    background-size:82% auto!important;
+  /* Horizontal, compact mobile cards.
+     Native touch scrolling + scroll snap gives a carousel feel without forced autoplay. */
+  [class*="home-content_servicesGrid__"],
+  [class*="home-content_caseGrid__"],
+  [class*="home-content_osItems__"]{
+    display:flex!important;
+    grid-template-columns:none!important;
+    gap:10px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scroll-snap-type:x mandatory;
+    scroll-behavior:smooth;
+    overscroll-behavior-inline:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:0 12px 12px 0!important;
+    margin-top:24px!important;
+    margin-right:-12px!important;
   }
+  [class*="home-content_servicesGrid__"]::-webkit-scrollbar,
+  [class*="home-content_caseGrid__"]::-webkit-scrollbar,
+  [class*="home-content_osItems__"]::-webkit-scrollbar{display:none}
+
+  /* Services: one readable card at a time, with the next card peeking in. */
+  [class*="home-content_serviceCard__"]{
+    flex:0 0 min(80vw,320px)!important;
+    width:min(80vw,320px)!important;
+    min-height:300px!important;
+    padding:18px!important;
+    border-radius:14px!important;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+  }
+  [class*="home-content_serviceCard__"] h3{
+    font-size:25px!important;
+    line-height:1!important;
+    margin:34px 0 12px!important;
+  }
+  [class*="home-content_serviceCard__"] p{
+    font-size:13.5px!important;
+    line-height:1.48!important;
+    margin-bottom:16px!important;
+  }
+  [class*="home-content_serviceCard__"] small{
+    font-size:10.5px!important;
+    line-height:1.45!important;
+    padding-top:13px!important;
+  }
+
+  /* Client logos: every tile has exactly the same mobile footprint. */
+  [class*="home-content_caseCard__"]{
+    flex:0 0 min(74vw,290px)!important;
+    width:min(74vw,290px)!important;
+    height:158px!important;
+    min-height:158px!important;
+    border-radius:14px!important;
+    scroll-snap-align:center;
+    scroll-snap-stop:always;
+  }
+  [class*="home-content_caseCard__"]:last-child{grid-column:auto!important}
+  [class*="home-content_caseCard__"] figure{
+    width:100%!important;
+    height:158px!important;
+    min-height:158px!important;
+    padding:20px!important;
+    aspect-ratio:auto!important;
+  }
+  [class*="home-content_caseCard__"] img,
+  [class*="home-content_caseCard__"]:nth-child(2) img,
+  [class*="home-content_caseCard__"]:nth-child(3) img{
+    width:auto!important;
+    height:auto!important;
+    max-width:78%!important;
+    max-height:92px!important;
+    object-fit:contain!important;
+    object-position:center!important;
+  }
+  [class*="home-content_caseCard__"]:nth-child(3) img{
+    max-width:58%!important;
+    max-height:96px!important;
+  }
+  [class*="home-content_caseCard__"] figure:has(> img[src="/client-logos/current/gira.png"]){
+    background-size:76% auto!important;
+  }
+
+  /* Section 06: the fifth step closes the two-column grid instead of leaving an empty cell. */
+  [class*="home-content_methodStep__"]:last-child{
+    grid-column:1/-1!important;
+    display:grid!important;
+    grid-template-columns:38px 1fr!important;
+    gap:12px!important;
+    align-items:start!important;
+  }
+  [class*="home-content_methodStep__"]:last-child>span{
+    margin:4px 0 0!important;
+    padding:0!important;
+  }
+  [class*="home-content_methodStep__"]:last-child h3{margin-top:0!important}
+
+  /* cassiellOS: use the official current lockup instead of the legacy synthetic SVG. */
+  [class*="home-content_osPanel__"]>img[src="/brand/current/cassiellos-os-paper.svg"]{
+    content:url('/brand/current/cassiellos-os-official-paper.png')!important;
+    display:block!important;
+    width:min(88%,300px)!important;
+    max-width:300px!important;
+    height:auto!important;
+    object-fit:contain!important;
+    object-position:left center!important;
+  }
+  html[data-theme="light"] [class*="home-content_osPanel__"]>img[src="/brand/current/cassiellos-os-paper.svg"]{
+    content:url('/brand/current/cassiellos-os-official-navy.png')!important;
+  }
+
+  /* cassiellOS benefit cards also become a compact horizontal track. */
+  [class*="home-content_osItems__"] article{
+    flex:0 0 min(70vw,270px)!important;
+    width:min(70vw,270px)!important;
+    min-height:136px!important;
+    padding:16px!important;
+    border-radius:12px!important;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+  }
+  [class*="home-content_osItems__"] h3{font-size:19px!important}
+  [class*="home-content_osItems__"] p{font-size:12.5px!important;line-height:1.45!important}
+
+  /* Levi: replace the decorative orb in the section by the official Levi wordmark.
+     The floating assistant launcher stays unchanged and functional. */
+  [class*="home-content_leviStrip__"]{
+    grid-template-columns:104px 1fr!important;
+    gap:14px!important;
+    padding:16px!important;
+    align-items:start!important;
+  }
+  [class*="home-content_leviMiniOrb__"]{
+    width:104px!important;
+    height:58px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:url('/brand/current/levi-official-paper.png') left center/contain no-repeat!important;
+  }
+  html[data-theme="light"] [class*="home-content_leviMiniOrb__"]{
+    background-image:url('/brand/current/levi-official-navy.png')!important;
+  }
+  [class*="home-content_leviMiniOrb__"]:before,
+  [class*="home-content_leviMiniOrb__"]:after,
+  [class*="home-content_leviMiniOrb__"] i{display:none!important}
+  [class*="home-content_leviStrip__"] h3{font-size:22px!important;margin-top:7px!important}
+  [class*="home-content_leviStrip__"] .btn{grid-column:1/-1!important;width:100%}
+}
+
+@media(max-width:390px){
+  [class*="home-content_serviceCard__"]{flex-basis:84vw!important;width:84vw!important}
+  [class*="home-content_caseCard__"]{flex-basis:78vw!important;width:78vw!important}
+  [class*="home-content_osItems__"] article{flex-basis:76vw!important;width:76vw!important}
+  [class*="home-content_leviStrip__"]{grid-template-columns:92px 1fr!important}
+  [class*="home-content_leviMiniOrb__"]{width:92px!important;height:52px!important}
 }
