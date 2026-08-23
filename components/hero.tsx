@@ -4,7 +4,8 @@ import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { EASE_OUT } from '@/lib/scroll'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
-import type { Locale } from './home-content'
+
+type Locale = 'pt' | 'en'
 
 const INFINITY_PATH = 'M5 16C5 9 10 5 16 5c8 0 11 11 16 11S40 5 48 5c6 0 11 4 11 11s-5 11-11 11c-8 0-11-11-16-11S24 27 16 27C10 27 5 23 5 16Z'
 
