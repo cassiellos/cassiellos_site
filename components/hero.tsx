@@ -54,9 +54,15 @@ export default function Hero({ lang }: { lang: Locale }) {
             {en ? <><span>Your company already works.</span> <span className="heroTitleGradient">Now it needs to work better.</span></> : <><span>Sua empresa já funciona.</span> <span className="heroTitleGradient">Agora ela precisa funcionar melhor.</span></>}
           </motion.h1>
           <motion.p className="lead" {...enter(0.2)}>
-            {en
-              ? 'We plan, create and take care of your company’s marketing — strategy, content, campaigns, design, video and operations — to generate more opportunities and sales without everything depending on you.'
-              : 'Planejamos, criamos e cuidamos do marketing da sua empresa — estratégia, conteúdo, campanhas, design, vídeos e operação — para gerar mais oportunidades e vendas sem tudo depender de você.'}
+            {en ? (
+              <>
+                <span className="copyKey copyKeyService">We plan, create and take care of your company’s marketing</span> — strategy, content, campaigns, design, video and operations — to generate <span className="copyKey copyKeyOutcome">more opportunities and sales</span> <span className="copyKey copyKeyRelief">without everything depending on you</span>.
+              </>
+            ) : (
+              <>
+                <span className="copyKey copyKeyService">Planejamos, criamos e cuidamos do marketing da sua empresa</span> — estratégia, conteúdo, campanhas, design, vídeos e operação — para gerar <span className="copyKey copyKeyOutcome">mais oportunidades e vendas</span> <span className="copyKey copyKeyRelief">sem tudo depender de você</span>.
+              </>
+            )}
           </motion.p>
           <motion.div className="actions" {...enter(0.28)}>
             <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{en ? 'I want to improve my marketing' : 'Quero melhorar meu marketing'}</a>
