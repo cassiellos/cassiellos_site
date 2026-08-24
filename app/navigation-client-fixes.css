@@ -21,12 +21,308 @@
   .mobileNavLinks a:last-child{grid-column:1/-1}
 }
 
+/* --------------------------------------------------------------------------
+   07 / cassiellOS — a real interface preview built only with HTML/CSS cards.
+   The existing benefit articles become widgets inside a desktop screen and the
+   phone is drawn as a second viewport beside it. No generated interface image.
+   -------------------------------------------------------------------------- */
+[class*="home-content_osSection__"] [class*="home-content_osPanel__"]{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 190px!important;
+  grid-template-rows:auto 1fr!important;
+  gap:20px 32px!important;
+  align-items:stretch!important;
+  margin-top:48px!important;
+  padding:28px 30px 38px!important;
+  overflow:visible!important;
+}
+
+[class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:min(245px,44%)!important;
+  max-width:245px!important;
+  height:auto!important;
+  align-self:center!important;
+  margin:0!important;
+}
+
+/* Desktop app window. */
+[class*="home-content_osSection__"] [class*="home-content_osItems__"]{
+  grid-column:1!important;
+  grid-row:2!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  position:relative!important;
+  min-height:250px!important;
+  margin:0!important;
+  padding:58px 16px 18px 72px!important;
+  overflow:visible!important;
+  border:1px solid rgba(220,227,238,.16)!important;
+  border-radius:16px!important;
+  background:
+    linear-gradient(180deg,rgba(13,29,50,.98),rgba(8,19,35,.98))!important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.018),
+    0 20px 48px rgba(0,0,0,.16)!important;
+}
+
+/* Minimal browser/app chrome. */
+[class*="home-content_osSection__"] [class*="home-content_osItems__"]:before{
+  content:'cassiellOS  ·  painel de operação';
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:42px;
+  display:flex;
+  align-items:center;
+  padding-left:68px;
+  border-bottom:1px solid rgba(220,227,238,.11);
+  color:#8fa0b7;
+  font:750 9px/1 var(--font-inter);
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  background:
+    radial-gradient(circle,var(--red) 0 3px,transparent 3.6px) 18px 50%/8px 8px no-repeat,
+    radial-gradient(circle,var(--cyan) 0 3px,transparent 3.6px) 32px 50%/8px 8px no-repeat,
+    radial-gradient(circle,var(--blue) 0 3px,transparent 3.6px) 46px 50%/8px 8px no-repeat,
+    rgba(246,248,255,.018);
+}
+
+/* Minimal sidebar. */
+[class*="home-content_osSection__"] [class*="home-content_osItems__"]:after{
+  content:'';
+  position:absolute;
+  left:0;
+  top:42px;
+  bottom:0;
+  width:54px;
+  border-right:1px solid rgba(220,227,238,.1);
+  background:
+    linear-gradient(var(--cyan),var(--cyan)) 15px 22px/24px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.34),rgba(220,227,238,.34)) 15px 48px/18px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.22),rgba(220,227,238,.22)) 15px 74px/24px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.22),rgba(220,227,238,.22)) 15px 100px/14px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.16),rgba(220,227,238,.16)) 15px calc(100% - 26px)/24px 3px no-repeat,
+    rgba(246,248,255,.012);
+}
+
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] article{
+  position:relative!important;
+  min-height:158px!important;
+  padding:18px!important;
+  border:1px solid rgba(34,199,242,.13)!important;
+  border-radius:12px!important;
+  background:
+    linear-gradient(145deg,rgba(246,248,255,.055),rgba(246,248,255,.025))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] article:before{
+  content:'';
+  display:block;
+  width:38px;
+  height:4px;
+  margin-bottom:28px;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--cyan),var(--blue));
+  opacity:.85;
+}
+
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] article:nth-child(2):before{
+  background:linear-gradient(90deg,var(--violet),var(--blue));
+}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] article:nth-child(3):before{
+  background:linear-gradient(90deg,var(--red),var(--violet));
+}
+
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] h3{
+  font-size:20px!important;
+  line-height:1.05!important;
+  margin:0 0 9px!important;
+}
+[class*="home-content_osSection__"] [class*="home-content_osItems__"] p{
+  font-size:12.5px!important;
+  line-height:1.48!important;
+}
+
+/* Smartphone app viewport. The UI is composed from layered card shapes. */
+[class*="home-content_osSection__"] [class*="home-content_osPanel__"]:after{
+  content:'cassiellOS';
+  grid-column:2!important;
+  grid-row:1 / 3!important;
+  align-self:center!important;
+  justify-self:center!important;
+  width:158px;
+  min-height:318px;
+  padding:42px 14px 16px;
+  border:2px solid rgba(220,227,238,.24);
+  border-radius:30px;
+  color:var(--paper);
+  font:800 12px/1 var(--font-inter-tight);
+  letter-spacing:-.025em;
+  text-align:left;
+  box-shadow:
+    inset 0 0 0 4px #07101f,
+    0 20px 48px rgba(0,0,0,.25),
+    0 0 34px rgba(36,107,255,.08);
+  background:
+    linear-gradient(#020711,#020711) 50% 10px/58px 12px no-repeat,
+    linear-gradient(90deg,var(--cyan),var(--blue)) 16px 68px/54px 4px no-repeat,
+    linear-gradient(rgba(246,248,255,.07),rgba(246,248,255,.045)) 14px 84px/calc(100% - 28px) 62px no-repeat,
+    linear-gradient(90deg,var(--red),var(--violet)) 24px 98px/34px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.22),rgba(220,227,238,.22)) 24px 112px/74px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.13),rgba(220,227,238,.13)) 24px 122px/56px 3px no-repeat,
+    linear-gradient(rgba(246,248,255,.065),rgba(246,248,255,.04)) 14px 156px/calc(100% - 28px) 50px no-repeat,
+    linear-gradient(rgba(34,199,242,.45),rgba(34,199,242,.45)) 24px 170px/46px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.16),rgba(220,227,238,.16)) 24px 182px/78px 3px no-repeat,
+    linear-gradient(rgba(246,248,255,.065),rgba(246,248,255,.04)) 14px 216px/calc(100% - 28px) 50px no-repeat,
+    linear-gradient(rgba(123,53,245,.55),rgba(123,53,245,.55)) 24px 230px/38px 3px no-repeat,
+    linear-gradient(rgba(220,227,238,.16),rgba(220,227,238,.16)) 24px 242px/64px 3px no-repeat,
+    linear-gradient(rgba(246,248,255,.045),rgba(246,248,255,.045)) 22px calc(100% - 24px)/114px 22px no-repeat,
+    linear-gradient(180deg,#0b1a2f,#07101f);
+}
+
+/* Light theme keeps the same device language with paper surfaces. */
+html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osItems__"]{
+  border-color:#d5dfec!important;
+  background:linear-gradient(180deg,#f8fbff,#eef4fb)!important;
+  box-shadow:0 18px 44px rgba(7,16,31,.09)!important;
+}
+html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osItems__"]:before{
+  color:#64748b;
+  border-color:#d7e1ed;
+  background:
+    radial-gradient(circle,var(--red) 0 3px,transparent 3.6px) 18px 50%/8px 8px no-repeat,
+    radial-gradient(circle,var(--cyan) 0 3px,transparent 3.6px) 32px 50%/8px 8px no-repeat,
+    radial-gradient(circle,var(--blue) 0 3px,transparent 3.6px) 46px 50%/8px 8px no-repeat,
+    #f5f8fc;
+}
+html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osItems__"]:after{
+  border-color:#dbe4ef;
+  background:
+    linear-gradient(var(--blue),var(--blue)) 15px 22px/24px 3px no-repeat,
+    linear-gradient(#aeb9c8,#aeb9c8) 15px 48px/18px 3px no-repeat,
+    linear-gradient(#c0cad7,#c0cad7) 15px 74px/24px 3px no-repeat,
+    linear-gradient(#c0cad7,#c0cad7) 15px 100px/14px 3px no-repeat,
+    linear-gradient(#d2dae5,#d2dae5) 15px calc(100% - 26px)/24px 3px no-repeat,
+    #f2f6fb;
+}
+html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osItems__"] article{
+  border-color:#d8e3ef!important;
+  background:#fff!important;
+}
+html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osPanel__"]:after{
+  color:var(--navy);
+  border-color:#cbd7e5;
+  box-shadow:inset 0 0 0 4px #fff,0 18px 44px rgba(7,16,31,.14);
+  background:
+    linear-gradient(#07101f,#07101f) 50% 10px/58px 12px no-repeat,
+    linear-gradient(90deg,var(--cyan),var(--blue)) 16px 68px/54px 4px no-repeat,
+    linear-gradient(#eef4fb,#eef4fb) 14px 84px/calc(100% - 28px) 62px no-repeat,
+    linear-gradient(90deg,var(--red),var(--violet)) 24px 98px/34px 3px no-repeat,
+    linear-gradient(#8b99ab,#8b99ab) 24px 112px/74px 3px no-repeat,
+    linear-gradient(#c6d0dc,#c6d0dc) 24px 122px/56px 3px no-repeat,
+    linear-gradient(#f1f5fa,#f1f5fa) 14px 156px/calc(100% - 28px) 50px no-repeat,
+    linear-gradient(var(--blue),var(--blue)) 24px 170px/46px 3px no-repeat,
+    linear-gradient(#b9c5d3,#b9c5d3) 24px 182px/78px 3px no-repeat,
+    linear-gradient(#f1f5fa,#f1f5fa) 14px 216px/calc(100% - 28px) 50px no-repeat,
+    linear-gradient(var(--violet),var(--violet)) 24px 230px/38px 3px no-repeat,
+    linear-gradient(#b9c5d3,#b9c5d3) 24px 242px/64px 3px no-repeat,
+    linear-gradient(#eef3f8,#eef3f8) 22px calc(100% - 24px)/114px 22px no-repeat,
+    linear-gradient(180deg,#fff,#f8fbff);
+}
+
+/* --------------------------------------------------------------------------
+   Levi — restore the animated symbol in every viewport.
+   Two orbital paths, two moving points and the original luminous core.
+   -------------------------------------------------------------------------- */
+[class*="home-content_leviMiniOrb__"]{
+  width:82px!important;
+  height:82px!important;
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  overflow:visible!important;
+  border:1px solid rgba(220,227,238,.14)!important;
+  border-radius:50%!important;
+  background:none!important;
+}
+[class*="home-content_leviMiniOrb__"]:before{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:8px!important;
+  border:1px solid rgba(34,199,242,.22)!important;
+  border-radius:50%!important;
+  background:none!important;
+  animation:leviRingSpin 8s linear infinite!important;
+}
+[class*="home-content_leviMiniOrb__"]:after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:7px!important;
+  height:7px!important;
+  margin:0!important;
+  border-radius:50%!important;
+  background:var(--red)!important;
+  box-shadow:0 0 12px rgba(241,60,75,.8)!important;
+  transform:translate(-50%,-50%) rotate(0deg) translateX(32px)!important;
+  animation:leviDotOrbit 7.4s linear infinite!important;
+}
+[class*="home-content_leviMiniOrb__"] i{
+  display:block!important;
+  width:38px!important;
+  height:38px!important;
+  position:relative!important;
+  z-index:3!important;
+  border-radius:50%!important;
+  background:radial-gradient(circle at 35% 30%,#fff 0 5%,var(--cyan) 18%,var(--blue) 58%,var(--violet))!important;
+  box-shadow:0 0 28px rgba(36,107,255,.5)!important;
+  animation:leviCoreFloat 3.8s ease-in-out infinite!important;
+}
+[class*="home-content_leviMiniOrb__"] i:before{
+  content:'';
+  position:absolute;
+  inset:-13px;
+  border:1px solid rgba(220,227,238,.18);
+  border-radius:50%;
+}
+[class*="home-content_leviMiniOrb__"] i:after{
+  content:'';
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--blue);
+  box-shadow:0 0 10px rgba(36,107,255,.8);
+  transform:translate(-50%,-50%) rotate(0deg) translateX(25px);
+  animation:leviDotOrbitReverse 6.2s linear infinite;
+}
+
+@keyframes leviRingSpin{to{transform:rotate(360deg)}}
+@keyframes leviDotOrbit{
+  to{transform:translate(-50%,-50%) rotate(360deg) translateX(32px)}
+}
+@keyframes leviDotOrbitReverse{
+  to{transform:translate(-50%,-50%) rotate(-360deg) translateX(25px)}
+}
+@keyframes leviCoreFloat{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-3px) scale(1.035)}
+}
+
 @media(max-width:760px){
-  /* Horizontal, compact mobile cards.
-     Native touch scrolling + scroll snap gives a carousel feel without forced autoplay. */
+  /* Horizontal, compact mobile cards for services and clients. */
   [class*="home-content_servicesGrid__"],
-  [class*="home-content_caseGrid__"],
-  [class*="home-content_osItems__"]{
+  [class*="home-content_caseGrid__"]{
     display:flex!important;
     grid-template-columns:none!important;
     gap:10px!important;
@@ -42,10 +338,8 @@
     margin-right:-12px!important;
   }
   [class*="home-content_servicesGrid__"]::-webkit-scrollbar,
-  [class*="home-content_caseGrid__"]::-webkit-scrollbar,
-  [class*="home-content_osItems__"]::-webkit-scrollbar{display:none}
+  [class*="home-content_caseGrid__"]::-webkit-scrollbar{display:none}
 
-  /* Services: one readable card at a time, with the next card peeking in. */
   [class*="home-content_serviceCard__"]{
     flex:0 0 min(80vw,320px)!important;
     width:min(80vw,320px)!important;
@@ -71,7 +365,6 @@
     padding-top:13px!important;
   }
 
-  /* Client logos: every tile has exactly the same mobile footprint. */
   [class*="home-content_caseCard__"]{
     flex:0 0 min(74vw,290px)!important;
     width:min(74vw,290px)!important;
@@ -107,7 +400,7 @@
     background-size:76% auto!important;
   }
 
-  /* Section 06: the fifth step closes the two-column grid instead of leaving an empty cell. */
+  /* Section 06: the fifth step closes the two-column grid. */
   [class*="home-content_methodStep__"]:last-child{
     grid-column:1/-1!important;
     display:grid!important;
@@ -121,12 +414,12 @@
   }
   [class*="home-content_methodStep__"]:last-child h3{margin-top:0!important}
 
-  /* cassiellOS: use the official current lockup instead of the legacy synthetic SVG. */
+  /* Keep the current official cassiellOS lockup on mobile. */
   [class*="home-content_osPanel__"]>img[src="/brand/current/cassiellos-os-paper.svg"]{
     content:url('/brand/current/cassiellos-os-official-paper.png')!important;
     display:block!important;
-    width:min(88%,300px)!important;
-    max-width:300px!important;
+    width:min(72%,230px)!important;
+    max-width:230px!important;
     height:auto!important;
     object-fit:contain!important;
     object-position:left center!important;
@@ -135,48 +428,141 @@
     content:url('/brand/current/cassiellos-os-official-navy.png')!important;
   }
 
-  /* cassiellOS benefit cards also become a compact horizontal track. */
-  [class*="home-content_osItems__"] article{
-    flex:0 0 min(70vw,270px)!important;
-    width:min(70vw,270px)!important;
-    min-height:136px!important;
-    padding:16px!important;
-    border-radius:12px!important;
-    scroll-snap-align:start;
-    scroll-snap-stop:always;
+  /* Mobile device composition: desktop window with a phone floating beside it. */
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]{
+    display:block!important;
+    position:relative!important;
+    padding:18px 16px 26px!important;
+    margin-top:24px!important;
+    overflow:visible!important;
   }
-  [class*="home-content_osItems__"] h3{font-size:19px!important}
-  [class*="home-content_osItems__"] p{font-size:12.5px!important;line-height:1.45!important}
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]>img{
+    margin-bottom:16px!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"]{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important;
+    min-height:260px!important;
+    margin:0!important;
+    padding:50px 84px 14px 58px!important;
+    overflow:hidden!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] article{
+    min-width:0!important;
+    width:auto!important;
+    min-height:90px!important;
+    padding:10px!important;
+    border-radius:9px!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] article:last-child{
+    grid-column:1/-1!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] article:before{
+    width:24px;
+    height:3px;
+    margin-bottom:12px;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] h3{
+    font-size:13px!important;
+    margin-bottom:5px!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"] p{
+    font-size:9.5px!important;
+    line-height:1.35!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"]:before{
+    height:36px;
+    padding-left:54px;
+    font-size:7.5px;
+    background:
+      radial-gradient(circle,var(--red) 0 2px,transparent 2.6px) 14px 50%/6px 6px no-repeat,
+      radial-gradient(circle,var(--cyan) 0 2px,transparent 2.6px) 25px 50%/6px 6px no-repeat,
+      radial-gradient(circle,var(--blue) 0 2px,transparent 2.6px) 36px 50%/6px 6px no-repeat,
+      rgba(246,248,255,.018);
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"]:after{
+    top:36px;
+    width:44px;
+    background:
+      linear-gradient(var(--cyan),var(--cyan)) 12px 18px/20px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.34),rgba(220,227,238,.34)) 12px 39px/14px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.22),rgba(220,227,238,.22)) 12px 60px/20px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.22),rgba(220,227,238,.22)) 12px 81px/12px 2px no-repeat,
+      rgba(246,248,255,.012);
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]:after{
+    position:absolute!important;
+    z-index:4!important;
+    right:10px!important;
+    bottom:18px!important;
+    width:94px!important;
+    min-height:202px!important;
+    padding:31px 9px 10px!important;
+    border-radius:20px!important;
+    border-width:1.5px!important;
+    font-size:8px!important;
+    box-shadow:inset 0 0 0 3px #07101f,0 12px 28px rgba(0,0,0,.28)!important;
+    background:
+      linear-gradient(#020711,#020711) 50% 7px/38px 8px no-repeat,
+      linear-gradient(90deg,var(--cyan),var(--blue)) 10px 47px/36px 3px no-repeat,
+      linear-gradient(rgba(246,248,255,.075),rgba(246,248,255,.045)) 9px 59px/calc(100% - 18px) 40px no-repeat,
+      linear-gradient(90deg,var(--red),var(--violet)) 15px 68px/24px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.2),rgba(220,227,238,.2)) 15px 78px/48px 2px no-repeat,
+      linear-gradient(rgba(246,248,255,.065),rgba(246,248,255,.04)) 9px 107px/calc(100% - 18px) 34px no-repeat,
+      linear-gradient(var(--cyan),var(--cyan)) 15px 116px/30px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.16),rgba(220,227,238,.16)) 15px 126px/50px 2px no-repeat,
+      linear-gradient(rgba(246,248,255,.065),rgba(246,248,255,.04)) 9px 149px/calc(100% - 18px) 34px no-repeat,
+      linear-gradient(var(--violet),var(--violet)) 15px 158px/26px 2px no-repeat,
+      linear-gradient(rgba(220,227,238,.16),rgba(220,227,238,.16)) 15px 168px/42px 2px no-repeat,
+      linear-gradient(180deg,#0b1a2f,#07101f)!important;
+  }
+  html[data-theme="light"] [class*="home-content_osSection__"] [class*="home-content_osPanel__"]:after{
+    box-shadow:inset 0 0 0 3px #fff,0 12px 28px rgba(7,16,31,.18)!important;
+  }
 
-  /* Levi: replace the decorative orb in the section by the official Levi wordmark.
-     The floating assistant launcher stays unchanged and functional. */
+  /* Levi orb stays animated on mobile; it no longer becomes a wordmark. */
   [class*="home-content_leviStrip__"]{
-    grid-template-columns:104px 1fr!important;
+    grid-template-columns:72px 1fr!important;
     gap:14px!important;
     padding:16px!important;
-    align-items:start!important;
+    align-items:center!important;
   }
   [class*="home-content_leviMiniOrb__"]{
-    width:104px!important;
-    height:58px!important;
-    border:0!important;
-    border-radius:0!important;
-    background:url('/brand/current/levi-official-paper.png') left center/contain no-repeat!important;
+    width:68px!important;
+    height:68px!important;
   }
-  html[data-theme="light"] [class*="home-content_leviMiniOrb__"]{
-    background-image:url('/brand/current/levi-official-navy.png')!important;
+  [class*="home-content_leviMiniOrb__"]:after{
+    transform:translate(-50%,-50%) rotate(0deg) translateX(26px)!important;
+    animation-name:leviDotOrbitMobile!important;
   }
-  [class*="home-content_leviMiniOrb__"]:before,
-  [class*="home-content_leviMiniOrb__"]:after,
-  [class*="home-content_leviMiniOrb__"] i{display:none!important}
+  [class*="home-content_leviMiniOrb__"] i{
+    width:32px!important;
+    height:32px!important;
+  }
+  [class*="home-content_leviMiniOrb__"] i:after{
+    transform:translate(-50%,-50%) rotate(0deg) translateX(21px)!important;
+    animation-name:leviDotOrbitReverseMobile!important;
+  }
   [class*="home-content_leviStrip__"] h3{font-size:22px!important;margin-top:7px!important}
   [class*="home-content_leviStrip__"] .btn{grid-column:1/-1!important;width:100%}
+}
+
+@keyframes leviDotOrbitMobile{
+  to{transform:translate(-50%,-50%) rotate(360deg) translateX(26px)}
+}
+@keyframes leviDotOrbitReverseMobile{
+  to{transform:translate(-50%,-50%) rotate(-360deg) translateX(21px)}
 }
 
 @media(max-width:390px){
   [class*="home-content_serviceCard__"]{flex-basis:84vw!important;width:84vw!important}
   [class*="home-content_caseCard__"]{flex-basis:78vw!important;width:78vw!important}
-  [class*="home-content_osItems__"] article{flex-basis:76vw!important;width:76vw!important}
-  [class*="home-content_leviStrip__"]{grid-template-columns:92px 1fr!important}
-  [class*="home-content_leviMiniOrb__"]{width:92px!important;height:52px!important}
+  [class*="home-content_osSection__"] [class*="home-content_osItems__"]{
+    padding-right:76px!important;
+  }
+  [class*="home-content_osSection__"] [class*="home-content_osPanel__"]:after{
+    width:88px!important;
+    right:8px!important;
+  }
 }
