@@ -8,7 +8,6 @@ import './theme-system-v2.css'
 import './about-team.css'
 import './navigation-client-fixes.css'
 import './section07-brand-device.css'
-import './copy-scan-emphasis.css'
 
 import SmoothScroll from '@/components/smooth-scroll'
 import ScrollProgress from '@/components/scroll-progress'
