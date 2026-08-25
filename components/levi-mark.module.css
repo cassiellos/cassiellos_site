@@ -45,6 +45,39 @@
   background:radial-gradient(circle at 35% 30%,#fff 0 5%,var(--cyan) 13%,var(--blue) 53%,var(--violet));
   box-shadow:0 0 calc(var(--levi-size) * .32) rgba(36,107,255,.55);
 }
+.lockup{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.wordmarkFrame{
+  display:inline-block;
+  width:86px;
+  line-height:0;
+}
+.wordmarkFrame img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.wordmarkNavy{display:none!important}
+.by{
+  color:var(--cyan);
+  font:800 10px/1 var(--font-inter),Inter,sans-serif;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.compact .wordmarkFrame{width:52px}
+.compact .by{font-size:7px;letter-spacing:.1em}
 :global(html[data-theme=light]) .ring{border-color:rgba(7,16,31,.2)}
+:global(html[data-theme=light]) .wordmarkPaper{display:none!important}
+:global(html[data-theme=light]) .wordmarkNavy{display:block!important}
 @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media(max-width:620px){
+  .medium{--levi-size:64px}
+  .wordmarkFrame{width:74px}
+  .by{font-size:8px;letter-spacing:.11em}
+}
 @media(prefers-reduced-motion:reduce){.ring{animation:none}}
