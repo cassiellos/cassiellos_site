@@ -3,42 +3,81 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import SiteControls from './site-controls'
+import styles from './site-nav.module.css'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 
 const SECTION_LINKS = [
-  { href: '#servicos', label: 'Serviços' },
-  { href: '#como-funciona', label: 'Como funciona' },
-  { href: '#clientes', label: 'Clientes' },
-  { href: '#cassiellos', label: 'Tecnologia' },
-  { href: '#levi', label: 'Levi' },
-  { href: '#faq-title', label: 'FAQ' },
+  { href: '#servicos', label: 'Serviços', en: 'Services' },
+  { href: '#como-funciona', label: 'Como funciona', en: 'How it works' },
+  { href: '#clientes', label: 'Clientes', en: 'Clients' },
+  { href: '#cassiellos', label: 'cassiellOS', en: 'cassiellOS' },
+  { href: '#levi', label: 'Levi', en: 'Levi' },
+  { href: '#faq-title', label: 'FAQ', en: 'FAQ' },
 ] as const
+
+type NavLink = {
+  href: string
+  label: string
+  en: string
+}
+
+type NavGroup = {
+  key: string
+  label: string
+  en: string
+  primaryHref?: string
+  links: NavLink[]
+}
 
 export default function SiteNav() {
   const pathname = usePathname()
   const english = pathname.startsWith('/en')
   const isHome = pathname === '/' || pathname === '/en'
+  const homePrefix = english ? '/en/' : '/'
   const aboutHref = english ? '/en/sobre' : '/sobre'
-  const links = [
-    ...SECTION_LINKS.map((link) => ({ ...link, href: isHome ? link.href : `${english ? '/en' : ''}/${link.href}` })),
-    { href: aboutHref, label: english ? 'Company' : 'A Empresa' },
+  const resolveHref = (href: string) => (isHome ? href : `${homePrefix}${href}`)
+
+  const groups: NavGroup[] = [
+    {
+      key: 'solutions',
+      label: 'Soluções',
+      en: 'Solutions',
+      primaryHref: resolveHref('#servicos'),
+      links: [SECTION_LINKS[0], SECTION_LINKS[1]].map((link) => ({ ...link, href: resolveHref(link.href) })),
+    },
+    {
+      key: 'clients',
+      label: 'Clientes',
+      en: 'Clients',
+      primaryHref: resolveHref('#clientes'),
+      links: [{ ...SECTION_LINKS[2], href: resolveHref(SECTION_LINKS[2].href) }],
+    },
+    {
+      key: 'technology',
+      label: 'Tecnologia',
+      en: 'Technology',
+      primaryHref: resolveHref('#cassiellos'),
+      links: [SECTION_LINKS[3], SECTION_LINKS[4]].map((link) => ({ ...link, href: resolveHref(link.href) })),
+    },
+    {
+      key: 'company',
+      label: 'Empresa',
+      en: 'Company',
+      primaryHref: aboutHref,
+      links: [
+        { href: aboutHref, label: 'A Empresa', en: 'Company' },
+        { ...SECTION_LINKS[5], href: resolveHref(SECTION_LINKS[5].href) },
+      ],
+    },
   ]
+
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>('')
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const translatedLabel = (label: string) =>
-    english
-      ? ({
-          Serviços: 'Services',
-          'Como funciona': 'How it works',
-          Clientes: 'Clients',
-          Tecnologia: 'Technology',
-          Levi: 'Levi',
-          FAQ: 'FAQ',
-          Company: 'Company',
-        } as Record<string, string>)[label]
-      : label
+  const labelFor = (item: { label: string; en: string }) => (english ? item.en : item.label)
+  const isActive = (href: string) => active === href || (!isHome && href === pathname)
+  const groupIsActive = (group: NavGroup) => group.links.some((link) => isActive(link.href))
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -95,12 +134,33 @@ export default function SiteNav() {
           <span>Cassiellos</span>
         </a>
 
-        <nav aria-label={english ? 'Main navigation' : 'Navegação principal'}>
-          {links.map((link) => (
-            <a key={link.href} href={link.href} data-active={active === link.href || (!isHome && link.href === pathname)}>
-              {translatedLabel(link.label)}
-            </a>
-          ))}
+        <nav className={styles.desktopMenu} aria-label={english ? 'Main navigation' : 'Navegação principal'}>
+          {groups.map((group) => {
+            if (group.links.length === 1) {
+              const link = group.links[0]
+              return (
+                <a key={group.key} className={styles.directLink} href={link.href} data-active={isActive(link.href)}>
+                  {labelFor(group)}
+                </a>
+              )
+            }
+
+            return (
+              <div key={group.key} className={styles.group}>
+                <a className={styles.groupTrigger} href={group.primaryHref} data-active={groupIsActive(group)}>
+                  {labelFor(group)} <span className={styles.chevron} aria-hidden="true">⌄</span>
+                </a>
+                <div className={styles.dropdown}>
+                  <small>{labelFor(group)}</small>
+                  {group.links.map((link) => (
+                    <a key={link.href} href={link.href} data-active={isActive(link.href)}>
+                      {labelFor(link)}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </nav>
 
         <div className="desktopSiteControls"><SiteControls /></div>
@@ -123,16 +183,23 @@ export default function SiteNav() {
       </div>
 
       <div id="mobile-navigation" className="mobileNavPanel" data-open={mobileOpen} aria-hidden={!mobileOpen}>
-        <div className="mobileNavLinks" aria-label={english ? 'Mobile navigation' : 'Navegação mobile'}>
-          {links.map((link) => (
-            <a
-              key={`mobile-${link.href}`}
-              href={link.href}
-              data-active={active === link.href || (!isHome && link.href === pathname)}
-              onClick={() => setMobileOpen(false)}
-            >
-              {translatedLabel(link.label)}
-            </a>
+        <div className={`${styles.mobileGroups} mobileNavLinks`} aria-label={english ? 'Mobile navigation' : 'Navegação mobile'}>
+          {groups.map((group) => (
+            <section key={`mobile-${group.key}`} className={styles.mobileGroup}>
+              <span className={styles.mobileGroupTitle}>{labelFor(group)}</span>
+              <div className={styles.mobileGroupLinks}>
+                {group.links.map((link) => (
+                  <a
+                    key={`mobile-${link.href}`}
+                    href={link.href}
+                    data-active={isActive(link.href)}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {labelFor(link)}
+                  </a>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
         <div className="mobileNavFooter">
