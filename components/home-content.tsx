@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useLevi } from './levi-provider'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import Hero from './hero'
+import LeviMark, { LeviWordmark } from './levi-mark'
 import styles from './home-content.module.css'
 
 export type Locale = 'pt' | 'en'
@@ -370,9 +371,9 @@ export default function HomeContent({ lang }: { lang: Locale }) {
             </div>
           </motion.div>
           <motion.div className={styles.leviStrip} id="levi" {...reveal(0.16, 16)}>
-            <div className={styles.leviMiniOrb} aria-hidden="true"><i></i></div>
+            <LeviMark size="medium" />
             <div>
-              <span>{c.levi.eyebrow}</span>
+              <LeviWordmark />
               <h3>{c.levi.title}</h3>
               <p>{c.levi.body}</p>
             </div>
