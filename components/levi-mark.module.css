@@ -1,0 +1,83 @@
+.mark{
+  --levi-size:76px;
+  position:relative;
+  display:inline-block;
+  width:var(--levi-size);
+  height:var(--levi-size);
+  flex:0 0 auto;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.28));
+}
+.small{--levi-size:34px}
+.medium{--levi-size:76px}
+.ring{
+  position:absolute;
+  left:50%;
+  top:50%;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  animation:spin 24s linear infinite;
+}
+.ringA{width:71%;height:71%}
+.ringB{width:92%;height:92%;animation-direction:reverse;animation-duration:32s}
+.ring:after{
+  content:'';
+  position:absolute;
+  width:calc(var(--levi-size) * .066);
+  height:calc(var(--levi-size) * .066);
+  min-width:3px;
+  min-height:3px;
+  border-radius:50%;
+  background:var(--red);
+  top:12%;
+  left:20%;
+  box-shadow:0 0 10px currentColor;
+}
+.ringB:after{background:var(--blue);top:74%;left:88%}
+.core{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:45%;
+  height:45%;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 30%,#fff 0 5%,var(--cyan) 13%,var(--blue) 53%,var(--violet));
+  box-shadow:0 0 calc(var(--levi-size) * .32) rgba(36,107,255,.55);
+}
+.lockup{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.wordmarkFrame{
+  display:inline-block;
+  width:86px;
+  line-height:0;
+}
+.wordmarkFrame img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.wordmarkNavy{display:none!important}
+.by{
+  color:var(--cyan);
+  font:800 10px/1 var(--font-inter),Inter,sans-serif;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.compact .wordmarkFrame{width:52px}
+.compact .by{font-size:7px;letter-spacing:.1em}
+:global(html[data-theme=light]) .ring{border-color:rgba(7,16,31,.2)}
+:global(html[data-theme=light]) .wordmarkPaper{display:none!important}
+:global(html[data-theme=light]) .wordmarkNavy{display:block!important}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media(max-width:620px){
+  .medium{--levi-size:64px}
+  .wordmarkFrame{width:74px}
+  .by{font-size:8px;letter-spacing:.11em}
+}
+@media(prefers-reduced-motion:reduce){.ring{animation:none}}
