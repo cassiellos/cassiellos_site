@@ -1,0 +1,32 @@
+.desktopMenu{display:flex;align-items:center;gap:8px;min-width:0}
+.directLink,.groupTrigger{height:40px;padding:0 14px;border:1px solid transparent;border-radius:10px;display:inline-flex;align-items:center;gap:7px;background:transparent;color:#b7c0d0;font:650 13px/1 var(--font-inter);white-space:nowrap;transition:color .18s var(--ease),background .18s var(--ease),border-color .18s var(--ease)}
+.directLink:hover,.directLink[data-active=true],.group:hover .groupTrigger,.group:focus-within .groupTrigger,.groupTrigger[data-active=true]{color:var(--paper);background:rgba(246,248,255,.055);border-color:rgba(220,227,238,.12)}
+.directLink[data-active=true],.groupTrigger[data-active=true]{box-shadow:inset 0 -2px 0 var(--red)}
+.group{position:relative}
+.groupTrigger{cursor:pointer}
+.chevron{font-size:10px;opacity:.7;transition:transform .18s var(--ease)}
+.group:hover .chevron,.group:focus-within .chevron{transform:rotate(180deg)}
+.dropdown{position:absolute;top:calc(100% + 10px);left:0;min-width:210px;padding:8px;border:1px solid rgba(220,227,238,.14);border-radius:14px;background:rgba(7,16,31,.98);box-shadow:0 22px 60px rgba(0,0,0,.32);backdrop-filter:blur(20px);opacity:0;visibility:hidden;transform:translateY(-6px);transition:.18s var(--ease);z-index:80}
+.group:hover .dropdown,.group:focus-within .dropdown{opacity:1;visibility:visible;transform:none}
+.dropdown a{display:flex!important;align-items:center!important;min-height:42px!important;padding:0 12px!important;border:0!important;border-radius:9px!important;color:#b7c0d0!important;font-size:13px!important}
+.dropdown a:hover,.dropdown a[data-active=true]{background:rgba(246,248,255,.065)!important;color:var(--paper)!important}
+.dropdown small{display:block;padding:8px 12px 5px;color:#718098;font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.mobileGroups{display:grid;gap:20px}
+.mobileGroup{display:grid;gap:8px}
+.mobileGroupTitle{display:flex;align-items:center;gap:10px;color:var(--red);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.mobileGroupTitle:after{content:'';height:1px;flex:1;background:rgba(220,227,238,.14)}
+.mobileGroupLinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mobileGroupLinks a{min-height:48px;padding:0 14px;border:1px solid rgba(220,227,238,.12);border-radius:10px;display:flex;align-items:center;color:#c3ccda;font-weight:650;background:rgba(246,248,255,.025)}
+.mobileGroupLinks a[data-active=true]{border-color:rgba(241,60,75,.45);background:rgba(241,60,75,.08);color:var(--paper)}
+:global(html[data-theme=light]) .directLink,:global(html[data-theme=light]) .groupTrigger{color:#556276}
+:global(html[data-theme=light]) .directLink:hover,:global(html[data-theme=light]) .directLink[data-active=true],:global(html[data-theme=light]) .group:hover .groupTrigger,:global(html[data-theme=light]) .group:focus-within .groupTrigger,:global(html[data-theme=light]) .groupTrigger[data-active=true]{color:var(--navy);background:rgba(7,16,31,.045);border-color:rgba(7,16,31,.1)}
+:global(html[data-theme=light]) .dropdown{background:rgba(246,248,255,.98);border-color:rgba(7,16,31,.1);box-shadow:0 22px 60px rgba(7,16,31,.14)}
+:global(html[data-theme=light]) .dropdown a{color:#556276!important}
+:global(html[data-theme=light]) .dropdown a:hover,:global(html[data-theme=light]) .dropdown a[data-active=true]{background:rgba(7,16,31,.05)!important;color:var(--navy)!important}
+:global(html[data-theme=light]) .mobileGroupTitle{color:var(--red)}
+:global(html[data-theme=light]) .mobileGroupTitle:after{background:rgba(7,16,31,.12)}
+:global(html[data-theme=light]) .mobileGroupLinks a{color:#445166;background:#fff;border-color:rgba(7,16,31,.1)}
+:global(html[data-theme=light]) .mobileGroupLinks a[data-active=true]{color:var(--navy);background:rgba(241,60,75,.07);border-color:rgba(241,60,75,.35)}
+@media(max-width:1120px){.desktopMenu{gap:3px}.directLink,.groupTrigger{padding:0 10px;font-size:12px}}
+@media(max-width:980px){.desktopMenu{display:none}}
+@media(max-width:560px){.mobileGroupLinks{grid-template-columns:1fr 1fr}.mobileGroupLinks a{min-height:44px;font-size:14px}}
