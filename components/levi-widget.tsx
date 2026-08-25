@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { usePathname } from 'next/navigation'
 import { useLevi } from './levi-provider'
+import LeviMark, { LeviWordmark } from './levi-mark'
 import { EASE_OUT, scrollToId } from '@/lib/scroll'
 
 type Message = {
@@ -106,10 +107,14 @@ export default function LeviWidget() {
 
   return (
     <>
-      <button className="launcher" aria-label={english ? 'Open Levi' : 'Abrir Levi'} aria-expanded={open} onClick={openChat}>
-        <i className="lr a" />
-        <i className="lr b" />
-        <i className="lc" />
+      <button
+        className="launcher"
+        style={{ padding: 0, display: 'grid', placeItems: 'center' }}
+        aria-label={english ? 'Open Levi' : 'Abrir Levi'}
+        aria-expanded={open}
+        onClick={openChat}
+      >
+        <LeviMark size="medium" />
       </button>
 
       <AnimatePresence>
@@ -124,9 +129,9 @@ export default function LeviWidget() {
           >
             <header className="chatHead">
               <div className="lid">
-                <i className="miniOrb" />
+                <LeviMark size="small" />
                 <div>
-                  <b>Levi</b>
+                  <LeviWordmark compact />
                   <small>{english ? 'Cassiellos assistant' : 'Assistente da Cassiellos'}</small>
                 </div>
               </div>
