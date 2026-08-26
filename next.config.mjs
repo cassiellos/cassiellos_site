@@ -15,6 +15,12 @@ const nextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },
+  async rewrites() {
+    return [{
+      source: '/api/analyticsflow/:path*',
+      destination: 'https://os.cassiellos.com.br/api/analytics/:path*',
+    }]
+  },
 }
 
 export default nextConfig

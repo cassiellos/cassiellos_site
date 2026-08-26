@@ -107,6 +107,7 @@ export default function ContactIntakeForm({ lang = 'pt' }: { lang?: Locale }) {
     const nextErrors = validateStep(new FormData(formRef.current), step)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return focusFirstError(nextErrors)
+    track('contact_form_step_complete', { step: step + 1 })
     setStep((current) => Math.min(3, current + 1))
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
