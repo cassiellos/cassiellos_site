@@ -15,7 +15,7 @@ export default function LeviMark({ size = 'medium', className = '' }: LeviMarkPr
     <span className={`${styles.mark} ${styles[size]} ${className}`.trim()} aria-hidden="true">
       <i className={`${styles.ring} ${styles.ringA}`} />
       <i className={`${styles.ring} ${styles.ringB}`} />
-      <i className={styles.core} />
+      <img className={styles.symbol} src="/brand/current/levi-symbol.png" alt="" />
     </span>
   )
 }
