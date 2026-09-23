@@ -10,7 +10,7 @@ type Locale = 'pt' | 'en'
 const TEAM = [
   {
     name: 'Guilherme Cassim',
-    role: { pt: 'Co-Founder & Co-CEO', en: 'Co-Founder & Co-CEO' },
+    role: { pt: 'CEO e Fundador', en: 'CEO e Fundador' },
     description: {
       pt: 'Estratégia, negócios, relacionamento e direção comercial.',
       en: 'Strategy, business, relationships and commercial direction.',
@@ -18,18 +18,10 @@ const TEAM = [
   },
   {
     name: 'Daniel Barcellos',
-    role: { pt: 'Co-Founder & Co-CEO', en: 'Co-Founder & Co-CEO' },
+    role: { pt: 'CEO e Fundador', en: 'CEO e Fundador' },
     description: {
       pt: 'Marketing, planejamento, operação e relacionamento com clientes.',
       en: 'Marketing, planning, operations and client relationships.',
-    },
-  },
-  {
-    name: 'Rafael Torres',
-    role: { pt: 'Head of Design & Product', en: 'Head of Design & Product' },
-    description: {
-      pt: 'Branding, design, produtos digitais e tecnologia criativa.',
-      en: 'Branding, design, digital products and creative technology.',
     },
   },
 ] as const
