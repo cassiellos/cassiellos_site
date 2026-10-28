@@ -126,12 +126,14 @@ export async function createGoogleBooking(input: {
   endAt: string
   guestEmail: string
   requestId: string
+  googleEventId: string
 }): Promise<GoogleCreatedEvent> {
   const config = await credentials()
   if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
   const endpoint = 'calendars/' + encodeURIComponent(config.calendarId) +
     '/events?sendUpdates=all&conferenceDataVersion=1'
   const result = await calendarRequest(config, endpoint, {
+    id: input.googleEventId,
     summary: input.title,
     description: input.description,
     start: { dateTime: input.startAt, timeZone: CRM_BOOKING_TIME_ZONE },
