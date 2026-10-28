@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { PoolClient } from 'pg'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
+import { createBookingGrant } from '@/lib/crm/booking-grant'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -211,8 +212,15 @@ export async function POST(request: NextRequest) {
       idempotencyKey, name, email, phone, formSlug: form.slug,
       formVersion: form.version, niche: form.niche, answers, attribution,
     })
-    return response({ ok: true, leadId: result.leadId, submissionId: result.submissionId,
-      reused: result.reused, environment: 'preview' }, result.reused ? 200 : 201)
+    return response({
+      ok: true,
+      leadId: result.leadId,
+      submissionId: result.submissionId,
+      bookingToken: createBookingGrant({
+        leadId: result.leadId, submissionId: result.submissionId, formSlug: form.slug,
+      }),
+      reused: result.reused, environment: 'preview',
+    }, result.reused ? 200 : 201)
   } catch {
     // No user input, SQL or credentials should ever appear in logs or error responses.
     return response({ error: 'LEAD_INTAKE_UNAVAILABLE' }, 503)
