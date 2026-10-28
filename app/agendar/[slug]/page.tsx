@@ -24,5 +24,8 @@ export default async function NicheBookingPage({
   const { slug } = await params
   const form = getBookingForm(slug)
   if (!form) notFound()
-  return <BookingExperience form={form} />
+  const bookingEnabled = process.env.VERCEL_ENV === 'preview' &&
+    process.env.CRM_GOOGLE_BOOKINGS_ENABLED === 'true' &&
+    Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim())
+  return <BookingExperience form={form} bookingEnabled={bookingEnabled} />
 }
