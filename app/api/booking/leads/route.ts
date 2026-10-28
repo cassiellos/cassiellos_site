@@ -10,6 +10,7 @@ export const maxDuration = 20
 
 const POLICY_VERSION = '2026-08-22'
 const MAX_BODY_SIZE = 12_000
+const PREVIEW_ORIGIN = 'https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app'
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const
 
 function response(body: unknown, status: number) {
@@ -93,7 +94,7 @@ async function saveLead(input: {
     await client.query('BEGIN')
     await client.query('SET LOCAL statement_timeout = 6000')
     // Serialize duplicate submissions for this person across simultaneous requests.
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [input.email])
+    await client.query('SELECT pg_advisory_xact_lock(241023, hashtext($1))', [input.email])
 
     const submitted = await client.query<{ lead_id: string; id: string }>(
       'SELECT lead_id, id FROM crm.form_submissions WHERE idempotency_key = $1',
@@ -160,7 +161,10 @@ export async function POST(request: NextRequest) {
   // Preview only: no production intake before integration review and approval.
   if (process.env.VERCEL_ENV !== 'preview') return response({ error: 'NOT_FOUND' }, 404)
   const origin = request.headers.get('origin')
-  if (!origin || origin !== request.nextUrl.origin) return response({ error: 'FORBIDDEN' }, 403)
+  // Vercel may use the deployment hostname internally even when the browser uses
+  // the stable Git branch alias. Check against the allowlisted Preview origin,
+  // not NextRequest.nextUrl.origin, without weakening the same-origin requirement.
+  if (origin !== PREVIEW_ORIGIN) return response({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return response({ error: 'INVALID_CONTENT_TYPE' }, 415)
   const length = Number(request.headers.get('content-length') || '0')
@@ -187,8 +191,11 @@ export async function POST(request: NextRequest) {
   const email = validatedEmail(value.email)
   const phone = validatedPhone(value.whatsapp)
   const answers = configuredAnswers(form, value.answers)
-  if (!name || !email || !phone || !answers || value.privacyAccepted !== true)
-    return response({ error: 'INVALID_FIELDS' }, 400)
+  if (!name) return response({ error: 'INVALID_NAME' }, 400)
+  if (!email) return response({ error: 'INVALID_EMAIL' }, 400)
+  if (!phone) return response({ error: 'INVALID_WHATSAPP' }, 400)
+  if (!answers) return response({ error: 'INVALID_FORM_ANSWERS' }, 400)
+  if (value.privacyAccepted !== true) return response({ error: 'PRIVACY_NOT_ACCEPTED' }, 400)
 
   const attribution: Record<string, string> = {}
   const rawAttribution = value.attribution
