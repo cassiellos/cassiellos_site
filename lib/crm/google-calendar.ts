@@ -2,12 +2,13 @@ import 'server-only'
 
 import type { BusyInterval } from '@/lib/crm/booking-slots'
 import { CRM_BOOKING_TIME_ZONE } from '@/lib/crm/booking-slots'
+import { getGoogleRefreshToken, googleOAuthConfig } from '@/lib/crm/google-oauth'
 
 /**
  * Adaptador de servidor: Google Calendar API <-> Cassiellos.
  * A conexão ocorre no backend Next.js, nunca diretamente no Neon ou no browser.
- * Exige autorização OAuth com acesso offline e calendar.events.
- * Os tokens jamais são retornados ao cliente, gravados em logs ou no PostgreSQL.
+ * Exige OAuth offline; o refresh token fica cifrado em crm.integration_credentials.
+ * Os tokens jamais são retornados ao cliente ou registrados em logs.
  */
 type Credentials = {
   clientId: string
@@ -16,17 +17,16 @@ type Credentials = {
   calendarId: string
 }
 
-function credentials(): Credentials | null {
-  const clientId = process.env.CRM_GOOGLE_CLIENT_ID?.trim()
-  const clientSecret = process.env.CRM_GOOGLE_CLIENT_SECRET?.trim()
-  const refreshToken = process.env.CRM_GOOGLE_REFRESH_TOKEN?.trim()
-  const calendarId = process.env.CRM_GOOGLE_CALENDAR_ID?.trim()
-  if (!clientId || !clientSecret || !refreshToken || !calendarId) return null
-  return { clientId, clientSecret, refreshToken, calendarId }
+async function credentials(): Promise<Credentials | null> {
+  const config = googleOAuthConfig()
+  if (!config) return null
+  const refreshToken = await getGoogleRefreshToken()
+  if (!refreshToken) return null
+  return { ...config, refreshToken }
 }
 
-export function isGoogleCalendarConfigured(): boolean {
-  return credentials() !== null
+export async function isGoogleCalendarConfigured(): Promise<boolean> {
+  return Boolean(await credentials())
 }
 
 async function googleAccessToken(config: Credentials): Promise<string> {
@@ -80,7 +80,7 @@ function nextDate(date: string): string {
 
 /** Apenas períodos ocupados: não retorna título, participantes ou outros dados privados. */
 export async function readGoogleBusyIntervals(date: string): Promise<BusyInterval[]> {
-  const config = credentials()
+  const config = await credentials()
   if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
   const response = await calendarRequest(config, 'freeBusy', {
     timeMin: date + 'T00:00:00-03:00',
@@ -127,7 +127,7 @@ export async function createGoogleBooking(input: {
   guestEmail: string
   requestId: string
 }): Promise<GoogleCreatedEvent> {
-  const config = credentials()
+  const config = await credentials()
   if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
   const endpoint = 'calendars/' + encodeURIComponent(config.calendarId) +
     '/events?sendUpdates=all&conferenceDataVersion=1'
