@@ -6,6 +6,15 @@ import type { BookingForm } from '@/lib/crm/booking-forms'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string }
+type Question = {
+  name: keyof Attendee
+  label: string
+  type: 'text' | 'select' | 'email' | 'tel'
+  placeholder?: string
+  options?: readonly string[]
+  autoComplete?: string
+}
+
 
 const INITIAL_ATTENDEE: Attendee = {
   name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '',
@@ -78,6 +87,7 @@ function Icon({ name }: { name: 'calendar' | 'clock' | 'video' | 'shield' | 'arr
 export default function BookingExperience({ form }: { form: BookingForm }) {
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [questionIndex, setQuestionIndex] = useState(0)
   // Browser and server calculate current date in the same timezone, not user's machine timezone.
   const [today, setToday] = useState('')
   const [month, setMonth] = useState('')
@@ -124,6 +134,24 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
     return () => { active = false; controller.abort() }
   }, [step, date, retry, form.slug])
 
+  const questions = useMemo<Question[]>(() => [
+    ...form.fields.map(field => ({
+      name: field.name,
+      label: field.label,
+      type: field.type,
+      placeholder: field.placeholder,
+      options: field.options,
+    })),
+    { name: 'name', label: 'Como podemos chamar você?', type: 'text',
+      placeholder: 'Seu nome completo', autoComplete: 'name' },
+    { name: 'whatsapp', label: 'Qual é o seu WhatsApp?', type: 'tel',
+      placeholder: '(31) 99999-9999', autoComplete: 'tel' },
+    { name: 'email', label: 'Qual é seu melhor e-mail?', type: 'email',
+      placeholder: 'voce@clinica.com.br', autoComplete: 'email' },
+  ], [form.fields])
+  const question = questions[questionIndex]
+  const totalStages = questions.length + 2
+  const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 1 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
   const maxMonth = today ? plusDays(today, 30).slice(0, 7) : ''
   const firstMonth = today ? today.slice(0, 7) : ''
@@ -134,7 +162,16 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
 
   function next(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setStep(2)
+    if (!question || !attendee[question.name].trim()) return
+    if (questionIndex < questions.length - 1) {
+      setQuestionIndex(index => index + 1)
+    } else {
+      setStep(2)
+    }
+  }
+
+  function backQuestion() {
+    setQuestionIndex(index => Math.max(0, index - 1))
   }
 
   function goMonth(delta: number) {
@@ -180,44 +217,53 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
             <span className={step >= 3 ? 'is-current' : ''}>03 <span>Revisão</span></span>
           </div>
 
-          {step === 1 && <form className="booking-form" onSubmit={next}>
-            <div className="booking-card-heading">
-              <div className="booking-step-label">ETAPA 01 DE 03</div>
-              <h2>Primeiro, vamos nos conhecer.</h2>
-              <p>Preencha as informações para personalizar seu diagnóstico.</p>
+          {step === 1 && question && <form className="booking-form booking-question-form"
+            onSubmit={next} key={question.name}>
+            <div className="booking-question-topline">
+              <span>PERGUNTA {String(questionIndex + 1).padStart(2,'0')} DE {String(questions.length).padStart(2,'0')}</span>
+              <span>{Math.round(progress * 100)}% concluído</span>
             </div>
-            <div className="booking-inputs">
-              <label>Seu nome completo <span>*</span>
-                <input required autoComplete="name" maxLength={120} placeholder="Como podemos chamar você?"
-                  value={attendee.name} onChange={e => update('name', e.target.value)}/>
-              </label>
-              <div className="booking-input-row">
-                <label>WhatsApp <span>*</span>
-                  <input required type="tel" inputMode="tel" autoComplete="tel" maxLength={24}
-                    placeholder="(31) 99999-9999"
-                    value={attendee.whatsapp} onChange={e => update('whatsapp', e.target.value)}/>
-                </label>
-                <label>E-mail <span>*</span>
-                  <input required type="email" autoComplete="email" maxLength={180}
-                    placeholder="voce@clinica.com.br"
-                    value={attendee.email} onChange={e => update('email', e.target.value)}/>
-                </label>
-              </div>
-              {form.fields.map(field =>
-                <label key={field.name}>{field.label} {field.required && <span>*</span>}
-                  {field.type === 'select' ?
-                    <select required={field.required} value={attendee[field.name]}
-                      onChange={e => update(field.name, e.target.value)}>
-                      <option value="">Selecione uma opção</option>
-                      {field.options?.map(opt => <option value={opt} key={opt}>{opt}</option>)}
-                    </select> :
-                    <input required={field.required} maxLength={120} placeholder={field.placeholder}
-                      value={attendee[field.name]} onChange={e => update(field.name, e.target.value)}/>
-                  }
-                </label>)}
+            <div className="booking-step-meter" aria-label={Math.round(progress * 100) + '% do formulário concluído'}>
+              <span style={{ width: progress * 100 + '%' }}/>
             </div>
-            <button className="booking-primary" type="submit">Escolher dia e horário <Icon name="arrow"/></button>
-            <p className="booking-privacy">Ambiente de testes: os dados preenchidos no formulário não são enviados nem armazenados. Na versão real, aplicaremos a <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a> e o consentimento adequado.</p>
+            <div className="booking-card-heading booking-question-heading">
+              <div className="booking-step-label">DIAGNÓSTICO / {form.niche.toUpperCase()}</div>
+              <h2 id="booking-question-label">{question.label}</h2>
+              <p>Uma resposta por vez. É rápido e você pode voltar quando quiser.</p>
+            </div>
+            <div className="booking-inputs booking-question-inputs">
+              {question.type === 'select' ? <div className="booking-choices" role="group"
+                  aria-labelledby="booking-question-label">
+                {question.options?.map(option => <button
+                  type="button" key={option}
+                  className="booking-choice"
+                  data-selected={attendee[question.name] === option}
+                  aria-pressed={attendee[question.name] === option}
+                  onClick={() => update(question.name, option)}>
+                  <span>{option}</span><span className="booking-choice-indicator" aria-hidden="true">
+                    {attendee[question.name] === option ? '✓' : ''}</span>
+                </button>)}
+              </div> : <label className="booking-question-field" htmlFor={'question-' + question.name}>
+                <span className="booking-visually-hidden">{question.label}</span>
+                <input id={'question-' + question.name} required
+                  minLength={question.name === 'whatsapp' ? 10 : question.name === 'email' ? 5 : 2}
+                  type={question.type} autoComplete={question.autoComplete}
+                  autoFocus maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
+                  placeholder={question.placeholder} value={attendee[question.name]}
+                  onChange={event => update(question.name, event.target.value)}/>
+              </label>}
+            </div>
+            <div className="booking-question-footer">
+              {questionIndex > 0 ? <button className="booking-secondary" type="button"
+                onClick={backQuestion}><Icon name="back"/> Voltar</button> :
+                <span className="booking-first-question-note">Primeiro passo</span>}
+              <button className="booking-primary" type="submit"
+                disabled={!attendee[question.name].trim()}>
+                {questionIndex === questions.length - 1 ? 'Ver horários disponíveis' : 'Continuar'}
+                <Icon name="arrow"/>
+              </button>
+            </div>
+            <p className="booking-privacy">Prévia em desenvolvimento: suas respostas ficam apenas nesta tela e não são enviadas ao servidor. <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
           </form>}
 
           {step === 2 && <div className="booking-schedule">
@@ -270,7 +316,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
                 </div>}
             </div>
             <div className="booking-actions">
-              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setChosen(null) }}>
+              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setQuestionIndex(questions.length - 1); setChosen(null) }}>
                 <Icon name="back"/> Voltar
               </button>
               <button type="button" className="booking-primary" disabled={!chosen || loading || failed}
