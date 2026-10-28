@@ -76,9 +76,23 @@ export async function GET(request: NextRequest) {
 
   try {
     const busy = await readGoogleBusyIntervals(date)
+    // Include reservations in progress in Neon: they may not yet appear in Google.
+    const midnight = new Date(date + 'T00:00:00-03:00')
+    const endOfDay = new Date(midnight.getTime() + 86_400_000)
+    const calendarId = process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary'
+    const reserved = await getCrmPool().query<{ starts_at: Date; ends_at: Date }>(
+      `SELECT starts_at, ends_at FROM crm.booking_requests
+       WHERE calendar_id = $1 AND status IN ('processing', 'confirmed')
+         AND starts_at < $3 AND ends_at > $2`,
+      [calendarId, midnight, endOfDay],
+    )
+    const internalBusy = reserved.rows.map(item => ({
+      start: new Date(item.starts_at).toISOString(),
+      end: new Date(item.ends_at).toISOString(),
+    }))
     return json({
       date,
-      slots: listBookingSlots(date, busy),
+      slots: listBookingSlots(date, [...busy, ...internalBusy]),
       timeZone: CRM_BOOKING_TIME_ZONE,
       slotMinutes: DEFAULT_BOOKING_POLICY.slotMinutes,
       provisionalPolicy: true,
