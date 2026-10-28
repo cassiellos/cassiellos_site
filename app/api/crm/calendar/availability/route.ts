@@ -34,7 +34,11 @@ export async function GET(request: NextRequest) {
 
   const date = request.nextUrl.searchParams.get('date') ?? ''
   if (!isValidBookingDate(date)) return json({ error: 'INVALID_DATE' }, 400)
-  if (!isGoogleCalendarConfigured()) return json({ error: 'GOOGLE_CALENDAR_NOT_CONNECTED' }, 503)
+  try {
+    if (!(await isGoogleCalendarConfigured())) return json({ error: 'GOOGLE_CALENDAR_NOT_CONNECTED' }, 503)
+  } catch {
+    return json({ error: 'GOOGLE_CALENDAR_UNAVAILABLE' }, 502)
+  }
 
   const policy = DEFAULT_BOOKING_POLICY
   const metadata = {
