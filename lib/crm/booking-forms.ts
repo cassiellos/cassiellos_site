@@ -1,5 +1,5 @@
 export type BookingField = {
-  name: 'clinic' | 'priority' | 'units'
+  name: 'clinic' | 'priority' | 'units' | 'revenue'
   label: string
   type: 'text' | 'select'
   required: boolean
@@ -9,6 +9,7 @@ export type BookingField = {
 
 export type BookingForm = {
   slug: string
+  version: string
   niche: string
   eyebrow: string
   headline: string
@@ -21,6 +22,7 @@ export type BookingForm = {
 const bookingForms: Record<string, BookingForm> = {
   odontologia: {
     slug: 'odontologia',
+    version: 'odontologia-v1',
     niche: 'Clínicas odontológicas',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
     headline: 'Sua clínica tem espaço para crescer. Vamos conversar?',
@@ -29,6 +31,8 @@ const bookingForms: Record<string, BookingForm> = {
     durationMinutes: 30,
     fields: [
       { name: 'clinic', label: 'Nome da clínica', type: 'text', required: true, placeholder: 'Como sua clínica se chama?' },
+      { name: 'revenue', label: 'Qual é o faturamento médio mensal da clínica?', type: 'text', required: true,
+        placeholder: 'Faixa ou valor aproximado (R$)' },
       { name: 'priority', label: 'Qual é seu principal objetivo?', type: 'select', required: true,
         options: ['Atrair mais pacientes', 'Melhorar o marketing da clínica', 'Organizar os anúncios e resultados', 'Quero entender as possibilidades'] },
     ],
