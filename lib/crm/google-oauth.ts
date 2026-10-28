@@ -171,14 +171,14 @@ function decrypt(value: string): string {
 export async function saveGoogleRefreshToken(token: string, scopes: string, expiresAt: Date | null): Promise<void> {
   const ciphertext = encrypt(token)
   await getCrmPool().query(
-    \`INSERT INTO crm.integration_credentials
+    `INSERT INTO crm.integration_credentials
       (provider, encrypted_refresh_token, granted_scopes, token_expires_at)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (provider) DO UPDATE
       SET encrypted_refresh_token = EXCLUDED.encrypted_refresh_token,
           granted_scopes = EXCLUDED.granted_scopes,
           token_expires_at = EXCLUDED.token_expires_at,
-          updated_at = now()\`,
+          updated_at = now()`,
     [OAUTH_PROVIDER, ciphertext, scopes, expiresAt],
   )
 }
