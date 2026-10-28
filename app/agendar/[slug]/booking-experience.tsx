@@ -361,6 +361,9 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
           </form>}
 
           {step === 2 && <div className="booking-schedule">
+            {leadSaved && <p className="booking-saved-notice" role="status">
+              <Icon name="check"/> Cadastro registrado no CRM de testes.
+            </p>}
             <div className="booking-card-heading">
               <div className="booking-step-label">ETAPA 02 DE 03</div>
               <h2>Escolha seu melhor horário.</h2>
