@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
+import { createHmac, pbkdf2, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
 
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
@@ -11,7 +11,7 @@ export function isCrmAuthConfigured(): boolean {
   const passwordHash = process.env.CRM_ADMIN_PASSWORD_HASH
   return Boolean(
     secret && /^[a-f0-9]{64,}$/i.test(secret) && secret.length % 2 === 0 &&
-    passwordHash && /^scrypt\$16384\$8\$1\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(passwordHash) &&
+    passwordHash && /^(?:scrypt\$16384\$8\$1|pbkdf2_sha256\$600000)\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(passwordHash) &&
     process.env.CRM_DATABASE_URL?.trim()
   )
 }
@@ -65,10 +65,14 @@ export function verifyCrmSession(token?: string | null): boolean {
   }
 }
 
-function derivePassword(password: string, salt: Buffer): Promise<Buffer> {
+function derivePassword(password: string, salt: Buffer, algorithm: 'scrypt' | 'pbkdf2_sha256'): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    scrypt(password, salt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 },
-      (error, key) => error ? reject(error) : resolve(key))
+    const complete = (error: Error | null, key: Buffer) => error ? reject(error) : resolve(key)
+    if (algorithm === 'pbkdf2_sha256') {
+      pbkdf2(password, salt, 600_000, 32, 'sha256', complete)
+    } else {
+      scrypt(password, salt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }, complete)
+    }
   })
 }
 
@@ -77,10 +81,14 @@ export async function verifyAdminCredentials(username: string, password: string)
   if (!stored || !isCrmAuthConfigured()) return false
   if (password.length < 12 || password.length > 256 || username.length > 100) return false
   const parts = stored.split('$')
-  if (parts.length !== 6) return false
+  const isPbkdf2 = parts[0] === 'pbkdf2_sha256' && parts[1] === '600000' && parts.length === 4
+  const isScrypt = parts[0] === 'scrypt' && parts[1] === '16384' && parts[2] === '8' &&
+    parts[3] === '1' && parts.length === 6
+  if (!isPbkdf2 && !isScrypt) return false
   try {
-    const expected = Buffer.from(parts[5], 'hex')
-    const calculated = await derivePassword(password, Buffer.from(parts[4], 'hex'))
+    const expected = Buffer.from(isPbkdf2 ? parts[3] : parts[5], 'hex')
+    const salt = Buffer.from(isPbkdf2 ? parts[2] : parts[4], 'hex')
+    const calculated = await derivePassword(password, salt, isPbkdf2 ? 'pbkdf2_sha256' : 'scrypt')
     return expected.length === calculated.length && timingSafeEqual(expected, calculated) &&
       username.trim().toLowerCase() === 'admin'
   } catch {
