@@ -35,7 +35,7 @@ async function allowAvailabilityLookup(request: NextRequest): Promise<boolean> {
     .update('calendar-availability:' + forwardedIp.slice(0, 128))
     .digest('hex')
   const result = await getCrmPool().query<{ request_count: number }>(
-    \`INSERT INTO crm.booking_availability_limits
+    `INSERT INTO crm.booking_availability_limits
       (fingerprint, window_started_at, request_count, last_request_at)
       VALUES ($1, now(), 1, now())
       ON CONFLICT (fingerprint) DO UPDATE SET
@@ -46,7 +46,7 @@ async function allowAvailabilityLookup(request: NextRequest): Promise<boolean> {
           WHEN crm.booking_availability_limits.window_started_at < now() - interval '15 minutes'
           THEN now() ELSE crm.booking_availability_limits.window_started_at END,
         last_request_at = now()
-      RETURNING request_count\`,
+      RETURNING request_count`,
     [fingerprint],
   )
   return (result.rows[0]?.request_count ?? 1000) <= 50
