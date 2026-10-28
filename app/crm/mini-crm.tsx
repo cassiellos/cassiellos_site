@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import './crm.css'
 
@@ -103,6 +103,47 @@ export default function MiniCrm() {
   const [search, setSearch] = useState('')
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [modal, setModal] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const newLeadButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Mantém o teclado dentro da janela e devolve o foco ao botão após fechar.
+  useEffect(() => {
+    if (!modal) return
+    const oldOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function onDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setModal(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const focusables = Array.from(
+        modalRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      )
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (!first || !last) return
+      if (event.shiftKey && (document.activeElement === first || !modalRef.current?.contains(document.activeElement))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !modalRef.current?.contains(document.activeElement))) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onDialogKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onDialogKeyDown)
+      document.body.style.overflow = oldOverflow
+      newLeadButtonRef.current?.focus()
+    }
+  }, [modal])
   const [company, setCompany] = useState('')
   const [contact, setContact] = useState('')
   const filteredLeads = useMemo(() => leads.filter(lead => [lead.company, lead.contact, lead.origin, lead.status].join(' ').toLowerCase().includes(search.toLowerCase())), [leads, search])
@@ -116,7 +157,7 @@ export default function MiniCrm() {
   return <div id="cassiellos-crm" data-crm-root>
     <div className="crm-layout">
       <aside className="crm-sidebar" aria-label="Navegação do Mini CRM">
-        <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">Mini CRM / Operações</span></div></div>
+        <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">Mini CRM / Operações</span></div></div>
         <nav className="crm-nav-wrap" aria-label="Seções">
           <div className="crm-nav-label">Workspace</div>
           {navigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}{item.count && <span className="crm-nav-count">{item.count}</span>}</button>)}
@@ -139,7 +180,7 @@ export default function MiniCrm() {
             <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Seu funil, suas reuniões e as oportunidades em um só lugar.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
             <div className="crm-controls">
               <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>
-              <button className="crm-btn crm-btn-primary" type="button" onClick={() => setModal(true)}><Icon name="plus" size={16}/>Novo lead</button>
+              <button ref={newLeadButtonRef} className="crm-btn crm-btn-primary" type="button" onClick={() => setModal(true)}><Icon name="plus" size={16}/>Novo lead</button>
             </div>
           </div>
 
@@ -155,7 +196,7 @@ export default function MiniCrm() {
               ].map(metric => <div className="crm-card crm-metric" key={metric.label}><div className="crm-metric-top"><span>{metric.label}</span><span className="crm-metric-icon"><Icon name={metric.icon} size={19}/></span></div><div className="crm-metric-value">{metric.value}</div><div><span className="crm-trend">↗ {metric.trend}</span><span className="crm-trend-muted">vs. período anterior (demo)</span></div></div>)}
             </div>
             <div className="crm-dashboard-grid">
-              <section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Evolução da captação</div><div className="crm-panel-subtitle">Leads recebidos no período</div></div><div className="crm-segment"><button data-selected={period === '7d'} onClick={() => setPeriod('7d')} type="button">7 dias</button><button data-selected={period === '30d'} onClick={() => setPeriod('30d')} type="button">30 dias</button></div></div><Chart period={period}/></section>
+              <section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Evolução da captação</div><div className="crm-panel-subtitle">Leads recebidos no período</div></div><div className="crm-segment"><button aria-pressed={period === '7d'} data-selected={period === '7d'} onClick={() => setPeriod('7d')} type="button">7 dias</button><button aria-pressed={period === '30d'} data-selected={period === '30d'} onClick={() => setPeriod('30d')} type="button">30 dias</button></div></div><Chart period={period}/></section>
               <section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Funil de conversão</div><div className="crm-panel-subtitle">Da captação ao fechamento</div></div><button className="crm-icon-btn" aria-label="Abrir funil" type="button" onClick={() => openView('funil')}><Icon name="arrow" size={16}/></button></div><div className="crm-funnel-list">{funnel.map(item => <div className="crm-funnel-row" key={item.label}><span>{item.label}</span><div className="crm-funnel-track"><div className="crm-funnel-fill" style={{ width: item.width + '%' }}/></div><strong>{item.value}</strong></div>)}</div><div style={{marginTop:24,fontSize:11,color:'#8193ab'}}>Evento-chave da campanha: <span style={{color:'#72d6f5',fontFamily:'monospace'}}>Chronos_Scheduled</span></div></section>
             </div>
             <section className="crm-card crm-table-panel"><div className="crm-table-head"><div><div className="crm-panel-title">Leads recentes</div><div className="crm-panel-subtitle">Últimas entradas no funil comercial</div></div><button type="button" className="crm-btn" onClick={() => openView('leads')}>Ver todos <Icon name="arrow" size={14}/></button></div><LeadTable leads={leads} limit={5}/></section>
@@ -188,6 +229,6 @@ export default function MiniCrm() {
         </div>
       </main>
     </div>
-    {modal && <div className="crm-modal-backdrop" onMouseDown={e => {if(e.target === e.currentTarget) setModal(false)}}><div className="crm-modal" role="dialog" aria-modal="true" aria-labelledby="crm-modal-title"><h2 id="crm-modal-title">Novo lead de demonstração</h2><p>Esse registro aparecerá apenas nesta sessão do navegador e não será salvo no Neon.</p><form onSubmit={createLead}><label className="crm-field">Empresa<input autoFocus required maxLength={90} placeholder="Ex.: Empresa Exemplo F" value={company} onChange={e=>setCompany(e.target.value)}/></label><label className="crm-field">Nome do contato<input required maxLength={90} placeholder="Ex.: Contato ilustrativo" value={contact} onChange={e=>setContact(e.target.value)}/></label><div className="crm-modal-actions"><button className="crm-btn" type="button" onClick={()=>setModal(false)}>Cancelar</button><button className="crm-btn crm-btn-primary" type="submit"><Icon name="plus" size={16}/>Adicionar na demo</button></div></form></div></div>}
+    {modal && <div className="crm-modal-backdrop" onMouseDown={e => {if(e.target === e.currentTarget) setModal(false)}}><div ref={modalRef} className="crm-modal" role="dialog" aria-modal="true" aria-labelledby="crm-modal-title" aria-describedby="crm-modal-description"><h2 id="crm-modal-title">Novo lead de demonstração</h2><p id="crm-modal-description">Esse registro aparecerá apenas nesta sessão do navegador e não será salvo no Neon.</p><form onSubmit={createLead}><label className="crm-field">Empresa<input autoFocus required maxLength={90} placeholder="Ex.: Empresa Exemplo F" value={company} onChange={e=>setCompany(e.target.value)}/></label><label className="crm-field">Nome do contato<input required maxLength={90} placeholder="Ex.: Contato ilustrativo" value={contact} onChange={e=>setContact(e.target.value)}/></label><div className="crm-modal-actions"><button className="crm-btn" type="button" onClick={()=>setModal(false)}>Cancelar</button><button className="crm-btn crm-btn-primary" type="submit"><Icon name="plus" size={16}/>Adicionar na demo</button></div></form></div></div>}
   </div>
 }
