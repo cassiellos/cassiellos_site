@@ -173,6 +173,13 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
   function next(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!question || !attendee[question.name].trim()) return
+    if (question.name === 'whatsapp') {
+      const digits = attendee.whatsapp.replace(/\D/g, '')
+      if (digits.length < 10 || digits.length > 13) {
+        setSaveError('Digite um telefone fictício com DDD e 10 a 13 dígitos para testar.')
+        return
+      }
+    }
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(index => index + 1)
     } else {
@@ -215,17 +222,30 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
           answers, attribution, privacyAccepted,
         }),
       })
-      if (!response.ok) throw new Error(response.status === 429 ? 'LIMIT' : 'SAVE')
       const result: unknown = await response.json()
+      if (!response.ok) {
+        const code = result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
+          ? result.error : 'SAVE'
+        throw new Error(code)
+      }
       if (!result || typeof result !== 'object' || !('ok' in result) || result.ok !== true) {
         throw new Error('SAVE')
       }
       setLeadSaved(true)
       setStep(2)
     } catch (error) {
-      setSaveError(error instanceof Error && error.message === 'LIMIT' ?
-        'Muitas tentativas. Tente novamente mais tarde.' :
-        'Não foi possível registrar suas informações. Tente novamente.')
+      const code = error instanceof Error ? error.message : ''
+      const messages: Record<string, string> = {
+        INVALID_NAME: 'Revise o nome informado.',
+        INVALID_EMAIL: 'Confira o formato do e-mail fictício, como teste@exemplo.com.',
+        INVALID_WHATSAPP: 'Confira o telefone fictício: inclua DDD e pelo menos 10 dígitos.',
+        INVALID_FORM_ANSWERS: 'Revise as respostas do formulário. Uma delas pode estar incompleta.',
+        PRIVACY_NOT_ACCEPTED: 'Confirme a Política de Privacidade para continuar.',
+        TOO_MANY_REQUESTS: 'Muitas tentativas. Tente novamente mais tarde.',
+        FORBIDDEN: 'A página de testes perdeu a autorização de origem. Atualize a página e tente novamente.',
+        NOT_FOUND: 'O ambiente de testes não está disponível. Não envie dados reais.',
+      }
+      setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
     } finally {
       setSavingLead(false)
     }
@@ -314,6 +334,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
                   onChange={event => update(question.name, event.target.value)}/>
               </label>}
             </div>
+            {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">
               {questionIndex > 0 ? <button className="booking-secondary" type="button"
                 onClick={backQuestion}><Icon name="back"/> Voltar</button> :
