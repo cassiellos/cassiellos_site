@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
   if (!form) return json({ error: 'UNKNOWN_FORM' }, 400)
   const startAt = data.startAt
   if (typeof startAt !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\\.\d{3})?Z$/.test(startAt)) {
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(startAt)) {
     return json({ error: 'INVALID_SLOT' }, 400)
   }
   const ms = Date.parse(startAt)
