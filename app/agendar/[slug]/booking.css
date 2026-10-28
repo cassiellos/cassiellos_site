@@ -11,7 +11,7 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-brand strong{display:block;font-size:21px;letter-spacing:-.055em;font-weight:800;line-height:1.15}
 #cassiellos-booking .booking-brand small{display:block;margin-top:5px;color:#9daec6;font-size:9px;letter-spacing:.17em;font-weight:700}
 #cassiellos-booking .booking-header-tag{font-size:10px;letter-spacing:.15em;font-weight:750;color:#9facbe}
-#cassiellos-booking .booking-shell{width:min(1200px,calc(100% - 64px));margin:0 auto;padding:64px 0 88px;display:grid;grid-template-columns:minmax(0,1fr) minmax(410px,530px);gap:clamp(36px,6.5vw,110px);align-items:start}
+#cassiellos-booking .booking-shell{width:min(1200px,calc(100% - 64px));margin:0 auto;padding:64px 0 88px;display:grid;grid-template-columns:minmax(0,1fr) minmax(410px,530px);gap:clamp(36px,6.5vw,110px);align-items:flex-start}
 #cassiellos-booking .booking-intro{padding-top:57px}
 #cassiellos-booking .booking-kicker{display:flex;align-items:center;gap:11px;color:#ff6673;font-size:11px;letter-spacing:.16em;font-weight:800;line-height:1.8}
 #cassiellos-booking .booking-kicker-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--booking-red);box-shadow:0 0 16px rgba(241,60,75,.5)}
@@ -64,7 +64,7 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-day:disabled{background:#0f1b2d;color:#61768e;border-color:transparent;cursor:not-allowed}
 #cassiellos-booking .booking-empty-day{display:block}
 #cassiellos-booking .booking-slots{border-top:1px solid var(--booking-border);margin-top:26px;padding-top:20px;min-height:154px}
-#cassiellos-booking .booking-slots-heading{display:flex;justify-content:space-between;align-items:start;gap:12px}
+#cassiellos-booking .booking-slots-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 #cassiellos-booking .booking-slots-heading strong{font-size:13px;text-transform:capitalize}
 #cassiellos-booking .booking-slots-heading small{font-size:10px;color:var(--booking-muted);text-align:right}
 #cassiellos-booking .booking-calendar-hint{font-size:12px;line-height:1.7;color:#96a9bf;margin:15px 0 0}
@@ -83,7 +83,7 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-review-list>div:last-child{border-bottom:0}
 #cassiellos-booking .booking-review-list small{color:#8ca0bb;font-size:10px;letter-spacing:.09em;font-weight:750}
 #cassiellos-booking .booking-review-list strong{font-size:13px;font-weight:650;overflow-wrap:anywhere;text-transform:none}
-#cassiellos-booking .booking-demo-confirm{display:flex;align-items:start;gap:11px;margin:18px 0;padding:14px;border:1px solid rgba(34,199,242,.25);background:rgba(34,199,242,.055);border-radius:10px;font-size:12px;line-height:1.65;color:#a5c4db}
+#cassiellos-booking .booking-demo-confirm{display:flex;align-items:flex-start;gap:11px;margin:18px 0;padding:14px;border:1px solid rgba(34,199,242,.25);background:rgba(34,199,242,.055);border-radius:10px;font-size:12px;line-height:1.65;color:#a5c4db}
 #cassiellos-booking .booking-demo-confirm svg{flex:0 0 18px;color:#7bd8e8;margin-top:2px}
 #cassiellos-booking .booking-back-full{width:100%}
 #cassiellos-booking .booking-footer{width:min(1200px,calc(100% - 64px));margin:0 auto;padding:25px 0 35px;border-top:1px solid var(--booking-border);display:flex;align-items:center;justify-content:space-between;gap:20px;color:#7f93ad;font-size:11px}
