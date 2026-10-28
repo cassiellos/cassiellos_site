@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 20
 
 const POLICY_VERSION = '2026-08-22'
-const FORM_VERSION = 'odontologia-v1'
 const MAX_BODY_SIZE = 12_000
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const
 
@@ -83,6 +82,7 @@ async function saveLead(input: {
   email: string
   phone: string
   formSlug: string
+  formVersion: string
   niche: string
   answers: Record<string, string>
   attribution: Record<string, string>
@@ -131,7 +131,7 @@ async function saveLead(input: {
       `INSERT INTO crm.form_submissions
        (lead_id, form_version, answers, idempotency_key, status)
        VALUES ($1,$2,$3::jsonb,$4,'validated') RETURNING id`,
-      [leadId, FORM_VERSION,
+      [leadId, input.formVersion,
         JSON.stringify({ niche: input.niche, formSlug: input.formSlug,
           questions: input.answers, attribution: input.attribution }), input.idempotencyKey],
     )
@@ -145,7 +145,7 @@ async function saveLead(input: {
     await client.query(
       `INSERT INTO crm.lead_activities (lead_id, activity_kind, performed_by, details)
        VALUES ($1, 'form_completed', 'public_booking', $2::jsonb)`,
-      [leadId, JSON.stringify({ submissionId, formSlug: input.formSlug, formVersion: FORM_VERSION, environment: 'preview' })],
+      [leadId, JSON.stringify({ submissionId, formSlug: input.formSlug, formVersion: input.formVersion, environment: 'preview' })],
     )
     await client.query('COMMIT')
     committed = true
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     if (!(await intakeAllowed(request))) return response({ error: 'TOO_MANY_REQUESTS' }, 429)
     const result = await saveLead({
       idempotencyKey, name, email, phone, formSlug: form.slug,
-      niche: form.niche, answers, attribution,
+      formVersion: form.version, niche: form.niche, answers, attribution,
     })
     return response({ ok: true, leadId: result.leadId, submissionId: result.submissionId,
       reused: result.reused, environment: 'preview' }, result.reused ? 200 : 201)
