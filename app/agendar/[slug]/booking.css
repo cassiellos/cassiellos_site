@@ -155,3 +155,12 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
  #cassiellos-booking .booking-question-heading h2{font-size:27px}
  #cassiellos-booking .booking-choices .booking-choice{padding:13px}
 }
+
+
+/* Intake confirmation: no storage until the visitor finishes qualification and acknowledges privacy. */
+#cassiellos-booking .booking-consent{display:flex;gap:14px;align-items:flex-start;margin:12px 0 16px;padding:17px;border-radius:12px;border:1px solid rgba(207,225,243,.2);background:rgba(255,255,255,.035);color:#dde8f7;font-size:12px;line-height:1.65;cursor:pointer}
+#cassiellos-booking .booking-consent input{margin:3px 0 0;width:18px;height:18px;flex:0 0 18px;accent-color:#f13c4b}
+#cassiellos-booking .booking-consent a{color:#7fdcf7;text-decoration:underline;text-underline-offset:3px}
+#cassiellos-booking .booking-test-warning{margin:0 0 23px;padding:11px 13px;border-left:2px solid #f13c4b;background:rgba(241,60,75,.07);font-size:12px;color:#e2cbd3;line-height:1.6}
+#cassiellos-booking .booking-save-error{margin:12px 0 20px;color:#ffd4da;font-size:12px;line-height:1.6}
+#cassiellos-booking .booking-saved-notice{display:flex;align-items:center;gap:8px;margin:0 0 17px;padding:11px 13px;border-radius:10px;background:rgba(34,199,169,.09);border:1px solid rgba(34,199,169,.22);color:#b3f0da;font-size:12px;font-weight:650}
