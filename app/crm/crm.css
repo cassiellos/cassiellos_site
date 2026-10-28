@@ -152,3 +152,51 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
     transition-duration:0.01ms!important;
   }
 }
+
+/* Cassiellos — tela de autenticação, preservando o mesmo design aprovado */
+#cassiellos-crm .crm-auth-shell{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:48px 22px 24px;
+  background:
+    radial-gradient(ellipse at 78% 14%,rgba(36,107,255,.11),transparent 39%),
+    radial-gradient(ellipse at 10% 92%,rgba(241,60,75,.10),transparent 43%),#07101f;
+}
+#cassiellos-crm .crm-auth-card{
+  width:min(100%,460px);
+  background:linear-gradient(155deg,#112039,#0b1728);
+  border:1px solid rgba(220,227,238,.13);
+  border-radius:20px;
+  padding:36px;
+  box-shadow:0 26px 90px rgba(0,0,0,.32);
+}
+#cassiellos-crm .crm-auth-brand{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--crm-border);padding-bottom:26px;margin-bottom:30px}
+#cassiellos-crm .crm-auth-brand strong{font-family:var(--font-inter-tight),Inter,sans-serif;font-size:25px;letter-spacing:-.06em;font-weight:800;display:block}
+#cassiellos-crm .crm-auth-brand small{display:block;color:var(--crm-muted);font-size:9px;font-weight:700;letter-spacing:.16em;margin-top:4px}
+#cassiellos-crm .crm-auth-eyebrow{color:var(--crm-red);font-size:10px;font-weight:800;letter-spacing:.2em;margin:0 0 13px}
+#cassiellos-crm .crm-auth-card h1{font-size:clamp(28px,4vw,36px);line-height:1.1;letter-spacing:-.04em;margin:0 0 12px}
+#cassiellos-crm .crm-auth-description{color:#9cadc3;font-size:13px;line-height:1.65;margin:0 0 28px}
+#cassiellos-crm .crm-auth-form{display:flex;flex-direction:column}
+#cassiellos-crm .crm-auth-form label{color:#c8d5e7;font-weight:700;font-size:12px;margin-bottom:8px}
+#cassiellos-crm .crm-auth-form input{height:48px;padding:0 15px;margin:0 0 20px;background:#091524;border:1px solid rgba(220,227,238,.17);color:#f6f8ff;border-radius:9px;outline:0;width:100%;transition:border-color .2s}
+#cassiellos-crm .crm-auth-form input:focus-visible{border-color:var(--crm-red);outline:2px solid var(--crm-cyan);outline-offset:2px}
+#cassiellos-crm .crm-auth-form input::placeholder{color:#788ba2}
+#cassiellos-crm .crm-auth-form input:disabled{opacity:.45;cursor:not-allowed}
+#cassiellos-crm .crm-auth-submit{margin-top:5px;height:48px;width:100%;justify-content:space-between;font-size:13px}
+#cassiellos-crm .crm-auth-submit:disabled{opacity:.42;cursor:not-allowed}
+#cassiellos-crm .crm-auth-alert{background:rgba(241,60,75,.08);border:1px solid rgba(241,60,75,.28);border-radius:9px;color:#f4bbc2;font-size:12px;line-height:1.6;padding:13px 15px;margin:0 0 22px}
+#cassiellos-crm .crm-auth-alert strong{color:#fff}
+#cassiellos-crm .crm-auth-footer{text-align:center;font-size:10px;color:#8495ab;margin:25px 0 0}
+#cassiellos-crm .crm-auth-bottom{font-size:10px;color:#62748d;text-align:center;margin-top:26px}
+#cassiellos-crm .crm-logout{margin-top:10px;width:100%;border:1px solid var(--crm-border);border-radius:9px;background:rgba(241,60,75,.06);color:#b6c8da;display:flex;align-items:center;gap:9px;justify-content:center;padding:10px;font-size:11px}
+#cassiellos-crm .crm-logout:hover{border-color:rgba(241,60,75,.45);color:#fff}
+#cassiellos-crm .crm-top-logout{display:none}
+@media (max-width:830px){
+  #cassiellos-crm .crm-top-logout{display:grid}
+}
+@media (max-width:540px){
+  #cassiellos-crm .crm-auth-card{padding:26px 22px}
+}
