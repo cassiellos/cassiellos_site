@@ -170,7 +170,7 @@ export default function MiniCrm() {
           <div className="crm-breadcrumb"><span>Workspace</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
           <div className="crm-top-actions">
             <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads demonstrativos" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>
-            <button className="crm-icon-btn" type="button" aria-label="Visualizar eventos" title="Eventos de conversão" onClick={() => openView('conversoes')}><Icon name="bell" size={18}/></button>
+            <button className="crm-icon-btn" type="button" aria-label="Visualizar eventos" title="Eventos de conversão" onClick={() => openView('conversoes')}><Icon name="bell" size={18}/></button><form action="/api/crm/auth/logout" method="POST" className="crm-top-logout"><button type="submit" className="crm-icon-btn" aria-label="Encerrar sessão" title="Encerrar sessão"><Icon name="shield" size={17}/></button></form>
             <span className="crm-avatar" aria-label="Perfil da equipe">C</span>
           </div>
         </header>
