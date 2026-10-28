@@ -320,11 +320,44 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
                 <span className="booking-first-question-note">Primeiro passo</span>}
               <button className="booking-primary" type="submit"
                 disabled={!attendee[question.name].trim()}>
-                {questionIndex === questions.length - 1 ? 'Ver horários disponíveis' : 'Continuar'}
+                {questionIndex === questions.length - 1 ? 'Continuar para privacidade' : 'Continuar'}
                 <Icon name="arrow"/>
               </button>
             </div>
-            <p className="booking-privacy">Prévia em desenvolvimento: suas respostas ficam apenas nesta tela e não são enviadas ao servidor. <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
+            <p className="booking-privacy">Suas respostas permanecem nesta tela até você confirmar o envio na etapa seguinte. <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
+          </form>}
+
+          {step === 1 && !question && <form className="booking-form booking-question-form"
+            onSubmit={submitLead}>
+            <div className="booking-question-topline">
+              <span>ETAPA FINAL · SEUS DADOS</span>
+              <span>{Math.round(progress * 100)}% concluído</span>
+            </div>
+            <div className="booking-step-meter">
+              <span style={{ width: progress * 100 + '%' }}/>
+            </div>
+            <div className="booking-card-heading booking-question-heading">
+              <div className="booking-step-label">PRIVACIDADE / CONFIRMAÇÃO</div>
+              <h2>Podemos registrar suas informações?</h2>
+              <p>Assim conseguimos preparar seu diagnóstico. Depois você escolherá o horário da conversa.</p>
+            </div>
+            <label className="booking-consent">
+              <input type="checkbox" required checked={privacyAccepted}
+                onChange={event => setPrivacyAccepted(event.target.checked)} />
+              <span>Li a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
+                {' '}e autorizo a Cassiellos a utilizar meus dados para responder à solicitação deste diagnóstico.</span>
+            </label>
+            <p className="booking-test-warning">Atenção: estamos no ambiente de testes. Utilize somente
+              nome, telefone e e-mail fictícios. A partir desta etapa, os dados serão armazenados
+              no banco Neon Preview.</p>
+            {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
+            <div className="booking-question-footer">
+              <button className="booking-secondary" type="button" disabled={savingLead}
+                onClick={() => setQuestionIndex(questions.length - 1)}><Icon name="back"/> Voltar</button>
+              <button className="booking-primary" type="submit" disabled={!privacyAccepted || savingLead}>
+                {savingLead ? 'Registrando...' : 'Salvar e escolher horário'} <Icon name="arrow"/>
+              </button>
+            </div>
           </form>}
 
           {step === 2 && <div className="booking-schedule">
@@ -377,7 +410,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
                 </div>}
             </div>
             <div className="booking-actions">
-              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setQuestionIndex(questions.length - 1); setChosen(null) }}>
+              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setQuestionIndex(questions.length); setChosen(null) }}>
                 <Icon name="back"/> Voltar
               </button>
               <button type="button" className="booking-primary" disabled={!chosen || loading || failed}
