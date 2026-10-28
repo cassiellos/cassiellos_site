@@ -1,0 +1,122 @@
+:root{--booking-navy:#07101f;--booking-ink:#f6f8ff;--booking-muted:#91a3be;--booking-red:#f13c4b;--booking-cyan:#22c7f2;--booking-border:rgba(195,211,236,.15);--booking-surface:#0e1a2b}
+body:has(#cassiellos-booking){background:var(--booking-navy)!important}
+body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(#cassiellos-booking) .progress,body:has(#cassiellos-booking) [class*="scroll-progress"]{display:none!important}
+#cassiellos-booking{position:relative;isolation:isolate;min-height:100vh;background:radial-gradient(70% 70% at 12% 32%,rgba(36,107,255,.10),transparent 75%),radial-gradient(42% 60% at 90% 90%,rgba(241,60,75,.07),transparent 80%),#07101f;color:var(--booking-ink);font-family:var(--font-inter),Inter,Arial,sans-serif;line-height:1.5;font-size:15px}
+#cassiellos-booking *{box-sizing:border-box}
+#cassiellos-booking button,#cassiellos-booking input,#cassiellos-booking select{font:inherit}
+#cassiellos-booking button{cursor:pointer}
+#cassiellos-booking .booking-header{width:min(1200px,calc(100% - 64px));margin:auto;height:106px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--booking-border)}
+#cassiellos-booking .booking-brand{display:flex;align-items:center;gap:13px}
+#cassiellos-booking .booking-brand img{object-fit:contain}
+#cassiellos-booking .booking-brand strong{display:block;font-size:21px;letter-spacing:-.055em;font-weight:800;line-height:1.15}
+#cassiellos-booking .booking-brand small{display:block;margin-top:5px;color:#9daec6;font-size:9px;letter-spacing:.17em;font-weight:700}
+#cassiellos-booking .booking-header-tag{font-size:10px;letter-spacing:.15em;font-weight:750;color:#9facbe}
+#cassiellos-booking .booking-shell{width:min(1200px,calc(100% - 64px));margin:0 auto;padding:64px 0 88px;display:grid;grid-template-columns:minmax(0,1fr) minmax(410px,530px);gap:clamp(36px,6.5vw,110px);align-items:start}
+#cassiellos-booking .booking-intro{padding-top:57px}
+#cassiellos-booking .booking-kicker{display:flex;align-items:center;gap:11px;color:#ff6673;font-size:11px;letter-spacing:.16em;font-weight:800;line-height:1.8}
+#cassiellos-booking .booking-kicker-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--booking-red);box-shadow:0 0 16px rgba(241,60,75,.5)}
+#cassiellos-booking .booking-intro h1{margin:22px 0 22px;max-width:670px;font-family:var(--font-inter-tight),Inter,sans-serif;font-size:clamp(42px,4.6vw,68px);line-height:1.04;letter-spacing:-.062em;font-weight:800}
+#cassiellos-booking .booking-lead{max-width:530px;font-size:17px;line-height:1.7;color:#aab9cc;margin:0}
+#cassiellos-booking .booking-highlights{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:40px}
+#cassiellos-booking .booking-highlights span{display:flex;align-items:center;gap:9px;border:1px solid var(--booking-border);border-radius:40px;padding:10px 13px;color:#e0e9f5;background:rgba(255,255,255,.022);font-size:12px;font-weight:650;white-space:nowrap}
+#cassiellos-booking .booking-highlights svg{width:16px;height:16px;color:#71d9fa}
+#cassiellos-booking .booking-note{display:flex;align-items:flex-start;gap:12px;margin-top:50px;padding-top:23px;border-top:1px solid var(--booking-border);max-width:520px;color:#90a5bf}
+#cassiellos-booking .booking-note svg{color:#80acc9;flex:0 0 20px;margin-top:2px}
+#cassiellos-booking .booking-note p{margin:0;font-size:13px;line-height:1.7}
+#cassiellos-booking .booking-card{border:1px solid rgba(206,223,249,.17);border-radius:20px;background:linear-gradient(160deg,#111e31,#0b1626 85%);box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden}
+#cassiellos-booking .booking-preview-banner{padding:13px 23px;text-align:center;background:rgba(34,199,242,.08);border-bottom:1px solid rgba(34,199,242,.16);color:#b2dcf1;font-size:11px;line-height:1.5}
+#cassiellos-booking .booking-preview-banner strong{letter-spacing:.08em;color:#6cdeff}
+#cassiellos-booking .booking-card-inside{padding:31px clamp(20px,3.3vw,39px) 37px}
+#cassiellos-booking .booking-progress{display:flex;align-items:center;gap:10px;justify-content:space-between;color:#758ba5;font-size:11px;font-weight:700}
+#cassiellos-booking .booking-progress span{white-space:nowrap}
+#cassiellos-booking .booking-progress span.is-current{color:#f6f8ff}
+#cassiellos-booking .booking-progress span span{margin-left:5px;font-weight:500}
+#cassiellos-booking .booking-progress i{height:1px;min-width:8px;flex:1;background:var(--booking-border)}
+#cassiellos-booking .booking-card-heading{margin:34px 0 26px}
+#cassiellos-booking .booking-step-label{color:var(--booking-red);font-size:11px;font-weight:800;letter-spacing:.16em}
+#cassiellos-booking .booking-card-heading h2{font-family:var(--font-inter-tight),Inter,sans-serif;font-size:31px;line-height:1.16;letter-spacing:-.045em;margin:11px 0}
+#cassiellos-booking .booking-card-heading p{font-size:13px;line-height:1.65;color:#9aacc4;margin:0}
+#cassiellos-booking .booking-inputs{display:grid;gap:18px}
+#cassiellos-booking .booking-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#cassiellos-booking .booking-inputs label{display:flex;flex-direction:column;gap:8px;color:#dfe9f7;font-weight:650;font-size:12px}
+#cassiellos-booking .booking-inputs label span{color:var(--booking-red)}
+#cassiellos-booking .booking-inputs input,#cassiellos-booking .booking-inputs select{width:100%;height:48px;color:#fff;background:#091426;border:1px solid rgba(196,216,240,.20);border-radius:9px;padding:0 13px;outline:none;transition:border-color .15s,box-shadow .15s;font-size:13px}
+#cassiellos-booking .booking-inputs input::placeholder{color:#71849d}
+#cassiellos-booking .booking-inputs input:focus,#cassiellos-booking .booking-inputs select:focus{border-color:rgba(34,199,242,.85);box-shadow:0 0 0 3px rgba(34,199,242,.12)}
+#cassiellos-booking .booking-inputs select{appearance:auto}
+#cassiellos-booking .booking-primary{display:flex;align-items:center;justify-content:center;gap:12px;min-height:53px;width:100%;margin-top:25px;border:1px solid rgba(251,114,127,.35);border-radius:10px;background:var(--booking-red);color:white;font-weight:800;font-size:13px;transition:background .2s,transform .2s}
+#cassiellos-booking .booking-primary:not(:disabled):hover{background:#ff5261;transform:translateY(-1px)}
+#cassiellos-booking .booking-primary:disabled{opacity:.46;cursor:not-allowed;transform:none}
+#cassiellos-booking .booking-primary svg{height:17px;width:17px}
+#cassiellos-booking .booking-privacy{margin:16px 0 0;text-align:center;font-size:11px;line-height:1.6;color:#8f9fb4}
+#cassiellos-booking .booking-privacy a{color:#9ddff2;text-decoration:underline;text-underline-offset:2px}
+#cassiellos-booking .booking-month-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 17px}
+#cassiellos-booking .booking-month-row strong{text-transform:capitalize;font-size:16px}
+#cassiellos-booking .booking-month-controls{display:flex;gap:8px}
+#cassiellos-booking .booking-month-controls button{width:36px;height:36px;border:1px solid var(--booking-border);border-radius:9px;background:#14233a;color:white;font-size:22px;display:grid;place-items:center;line-height:1}
+#cassiellos-booking .booking-month-controls button:disabled{opacity:.3;cursor:not-allowed}
+#cassiellos-booking .booking-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+#cassiellos-booking .booking-weekday{text-align:center;padding:8px 0;color:#9cacbf;font-size:10px;font-weight:750}
+#cassiellos-booking .booking-day{aspect-ratio:1.02;min-height:36px;display:grid;place-items:center;border:1px solid rgba(160,193,221,.11);border-radius:8px;background:#152741;color:#e2eefc;font-weight:700;font-size:12px;transition:background .16s,border-color .16s}
+#cassiellos-booking .booking-day:not(:disabled):hover{border-color:#33c8f2;background:#1b3857}
+#cassiellos-booking .booking-day[data-active=true]{border-color:#fd6675!important;background:rgba(241,60,75,.25)!important;color:white}
+#cassiellos-booking .booking-day[data-today=true]:not([data-active=true]){outline:1px solid rgba(34,199,242,.6);outline-offset:-3px}
+#cassiellos-booking .booking-day:disabled{background:#0f1b2d;color:#61768e;border-color:transparent;cursor:not-allowed}
+#cassiellos-booking .booking-empty-day{display:block}
+#cassiellos-booking .booking-slots{border-top:1px solid var(--booking-border);margin-top:26px;padding-top:20px;min-height:154px}
+#cassiellos-booking .booking-slots-heading{display:flex;justify-content:space-between;align-items:start;gap:12px}
+#cassiellos-booking .booking-slots-heading strong{font-size:13px;text-transform:capitalize}
+#cassiellos-booking .booking-slots-heading small{font-size:10px;color:var(--booking-muted);text-align:right}
+#cassiellos-booking .booking-calendar-hint{font-size:12px;line-height:1.7;color:#96a9bf;margin:15px 0 0}
+#cassiellos-booking .booking-time-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:19px}
+#cassiellos-booking .booking-time-grid button{height:41px;background:#152841;color:#e6f0ff;border:1px solid rgba(120,172,222,.22);border-radius:8px;font-size:12px;font-weight:750}
+#cassiellos-booking .booking-time-grid button:hover{border-color:#22c7f2}
+#cassiellos-booking .booking-time-grid button[data-selected=true]{background:#f13c4b;border-color:#ff7180;color:white}
+#cassiellos-booking .booking-availability-error{margin:15px 0;color:#ffb6be;font-size:12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+#cassiellos-booking .booking-availability-error button{background:transparent;border:1px solid #f13c4b;border-radius:8px;padding:8px 12px;color:#fff;font-size:12px}
+#cassiellos-booking .booking-actions{display:flex;gap:10px;align-items:stretch;margin-top:19px}
+#cassiellos-booking .booking-actions .booking-primary{flex:1;margin:0}
+#cassiellos-booking .booking-secondary{display:flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;min-height:51px;border:1px solid var(--booking-border);border-radius:9px;background:rgba(255,255,255,.04);color:#d5e3f6;font-size:12px;font-weight:700}
+#cassiellos-booking .booking-secondary:hover{background:rgba(255,255,255,.08)}
+#cassiellos-booking .booking-review-list{border:1px solid var(--booking-border);border-radius:12px;overflow:hidden}
+#cassiellos-booking .booking-review-list>div{padding:14px 16px;display:grid;gap:3px;border-bottom:1px solid var(--booking-border)}
+#cassiellos-booking .booking-review-list>div:last-child{border-bottom:0}
+#cassiellos-booking .booking-review-list small{color:#8ca0bb;font-size:10px;letter-spacing:.09em;font-weight:750}
+#cassiellos-booking .booking-review-list strong{font-size:13px;font-weight:650;overflow-wrap:anywhere;text-transform:none}
+#cassiellos-booking .booking-demo-confirm{display:flex;align-items:start;gap:11px;margin:18px 0;padding:14px;border:1px solid rgba(34,199,242,.25);background:rgba(34,199,242,.055);border-radius:10px;font-size:12px;line-height:1.65;color:#a5c4db}
+#cassiellos-booking .booking-demo-confirm svg{flex:0 0 18px;color:#7bd8e8;margin-top:2px}
+#cassiellos-booking .booking-back-full{width:100%}
+#cassiellos-booking .booking-footer{width:min(1200px,calc(100% - 64px));margin:0 auto;padding:25px 0 35px;border-top:1px solid var(--booking-border);display:flex;align-items:center;justify-content:space-between;gap:20px;color:#7f93ad;font-size:11px}
+@media(max-width:1030px){
+  #cassiellos-booking .booking-shell{grid-template-columns:minmax(0,1fr) minmax(370px,1fr);gap:30px;padding-top:40px}
+  #cassiellos-booking .booking-intro{padding-top:34px}
+  #cassiellos-booking .booking-intro h1{font-size:clamp(36px,4.5vw,54px)}
+  #cassiellos-booking .booking-input-row{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  #cassiellos-booking .booking-header,#cassiellos-booking .booking-shell,#cassiellos-booking .booking-footer{width:min(100% - 36px,540px)}
+  #cassiellos-booking .booking-header{height:83px}
+  #cassiellos-booking .booking-header-tag{display:none}
+  #cassiellos-booking .booking-brand strong{font-size:19px}
+  #cassiellos-booking .booking-shell{display:flex;flex-direction:column;gap:30px;padding:37px 0 55px}
+  #cassiellos-booking .booking-intro{padding:0}
+  #cassiellos-booking .booking-intro h1{font-size:clamp(35px,9vw,49px);margin:17px 0 13px}
+  #cassiellos-booking .booking-lead{font-size:14px;line-height:1.68}
+  #cassiellos-booking .booking-highlights{margin-top:22px;gap:8px}
+  #cassiellos-booking .booking-highlights span{padding:8px 10px;font-size:10px}
+  #cassiellos-booking .booking-note{display:none}
+  #cassiellos-booking .booking-card{width:100%}
+  #cassiellos-booking .booking-card-inside{padding:22px 20px 30px}
+  #cassiellos-booking .booking-card-heading{margin:28px 0 22px}
+  #cassiellos-booking .booking-card-heading h2{font-size:28px}
+  #cassiellos-booking .booking-footer{flex-wrap:wrap;gap:8px}
+}
+@media(max-width:370px){
+  #cassiellos-booking .booking-calendar-grid{gap:3px}
+  #cassiellos-booking .booking-progress span span{display:none}
+  #cassiellos-booking .booking-time-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #cassiellos-booking .booking-actions{flex-direction:column-reverse}
+}
+@media(prefers-reduced-motion:reduce){
+  #cassiellos-booking *,#cassiellos-booking *::before,#cassiellos-booking *::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
