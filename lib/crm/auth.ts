@@ -4,7 +4,7 @@ import { createHmac, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
 
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
-type SessionPayload = { v: 1; sub: 'admin'; iat: number; exp: number }
+type SessionPayload = { v: 1; sub: 'admin'; iat: number; exp: number; pwv: string }
 
 export function isCrmAuthConfigured(): boolean {
   const secret = process.env.CRM_SESSION_SECRET
@@ -31,11 +31,15 @@ function sign(encodedPayload: string, secret: Buffer): Buffer {
   return createHmac('sha256', secret).update(encodedPayload).digest()
 }
 
+function passwordVersion(secret: Buffer): string {
+  return createHmac('sha256', secret).update(process.env.CRM_ADMIN_PASSWORD_HASH ?? '').digest('base64url')
+}
+
 export function issueCrmSession(): string {
   const secret = getSessionSecret()
   if (!secret || !isCrmAuthConfigured()) throw new Error('CRM_AUTH_NOT_CONFIGURED')
   const now = Math.floor(Date.now() / 1000)
-  const payload: SessionPayload = { v: 1, sub: 'admin', iat: now, exp: now + SESSION_DURATION_SECONDS }
+  const payload: SessionPayload = { v: 1, sub: 'admin', iat: now, exp: now + SESSION_DURATION_SECONDS, pwv: passwordVersion(secret) }
   const encoded = Buffer.from(JSON.stringify({ ...payload, nonce: randomBytes(16).toString('hex') })).toString('base64url')
   return encoded + '.' + sign(encoded, secret).toString('base64url')
 }
@@ -51,7 +55,7 @@ export function verifyCrmSession(token?: string | null): boolean {
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return false
     const data = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as Partial<SessionPayload>
     const now = Math.floor(Date.now() / 1000)
-    return data.v === 1 && data.sub === 'admin' &&
+    return data.v === 1 && data.sub === 'admin' && data.pwv === passwordVersion(secret) &&
       typeof data.iat === 'number' && typeof data.exp === 'number' &&
       data.iat <= now + 30 && data.exp > now &&
       data.exp - data.iat <= SESSION_DURATION_SECONDS &&
