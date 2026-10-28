@@ -217,7 +217,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
                 </label>)}
             </div>
             <button className="booking-primary" type="submit">Escolher dia e horário <Icon name="arrow"/></button>
-            <p className="booking-privacy">Ambiente de testes: nenhum dado é enviado ou armazenado. Na versão real, aplicaremos a <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a> e o consentimento adequado.</p>
+            <p className="booking-privacy">Ambiente de testes: os dados preenchidos no formulário não são enviados nem armazenados. Na versão real, aplicaremos a <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a> e o consentimento adequado.</p>
           </form>}
 
           {step === 2 && <div className="booking-schedule">
