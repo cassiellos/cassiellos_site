@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
-type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string }
+type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
 type Question = {
   name: keyof Attendee
   label: string
@@ -17,7 +17,7 @@ type Question = {
 
 
 const INITIAL_ATTENDEE: Attendee = {
-  name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '',
+  name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '', revenue: '',
 }
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
@@ -97,6 +97,11 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [retry, setRetry] = useState(0)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [savingLead, setSavingLead] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [leadSaved, setLeadSaved] = useState(false)
+  const submissionKey = useRef<string | null>(null)
 
   useEffect(() => {
     const current = localToday()
@@ -150,14 +155,19 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
       placeholder: 'voce@clinica.com.br', autoComplete: 'email' },
   ], [form.fields])
   const question = questions[questionIndex]
-  const totalStages = questions.length + 2
-  const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 1 : totalStages) / totalStages
+  const totalStages = questions.length + 3
+  const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
   const maxMonth = today ? plusDays(today, 30).slice(0, 7) : ''
   const firstMonth = today ? today.slice(0, 7) : ''
 
   function update(name: keyof Attendee, value: string) {
+    if (leadSaved) {
+      setLeadSaved(false)
+      submissionKey.current = null
+    }
     setAttendee(current => ({ ...current, [name]: value }))
+    setSaveError('')
   }
 
   function next(event: FormEvent<HTMLFormElement>) {
@@ -166,7 +176,58 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(index => index + 1)
     } else {
+      setQuestionIndex(questions.length)
+    }
+  }
+
+  async function submitLead(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!privacyAccepted || savingLead) return
+    if (leadSaved) { setStep(2); return }
+    for (const question of questions) {
+      if (!attendee[question.name].trim()) {
+        setQuestionIndex(questions.findIndex(item => item.name === question.name))
+        setSaveError('Confira as respostas obrigatórias antes de continuar.')
+        return
+      }
+    }
+
+    setSavingLead(true)
+    setSaveError('')
+    try {
+      if (!submissionKey.current) submissionKey.current = window.crypto.randomUUID()
+      const attribution: Record<string, string> = {}
+      const params = new URLSearchParams(window.location.search)
+      for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']) {
+        const value = params.get(key)
+        if (value) attribution[key] = value.slice(0, 180)
+      }
+      const answers: Record<string, string> = {}
+      for (const field of form.fields) answers[field.name] = attendee[field.name]
+      const response = await fetch('/api/booking/leads', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formSlug: form.slug, idempotencyKey: submissionKey.current,
+          name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
+          answers, attribution, privacyAccepted,
+        }),
+      })
+      if (!response.ok) throw new Error(response.status === 429 ? 'LIMIT' : 'SAVE')
+      const result: unknown = await response.json()
+      if (!result || typeof result !== 'object' || !('ok' in result) || result.ok !== true) {
+        throw new Error('SAVE')
+      }
+      setLeadSaved(true)
       setStep(2)
+    } catch (error) {
+      setSaveError(error instanceof Error && error.message === 'LIMIT' ?
+        'Muitas tentativas. Tente novamente mais tarde.' :
+        'Não foi possível registrar suas informações. Tente novamente.')
+    } finally {
+      setSavingLead(false)
     }
   }
 
@@ -207,7 +268,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
       </section>
 
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
-        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Use dados fictícios. Nenhuma reunião ou lead será criado.</div>
+        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Use apenas dados fictícios. O cadastro será salvo no Neon Preview; nenhuma reunião será criada.</div>
         <div className="booking-card-inside">
           <div className="booking-progress">
             <span className={step >= 1 ? 'is-current' : ''}>01 <span>Seus dados</span></span>
