@@ -130,3 +130,25 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
 @media(max-width:1200px){#cassiellos-crm .crm-sidebar{width:214px;flex-basis:214px}#cassiellos-crm .crm-topbar{padding:0 24px}#cassiellos-crm .crm-content{padding:26px}#cassiellos-crm .crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:830px){#cassiellos-crm .crm-layout{display:block}#cassiellos-crm .crm-sidebar{height:auto;width:100%;position:relative;border-right:0;border-bottom:1px solid var(--crm-border)}#cassiellos-crm .crm-brand{padding:17px 20px 12px;border:0}#cassiellos-crm .crm-nav-wrap{display:flex;overflow:auto;gap:7px;padding:3px 12px 12px;scrollbar-width:none}#cassiellos-crm .crm-nav-wrap::-webkit-scrollbar{display:none}#cassiellos-crm .crm-nav-label,#cassiellos-crm .crm-sidebar-footer{display:none}#cassiellos-crm .crm-nav-btn{white-space:nowrap;width:auto;min-width:max-content;margin:0;padding:10px 12px}#cassiellos-crm .crm-nav-count{display:none}#cassiellos-crm .crm-topbar{height:66px;padding:0 18px}#cassiellos-crm .crm-search{min-width:0;width:min(200px,36vw)}#cassiellos-crm .crm-content{padding:22px 18px}#cassiellos-crm .crm-dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:540px){#cassiellos-crm .crm-breadcrumb{font-size:11px}#cassiellos-crm .crm-search{width:38px;min-width:38px;justify-content:center;padding:0}#cassiellos-crm .crm-search input{width:0;opacity:0;position:absolute;pointer-events:none}#cassiellos-crm .crm-search:focus-within{width:180px}#cassiellos-crm .crm-search:focus-within input{width:100%;position:static;opacity:1;pointer-events:auto}#cassiellos-crm .crm-top-actions{gap:6px}#cassiellos-crm .crm-hero{display:block}#cassiellos-crm .crm-controls{margin-top:17px}#cassiellos-crm .crm-metrics{gap:10px}#cassiellos-crm .crm-metric{padding:16px;min-height:146px}#cassiellos-crm .crm-metric-value{font-size:32px}#cassiellos-crm .crm-metric-top{font-size:10px}#cassiellos-crm .crm-metric-icon{width:29px;height:29px}#cassiellos-crm .crm-section-grid{grid-template-columns:1fr}#cassiellos-crm .crm-panel{padding:18px}#cassiellos-crm .crm-demo-banner{align-items:flex-start}#cassiellos-crm .crm-event{grid-template-columns:1fr auto}#cassiellos-crm .crm-event small{grid-column:1/-1}}
+
+/* Acessibilidade e resiliência: foco visível sem alterar a identidade aprovada. */
+#cassiellos-crm :is(button, input, a, select, textarea):focus-visible{
+  outline:2px solid var(--crm-cyan);
+  outline-offset:3px;
+}
+#cassiellos-crm .crm-modal{
+  max-height:min(88vh,760px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+#cassiellos-crm .crm-nav-wrap{
+  overscroll-behavior-inline:contain;
+}
+@media (prefers-reduced-motion: reduce){
+  #cassiellos-crm, #cassiellos-crm *, #cassiellos-crm *::before, #cassiellos-crm *::after{
+    scroll-behavior:auto!important;
+    animation-duration:0.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:0.01ms!important;
+  }
+}
