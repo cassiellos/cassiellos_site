@@ -84,9 +84,11 @@ function Icon({ name }: { name: 'calendar' | 'clock' | 'video' | 'shield' | 'arr
     aria-hidden="true">{paths[name]}</svg>
 }
 
-export default function BookingExperience({ form }: { form: BookingForm }) {
+export default function BookingExperience({
+  form, bookingEnabled,
+}: { form: BookingForm; bookingEnabled: boolean }) {
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [questionIndex, setQuestionIndex] = useState(0)
   // Browser and server calculate current date in the same timezone, not user's machine timezone.
   const [today, setToday] = useState('')
@@ -101,6 +103,10 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
   const [savingLead, setSavingLead] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [leadSaved, setLeadSaved] = useState(false)
+  const [bookingToken, setBookingToken] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [confirmationError, setConfirmationError] = useState('')
+  const [confirmedMeetUrl, setConfirmedMeetUrl] = useState<string | null>(null)
   const submissionKey = useRef<string | null>(null)
 
   useEffect(() => {
@@ -164,6 +170,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
   function update(name: keyof Attendee, value: string) {
     if (leadSaved) {
       setLeadSaved(false)
+      setBookingToken(null)
       submissionKey.current = null
     }
     setAttendee(current => ({ ...current, [name]: value }))
@@ -231,6 +238,9 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
       if (!result || typeof result !== 'object' || !('ok' in result) || result.ok !== true) {
         throw new Error('SAVE')
       }
+      if (!('bookingToken' in result) || typeof result.bookingToken !== 'string' ||
+        !result.bookingToken) throw new Error('INVALID_RESPONSE')
+      setBookingToken(result.bookingToken)
       setLeadSaved(true)
       setStep(2)
     } catch (error) {
@@ -248,6 +258,42 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
       setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
     } finally {
       setSavingLead(false)
+    }
+  }
+
+  async function confirmBooking() {
+    if (!bookingEnabled || !bookingToken || !chosen || confirming) return
+    setConfirming(true)
+    setConfirmationError('')
+    try {
+      const response = await fetch('/api/booking/confirm', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingToken, startAt: chosen.startAt }),
+      })
+      const data: unknown = await response.json()
+      if (!data || typeof data !== 'object') throw new Error('BOOKING_UNAVAILABLE')
+      if (!response.ok) {
+        const code = 'error' in data && typeof data.error === 'string' ? data.error : 'BOOKING_UNAVAILABLE'
+        throw new Error(code)
+      }
+      if (!('ok' in data) || data.ok !== true) throw new Error('BOOKING_UNAVAILABLE')
+      setConfirmedMeetUrl('googleMeetUrl' in data && typeof data.googleMeetUrl === 'string'
+        ? data.googleMeetUrl : null)
+      setStep(4)
+    } catch (error) {
+      const code = error instanceof Error ? error.message : ''
+      const messages: Record<string, string> = {
+        SLOT_UNAVAILABLE: 'Esse horário acabou de ficar indisponível. Escolha outro no calendário.',
+        BOOKING_SESSION_EXPIRED: 'Sua sessão de agendamento expirou. Preencha novamente o formulário.',
+        TEST_EMAIL_NOT_ALLOWED: 'Neste teste, só é possível agendar com o e-mail de teste autorizado.',
+        BOOKING_ALREADY_PROCESSING: 'Já existe um agendamento em processamento. Não tente novamente: contate a equipe para conferir.',
+        BOOKING_REQUIRES_REVIEW: 'O agendamento precisa de verificação manual. Não tente novamente para evitar duplicidade.',
+        BOOKING_DISABLED: 'A confirmação ainda não foi habilitada neste ambiente.',
+      }
+      setConfirmationError(messages[code] || 'Não foi possível confirmar agora. Contate a equipe antes de tentar novamente.')
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -288,7 +334,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
       </section>
 
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
-        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Use apenas dados fictícios. O cadastro será salvo no Neon Preview; nenhuma reunião será criada.</div>
+        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
         <div className="booking-card-inside">
           <div className="booking-progress">
             <span className={step >= 1 ? 'is-current' : ''}>01 <span>Seus dados</span></span>
@@ -446,7 +492,7 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
             <div className="booking-card-heading">
               <div className="booking-step-label">ETAPA 03 DE 03</div>
               <h2>Confira sua seleção.</h2>
-              <p>Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.</p>
+              <p>{bookingEnabled ? 'Confirme os dados antes de enviar o convite de teste pelo Google Calendar.' : 'Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.'}</p>
             </div>
             <div className="booking-review-list">
               <div><small>DIAGNÓSTICO</small><strong>{form.meetingName}</strong></div>
@@ -456,13 +502,38 @@ export default function BookingExperience({ form }: { form: BookingForm }) {
               <div><small>CLÍNICA</small><strong>{attendee.clinic}</strong></div>
             </div>
             <div className="booking-demo-confirm"><Icon name="shield"/>
-              <span>Prévia de interface. O botão de confirmação real será ativado somente após implementarmos a criação de eventos, a prevenção de conflitos e os registros no Neon.</span>
+              <span>{bookingEnabled
+                ? 'Teste controlado: a confirmação criará um evento real no Google Calendar e enviará convite ao endereço autorizado.'
+                : 'Prévia de interface. A confirmação real permanece bloqueada até autorizarmos um teste controlado com e-mail real.'}</span>
             </div>
             <button type="button" className="booking-secondary booking-back-full"
               onClick={() => setStep(2)}><Icon name="back"/> Escolher outro horário</button>
-            <button className="booking-primary" type="button" disabled>
-              Confirmar reunião (em desenvolvimento) <Icon name="check"/>
+            {confirmationError && <p className="booking-save-error" role="alert">{confirmationError}</p>}
+            <button className="booking-primary" type="button" disabled={!bookingEnabled || confirming || !bookingToken}
+              onClick={confirmBooking}>
+              {confirming ? 'Confirmando no Google Calendar…' :
+                bookingEnabled ? 'Confirmar reunião de teste' : 'Confirmar reunião (em desenvolvimento)'}
+              <Icon name="check"/>
             </button>
+          </div>}
+
+          {step === 4 && <div className="booking-review" role="status">
+            <div className="booking-card-heading">
+              <div className="booking-step-label">AGENDAMENTO CONFIRMADO</div>
+              <h2>Reunião registrada com sucesso.</h2>
+              <p>O compromisso foi criado no Google Calendar e registrado no Mini CRM.</p>
+            </div>
+            <div className="booking-review-list">
+              <div><small>DATA</small><strong>{date && humanDate(date)}</strong></div>
+              <div><small>HORÁRIO</small><strong>{chosen?.localTime} · Brasília</strong></div>
+              <div><small>PARTICIPANTE</small><strong>{attendee.name}</strong></div>
+            </div>
+            {confirmedMeetUrl
+              ? <a className="booking-primary" href={confirmedMeetUrl}
+                  target="_blank" rel="noreferrer">Abrir Google Meet <Icon name="arrow"/></a>
+              : <p className="booking-demo-confirm">O Google Calendar confirmou o evento.
+                  O link do Meet pode ficar disponível após o processamento da videoconferência.</p>}
+            <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>
           </div>}
         </div>
       </section>
