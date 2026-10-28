@@ -120,3 +120,38 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 @media(prefers-reduced-motion:reduce){
   #cassiellos-booking *,#cassiellos-booking *::before,#cassiellos-booking *::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
 }
+
+
+/* Formulário progressivo: uma pergunta de cada vez, preservando o design aprovado. */
+#cassiellos-booking .booking-question-form{display:flex;flex-direction:column;min-height:430px}
+#cassiellos-booking .booking-question-topline{display:flex;align-items:center;justify-content:space-between;gap:14px;color:#98aec8;font-size:10px;letter-spacing:.07em;font-weight:800;margin-top:29px}
+#cassiellos-booking .booking-step-meter{height:4px;background:rgba(200,216,235,.12);border-radius:20px;margin-top:12px;overflow:hidden}
+#cassiellos-booking .booking-step-meter>span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#f13c4b,#ff7986);transition:width .22s ease}
+#cassiellos-booking .booking-question-heading{margin:36px 0 27px}
+#cassiellos-booking .booking-question-heading h2{font-size:clamp(27px,3.1vw,38px);letter-spacing:-.055em}
+#cassiellos-booking .booking-question-inputs{margin-bottom:22px}
+#cassiellos-booking .booking-question-field{display:block!important}
+#cassiellos-booking .booking-question-field input{height:58px;font-size:15px;padding:0 17px}
+#cassiellos-booking .booking-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#cassiellos-booking .booking-choices{display:grid;gap:10px}
+#cassiellos-booking .booking-choices .booking-choice{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:14px;padding:16px;border:1px solid rgba(196,216,240,.20);border-radius:11px;background:#0a1829;color:#edf4ff;font-size:13px;font-weight:650;line-height:1.45;transition:background .18s,border-color .18s}
+#cassiellos-booking .booking-choices .booking-choice:hover{border-color:rgba(34,199,242,.7);background:#142740}
+#cassiellos-booking .booking-choices .booking-choice[data-selected=true]{background:rgba(241,60,75,.14);border-color:rgba(241,60,75,.88)}
+#cassiellos-booking .booking-choice-indicator{width:21px;height:21px;flex:0 0 21px;border:1px solid rgba(220,233,248,.35);border-radius:50%;display:grid;place-items:center;color:white;font-size:13px}
+#cassiellos-booking .booking-choice[data-selected=true] .booking-choice-indicator{background:var(--booking-red);border-color:var(--booking-red)}
+#cassiellos-booking .booking-question-footer{display:flex;align-items:stretch;gap:11px;margin-top:auto}
+#cassiellos-booking .booking-question-footer .booking-primary{flex:1;margin-top:0}
+#cassiellos-booking .booking-first-question-note{align-self:center;color:#8198b5;font-size:11px;white-space:nowrap}
+#cassiellos-booking .booking-question-form .booking-privacy{margin-top:20px}
+@media(max-width:760px){
+ #cassiellos-booking .booking-question-form{min-height:380px}
+ #cassiellos-booking .booking-question-heading{margin:28px 0 23px}
+ #cassiellos-booking .booking-question-heading h2{font-size:30px}
+ #cassiellos-booking .booking-question-footer{gap:8px}
+ #cassiellos-booking .booking-question-footer .booking-secondary{min-width:96px;padding:0 10px}
+ #cassiellos-booking .booking-first-question-note{display:none}
+}
+@media(max-width:370px){
+ #cassiellos-booking .booking-question-heading h2{font-size:27px}
+ #cassiellos-booking .booking-choices .booking-choice{padding:13px}
+}
