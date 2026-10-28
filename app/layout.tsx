@@ -20,6 +20,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
+const SHOW_LEVI_WIDGET = false
+
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
@@ -83,7 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteNav />
           {children}
           <SiteFooter />
-          <LeviWidget />
+          {SHOW_LEVI_WIDGET && <LeviWidget />}
         </LeviProvider>
         <Analytics />
         <SiteInteractionTracker />

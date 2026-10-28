@@ -230,6 +230,7 @@ const EN = {
 }
 
 const ease = [0.22, 1, 0.36, 1] as const
+const SHOW_CASSIELLOS_TECH = false
 
 export default function HomeContent({ lang }: { lang: Locale }) {
   const c = lang === 'en' ? EN : PT
@@ -355,6 +356,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
         </div>
       </section>
 
+      {SHOW_CASSIELLOS_TECH && (
       <section className={`${styles.section} ${styles.osSection}`} id="cassiellos" aria-labelledby="os-title">
         <div className={`wrap ${styles.sectionInner}`}>
           <div className={styles.osIntro}>
@@ -381,6 +383,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
           </motion.div>
         </div>
       </section>
+      )}
 
       <section className={`${styles.section} ${styles.fit}`} aria-labelledby="fit-title">
         <div className={`wrap ${styles.fitGrid}`}>
