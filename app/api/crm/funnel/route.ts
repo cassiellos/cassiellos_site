@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { getCrmPool, withCrmReadOnlyTransaction } from '@/lib/crm/db'
+import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export async function GET(req:NextRequest){
 export async function PATCH(req:NextRequest){
  if(process.env.VERCEL_ENV!=='preview')return reply({error:'NOT_FOUND'},404)
  if(!auth(req))return reply({error:'UNAUTHORIZED'},401)
- if(req.headers.get('origin')!=='https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app')
+ if(!isCrmPreviewOrigin(req.headers.get('origin')))
    return reply({error:'FORBIDDEN'},403)
  if(!req.headers.get('content-type')?.startsWith('application/json'))return reply({error:'INVALID_REQUEST'},400)
  let body:Record<string,unknown>
