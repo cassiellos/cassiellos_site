@@ -50,7 +50,8 @@ export async function POST(req:NextRequest){
    const appointmentId=data.appointmentId
    if(typeof appointmentId!=='string'||!uuid.test(appointmentId)){await client.query('ROLLBACK');committed=true;return send({error:'INVALID_APPOINTMENT'},400)}
    const result=await client.query(`UPDATE crm.appointments SET status='completed',completed_at=now(),updated_at=now()
-     WHERE id=$1 AND lead_id=$2 AND status='confirmed' RETURNING id`,[appointmentId,leadId])
+     WHERE id=$1 AND lead_id=$2 AND status='confirmed'
+       AND ends_at <= now() RETURNING id`,[appointmentId,leadId])
    if(!result.rowCount){await client.query('ROLLBACK');committed=true;return send({error:'MEETING_NOT_CONFIRMABLE'},409)}
    await client.query(`INSERT INTO crm.lead_activities(lead_id,appointment_id,activity_kind,performed_by,details)
      VALUES($1,$2,'meeting_completed','crm_admin','{}'::jsonb)`,[leadId,appointmentId])
