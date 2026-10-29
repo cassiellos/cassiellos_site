@@ -200,3 +200,5 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
 @media (max-width:540px){
   #cassiellos-crm .crm-auth-card{padding:26px 22px}
 }
+
+#cassiellos-crm .crm-test-tag{display:inline-flex;align-items:center;margin-left:6px;padding:2px 6px;border-radius:5px;background:rgba(241,60,75,.16);border:1px solid rgba(241,60,75,.45);color:#ff98a3;font-size:9px;font-weight:800;letter-spacing:.07em;vertical-align:middle}
