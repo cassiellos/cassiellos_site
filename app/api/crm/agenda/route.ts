@@ -16,6 +16,7 @@ const headers = {
 type AppointmentRow = {
   id: string
   lead_id: string
+  is_test: boolean
   full_name: string
   company: string | null
   email: string | null
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await withCrmReadOnlyTransaction(async client => {
       const records = await client.query<AppointmentRow>(
-        `SELECT a.id, a.lead_id, l.full_name, l.company, l.email, l.whatsapp,
+        `SELECT a.id, a.lead_id, a.is_test, l.full_name, l.company, l.email, l.whatsapp,
            l.segment, a.status, a.starts_at, a.ends_at, a.meeting_url,
            a.calendar_event_id, a.confirmed_at, a.completed_at, a.cancelled_at
          FROM crm.appointments a
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
         },
         appointments: records.rows.map(row => ({
           id: row.id,
+          isTest: row.is_test,
           leadId: row.lead_id,
           name: row.full_name,
           company: row.company,
