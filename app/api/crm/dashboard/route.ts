@@ -19,16 +19,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401, headers })
 
   const period = request.nextUrl.searchParams.get('period') === '30d' ? 30 : 7
+  const showTests = request.nextUrl.searchParams.get('mode') === 'test'
   try {
     const data = await withCrmReadOnlyTransaction(async client => {
       const metrics = await client.query<{
         leads: string; qualified: string; scheduled: string; completed: string; contracts: string
       }>(`SELECT
-          (SELECT count(*) FROM crm.leads WHERE created_at >= now() - ($1::int * interval '1 day'))::text AS leads,
-          (SELECT count(*) FROM crm.leads WHERE stage = 'qualified' AND created_at >= now() - ($1::int * interval '1 day'))::text AS qualified,
-          (SELECT count(*) FROM crm.appointments WHERE status IN ('confirmed','completed') AND confirmed_at >= now() - ($1::int * interval '1 day'))::text AS scheduled,
-          (SELECT count(*) FROM crm.appointments WHERE status = 'completed' AND completed_at >= now() - ($1::int * interval '1 day'))::text AS completed,
-          (SELECT count(*) FROM crm.deals WHERE status = 'won' AND closed_at >= now() - ($1::int * interval '1 day'))::text AS contracts`, [period])
+          (SELECT count(*) FROM crm.leads WHERE is_test = $2 AND created_at >= now() - ($1::int * interval '1 day'))::text AS leads,
+          (SELECT count(*) FROM crm.leads WHERE is_test = $2 AND stage = 'qualified' AND created_at >= now() - ($1::int * interval '1 day'))::text AS qualified,
+          (SELECT count(*) FROM crm.appointments WHERE is_test = $2 AND status IN ('confirmed','completed') AND confirmed_at >= now() - ($1::int * interval '1 day'))::text AS scheduled,
+          (SELECT count(*) FROM crm.appointments WHERE is_test = $2 AND status = 'completed' AND completed_at >= now() - ($1::int * interval '1 day'))::text AS completed,
+          (SELECT count(*) FROM crm.deals WHERE is_test = $2 AND status = 'won' AND closed_at >= now() - ($1::int * interval '1 day'))::text AS contracts`, [period, showTests])
       const history = await client.query<{ date: string; leads: string }>(
         `WITH days AS (
            SELECT generate_series(
@@ -40,8 +41,8 @@ export async function GET(request: NextRequest) {
          SELECT to_char(d.day, 'YYYY-MM-DD') AS date,
            count(l.id)::text AS leads
          FROM days d LEFT JOIN crm.leads l
-           ON (l.created_at AT TIME ZONE 'America/Sao_Paulo')::date = d.day
-         GROUP BY d.day ORDER BY d.day`, [period])
+           ON (l.created_at AT TIME ZONE 'America/Sao_Paulo')::date = d.day AND l.is_test = $2
+         GROUP BY d.day ORDER BY d.day`, [period, showTests])
       const recent = await client.query<{
         id: string; name: string; company: string | null; stage: string; source: string | null; created_at: Date
       }>(`SELECT l.id, l.full_name AS name, l.company, l.stage,
@@ -50,11 +51,13 @@ export async function GET(request: NextRequest) {
          LEFT JOIN LATERAL (
            SELECT answers FROM crm.form_submissions WHERE lead_id = l.id
            ORDER BY submitted_at DESC, id DESC LIMIT 1
-         ) f ON true
-         ORDER BY l.created_at DESC, l.id DESC LIMIT 5`)
+          ) f ON true
+         WHERE l.is_test = $1
+         ORDER BY l.created_at DESC, l.id DESC LIMIT 5`, [showTests])
       const m = metrics.rows[0]
       return {
         periodDays: period,
+        mode: showTests ? 'test' : 'operational',
         metrics: {
           leads: Number(m?.leads ?? 0), qualified: Number(m?.qualified ?? 0),
           scheduled: Number(m?.scheduled ?? 0), completed: Number(m?.completed ?? 0),
