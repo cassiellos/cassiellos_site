@@ -1,7 +1,10 @@
-import { createHmac } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
+import { verifyBookingGrant } from '@/lib/crm/booking-grant'
+import { checkAvailabilityAccess } from '@/lib/crm/booking-confirmation'
+import { parseLimitExemptMailboxes } from '@/lib/crm/booking-reservation'
+import { AVAILABILITY_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
 import {
   CRM_BOOKING_TIME_ZONE,
   DEFAULT_BOOKING_POLICY,
@@ -26,30 +29,10 @@ function json(body: unknown, status: number) {
   })
 }
 
-/** Preview only, no private event details. Limit calls before accessing Google. */
+/** Preview only, no private event details. Limit calls before accessing Google (50 / 15 min / IP). */
 async function allowAvailabilityLookup(request: NextRequest): Promise<boolean> {
-  const secret = process.env.CRM_SESSION_SECRET
-  if (!secret || !/^[a-f0-9]{64,}$/i.test(secret)) return false
-  const forwardedIp = request.headers.get('x-vercel-forwarded-for') || 'unknown'
-  const fingerprint = createHmac('sha256', Buffer.from(secret, 'hex'))
-    .update('calendar-availability:' + forwardedIp.slice(0, 128))
-    .digest('hex')
-  const result = await getCrmPool().query<{ request_count: number }>(
-    `INSERT INTO crm.booking_availability_limits
-      (fingerprint, window_started_at, request_count, last_request_at)
-      VALUES ($1, now(), 1, now())
-      ON CONFLICT (fingerprint) DO UPDATE SET
-        request_count = CASE
-          WHEN crm.booking_availability_limits.window_started_at < now() - interval '15 minutes'
-          THEN 1 ELSE crm.booking_availability_limits.request_count + 1 END,
-        window_started_at = CASE
-          WHEN crm.booking_availability_limits.window_started_at < now() - interval '15 minutes'
-          THEN now() ELSE crm.booking_availability_limits.window_started_at END,
-        last_request_at = now()
-      RETURNING request_count`,
-    [fingerprint],
-  )
-  return (result.rows[0]?.request_count ?? 1000) <= 50
+  const fingerprint = requestFingerprint(AVAILABILITY_LIMIT, request.headers.get('x-vercel-forwarded-for'))
+  return fingerprint ? consumeRequestQuota(getCrmPool(), AVAILABILITY_LIMIT, fingerprint) : false
 }
 
 export async function GET(request: NextRequest) {
@@ -61,6 +44,10 @@ export async function GET(request: NextRequest) {
   if (!getBookingForm(form) || !isValidBookingDate(date)) {
     return json({ error: 'INVALID_REQUEST' }, 400)
   }
+  // Phase 3 / item 4: only visitors holding a booking session (issued after the
+  // server-side Turnstile check) can trigger calendar lookups.
+  const session = verifyBookingGrant(request.headers.get('x-booking-session'))
+  if (!session || session.formSlug !== form) return json({ error: 'BOOKING_SESSION_EXPIRED' }, 401)
   if (!isBookableDate(date)) {
     return json({ date, slots: [], timeZone: CRM_BOOKING_TIME_ZONE,
       slotMinutes: DEFAULT_BOOKING_POLICY.slotMinutes, provisionalPolicy: true }, 200)
@@ -73,6 +60,15 @@ export async function GET(request: NextRequest) {
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
   if (!allowed) return json({ error: 'TOO_MANY_REQUESTS' }, 429)
+
+  try {
+    // Blocked contacts (active meeting / e-mail limit) stop here, before Google.
+    const denied = await checkAvailabilityAccess(getCrmPool(), session, form,
+      { exemptMailboxes: parseLimitExemptMailboxes() })
+    if (denied) return json(denied.body, denied.status)
+  } catch {
+    return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
+  }
 
   try {
     const busy = await readGoogleBusyIntervals(date)
