@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
+import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
@@ -84,9 +85,11 @@ function Icon({ name }: { name: 'calendar' | 'clock' | 'video' | 'shield' | 'arr
     aria-hidden="true">{paths[name]}</svg>
 }
 
+const TURNSTILE_ACTION = 'booking_lead'
+
 export default function BookingExperience({
-  form, bookingEnabled,
-}: { form: BookingForm; bookingEnabled: boolean }) {
+  form, bookingEnabled, turnstileSiteKey,
+}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null }) {
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -107,6 +110,10 @@ export default function BookingExperience({
   const [confirming, setConfirming] = useState(false)
   const [confirmationError, setConfirmationError] = useState('')
   const [confirmedMeetUrl, setConfirmedMeetUrl] = useState<string | null>(null)
+  const [availabilityError, setAvailabilityError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
+  const [turnstileReset, setTurnstileReset] = useState(0)
   const submissionKey = useRef<string | null>(null)
 
   useEffect(() => {
@@ -121,15 +128,22 @@ export default function BookingExperience({
     let active = true
     setLoading(true)
     setFailed(false)
+    setAvailabilityError('')
     setSlots([])
     setChosen(null)
 
     fetch('/api/booking/availability?form=' + encodeURIComponent(form.slug) +
       '&date=' + encodeURIComponent(date), {
       cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+      headers: bookingToken ? { 'X-Booking-Session': bookingToken } : {},
     })
       .then(async response => {
-        if (!response.ok) throw new Error('UNAVAILABLE')
+        if (!response.ok) {
+          const data: unknown = await response.json().catch(() => null)
+          const code = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+            ? data.error : 'UNAVAILABLE'
+          throw new Error(code)
+        }
         const data: unknown = await response.json()
         if (!data || typeof data !== 'object' || !('slots' in data) ||
           !Array.isArray(data.slots)) throw new Error('INVALID_RESPONSE')
@@ -139,11 +153,22 @@ export default function BookingExperience({
           typeof item.startAt === 'string' && typeof item.endAt === 'string')
       })
       .then(items => { if (active) setSlots(items) })
-      .catch(() => { if (active) setFailed(true) })
+      .catch((error: unknown) => {
+        if (!active) return
+        const code = error instanceof Error ? error.message : ''
+        const messages: Record<string, string> = {
+          BOOKING_SESSION_EXPIRED: 'Sua sessão de agendamento expirou. Volte e envie o formulário novamente.',
+          CONTACT_HAS_ACTIVE_MEETING: 'Já existe uma reunião para este contato. Para remarcar, fale com nossa equipe.',
+          BOOKING_LIMIT_REACHED: 'Não foi possível concluir o agendamento online para este contato. Fale com nossa equipe.',
+          TOO_MANY_REQUESTS: 'Muitas consultas em pouco tempo. Aguarde alguns minutos e tente novamente.',
+        }
+        setAvailabilityError(messages[code] ?? '')
+        setFailed(true)
+      })
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false; controller.abort() }
-  }, [step, date, retry, form.slug])
+  }, [step, date, retry, form.slug, bookingToken])
 
   const questions = useMemo<Question[]>(() => [
     ...form.fields.map(field => ({
@@ -198,6 +223,14 @@ export default function BookingExperience({
     event.preventDefault()
     if (!privacyAccepted || savingLead) return
     if (leadSaved) { setStep(2); return }
+    if (!turnstileSiteKey) {
+      setSaveError('A verificação de segurança está indisponível no momento. Tente novamente mais tarde.')
+      return
+    }
+    if (!turnstileToken) {
+      setSaveError('Aguarde a conclusão da verificação de segurança e tente novamente.')
+      return
+    }
     for (const question of questions) {
       if (!attendee[question.name].trim()) {
         setQuestionIndex(questions.findIndex(item => item.name === question.name))
@@ -226,9 +259,11 @@ export default function BookingExperience({
         body: JSON.stringify({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
           name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
-          answers, attribution, privacyAccepted,
+          answers, attribution, privacyAccepted, turnstileToken,
         }),
       })
+      // Each Turnstile token is single-use: always request a fresh one afterwards.
+      setTurnstileToken(null)
       const result: unknown = await response.json()
       if (!response.ok) {
         const code = result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
@@ -252,10 +287,15 @@ export default function BookingExperience({
         INVALID_FORM_ANSWERS: 'Revise as respostas do formulário. Uma delas pode estar incompleta.',
         PRIVACY_NOT_ACCEPTED: 'Confirme a Política de Privacidade para continuar.',
         TOO_MANY_REQUESTS: 'Muitas tentativas. Tente novamente mais tarde.',
+        SECURITY_CHECK_REQUIRED: 'Aguarde a conclusão da verificação de segurança e tente novamente.',
+        SECURITY_CHECK_EXPIRED: 'A verificação de segurança expirou. Ela foi renovada; envie novamente.',
+        SECURITY_CHECK_FAILED: 'Não foi possível confirmar a verificação de segurança. Ela foi renovada; tente novamente.',
+        SECURITY_CHECK_UNAVAILABLE: 'A verificação de segurança está indisponível no momento. Tente novamente em instantes.',
         FORBIDDEN: 'A página de testes perdeu a autorização de origem. Atualize a página e tente novamente.',
         NOT_FOUND: 'O ambiente de testes não está disponível. Não envie dados reais.',
       }
       setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
+      setTurnstileReset(value => value + 1)
     } finally {
       setSavingLead(false)
     }
@@ -289,6 +329,7 @@ export default function BookingExperience({
         TEST_EMAIL_NOT_ALLOWED: 'Neste teste, só é possível agendar com o e-mail de teste autorizado.',
         BOOKING_ALREADY_PROCESSING: 'Já existe um agendamento em processamento. Não tente novamente: contate a equipe para conferir.',
         CONTACT_HAS_ACTIVE_MEETING: 'Já existe uma reunião para este contato. Para remarcar, fale com nossa equipe.',
+        BOOKING_LIMIT_REACHED: 'Não foi possível concluir o agendamento online para este contato. Fale com nossa equipe.',
         BOOKING_REQUIRES_REVIEW: 'O agendamento precisa de verificação manual. Não tente novamente para evitar duplicidade.',
         BOOKING_DISABLED: 'A confirmação ainda não foi habilitada neste ambiente.',
       }
@@ -418,11 +459,27 @@ export default function BookingExperience({
             <p className="booking-test-warning">Atenção: estamos no ambiente de testes. Utilize somente
               nome, telefone e e-mail fictícios. A partir desta etapa, os dados serão armazenados
               no banco Neon Preview.</p>
+            {!leadSaved && (turnstileSiteKey
+              ? <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
+                  resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>
+              : null)}
+            {!leadSaved && <p className="booking-security-status" role="status" data-state={
+              !turnstileSiteKey ? 'error' : turnstileToken ? 'ready' : turnstileState}>
+              <Icon name="shield"/>
+              <span>{!turnstileSiteKey
+                ? 'Verificação de segurança indisponível no momento. O envio está temporariamente bloqueado.'
+                : turnstileToken ? 'Verificação de segurança concluída.'
+                : turnstileState === 'error' ? 'Não foi possível carregar a verificação de segurança. Recarregue a página ou desative bloqueadores para este site.'
+                : turnstileState === 'expired' ? 'Renovando a verificação de segurança…'
+                : 'Verificando a segurança do envio…'}
+                {' '}Proteção por Cloudflare Turnstile (<a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">privacidade</a>).</span>
+            </p>}
             {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">
               <button className="booking-secondary" type="button" disabled={savingLead}
                 onClick={() => setQuestionIndex(questions.length - 1)}><Icon name="back"/> Voltar</button>
-              <button className="booking-primary" type="submit" disabled={!privacyAccepted || savingLead}>
+              <button className="booking-primary" type="submit"
+                disabled={!privacyAccepted || savingLead || (!leadSaved && !turnstileToken)}>
                 {savingLead ? 'Registrando...' : 'Salvar e escolher horário'} <Icon name="arrow"/>
               </button>
             </div>
@@ -467,8 +524,8 @@ export default function BookingExperience({
               {!date && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
               {loading && <p className="booking-calendar-hint">Consultando disponibilidade real…</p>}
               {failed && <div className="booking-availability-error" role="alert">
-                Não foi possível consultar a agenda agora.
-                <button type="button" onClick={() => setRetry(v => v + 1)}>Tentar novamente</button>
+                {availabilityError || 'Não foi possível consultar a agenda agora.'}
+                {!availabilityError && <button type="button" onClick={() => setRetry(v => v + 1)}>Tentar novamente</button>}
               </div>}
               {!loading && !failed && date && slots.length === 0 &&
                 <p className="booking-calendar-hint">Não há horários disponíveis para esta data. Escolha outro dia.</p>}
