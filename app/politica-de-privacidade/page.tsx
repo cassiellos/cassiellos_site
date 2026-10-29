@@ -6,7 +6,7 @@ export default function PrivacyPage() {
   return (
     <main className="legalPage"><div className="legalWrap">
       <a className="legalBack" href="/">← Voltar para o site</a><span className="tag">Transparência e LGPD</span>
-      <h1>Política de Privacidade</h1><p className="legalUpdated">Última atualização: 22 de agosto de 2026.</p>
+      <h1>Política de Privacidade</h1><p className="legalUpdated">Última atualização: 29 de outubro de 2026.</p>
       <div className="legalContent">
         <section><h2>1. Quem somos</h2><p>A Cassiellos é uma empresa de operações criativas sediada em Belo Horizonte, Minas Gerais. Esta política explica como tratamos dados pessoais recebidos pelo site cassiellos.com.br e por nossos canais de atendimento.</p></section>
         <section><h2>2. Dados que podemos coletar</h2><ul><li>dados de contato fornecidos voluntariamente, como nome, telefone, e-mail, empresa e cargo;</li><li>informações enviadas durante conversas, diagnósticos e solicitações comerciais;</li><li>dados técnicos de navegação, como dispositivo, navegador, páginas visitadas, origem do acesso e eventos de interação;</li><li>informações relacionadas a campanhas publicitárias, quando houver consentimento ou outra base legal aplicável.</li></ul></section>
@@ -16,7 +16,19 @@ export default function PrivacyPage() {
         <section><h2>6. Armazenamento e segurança</h2><p>Adotamos controles técnicos e organizacionais compatíveis com a natureza dos dados. As informações são mantidas pelo período necessário às finalidades informadas, ao cumprimento de obrigações legais ou ao exercício de direitos.</p></section>
         <section><h2>7. Direitos do titular</h2><p>Nos termos da Lei nº 13.709/2018, você pode solicitar confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, informação sobre compartilhamento, revisão de consentimento e oposição quando aplicável.</p></section>
         <section><h2>8. Contato</h2><p>Solicitações sobre privacidade podem ser enviadas para <a href="mailto:contato@agenciacassiellos.com.br">contato@agenciacassiellos.com.br</a>. Poderemos solicitar informações adicionais para confirmar a identidade do solicitante.</p></section>
-        <section><h2>9. Atualizações</h2><p>Esta política pode ser atualizada para refletir mudanças legais, tecnológicas ou operacionais. A versão vigente permanecerá publicada nesta página com a data da última atualização.</p></section>
+        <section><h2>9. Integração com Google Calendar — Mini CRM Cassiellos</h2>
+          <p>O Mini CRM Cassiellos, utilizado para administrar contatos e agendar reuniões comerciais, permite que um administrador autorizado conecte sua própria conta Google Calendar por meio do OAuth 2.0. Os visitantes que solicitam uma reunião não precisam conectar suas contas Google.</p>
+          <h3>9.1. Dados acessados e permissões</h3>
+          <p>Com autorização expressa do administrador, o sistema consulta apenas os intervalos ocupados e disponíveis do calendário conectado, utilizando a permissão <code>calendar.freebusy</code>, e cria eventos na agenda de propriedade do administrador utilizando <code>calendar.events.owned</code>. A finalidade é impedir conflitos de horários, confirmar agendamentos e gerar convites com Google Meet. Não solicitamos acesso geral a mensagens do Gmail, arquivos do Drive ou a calendários de outros usuários.</p>
+          <h3>9.2. Dados tratados e armazenados</h3>
+          <p>O sistema pode enviar ao Google Calendar o título e a descrição da reunião, as datas e horários e o e-mail informado pelo participante para criar o convite. O Mini CRM armazena o identificador do evento, o horário agendado, o estado da reunião e o link do Google Meet, quando disponível. A autorização de acesso (refresh token) do administrador é armazenada criptografada no banco PostgreSQL. Não armazenamos o conteúdo completo da agenda nem os detalhes de compromissos preexistentes consultados na verificação de disponibilidade.</p>
+          <h3>9.3. Uso limitado e compartilhamento</h3>
+          <p>Os dados obtidos pelas APIs do Google são usados exclusivamente para fornecer e manter a funcionalidade de agenda autorizada. Não vendemos esses dados, não os utilizamos para publicidade direcionada, não os repassamos a corretores de dados e não os utilizamos para treinar modelos de inteligência artificial. O processamento técnico necessário ocorre por meio dos provedores de infraestrutura e do próprio Google para criar e enviar convites. O acesso humano a esses dados é restrito a necessidades legítimas de operação, suporte, segurança e cumprimento de obrigações legais.</p>
+          <p>O uso e a transferência de informações recebidas das APIs do Google pelo Mini CRM Cassiellos obedecem à <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, inclusive seus requisitos de <em>Limited Use</em> (uso limitado).</p>
+          <h3>9.4. Revogação e solicitações</h3>
+          <p>O administrador pode revogar o acesso concedido ao aplicativo pela <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Conta Google</a>. Após a revogação, a criação de novos eventos pelo Mini CRM poderá deixar de funcionar até nova autorização. Solicitações sobre acesso, correção, retenção e exclusão dos dados associados à integração podem ser encaminhadas ao canal de privacidade informado nesta política.</p>
+        </section>
+        <section><h2>10. Atualizações</h2><p>Esta política pode ser atualizada para refletir mudanças legais, tecnológicas ou operacionais. A versão vigente permanecerá publicada nesta página com a data da última atualização.</p></section>
       </div>
     </div></main>
   )
