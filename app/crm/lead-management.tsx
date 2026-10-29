@@ -6,10 +6,12 @@ type Meeting={id:string;status:string;starts_at:string;ends_at:string}
 type Deal={id:string;status:string;amount:number|null;description:string|null;closed_at:string|null}
 type Info={lead:{id:string;full_name:string;company:string|null;stage:string};activities:Item[];appointments:Meeting[];deals:Deal[]}
 const descriptions:Record<string,string>={
- form_completed:'Formulário concluído',stage_changed:'Etapa comercial alterada',
+ form_completed:'Formulário concluído',form_resubmitted:'Formulário reenviado',stage_changed:'Etapa comercial alterada',
  meeting_scheduled:'Reunião agendada',meeting_completed:'Reunião realizada',
  contract_won:'Contrato fechado',note_added:'Nota adicionada',
 }
+const fieldNames:Record<string,string>={full_name:'nome',whatsapp:'WhatsApp',company:'empresa',segment:'segmento'}
+function fieldList(value:unknown){return Array.isArray(value)?value.filter((v):v is string=>typeof v==='string').map(v=>fieldNames[v]||v).join(', '):''}
 const fmt=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
 export default function LeadManagement({leadId,onClose}:{leadId:string;onClose:()=>void}){
  const [info,setInfo]=useState<Info|null>(null)
@@ -77,6 +79,9 @@ export default function LeadManagement({leadId,onClose}:{leadId:string;onClose:(
     {info.activities.length===0?<p>Nenhuma atividade registrada.</p>:
       <ol className="crm-lead-timeline">{info.activities.map(a=><li key={a.id}><strong>{descriptions[a.activity_kind]||a.activity_kind}</strong><small>{fmt.format(new Date(a.created_at))}</small>
        {a.activity_kind==='note_added'&&typeof a.details?.text==='string'&&<p>{a.details.text}</p>}
+       {a.activity_kind==='form_resubmitted'&&<p>Novo interesse registrado; cadastro preservado.
+        {fieldList(a.details?.differingFields)?' Informado diferente: '+fieldList(a.details?.differingFields)+'.':''}
+        {fieldList(a.details?.filledFields)?' Campos vazios preenchidos: '+fieldList(a.details?.filledFields)+'.':''}</p>}
        {a.activity_kind==='stage_changed'&&<p>{String(a.details?.from||'—')} → {String(a.details?.to||'—')}</p>}
       </li>)}</ol>}
    </div>
