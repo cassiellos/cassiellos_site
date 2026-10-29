@@ -1,7 +1,7 @@
 'use client'
 import { useEffect,useState } from 'react'
 import './real-funnel.css'
-type Lead={id:string;name:string;company:string|null;niche:string|null;stage:string;lane:string;createdAt:string}
+type Lead={id:string;isTest:boolean;name:string;company:string|null;niche:string|null;stage:string;lane:string;createdAt:string}
 const lanes=[['new','Novos'],['contacted','Contatados'],['qualified','Qualificados'],['scheduled','Reunião agendada'],['completed','Reunião realizada'],['closed','Contrato fechado'],['disqualified','Desqualificados']] as const
 export default function RealFunnel(){
  const [leads,setLeads]=useState<Lead[]>([])
@@ -40,7 +40,7 @@ export default function RealFunnel(){
      {lanes.map(([key,label])=>{const items=leads.filter(l=>l.lane===key);return <div className="crm-real-funnel-col" key={key}>
        <div className="crm-real-funnel-col-head"><strong>{label}</strong><span>{items.length}</span></div>
        <div className="crm-real-funnel-cards">{items.length===0?<p>Sem registros</p>:items.map(lead=><article key={lead.id} className="crm-real-funnel-card">
-         <strong>{lead.company||lead.name}</strong><small>{lead.name}</small><small>{lead.niche||'Nicho não informado'}</small>
+         <strong>{lead.company||lead.name} {lead.isTest&&<span className="crm-test-tag">TESTE</span>}</strong><small>{lead.name}</small><small>{lead.niche||'Nicho não informado'}</small>
          {['new','contacted','qualified','disqualified'].includes(key)&&<label>Qualificação
            <select aria-label={'Alterar qualificação de '+lead.name} disabled={busy===lead.id} value={lead.stage} onChange={e=>update(lead.id,e.target.value)}>
              <option value="new">Novo</option><option value="contacted">Contatado</option><option value="qualified">Qualificado</option><option value="disqualified">Desqualificado</option>
