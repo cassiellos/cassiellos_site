@@ -20,10 +20,15 @@ A Conversions API **não** está ativa (sem token, sem rotina de envio).
 
 ## Ativação (cada passo exige autorização)
 
-1. Criar o dataset **"Cassiellos | CRM & Conversões"** no portfólio **Cassiellos (880054796119648)** e
-   vinculá-lo à conta de anúncios **Cassiellos 01 (368622509235308)**.
+1. ✅ Dataset **"Cassiellos | CRM & Conversões"** criado em 29/10/2026. Dados:
+   - ID **28992534033707610**;
+   - pertence ao portfólio **Cassiellos (880054796119648)**;
+   - vinculado só à conta de anúncios **Cassiellos 01 (368622509235308)**;
+   - conexão automática à API de Conversões da Meta **desmarcada**;
+   - sem categoria e sem integração Shopify;
+   - nenhum evento recebido.
 2. Verificar o domínio `cassiellos.com.br` no portfólio. O portfólio ainda não tem domínios.
-3. Configurar `META_PIXEL_ID` e `META_PIXEL_ENABLED=true` (Preview, branch) e fazer um novo deploy.
+3. Configurar `META_PIXEL_ID=28992534033707610` e `META_PIXEL_ENABLED=true` (Preview, branch) e fazer um novo deploy.
 4. Validar com a ferramenta "Testar eventos" do Gerenciador de Eventos e com a extensão Meta Pixel Helper,
    usando apenas leads de teste. Leads de teste **não** disparam Lead nem Schedule; só aparecem PageViews.
 5. CAPI (etapa futura):
