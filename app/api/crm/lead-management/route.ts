@@ -4,6 +4,7 @@ import { getCrmPool,withCrmReadOnlyTransaction } from '@/lib/crm/db'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { adminActorFromSession,cancelMeeting,markNoShow,setLeadClassification } from '@/lib/crm/admin-actions'
 import { cancelBookingEvent } from '@/lib/crm/google-calendar'
+import { changeMarketingConsent,readMarketingConsentState } from '@/lib/crm/marketing-consent'
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}
@@ -27,7 +28,9 @@ export async function GET(req:NextRequest){
      WHERE x.appointment_id=a.id AND x.activity_kind='meeting_cancel_sync_failed')) AS cancel_pending
    FROM crm.appointments a WHERE a.lead_id=$1 ORDER BY a.starts_at DESC LIMIT 20`,[id])
  const deals=await client.query('SELECT id,status,amount,description,closed_at FROM crm.deals WHERE lead_id=$1 ORDER BY created_at DESC LIMIT 20',[id])
- return {lead:l.rows[0],activities:activities.rows,appointments:appointments.rows,deals:deals.rows}
+ // Current marketing (Meta Pixel) consent: only the state, never browser identifiers.
+ const marketingConsent=await readMarketingConsentState(client,id)
+ return {lead:l.rows[0],activities:activities.rows,appointments:appointments.rows,deals:deals.rows,marketingConsent}
  })
  return data?send({ok:true,...data}):send({error:'NOT_FOUND'},404)
  }catch{return send({error:'HISTORY_UNAVAILABLE'},503)}
@@ -41,7 +44,7 @@ export async function POST(req:NextRequest){
  try{const raw=await req.text();if(raw.length>2000)return send({error:'INVALID_REQUEST'},400);data=JSON.parse(raw)}catch{return send({error:'INVALID_REQUEST'},400)}
  const leadId=data.leadId,action=data.action
  if(typeof leadId!=='string'||!uuid.test(leadId))return send({error:'INVALID_LEAD'},400)
- if(action==='cancel_meeting'||action==='mark_no_show'||action==='set_classification')return adminAction(req,leadId,action,data)
+ if(action==='cancel_meeting'||action==='mark_no_show'||action==='set_classification'||action==='revoke_marketing_consent')return adminAction(req,leadId,action,data)
  if(action!=='note'&&action!=='complete_meeting'&&action!=='win_deal')return send({error:'INVALID_ACTION'},400)
  const client=await getCrmPool().connect()
  let committed=false
@@ -93,6 +96,13 @@ async function adminAction(req:NextRequest,leadId:string,action:string,data:Reco
  const actor=adminActorFromSession(req.cookies.get(crmSessionCookieName())?.value||'')
  const pool=getCrmPool()
  try{
+  if(action==='revoke_marketing_consent'){
+   // Privacy request received through the privacy channel: only REVOKE is possible here.
+   const r=await changeMarketingConsent(pool,{leadId,granted:false,source:'privacy_request',adminSessionRef:actor.sessionRef})
+   if(r.outcome==='not_found')return send({error:'NOT_FOUND'},404)
+   if(r.outcome==='not_allowed')return send({error:'INVALID_ACTION'},400)
+   return send({ok:true,outcome:r.outcome})
+  }
   if(action==='set_classification'){
    if(typeof data.isTest!=='boolean')return send({error:'INVALID_CLASSIFICATION'},400)
    const r=await setLeadClassification(pool,{leadId,isTest:data.isTest,actor,reason:data.reason})

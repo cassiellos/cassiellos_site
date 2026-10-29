@@ -163,19 +163,21 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     }
   })
 
-  it('fbp/fbc só seguem para o CRM com consentimento de marketing (e nunca outros campos)', async () => {
+  it('decisão C2: fbp/fbc NUNCA seguem para o CRM — só a escolha sim/não', () => assertC2())
+  async function assertC2() {
     const t = setup()
-    await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false, fbp: 'fb.1.1730000000000.1234567890' } }), remoteIp: null })
-    assert.deepEqual(t.saved[0].marketing, { consent: false })
+    await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false, decided: true, fbp: 'fb.1.1730000000000.1234567890' } }), remoteIp: null })
+    assert.deepEqual(t.saved[0].marketing, { consent: false, decided: true })
     const t2 = setup()
     await handleLeadIntake(t2.deps, { value: body({ marketing: {
       consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123', email: 'x@y.com',
     } }), remoteIp: null })
-    assert.deepEqual(t2.saved[0].marketing, { consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123' })
+    assert.deepEqual(t2.saved[0].marketing, { consent: true, decided: true })
+    assert.equal(JSON.stringify(t2.saved[0]).includes('fb.1.'), false, 'nenhum identificador fbp/fbc chega à gravação')
     const t3 = setup()
     await handleLeadIntake(t3.deps, { value: body(), remoteIp: null })
-    assert.deepEqual(t3.saved[0].marketing, { consent: false }, 'sem escolha = recusa')
-  })
+    assert.deepEqual(t3.saved[0].marketing, { consent: false, decided: false }, 'sem escolha = sem consentimento')
+  }
 
   it('recusar marketing não impede o cadastro', async () => {
     const t = setup()

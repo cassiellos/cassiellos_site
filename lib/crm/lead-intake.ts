@@ -1,5 +1,7 @@
 import type { PoolClient } from 'pg'
-import { leadTrackingEventId, type MarketingSignals } from '../marketing/meta'
+import { LEGAL_POLICY_VERSION } from '../legal/policy'
+import { leadTrackingEventId, type MarketingConsentInput } from '../marketing/meta'
+import { applyMarketingConsentChange } from './marketing-consent'
 
 /**
  * Gravação dos envios do formulário público de diagnóstico (Mini CRM Cassiellos).
@@ -18,9 +20,13 @@ import { leadTrackingEventId, type MarketingSignals } from '../marketing/meta'
  * Edições administrativas usam outras rotas e não passam por aqui.
  */
 
-export const LEAD_POLICY_VERSION = '2026-08-22'
-/** Versão da Política de Cookies que descreve o Meta Pixel (evidência do consentimento de marketing). */
-export const MARKETING_POLICY_VERSION = '2026-10-29'
+/**
+ * Versão dos textos jurídicos gravada como evidência dos consentimentos (Política de Privacidade
+ * e Política de Cookies). Fonte única em lib/legal/policy.ts: as datas exibidas nas políticas e
+ * a versão gravada aqui ficam sempre iguais (decisão E).
+ */
+export const LEAD_POLICY_VERSION = LEGAL_POLICY_VERSION
+export const MARKETING_POLICY_VERSION = LEGAL_POLICY_VERSION
 
 export type MergeableLeadField = 'full_name' | 'whatsapp' | 'company' | 'segment'
 const MERGEABLE_FIELDS: readonly MergeableLeadField[] = ['full_name', 'whatsapp', 'company', 'segment']
@@ -83,8 +89,8 @@ export type LeadSubmissionInput = {
    * (Fase 3 / item 4). Só envios com turnstile 'verified' podem confirmar reunião.
    */
   protection?: LeadSubmissionProtection | null
-  /** Escolha de cookies de marketing + identificadores fbp/fbc (somente com consentimento). */
-  marketing?: MarketingSignals | null
+  /** Escolha de cookies de marketing (somente sim/não; fbp/fbc NÃO são gravados — decisão C2). */
+  marketing?: MarketingConsentInput | null
   /** URL da página do formulário, sem parâmetros (origem do evento Lead). */
   eventSourceUrl?: string | null
 }
@@ -184,7 +190,10 @@ export async function saveLeadSubmission(
           contact: { name: input.name, email, whatsapp: input.phone },
           questions: input.answers, attribution: input.attribution,
           ...(input.protection ? { protection: input.protection } : {}),
-          ...(input.marketing ? { marketing: input.marketing } : {}),
+          // Only the yes/no choice is stored; never browser identifiers (decision C2).
+          ...(input.marketing ? { marketing: {
+            consent: input.marketing.consent === true, decided: input.marketing.decided === true,
+          } } : {}),
         }), input.idempotencyKey],
     )
     const submissionId = submission.rows[0].id
@@ -195,7 +204,7 @@ export async function saveLeadSubmission(
        VALUES ($1,'diagnostic_contact','consent',true,$2)`,
       [leadId, LEAD_POLICY_VERSION],
     )
-    // Marketing consent (cookies) is recorded only when explicitly granted.
+    // Marketing consent (cookies): a grant is appended as evidence of this submission.
     if (input.marketing?.consent === true) {
       await client.query(
         `INSERT INTO crm.consents
@@ -203,6 +212,12 @@ export async function saveLeadSubmission(
          VALUES ($1,'marketing_measurement','consent',true,$2)`,
         [leadId, MARKETING_POLICY_VERSION],
       )
+    } else if (input.marketing?.decided === true) {
+      // An explicit refusal on a new submission withdraws an earlier authorization of the
+      // same contact (auditable; no-op when there is none). Lead data is never changed.
+      await applyMarketingConsentChange(client, {
+        leadId, granted: false, source: 'form_submission', policyVersion: MARKETING_POLICY_VERSION,
+      })
     }
     // Internal "Lead" conversion: ONE per lead (first valid submission). Same event_id
     // is used by the browser Pixel and, in the future, by the Conversions API.

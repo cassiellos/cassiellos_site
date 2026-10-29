@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
-import { CONSENT_OPEN_EVENT, readMarketingSignals, trackMetaConversion } from '@/lib/marketing/meta-client'
+import {
+  CONSENT_CHANGE_EVENT, CONSENT_OPEN_EVENT, CONSENT_SLOT_ID, readMarketingConsent, trackMetaConversion,
+} from '@/lib/marketing/meta-client'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
@@ -116,6 +118,29 @@ export default function BookingExperience({
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
   const [turnstileReset, setTurnstileReset] = useState(0)
   const submissionKey = useRef<string | null>(null)
+  // Marketing choice last recorded in the CRM for this booking session (null = nothing saved yet).
+  const syncedMarketingConsent = useRef<boolean | null>(null)
+
+  // "Preferências de cookies" changed AFTER the form was sent, with this page still open:
+  // record the new choice (revocation or new authorization) in the CRM through the signed
+  // booking session. Best effort: the privacy channel remains available if it fails.
+  useEffect(() => {
+    if (!marketingEnabled || !bookingToken) return
+    function sync() {
+      const now = readMarketingConsent()
+      if (!now.decided || syncedMarketingConsent.current === now.consent) return
+      const previous = syncedMarketingConsent.current
+      syncedMarketingConsent.current = now.consent
+      fetch('/api/booking/consent', {
+        method: 'POST', cache: 'no-store', credentials: 'same-origin', keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingToken, marketing: now.consent }),
+      }).then(response => { if (!response.ok) syncedMarketingConsent.current = previous })
+        .catch(() => { syncedMarketingConsent.current = previous })
+    }
+    window.addEventListener(CONSENT_CHANGE_EVENT, sync)
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
+  }, [marketingEnabled, bookingToken])
 
   useEffect(() => {
     const current = localToday()
@@ -187,6 +212,11 @@ export default function BookingExperience({
       placeholder: 'voce@clinica.com.br', autoComplete: 'email' },
   ], [form.fields])
   const question = questions[questionIndex]
+  // Same behaviour as autoFocus, but without scrolling the page: on small screens the jump
+  // used to push the page header and the cookie notice out of view before any choice.
+  const focusWithoutScroll = (input: HTMLInputElement | null) => {
+    if (input && document.activeElement !== input) input.focus({ preventScroll: true })
+  }
   const totalStages = questions.length + 3
   const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
@@ -252,6 +282,7 @@ export default function BookingExperience({
       }
       const answers: Record<string, string> = {}
       for (const field of form.fields) answers[field.name] = attendee[field.name]
+      const marketingChoice = readMarketingConsent()
       const response = await fetch('/api/booking/leads', {
         method: 'POST',
         cache: 'no-store',
@@ -261,8 +292,8 @@ export default function BookingExperience({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
           name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
           answers, attribution, privacyAccepted, turnstileToken,
-          // Only the cookie choice; fbp/fbc travel only if marketing was accepted.
-          marketing: readMarketingSignals(),
+          // Only the yes/no cookie choice; fbp/fbc never reach the CRM (decision C2).
+          marketing: marketingChoice,
         }),
       })
       // Each Turnstile token is single-use: always request a fresh one afterwards.
@@ -278,6 +309,7 @@ export default function BookingExperience({
       }
       if (!('bookingToken' in result) || typeof result.bookingToken !== 'string' ||
         !result.bookingToken) throw new Error('INVALID_RESPONSE')
+      syncedMarketingConsent.current = marketingChoice.consent
       setBookingToken(result.bookingToken)
       // "Lead" only when the backend registered a NEW real lead (event_id from the CRM).
       if ('tracking' in result && result.tracking && typeof result.tracking === 'object' &&
@@ -373,6 +405,8 @@ export default function BookingExperience({
       </div>
       <span className="booking-header-tag">EXPERIÊNCIA DE AGENDAMENTO</span>
     </header>
+    {/* The cookie notice is rendered here, in the page flow, so it never covers form fields. */}
+    {marketingEnabled && <div id={CONSENT_SLOT_ID} className="booking-consent-slot"/>}
 
     <main className="booking-shell">
       <section className="booking-intro">
@@ -432,7 +466,8 @@ export default function BookingExperience({
                 <input id={'question-' + question.name} required
                   minLength={question.name === 'whatsapp' ? 10 : question.name === 'email' ? 5 : 2}
                   type={question.type} autoComplete={question.autoComplete}
-                  autoFocus maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
+                  ref={focusWithoutScroll}
+                  maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
                   placeholder={question.placeholder} value={attendee[question.name]}
                   onChange={event => update(question.name, event.target.value)}/>
               </label>}

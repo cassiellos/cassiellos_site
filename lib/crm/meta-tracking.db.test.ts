@@ -1,7 +1,7 @@
 /**
- * Meta Pixel / CAPI (preparação) — integração contra PostgreSQL DESCARTÁVEL.
- * Nada é enviado à Meta: verificamos os eventos internos, os event_id devolvidos ao
- * navegador e o payload que a futura CAPI montaria (mesmo nome + mesmo event_id).
+ * Meta Pixel / CAPI (preparação) + consentimento de marketing — integração contra PostgreSQL DESCARTÁVEL.
+ * Nada é enviado à Meta: verificamos eventos internos, event_id devolvidos ao navegador, o
+ * estado auditável do consentimento (revogação) e a decisão C2 (fbp/fbc nunca gravados).
  */
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
@@ -9,47 +9,109 @@ import { after, before, describe, it } from 'node:test'
 import { Pool } from 'pg'
 import { getBookingForm } from './booking-forms'
 import { confirmBookingRequest, type BookingSession } from './booking-confirmation'
+import { handleMarketingConsentChange } from './booking-consent-request'
+import { handleLeadIntake, type IntakeDeps } from './booking-intake-request'
 import { listBookingSlots } from './booking-slots'
-import { saveLeadSubmission } from './lead-intake'
+import { MARKETING_POLICY_VERSION, saveLeadSubmission } from './lead-intake'
+import { changeMarketingConsent, readMarketingConsentState } from './marketing-consent'
 import { buildMetaServerEvent } from './meta-events'
+import { TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike } from './turnstile'
 import { leadTrackingEventId } from '../marketing/meta'
 
 const url = process.env.CRM_INTEGRATION_DATABASE_URL
 const skip = !url ? 'CRM_INTEGRATION_DATABASE_URL não definida' : false
 const DAY = 86_400_000
 const ORIGIN = 'https://crm.cassiellos.com.br'
-const CONSENT = { consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123' }
+const HOST = 'crm.cassiellos.com.br'
+const FBP = 'fb.1.1730000000000.1234567890'
+const FBC = 'fb.1.1730000000000.IwAR0abcDEF_123'
+const GRANT = { consent: true, decided: true }
+const REFUSE = { consent: false, decided: true }
+const NO_CHOICE = { consent: false, decided: false }
+type Choice = typeof GRANT
 
-describe('Meta — eventos internos para Pixel e futura CAPI (PostgreSQL descartável)', { skip }, () => {
+describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável)', { skip }, () => {
   let pool: Pool
   before(() => { pool = new Pool({ connectionString: url, max: 8 }) })
   after(async () => { await pool?.end() })
   const q = async <T extends Record<string, unknown>>(sql: string, p: unknown[] = []) => (await pool.query<T>(sql, p)).rows
   const email = (tag: string) => tag + '.' + randomUUID().slice(0, 8) + '@exemplo.com'
 
-  const submit = (address: string, opts: { isTest?: boolean; marketing?: typeof CONSENT | { consent: false }; key?: string } = {}) =>
+  const submit = (address: string, opts: { isTest?: boolean; marketing?: Choice; key?: string } = {}) =>
     saveLeadSubmission(pool, {
       idempotencyKey: opts.key ?? randomUUID(), name: 'Lead Meta', email: address, phone: '31900000070',
       formSlug: 'odontologia', formVersion: 'odontologia-v2', niche: 'Clínicas odontológicas',
       answers: { clinic: 'Clínica Meta', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
       attribution: {}, newLeadIsTest: opts.isTest ?? false, bookingMode: 'live',
-      protection: { turnstile: 'verified', action: 'booking_lead', hostname: 'crm.cassiellos.com.br', challengeTs: null },
-      marketing: opts.marketing ?? { consent: false }, eventSourceUrl: ORIGIN + '/agendar/odontologia',
+      protection: { turnstile: 'verified', action: 'booking_lead', hostname: HOST, challengeTs: null },
+      marketing: opts.marketing ?? NO_CHOICE, eventSourceUrl: ORIGIN + '/agendar/odontologia',
     })
 
-  it('lead NOVO: 1 evento interno "Lead" com event_id estável + consentimento registrado', async () => {
-    const r = await submit(email('novo'), { marketing: CONSENT })
+  /** Pipeline real navegador → handler → banco (Siteverify simulado com as chaves oficiais de teste). */
+  function intakeDeps(): IntakeDeps {
+    const siteverify: FetchLike = async () => ({ ok: true, status: 200, json: async () => ({
+      success: true, hostname: HOST, action: TURNSTILE_BOOKING_ACTION, challenge_ts: new Date().toISOString() }) })
+    return {
+      getForm: getBookingForm,
+      turnstileConfig: { status: 'ready', siteKey: K.siteAlwaysPasses, secretKey: K.secretAlwaysPasses, usingTestKeys: true },
+      expectedHostnames: [HOST],
+      verifyTurnstile: ({ token, secretKey, remoteIp }) => verifyTurnstileToken({ token, secretKey, remoteIp,
+        expectedAction: TURNSTILE_BOOKING_ACTION, expectedHostnames: [HOST], fetchImpl: siteverify }),
+      consumeIpQuota: async () => true,
+      saveLead: input => saveLeadSubmission(pool, input),
+      createGrant: data => 'grant:' + data.submissionId,
+      classifyNewLeadAsTest: () => false,
+      bookingMode: 'live',
+      publicOrigin: ORIGIN,
+      log: () => undefined,
+    }
+  }
+
+  async function sessionFor(leadEmail: string, marketing: Choice, isTest = false): Promise<BookingSession & { leadEventId: string | null }> {
+    const s = await submit(leadEmail, { marketing, isTest })
+    return { leadId: s.leadId, submissionId: s.submissionId, formSlug: 'odontologia', leadEventId: s.leadEventId ?? null }
+  }
+  const visitorChange = (session: BookingSession, marketing: unknown) =>
+    handleMarketingConsentChange({ pool, verifySession: () => session }, { bookingToken: 'sessao', marketing })
+  const leadSnapshot = async (leadId: string) => (await q(
+    'SELECT full_name, email, whatsapp, company, segment, stage, is_test, updated_at FROM crm.leads WHERE id = $1', [leadId]))[0]
+
+  it('C2: o navegador manda fbp/fbc, mas NADA disso chega ao banco (só sim/não)', async () => {
+    const address = email('c2')
+    const r = await handleLeadIntake(intakeDeps(), { remoteIp: null, value: {
+      formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead C2', email: address, whatsapp: '(31) 90000-0071',
+      answers: { clinic: 'Clínica C2', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
+      attribution: {}, privacyAccepted: true, turnstileToken: K.dummyToken,
+      marketing: { consent: true, decided: true, fbp: FBP, fbc: FBC },
+    } })
+    assert.equal(r.status, 201)
+    const rows = await q<{ answers: Record<string, unknown>; lead_id: string }>(
+      `SELECT s.answers, s.lead_id FROM crm.form_submissions s JOIN crm.leads l ON l.id = s.lead_id WHERE l.email = $1`, [address])
+    assert.equal(rows.length, 1)
+    assert.deepEqual(rows[0].answers.marketing, { consent: true, decided: true })
+    const everything = JSON.stringify(await q(
+      `SELECT (SELECT json_agg(s.answers) FROM crm.form_submissions s WHERE s.lead_id = $1) AS s,
+              (SELECT json_agg(t) FROM crm.tracking_events t WHERE t.lead_id = $1) AS t,
+              (SELECT json_agg(c) FROM crm.consents c WHERE c.lead_id = $1) AS c,
+              (SELECT json_agg(a) FROM crm.lead_activities a WHERE a.lead_id = $1) AS a`, [rows[0].lead_id]))
+    for (const id of [FBP, FBC, 'fb.1.']) assert.equal(everything.includes(id), false, id + ' não pode estar no banco')
+    assert.deepEqual(r.body.tracking, { lead: { eventName: 'Lead', eventId: leadTrackingEventId(rows[0].lead_id) } })
+  })
+
+  it('lead NOVO com aceite: 1 evento "Lead" + consentimento com a versão única das políticas', async () => {
+    const r = await submit(email('novo'), { marketing: GRANT })
     assert.equal(r.leadEventId, leadTrackingEventId(r.leadId))
-    assert.equal(r.isTest, false)
-    const [ev] = await q<{ event_name: string; source_category: string; event_source_url: string; metadata: Record<string, unknown> }>(
-      'SELECT event_name, source_category, event_source_url, metadata FROM crm.tracking_events WHERE event_id = $1', [r.leadEventId])
-    assert.deepEqual(ev, { event_name: 'Lead', source_category: 'server', event_source_url: ORIGIN + '/agendar/odontologia',
+    const [ev] = await q<{ event_name: string; metadata: Record<string, unknown> }>(
+      'SELECT event_name, metadata FROM crm.tracking_events WHERE event_id = $1', [r.leadEventId])
+    assert.deepEqual(ev, { event_name: 'Lead',
       metadata: { formSlug: 'odontologia', environment: 'preview', isTest: false, marketingConsent: true } })
     const consents = await q<{ purpose: string; granted: boolean; policy_version: string }>(
       'SELECT purpose, granted, policy_version FROM crm.consents WHERE lead_id = $1 ORDER BY purpose', [r.leadId])
-    assert.deepEqual(consents.map(c => c.purpose), ['diagnostic_contact', 'marketing_measurement'])
-    const [sub] = await q<{ answers: Record<string, any> }>('SELECT answers FROM crm.form_submissions WHERE id = $1', [r.submissionId])
-    assert.deepEqual(sub.answers.marketing, CONSENT)
+    assert.deepEqual(consents, [
+      { purpose: 'diagnostic_contact', granted: true, policy_version: MARKETING_POLICY_VERSION },
+      { purpose: 'marketing_measurement', granted: true, policy_version: MARKETING_POLICY_VERSION },
+    ])
+    assert.equal((await readMarketingConsentState(pool, r.leadId)).granted, true)
   })
 
   it('reenvio do mesmo contato e repetição do mesmo envio NÃO geram novo Lead', async () => {
@@ -64,54 +126,108 @@ describe('Meta — eventos internos para Pixel e futura CAPI (PostgreSQL descart
     assert.equal((await q("SELECT 1 FROM crm.tracking_events WHERE lead_id = $1 AND event_name = 'Lead'", [first.leadId])).length, 1)
   })
 
-  it('sem consentimento: nenhum identificador nem consentimento de marketing guardado', async () => {
-    const r = await submit(email('recusa'), { marketing: { consent: false } })
-    assert.equal((await q("SELECT 1 FROM crm.consents WHERE lead_id = $1 AND purpose = 'marketing_measurement'", [r.leadId])).length, 0)
-    const [sub] = await q<{ answers: Record<string, any> }>('SELECT answers FROM crm.form_submissions WHERE id = $1', [r.submissionId])
-    assert.deepEqual(sub.answers.marketing, { consent: false })
+  it('cadastro SEM marketing: grava normalmente, sem consentimento de marketing', async () => {
+    for (const choice of [REFUSE, NO_CHOICE]) {
+      const r = await submit(email('recusa'), { marketing: choice })
+      assert.equal((await q("SELECT 1 FROM crm.consents WHERE lead_id = $1 AND purpose = 'marketing_measurement'", [r.leadId])).length, 0)
+      const [sub] = await q<{ answers: Record<string, any> }>('SELECT answers FROM crm.form_submissions WHERE id = $1', [r.submissionId])
+      assert.deepEqual(sub.answers.marketing, choice)
+      assert.equal((await readMarketingConsentState(pool, r.leadId)).granted, false)
+    }
   })
 
-  async function confirmFor(leadEmail: string, isTest: boolean, marketing: typeof CONSENT | { consent: false }) {
-    const s = await submit(leadEmail, { isTest, marketing })
-    const day = new Date(Date.now() + 3 * DAY).toISOString().slice(0, 10)
+  async function confirmFor(session: BookingSession, leadEmail: string) {
     const slot = [3, 4, 5, 6, 7].map(d => listBookingSlots(new Date(Date.now() + d * DAY).toISOString().slice(0, 10), [])).find(x => x.length)![0]
-    void day
-    const session: BookingSession = { leadId: s.leadId, submissionId: s.submissionId, formSlug: 'odontologia' }
-    const r = await confirmBookingRequest({
+    return confirmBookingRequest({
       pool, verifySession: () => session, getForm: getBookingForm,
       readBusy: async () => [], createEvent: async i => ({ id: 'evt' + i.requestId.replaceAll('-', ''), meetingUrl: null, htmlLink: null }),
       calendarId: 'cal-' + randomUUID(), allowedEmail: leadEmail,
     }, { bookingToken: 'x', startAt: slot.startAt, pageOrigin: ORIGIN })
-    return { s, r }
   }
 
-  it('Schedule: o backend devolve o event_id SÓ depois de confirmar a reunião de um lead REAL', async () => {
-    const real = await confirmFor(email('agenda.real'), false, CONSENT)
-    assert.equal(real.r.status, 201)
-    const tracking = real.r.body.tracking as { schedule: { eventName: string; eventId: string } }
+  it('agendamento SEM marketing funciona; Schedule só para lead REAL (nunca teste)', async () => {
+    const realEmail = email('agenda.semmkt')
+    const real = await confirmFor(await sessionFor(realEmail, REFUSE), realEmail)
+    assert.equal(real.status, 201)
+    const tracking = real.body.tracking as { schedule: { eventName: string; eventId: string } }
     assert.equal(tracking.schedule.eventName, 'Schedule')
-    const [ev] = await q<{ event_name: string; metadata: Record<string, unknown> }>(
-      'SELECT event_name, metadata FROM crm.tracking_events WHERE event_id = $1', [tracking.schedule.eventId])
-    assert.equal(ev.event_name, 'Chronos_Scheduled')
-    assert.equal(ev.metadata.isTest, false)
-    const test = await confirmFor(email('agenda.teste'), true, CONSENT)
-    assert.equal(test.r.status, 201)
-    assert.equal('tracking' in test.r.body, false, 'reunião de teste nunca vira conversão')
+    const testEmail = email('agenda.teste')
+    const test = await confirmFor(await sessionFor(testEmail, GRANT, true), testEmail)
+    assert.equal(test.status, 201)
+    assert.equal('tracking' in test.body, false, 'reunião de teste nunca vira conversão')
   })
 
-  it('payload da futura CAPI = mesmo nome e mesmo event_id do Pixel; testes e recusas ficam fora', async () => {
-    const { s, r } = await confirmFor(email('capi'), false, CONSENT)
-    const eventIds = [s.leadEventId!, (r.body.tracking as { schedule: { eventId: string } }).schedule.eventId]
-    const rows = await q<{ event_id: string; event_name: string; occurred_at: Date; event_source_url: string | null; metadata: unknown }>(
-      'SELECT event_id, event_name, occurred_at, event_source_url, metadata FROM crm.tracking_events WHERE event_id = ANY($1) ORDER BY event_name', [eventIds])
-    const [sub] = await q<{ answers: Record<string, any> }>('SELECT answers FROM crm.form_submissions WHERE id = $1', [s.submissionId])
-    const built = rows.map(row => buildMetaServerEvent(row, sub.answers.marketing))
-    assert.deepEqual(built.map(b => b.allowed && [b.payload.event_name, b.payload.event_id]),
-      [['Schedule', eventIds[1]], ['Lead', eventIds[0]]])
-    const noConsent = await confirmFor(email('capi.recusa'), false, { consent: false })
-    const [row] = await q<{ event_id: string; event_name: string; occurred_at: Date; event_source_url: string | null; metadata: unknown }>(
-      "SELECT event_id, event_name, occurred_at, event_source_url, metadata FROM crm.tracking_events WHERE lead_id = $1 AND event_name = 'Lead'", [noConsent.s.leadId])
-    assert.deepEqual(buildMetaServerEvent(row, { consent: false }), { allowed: false, reason: 'no_marketing_consent' })
-    assert.equal((await q('SELECT 1 FROM crm.meta_deliveries')).length, 0, 'nada foi enfileirado para envio')
+  it('REVOGAÇÃO pela página aberta: auditável, sem tocar no cadastro, e bloqueia a futura CAPI', async () => {
+    const address = email('revoga')
+    const session = await sessionFor(address, GRANT)
+    const booked = await confirmFor(session, address)
+    assert.equal(booked.status, 201)
+    const before = await leadSnapshot(session.leadId)
+    const meetingsBefore = await q('SELECT id, status FROM crm.appointments WHERE lead_id = $1', [session.leadId])
+
+    assert.deepEqual(await visitorChange(session, false), { status: 200, body: { ok: true } })
+    const state = await readMarketingConsentState(pool, session.leadId)
+    assert.equal(state.granted, false)
+    const rows = await q<{ granted: boolean; revoked: boolean }>(
+      `SELECT granted, revoked_at IS NOT NULL AS revoked FROM crm.consents
+        WHERE lead_id = $1 AND purpose = 'marketing_measurement' ORDER BY recorded_at`, [session.leadId])
+    assert.deepEqual(rows, [{ granted: true, revoked: true }, { granted: false, revoked: false }], 'histórico preservado')
+    const [activity] = await q<{ performed_by: string; details: Record<string, unknown> }>(
+      "SELECT performed_by, details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [session.leadId])
+    assert.deepEqual(activity, { performed_by: 'visitor', details: { source: 'visitor_preferences', policyVersion: MARKETING_POLICY_VERSION } })
+    assert.deepEqual(await leadSnapshot(session.leadId), before, 'cadastro do lead não muda')
+    assert.deepEqual(await q('SELECT id, status FROM crm.appointments WHERE lead_id = $1', [session.leadId]), meetingsBefore)
+
+    // Future CAPI reads the CURRENT state at send time: revoked = nothing is sent.
+    const events = await q<{ event_id: string; event_name: string; occurred_at: Date; event_source_url: string | null; metadata: unknown }>(
+      `SELECT event_id, event_name, occurred_at, event_source_url, metadata FROM crm.tracking_events
+        WHERE lead_id = $1 AND event_name IN ('Lead', 'Chronos_Scheduled')`, [session.leadId])
+    assert.equal(events.length, 2)
+    for (const row of events) assert.deepEqual(buildMetaServerEvent(row, state), { allowed: false, reason: 'no_marketing_consent' })
+
+    // Repeating the same choice does not create noise.
+    assert.equal((await visitorChange(session, false)).status, 200)
+    assert.equal((await q("SELECT 1 FROM crm.consents WHERE lead_id = $1 AND purpose = 'marketing_measurement'", [session.leadId])).length, 2)
+
+    // The visitor may authorize again in the notice: new record, CAPI allowed again (same event_id).
+    assert.equal((await visitorChange(session, true)).status, 200)
+    const regranted = await readMarketingConsentState(pool, session.leadId)
+    assert.equal(regranted.granted, true)
+    const built = events.map(row => buildMetaServerEvent(row, regranted))
+    assert.deepEqual(built.map(b => b.allowed && b.payload.event_id).sort(), events.map(e => e.event_id).sort())
+  })
+
+  it('REVOGAÇÃO por pedido ao canal de privacidade (administrador): só revoga, com auditoria', async () => {
+    const session = await sessionFor(email('canal'), GRANT)
+    assert.deepEqual(await changeMarketingConsent(pool, {
+      leadId: session.leadId, granted: true, source: 'privacy_request', adminSessionRef: 'abc123',
+    }), { outcome: 'not_allowed' }, 'administrador não pode autorizar em nome do titular')
+    const r = await changeMarketingConsent(pool, { leadId: session.leadId, granted: false, source: 'privacy_request', adminSessionRef: 'abc123' })
+    assert.equal(r.outcome, 'changed')
+    const [activity] = await q<{ performed_by: string; details: Record<string, unknown> }>(
+      "SELECT performed_by, details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [session.leadId])
+    assert.deepEqual(activity, { performed_by: 'crm_admin',
+      details: { source: 'privacy_request', policyVersion: MARKETING_POLICY_VERSION, sessionRef: 'abc123' } })
+    assert.deepEqual(await changeMarketingConsent(pool, { leadId: randomUUID(), granted: false, source: 'privacy_request' }),
+      { outcome: 'not_found' })
+  })
+
+  it('novo envio com RECUSA explícita revoga autorização anterior; envio sem escolha não muda nada', async () => {
+    const address = email('reenvio.recusa')
+    const first = await submit(address, { marketing: GRANT })
+    await submit(address, { marketing: NO_CHOICE })
+    assert.equal((await readMarketingConsentState(pool, first.leadId)).granted, true, 'sem escolha não revoga')
+    await submit(address, { marketing: REFUSE })
+    assert.equal((await readMarketingConsentState(pool, first.leadId)).granted, false)
+    const [activity] = await q<{ details: Record<string, unknown> }>(
+      "SELECT details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [first.leadId])
+    assert.equal(activity.details.source, 'form_submission')
+  })
+
+  it('sessão inválida não grava nada; nada foi enfileirado para a Meta', async () => {
+    const r = await handleMarketingConsentChange({ pool, verifySession: () => null }, { bookingToken: 'x', marketing: false })
+    assert.equal(r.status, 401)
+    assert.equal((await q('SELECT 1 FROM crm.meta_deliveries')).length, 0)
+    assert.equal((await q("SELECT 1 FROM crm.form_submissions WHERE answers::text LIKE '%fb.1.%'")).length, 0)
   })
 })

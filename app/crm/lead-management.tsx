@@ -4,14 +4,17 @@ import './lead-management.css'
 type Item={id:string;activity_kind:string;performed_by:string|null;details:Record<string,unknown>;created_at:string}
 type Meeting={id:string;status:string;starts_at:string;ends_at:string;cancelled_at?:string|null;has_calendar_event?:boolean;cancel_pending?:boolean}
 type Deal={id:string;status:string;amount:number|null;description:string|null;closed_at:string|null}
-type Info={lead:{id:string;full_name:string;company:string|null;stage:string;is_test:boolean};activities:Item[];appointments:Meeting[];deals:Deal[]}
+type MarketingConsent={granted:boolean;recordedAt:string|null;policyVersion:string|null}
+type Info={lead:{id:string;full_name:string;company:string|null;stage:string;is_test:boolean};activities:Item[];appointments:Meeting[];deals:Deal[];marketingConsent?:MarketingConsent}
 const descriptions:Record<string,string>={
  form_completed:'Formulário concluído',form_resubmitted:'Formulário reenviado',stage_changed:'Etapa comercial alterada',
  meeting_scheduled:'Reunião agendada',meeting_completed:'Reunião realizada',
  contract_won:'Contrato fechado',note_added:'Nota adicionada',
  meeting_cancelled:'Reunião cancelada',meeting_cancel_sync_failed:'Cancelamento não confirmado pelo Google',
  meeting_no_show:'Não compareceu',classification_changed:'Classificação alterada',booking_reconciled:'Reserva reconciliada',
+ marketing_consent_granted:'Consentimento de marketing concedido',marketing_consent_revoked:'Consentimento de marketing revogado',
 }
+const consentSources:Record<string,string>={form_submission:'pelo visitante no envio do formulário',visitor_preferences:'pelo visitante em Preferências de cookies',privacy_request:'por pedido do titular (registrado pelo administrador)'}
 const meetingStatus:Record<string,string>={confirmed:'Confirmada',completed:'Realizada',cancelled:'Cancelada',no_show:'Não compareceu',pending:'Pendente',rescheduled:'Reagendada'}
 const errorMessages:Record<string,string>={
  MEETING_NOT_COMPLETED:'Conclua primeiro a reunião antes de registrar um contrato.',
@@ -52,7 +55,7 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
    const response=await fetch('/api/crm/lead-management',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId,...payload})})
    if(!response.ok){const result=await response.json().catch(()=>({}));throw Error(result.error||'FAILED')}
    setNote('');setAmount('');setReference('');setRefresh(x=>x+1)
-   if(payload.action==='set_classification'||payload.action==='cancel_meeting'||payload.action==='mark_no_show')onChanged?.()
+   if(payload.action==='set_classification'||payload.action==='cancel_meeting'||payload.action==='mark_no_show'||payload.action==='revoke_marketing_consent')onChanged?.()
   }catch(e){const code=e instanceof Error?e.message:'FAILED'
    setActionError(errorMessages[code]||'Não foi possível salvar a alteração. Verifique os dados e tente novamente.')
    setRefresh(x=>x+1)
@@ -74,6 +77,10 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
   if(!window.confirm('Alterar a classificação para '+(toTest?'LEAD DE TESTE':'LEAD REAL')+'? Vale apenas para registros futuros: reuniões, contratos e eventos antigos não mudam e nada é enviado à Meta.'))return
   action({action:'set_classification',isTest:toTest,reason,confirmed:true})
  }
+ function revokeMarketingAction(){
+  if(!window.confirm('Registrar a REVOGAÇÃO do consentimento de marketing (Meta Pixel) deste contato? Use somente quando o titular pedir pelo canal de privacidade. O cadastro, as reuniões e os contratos não mudam; a decisão fica registrada na linha do tempo.'))return
+  action({action:'revoke_marketing_consent',confirmed:true})
+ }
  const completed=info?.appointments.some(a=>a.status==='completed')
  const won=info?.deals.some(d=>d.status==='won')
  return <section className="crm-lead-management" aria-label="Histórico e gestão comercial">
@@ -86,6 +93,13 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
     <p>Atualmente: <strong>{info.lead.is_test?'Lead de teste':'Lead real'}</strong>. A alteração vale para registros futuros e fica registrada na linha do tempo.</p>
     <button className="crm-btn" type="button" disabled={busy} onClick={()=>classificationAction(!info.lead.is_test)}>
      {info.lead.is_test?'Alterar para lead real':'Alterar para lead de teste'}</button>
+   </div>
+   <div className="crm-lead-management-section"><h3>Medição de anúncios (Meta)</h3>
+    <p>Consentimento de marketing: <strong>{info.marketingConsent?.granted?'autorizado':'não autorizado'}</strong>
+     {info.marketingConsent?.recordedAt?' · último registro em '+fmt.format(new Date(info.marketingConsent.recordedAt)):''}
+     {info.marketingConsent?.policyVersion?' · versão da política '+info.marketingConsent.policyVersion:''}.
+     {' '}Identificadores de navegador (fbp/fbc) não são guardados no CRM.</p>
+    {info.marketingConsent?.granted&&<button className="crm-btn" type="button" disabled={busy} onClick={revokeMarketingAction}>Registrar revogação (pedido do titular)</button>}
    </div>
    <div className="crm-lead-management-section">
     <h3>Registrar atendimento</h3>
@@ -129,6 +143,8 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
        {a.activity_kind==='classification_changed'&&<p>{a.details?.from==='test'?'Teste':'Real'} → {a.details?.to==='test'?'Teste':'Real'}{typeof a.details?.reason==='string'&&a.details.reason?' · '+a.details.reason:''}</p>}
        {a.activity_kind==='meeting_cancelled'&&<p>{a.details?.google==='no_event'?'Sem evento no Google.':'Google Calendar: cancelamento confirmado.'}{typeof a.details?.reason==='string'&&a.details.reason?' Motivo: '+a.details.reason:''}</p>}
        {a.activity_kind==='meeting_cancel_sync_failed'&&<p>Nada foi liberado; a reunião continua ativa.</p>}
+       {(a.activity_kind==='marketing_consent_granted'||a.activity_kind==='marketing_consent_revoked')&&typeof a.details?.source==='string'&&
+        <p>Registrado {consentSources[a.details.source]||a.details.source}.</p>}
        {a.activity_kind==='booking_reconciled'&&<p>{a.details?.decision==='adopt'?'Evento encontrado no Google: reunião registrada no CRM.':'Sem evento ativo no Google: reserva encerrada e horário liberado.'}</p>}
       </li>)}</ol>}
    </div>

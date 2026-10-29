@@ -171,4 +171,9 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-security-status[data-state=error]{color:#ffd4da}
 #cassiellos-booking .booking-security-status[data-state=error] svg{color:var(--booking-red)}
 #cassiellos-booking .booking-security-status a{color:#9ddff2;text-decoration:underline;text-underline-offset:2px}
-#cassiellos-booking .booking-cookie-prefs{background:none;border:0;padding:0;color:#9ddff2;font-size:11px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+#cassiellos-booking .booking-cookie-prefs{background:none;border:0;padding:0 2px;min-height:44px;display:inline-flex;align-items:center;color:#9ddff2;font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+#cassiellos-booking .booking-cookie-prefs:focus-visible{outline:2px solid #9ddff2;outline-offset:2px;border-radius:4px}
+/* Cookie notice slot: in the page flow (never over form fields). Empty = no space. */
+#cassiellos-booking .booking-consent-slot{width:min(1200px,calc(100% - 64px));margin:18px auto 0}
+#cassiellos-booking .booking-consent-slot:empty{display:none}
+@media(max-width:760px){#cassiellos-booking .booking-consent-slot{width:min(100% - 36px,540px);margin-top:14px}}

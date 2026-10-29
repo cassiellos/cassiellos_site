@@ -1,6 +1,6 @@
 import type { BookingForm } from './booking-forms'
 import type { LeadSubmissionInput, LeadSubmissionResult } from './lead-intake'
-import { sanitizeMarketingSignals } from '../marketing/meta'
+import { sanitizeMarketingConsent } from '../marketing/meta'
 import {
   TURNSTILE_BOOKING_ACTION, publicTurnstileError,
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
@@ -119,8 +119,8 @@ export async function handleLeadIntake(
 
   try {
     if (!(await deps.consumeIpQuota())) return { status: 429, body: { error: 'TOO_MANY_REQUESTS' } }
-    // fbp/fbc are kept ONLY when the visitor accepted marketing cookies.
-    const marketing = sanitizeMarketingSignals(value.marketing)
+    // Only the yes/no marketing choice reaches the CRM; fbp/fbc are discarded (decision C2).
+    const marketing = sanitizeMarketingConsent(value.marketing)
     const result = await deps.saveLead({
       idempotencyKey, name, email, phone, formSlug: form.slug,
       formVersion: form.version, niche: form.niche, answers, attribution,

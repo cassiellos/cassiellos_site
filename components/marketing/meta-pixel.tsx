@@ -2,9 +2,10 @@
 
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { isMetaTrackedPath } from '@/lib/marketing/meta'
 import {
-  CONSENT_CHANGE_EVENT, CONSENT_OPEN_EVENT, clearMetaCookies, getConsent, setConsent,
+  CONSENT_CHANGE_EVENT, CONSENT_OPEN_EVENT, CONSENT_SLOT_ID, clearMetaCookies, getConsent, setConsent,
 } from '@/lib/marketing/meta-client'
 import styles from './consent-banner.module.css'
 
@@ -15,6 +16,8 @@ import styles from './consent-banner.module.css'
  * - Script e init uma única vez; PageView uma vez por página visitada.
  * - Sem consentimento de marketing → sem script, sem cookies da Meta.
  * - Correspondência avançada e eventos automáticos desligados.
+ * - Aviso de cookies: sem opção pré-selecionada, "Recusar" e "Aceitar" com o mesmo destaque,
+ *   exibido no FLUXO da página (ponto CONSENT_SLOT_ID), nunca por cima dos campos do formulário.
  */
 
 const SCRIPT_ID = 'meta-pixel-base'
@@ -57,6 +60,7 @@ export default function MetaPixel({ pixelId }: { pixelId: string | null }) {
   const [decided, setDecided] = useState<boolean | null>(null)
   const [granted, setGranted] = useState(false)
   const [open, setOpen] = useState(false)
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
   const bannerRef = useRef<HTMLDivElement>(null)
 
   const syncConsent = useCallback(() => {
@@ -75,6 +79,18 @@ export default function MetaPixel({ pixelId }: { pixelId: string | null }) {
       window.removeEventListener(CONSENT_OPEN_EVENT, reopen)
     }
   }, [syncConsent])
+
+  // The booking page renders the slot; without it the notice falls back to a floating card.
+  useEffect(() => {
+    setSlot(tracked ? document.getElementById(CONSENT_SLOT_ID) : null)
+  }, [tracked, pathname])
+
+  // Reopened from "Preferências de cookies" (footer): bring the notice into view and focus it.
+  useEffect(() => {
+    if (!open || !bannerRef.current) return
+    bannerRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    bannerRef.current.querySelector('button')?.focus({ preventScroll: true })
+  }, [open, slot])
 
   useEffect(() => {
     if (!tracked || !pixelId || !granted) return
@@ -99,15 +115,23 @@ export default function MetaPixel({ pixelId }: { pixelId: string | null }) {
   }
 
   if (!showBanner) return null
-  return <div ref={bannerRef} className={styles.banner} role="dialog" aria-live="polite" aria-label="Preferências de cookies">
-    <p className={styles.text}>
-      Usamos cookies de marketing (Meta Pixel) para medir os resultados dos nossos anúncios.
-      O agendamento funciona normalmente com qualquer escolha.{' '}
+  const banner = <div ref={bannerRef} className={slot ? styles.banner : styles.banner + ' ' + styles.floating}
+    role="region" aria-label="Preferências de cookies">
+    <p className={styles.text} id="cassiellos-consent-text">
+      <strong>Cookies de marketing.</strong> Com a sua autorização, usaremos o Meta Pixel, da Meta, para medir
+      e otimizar nossos anúncios; a Meta receberá identificadores do seu navegador. O formulário e o
+      agendamento funcionam com qualquer escolha.{' '}
       <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Política de Cookies</a>
+      {' · '}
+      <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
     </p>
+    {/* Same visual weight for both choices; nothing is pre-selected. */}
     <div className={styles.actions}>
-      <button type="button" className={styles.secondary} onClick={() => choose(false)}>Recusar</button>
-      <button type="button" className={styles.primary} onClick={() => choose(true)}>Aceitar</button>
+      <button type="button" className={styles.choice} aria-describedby="cassiellos-consent-text"
+        onClick={() => choose(false)}>Recusar</button>
+      <button type="button" className={styles.choice} aria-describedby="cassiellos-consent-text"
+        onClick={() => choose(true)}>Aceitar</button>
     </div>
   </div>
+  return slot ? createPortal(banner, slot) : banner
 }

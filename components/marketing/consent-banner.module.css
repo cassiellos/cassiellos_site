@@ -1,35 +1,47 @@
+/* Aviso de cookies de marketing. Exibido no fluxo da página de agendamento (não cobre campos). */
 .banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(195, 211, 236, .24);
+  background: rgba(14, 26, 43, .97);
+  color: #e6eef9;
+  font: 13px/1.55 var(--font-inter), Inter, Arial, sans-serif;
+}
+/* Só quando a página não oferece o ponto de exibição (fallback). */
+.floating {
   position: fixed;
   z-index: 50;
   left: 16px;
   right: 16px;
   bottom: 16px;
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(195, 211, 236, .22);
-  background: rgba(14, 26, 43, .97);
-  color: #e6eef9;
   box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
-  font: 12px/1.55 var(--font-inter), Inter, Arial, sans-serif;
 }
-.text { margin: 0; flex: 1; }
+.text { margin: 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.text strong { color: #fff; font-weight: 700; }
 .text a { color: #9ddff2; text-decoration: underline; text-underline-offset: 2px; }
+.text a:focus-visible { outline: 2px solid #9ddff2; outline-offset: 2px; border-radius: 3px; }
 .actions { display: flex; gap: 8px; flex-shrink: 0; }
-.primary, .secondary {
-  min-height: 38px;
-  padding: 0 14px;
+/* "Recusar" e "Aceitar" usam exatamente o mesmo estilo (mesmo destaque). */
+.choice {
+  min-height: 44px;
+  min-width: 108px;
+  padding: 0 18px;
   border-radius: 8px;
-  font: 700 12px var(--font-inter), Inter, Arial, sans-serif;
+  border: 1px solid rgba(206, 223, 249, .45);
+  background: rgba(255, 255, 255, .07);
+  color: #f2f6fc;
+  font: 700 13px var(--font-inter), Inter, Arial, sans-serif;
   cursor: pointer;
 }
-.primary { border: 1px solid rgba(251, 114, 127, .4); background: #f13c4b; color: #fff; }
-.secondary { border: 1px solid rgba(195, 211, 236, .3); background: transparent; color: #dce7f5; }
-@media (max-width: 560px) {
-  .banner { flex-direction: column; align-items: stretch; left: 10px; right: 10px; bottom: 10px; }
-  .actions > button { flex: 1; }
+.choice:hover { background: rgba(255, 255, 255, .13); }
+.choice:focus-visible { outline: 2px solid #9ddff2; outline-offset: 2px; }
+@media (max-width: 760px) {
+  .banner { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px; }
+  .actions > button { flex: 1; min-width: 0; }
+  .floating { left: 10px; right: 10px; bottom: 10px; }
 }

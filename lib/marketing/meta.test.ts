@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { CONSENT_VERSION, hasMarketingConsent, parseConsent, serializeConsent } from './consent'
 import {
-  META_EVENT_MAP, buildFbcFromFbclid, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
-  leadTrackingEventId, metaEventNameFor, sanitizeMarketingSignals,
+  META_EVENT_MAP, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
+  leadTrackingEventId, metaEventNameFor, sanitizeMarketingConsent,
 } from './meta'
 
 describe('consentimento de marketing', () => {
@@ -55,24 +55,23 @@ describe('Meta Pixel — configuração e rotas', () => {
   })
 })
 
-describe('fbp/fbc — somente com consentimento e em formato válido', () => {
-  it('formatos', () => {
+describe('decisão C2 — o CRM recebe só sim/não; fbp/fbc nunca', () => {
+  it('formatos de fbp/fbc (validação para a futura CAPI, sem gravação)', () => {
     assert.equal(isValidFbp('fb.1.1730000000000.1234567890'), true)
     assert.equal(isValidFbp('fb.1.abc.123'), false)
     assert.equal(isValidFbc('fb.1.1730000000000.IwAR0abcDEF_123-xyz'), true)
     assert.equal(isValidFbc('fb.1.1730000000000.<script>'), false)
-    assert.equal(buildFbcFromFbclid('IwAR0abcDEF_123-xyz', 1730000000000.7), 'fb.1.1730000000000.IwAR0abcDEF_123-xyz')
-    assert.equal(buildFbcFromFbclid('a b', 1730000000000), null)
-    assert.equal(buildFbcFromFbclid(undefined, 1730000000000), null)
   })
-  it('sem consentimento, identificadores são descartados', () => {
-    assert.deepEqual(sanitizeMarketingSignals({ consent: false, fbp: 'fb.1.1730000000000.1234567890' }), { consent: false })
-    assert.deepEqual(sanitizeMarketingSignals(undefined), { consent: false })
-    assert.deepEqual(sanitizeMarketingSignals('true'), { consent: false })
+  it('sem escolha ou recusa: consent=false', () => {
+    assert.deepEqual(sanitizeMarketingConsent(undefined), { consent: false, decided: false })
+    assert.deepEqual(sanitizeMarketingConsent('true'), { consent: false, decided: false })
+    assert.deepEqual(sanitizeMarketingConsent({ consent: false }), { consent: false, decided: false })
+    assert.deepEqual(sanitizeMarketingConsent({ consent: false, decided: true }), { consent: false, decided: true })
   })
-  it('com consentimento, só valores válidos passam (nada além de fbp/fbc)', () => {
-    assert.deepEqual(sanitizeMarketingSignals({
-      consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'invalido', email: 'x@y.com',
-    }), { consent: true, fbp: 'fb.1.1730000000000.1234567890' })
+  it('com consentimento, fbp/fbc e qualquer outro campo são DESCARTADOS', () => {
+    assert.deepEqual(sanitizeMarketingConsent({
+      consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123', email: 'x@y.com',
+    }), { consent: true, decided: true })
+    assert.deepEqual(sanitizeMarketingConsent({ consent: 'true', decided: 'yes' }), { consent: false, decided: false })
   })
 })

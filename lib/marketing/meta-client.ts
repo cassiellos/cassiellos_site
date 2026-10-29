@@ -1,7 +1,7 @@
 'use client'
 
 import { CONSENT_COOKIE, CONSENT_MAX_AGE_DAYS, parseConsent, readCookie, serializeConsent, type ConsentState } from './consent'
-import { buildFbcFromFbclid, isValidFbc, isValidFbp, type MarketingSignals, type MetaEventName } from './meta'
+import type { MarketingConsentInput, MetaEventName } from './meta'
 
 /**
  * Funções de navegador do Meta Pixel. Nenhuma delas envia dados pessoais:
@@ -15,6 +15,8 @@ declare global {
 
 export const CONSENT_CHANGE_EVENT = 'cassiellos:consent-change'
 export const CONSENT_OPEN_EVENT = 'cassiellos:consent-open'
+/** Ponto da página (no fluxo do conteúdo) onde o aviso de cookies é exibido. */
+export const CONSENT_SLOT_ID = 'cassiellos-consent-slot'
 const SENT_KEY = 'cassiellos_meta_sent'
 
 export function getConsent(): ConsentState | null {
@@ -45,20 +47,13 @@ export function clearMetaCookies(): void {
   }
 }
 
-/** fbp/fbc só existem para quem aceitou marketing; sem consentimento devolve apenas a recusa. */
-export function readMarketingSignals(): MarketingSignals {
-  if (!hasMarketingConsentInBrowser()) return { consent: false }
-  const signals: MarketingSignals = { consent: true }
-  const fbp = readCookie(document.cookie, '_fbp')
-  if (isValidFbp(fbp)) signals.fbp = fbp
-  const fbc = readCookie(document.cookie, '_fbc')
-  if (isValidFbc(fbc)) {
-    signals.fbc = fbc
-  } else {
-    const built = buildFbcFromFbclid(new URLSearchParams(location.search).get('fbclid'), performance.timeOrigin || Date.now())
-    if (built) signals.fbc = built
-  }
-  return signals
+/**
+ * O que o formulário envia ao CRM sobre marketing: SÓ a escolha (sim/não).
+ * Decisão C2: os cookies _fbp/_fbc não são lidos nem enviados ao CRM.
+ */
+export function readMarketingConsent(): MarketingConsentInput {
+  const choice = getConsent()
+  return { consent: choice?.marketing === true, decided: choice !== null }
 }
 
 function alreadySent(eventId: string): boolean {

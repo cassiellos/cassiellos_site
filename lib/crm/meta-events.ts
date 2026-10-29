@@ -1,5 +1,5 @@
 import { isMetaDispatchAllowed } from './booking-mode'
-import { metaEventNameFor, sanitizeMarketingSignals, type MetaEventName } from '../marketing/meta'
+import { isValidFbc, isValidFbp, metaEventNameFor, type MetaEventName } from '../marketing/meta'
 
 /**
  * Preparação da Meta Conversions API (NÃO envia nada; não há token nem rotina de envio).
@@ -8,9 +8,13 @@ import { metaEventNameFor, sanitizeMarketingSignals, type MetaEventName } from '
  * mesmas regras que o futuro envio deverá respeitar:
  * - só eventos mapeados (Lead → Lead, Chronos_Scheduled → Schedule);
  * - só leads REAIS (metadata.isTest === false);
- * - só com consentimento de marketing registrado no envio do formulário;
+ * - só com consentimento de marketing VIGENTE no momento do envio: o chamador passa o estado
+ *   atual de crm.consents (readMarketingConsentState); consentimento revogado = nada sai;
  * - mesmo event_name e event_id usados pelo Pixel (deduplicação);
- * - sem e-mail, telefone ou nome (correspondência avançada desligada nesta etapa).
+ * - sem e-mail, telefone ou nome (correspondência avançada desligada nesta etapa);
+ * - decisão C2: o CRM NÃO guarda fbp/fbc. Se a CAPI for autorizada, a origem desses
+ *   identificadores (e retenção/revogação) será reavaliada; aqui eles só entram se forem
+ *   passados no momento do envio, e são validados.
  */
 
 export type TrackingEventRow = {
@@ -35,12 +39,15 @@ export type MetaEventDecision =
   | { allowed: true; payload: MetaServerEvent }
   | { allowed: false; reason: 'unmapped_event' | 'test_or_unclassified' | 'no_marketing_consent' | 'invalid_event' }
 
-export function buildMetaServerEvent(row: TrackingEventRow, marketing: unknown): MetaEventDecision {
+export function buildMetaServerEvent(
+  row: TrackingEventRow,
+  consent: { granted: boolean } | null | undefined,
+  browserIds: { fbp?: unknown; fbc?: unknown } = {},
+): MetaEventDecision {
   const eventName = metaEventNameFor(row.event_name)
   if (!eventName) return { allowed: false, reason: 'unmapped_event' }
   if (!isMetaDispatchAllowed(row.metadata)) return { allowed: false, reason: 'test_or_unclassified' }
-  const signals = sanitizeMarketingSignals(marketing)
-  if (!signals.consent) return { allowed: false, reason: 'no_marketing_consent' }
+  if (consent?.granted !== true) return { allowed: false, reason: 'no_marketing_consent' }
   const occurred = new Date(row.occurred_at).getTime()
   if (!Number.isFinite(occurred) || !/^[a-z0-9_]{6,120}$/.test(row.event_id)) return { allowed: false, reason: 'invalid_event' }
   const formSlug = row.metadata && typeof row.metadata === 'object' && 'formSlug' in row.metadata &&
@@ -55,7 +62,10 @@ export function buildMetaServerEvent(row: TrackingEventRow, marketing: unknown):
       event_id: row.event_id,
       action_source: 'website',
       ...(sourceUrl ? { event_source_url: sourceUrl } : {}),
-      user_data: { ...(signals.fbp ? { fbp: signals.fbp } : {}), ...(signals.fbc ? { fbc: signals.fbc } : {}) },
+      user_data: {
+        ...(isValidFbp(browserIds.fbp) ? { fbp: browserIds.fbp } : {}),
+        ...(isValidFbc(browserIds.fbc) ? { fbc: browserIds.fbc } : {}),
+      },
       custom_data: formSlug ? { content_name: formSlug } : {},
     },
   }

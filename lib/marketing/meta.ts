@@ -43,7 +43,11 @@ export function leadTrackingEventId(leadId: string): string {
   return 'lead_' + leadId.replaceAll('-', '').toLowerCase()
 }
 
-/** Formatos documentados pela Meta: fb.<subdomínio>.<timestamp ms>.<valor>. */
+/**
+ * Formatos documentados pela Meta: fb.<subdomínio>.<timestamp ms>.<valor>.
+ * Usados apenas para validar identificadores que a futura CAPI receber no momento do envio
+ * (nada é persistido no CRM — decisão C2).
+ */
 export function isValidFbp(value: unknown): value is string {
   return typeof value === 'string' && /^fb\.[0-2]\.\d{10,13}\.\d{1,30}$/.test(value)
 }
@@ -51,22 +55,21 @@ export function isValidFbc(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 600 && /^fb\.[0-2]\.\d{10,13}\.[A-Za-z0-9_-]{8,500}$/.test(value)
 }
 
-/** fbc a partir do fbclid da URL quando o cookie _fbc ainda não existe. */
-export function buildFbcFromFbclid(fbclid: unknown, createdAtMs: number): string | null {
-  if (typeof fbclid !== 'string' || !/^[A-Za-z0-9_-]{8,500}$/.test(fbclid)) return null
-  const value = 'fb.1.' + Math.floor(createdAtMs) + '.' + fbclid
-  return isValidFbc(value) ? value : null
+/**
+ * Escolha de marketing enviada pelo navegador ao CRM: SÓ o sim/não.
+ * Decisão C2 (29/10/2026): enquanto a Conversions API estiver desativada, os identificadores
+ * _fbp/_fbc NÃO vão ao CRM e NÃO são gravados. Qualquer outro campo recebido é descartado.
+ * O próprio Pixel continua lendo seus cookies no navegador depois do consentimento.
+ */
+export type MarketingConsentInput = {
+  consent: boolean
+  /** true quando o visitante ESCOLHEU (aceitou ou recusou) no aviso; false = ainda sem escolha. */
+  decided: boolean
 }
 
-/** Identificadores de navegador aceitos SOMENTE com consentimento de marketing. */
-export type MarketingSignals = { consent: boolean; fbp?: string; fbc?: string }
-
-export function sanitizeMarketingSignals(raw: unknown): MarketingSignals {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { consent: false }
+export function sanitizeMarketingConsent(raw: unknown): MarketingConsentInput {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { consent: false, decided: false }
   const value = raw as Record<string, unknown>
-  if (value.consent !== true) return { consent: false }
-  const signals: MarketingSignals = { consent: true }
-  if (isValidFbp(value.fbp)) signals.fbp = value.fbp
-  if (isValidFbc(value.fbc)) signals.fbc = value.fbc
-  return signals
+  const consent = value.consent === true
+  return { consent, decided: consent || value.decided === true }
 }
