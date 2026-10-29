@@ -5,7 +5,9 @@ import { getCrmPool } from '@/lib/crm/db'
 import { isBookableDate, listBookingSlots } from '@/lib/crm/booking-slots'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
-import type { PoolClient } from 'pg'
+import {
+  finalizeBookingReservation, releaseReservationBeforeGoogle, reserveBookingSlot,
+} from '@/lib/crm/booking-reservation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,151 +36,6 @@ function bookingDay(startAt: string): string {
   }).formatToParts(new Date(startAt))
   const v = (name: string) => parts.find(p => p.type === name)?.value || ''
   return v('year') + '-' + v('month') + '-' + v('day')
-}
-
-async function reserve(input: {
-  leadId: string; submissionId: string; formSlug: string
-  startAt: string; endAt: string; calendarId: string
-  allowedEmail: string
-}): Promise<{ status: 'reserved'; id: string; email: string; company: string } |
-  { status: 'already_confirmed'; id: string } |
-  { status: 'already_processing' | 'already_failed' | 'bad_submission' | 'email_not_allowed' | 'slot_unavailable' }> {
-  const client: PoolClient = await getCrmPool().connect()
-  let committed = false
-  try {
-    await client.query('BEGIN')
-    await client.query('SET LOCAL statement_timeout = 6000')
-    const registered = await client.query<{
-      lead_id: string
-      email: string
-      company: string | null
-      submission_id: string
-    }>(
-      `SELECT s.id AS submission_id, s.lead_id, l.email, l.company
-         FROM crm.form_submissions s
-         JOIN crm.leads l ON l.id = s.lead_id
-         WHERE s.id = $1 AND s.lead_id = $2
-           AND s.status = 'validated' AND s.answers ->> 'formSlug' = $3
-         FOR UPDATE OF s`,
-      [input.submissionId, input.leadId, input.formSlug],
-    )
-    const registeredLead = registered.rows[0]
-    if (!registeredLead) {
-      await client.query('COMMIT'); committed = true
-      return { status: 'bad_submission' }
-    }
-    if (!registeredLead.email ||
-      registeredLead.email.toLowerCase() !== input.allowedEmail.toLowerCase()) {
-      await client.query('COMMIT'); committed = true
-      return { status: 'email_not_allowed' }
-    }
-    const found = await client.query<{ id: string; status: string }>(
-      'SELECT id, status FROM crm.booking_requests WHERE submission_id = $1',
-      [input.submissionId],
-    )
-    if (found.rows[0]) {
-      await client.query('COMMIT'); committed = true
-      const old = found.rows[0]
-      return old.status === 'confirmed'
-        ? { status: 'already_confirmed', id: old.id }
-        : { status: old.status === 'processing' ? 'already_processing' : 'already_failed' }
-    }
-    const active = await client.query<{ id: string }>(
-      `SELECT b.id FROM crm.booking_requests b WHERE b.lead_id = $1
-         AND b.status IN ('processing','confirmed') LIMIT 1`,
-      [input.leadId],
-    )
-    if (active.rows[0]) {
-      await client.query('COMMIT'); committed = true
-      return { status: 'already_processing' }
-    }
-    const inserted = await client.query<{ id: string }>(
-      `INSERT INTO crm.booking_requests
-         (submission_id, lead_id, starts_at, ends_at, calendar_id, status)
-         VALUES ($1, $2, $3::timestamptz, $4::timestamptz, $5, 'processing')
-         RETURNING id`,
-      [input.submissionId, input.leadId, input.startAt, input.endAt, input.calendarId],
-    )
-    await client.query('COMMIT')
-    committed = true
-    return { status: 'reserved', id: inserted.rows[0].id,
-      email: registeredLead.email, company: registeredLead.company ?? '' }
-  } catch (error) {
-    const pgError = error as { code?: string }
-    if (pgError.code === '23505') return { status: 'slot_unavailable' }
-    throw error
-  } finally {
-    if (!committed) await client.query('ROLLBACK').catch(() => undefined)
-    client.release(committed ? undefined : true)
-  }
-}
-
-async function releaseBeforeGoogle(bookingId: string, reason: string): Promise<void> {
-  await getCrmPool().query(
-    `UPDATE crm.booking_requests SET status = 'failed',
-       failure_code = $2, updated_at = now()
-       WHERE id = $1 AND status = 'processing' AND google_event_id IS NULL`,
-    [bookingId, reason],
-  )
-}
-
-async function finalizeBooking(input: {
-  bookingId: string; leadId: string; submissionId: string
-  eventId: string; meetingUrl: string | null; startAt: string; endAt: string
-  calendarId: string; formSlug: string; pageOrigin: string
-}): Promise<{ appointmentId: string }> {
-  const client = await getCrmPool().connect()
-  let committed = false
-  try {
-    await client.query('BEGIN')
-    await client.query('SET LOCAL statement_timeout = 6000')
-    // The meeting inherits the lead's real/test classification (missing lead -> test).
-    const appointment = await client.query<{ id: string; is_test: boolean }>(
-      `INSERT INTO crm.appointments (lead_id, calendar_id, starts_at, ends_at,
-          status, calendar_event_id, meeting_url, confirmed_at, is_test)
-        VALUES ($1, $2, $3::timestamptz, $4::timestamptz,
-          'confirmed', $5, $6, now(),
-          COALESCE((SELECT l.is_test FROM crm.leads l WHERE l.id = $1), true))
-        RETURNING id, is_test`,
-      [input.leadId, input.calendarId, input.startAt,
-        input.endAt, input.eventId, input.meetingUrl],
-    )
-    const appointmentId = appointment.rows[0].id
-    const isTest = appointment.rows[0].is_test !== false
-    await client.query(
-      `UPDATE crm.booking_requests SET status = 'confirmed',
-          google_event_id = $2, appointment_id = $3, updated_at = now()
-        WHERE id = $1 AND status = 'processing'`,
-      [input.bookingId, input.eventId, appointmentId],
-    )
-    await client.query(
-      `INSERT INTO crm.lead_activities
-         (lead_id, appointment_id, activity_kind, performed_by, details)
-         VALUES ($1, $2, 'meeting_scheduled', 'public_booking', $3::jsonb)`,
-      [input.leadId, appointmentId, JSON.stringify({
-        formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: 'preview', isTest,
-      })],
-    )
-    // Internal event only; Meta CAPI dispatch is a separate, not-yet-enabled pipeline.
-    // metadata.isTest is mandatory: only isTest === false may ever be sent to Meta
-    // (see isMetaDispatchAllowed in lib/crm/booking-mode.ts).
-    await client.query(
-      `INSERT INTO crm.tracking_events
-         (lead_id, appointment_id, event_id, event_name,
-          source_category, event_source_url, action_source, metadata)
-         VALUES ($1, $2, $3, 'Chronos_Scheduled', 'server', $4, 'website', $5::jsonb)`,
-      [input.leadId, appointmentId,
-        'chronos_scheduled_' + input.bookingId.replaceAll('-', ''),
-        input.pageOrigin + '/agendar/' + encodeURIComponent(input.formSlug),
-        JSON.stringify({ formSlug: input.formSlug, environment: 'preview', isTest })],
-    )
-    await client.query('COMMIT')
-    committed = true
-    return { appointmentId }
-  } finally {
-    if (!committed) await client.query('ROLLBACK').catch(() => undefined)
-    client.release(committed ? undefined : true)
-  }
 }
 
 /**
@@ -228,7 +85,7 @@ export async function POST(request: NextRequest) {
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!slot) return json({ error: 'SLOT_UNAVAILABLE' }, 409)
 
-    const reservation = await reserve({
+    const reservation = await reserveBookingSlot(getCrmPool(), {
       leadId: grant.leadId, submissionId: grant.submissionId, formSlug: form.slug,
       startAt: normalizedStart, endAt: finishAt, calendarId, allowedEmail,
     })
@@ -237,6 +94,8 @@ export async function POST(request: NextRequest) {
     }
     if (reservation.status === 'bad_submission') return json({ error: 'INVALID_SUBMISSION' }, 403)
     if (reservation.status === 'slot_unavailable') return json({ error: 'SLOT_UNAVAILABLE' }, 409)
+    // Generic on purpose: never reveals date, time, Meet link or internal state.
+    if (reservation.status === 'active_meeting') return json({ error: 'CONTACT_HAS_ACTIVE_MEETING' }, 409)
     if (reservation.status === 'already_confirmed') {
       return json({ ok: true, alreadyConfirmed: true, bookingRequestId: reservation.id }, 200)
     }
@@ -252,7 +111,7 @@ export async function POST(request: NextRequest) {
     const stillFree = listBookingSlots(day, latestBusy).some(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!stillFree) {
-      await releaseBeforeGoogle(reservation.id, 'EXTERNAL_CALENDAR_CONFLICT')
+      await releaseReservationBeforeGoogle(getCrmPool(), reservation.id, 'EXTERNAL_CALENDAR_CONFLICT')
       return json({ error: 'SLOT_UNAVAILABLE' }, 409)
     }
 
@@ -265,7 +124,7 @@ export async function POST(request: NextRequest) {
       requestId: reservation.id,
       googleEventId: 'c' + reservation.id.replaceAll('-', ''),
     })
-    const saved = await finalizeBooking({
+    const saved = await finalizeBookingReservation(getCrmPool(), {
       bookingId: reservation.id,
       leadId: grant.leadId, submissionId: grant.submissionId,
       eventId: event.id, meetingUrl: event.meetingUrl,
