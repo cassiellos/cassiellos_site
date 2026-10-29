@@ -1,6 +1,7 @@
 import { NextRequest,NextResponse } from 'next/server'
 import { crmSessionCookieName,verifyCrmSession } from '@/lib/crm/auth'
 import { getCrmPool,withCrmReadOnlyTransaction } from '@/lib/crm/db'
+import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}
@@ -27,7 +28,7 @@ export async function GET(req:NextRequest){
 export async function POST(req:NextRequest){
  if(process.env.VERCEL_ENV!=='preview')return send({error:'NOT_FOUND'},404)
  if(!allowed(req))return send({error:'UNAUTHORIZED'},401)
- if(req.headers.get('origin')!=='https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app')return send({error:'FORBIDDEN'},403)
+ if(!isCrmPreviewOrigin(req.headers.get('origin')))return send({error:'FORBIDDEN'},403)
  if(!req.headers.get('content-type')?.startsWith('application/json'))return send({error:'INVALID_REQUEST'},400)
  let data:Record<string,unknown>
  try{const raw=await req.text();if(raw.length>2000)return send({error:'INVALID_REQUEST'},400);data=JSON.parse(raw)}catch{return send({error:'INVALID_REQUEST'},400)}
