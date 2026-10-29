@@ -21,6 +21,7 @@ type RealLeadRow = {
   company: string | null
   segment: string | null
   stage: string
+  is_test: boolean
   created_at: Date
   form_version: string | null
   revenue: string | null
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     const data = await withCrmReadOnlyTransaction(async client => {
       const [records, total] = await Promise.all([
         client.query<RealLeadRow>(
-          `SELECT l.id, l.full_name, l.email, l.whatsapp, l.company,
+          `SELECT l.id, l.is_test, l.full_name, l.email, l.whatsapp, l.company,
              l.segment, l.stage, l.created_at,
              s.form_version, s.latest_submission_at,
              s.answers #>> '{questions,revenue}' AS revenue,
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
         total: Number(total.rows[0]?.count ?? 0),
         leads: records.rows.map(row => ({
           id: row.id,
+          isTest: row.is_test,
           name: row.full_name,
           email: row.email,
           whatsapp: row.whatsapp,
