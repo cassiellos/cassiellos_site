@@ -24,20 +24,29 @@ describe('regras de reagendamento — constantes', () => {
   })
 })
 
-describe('canonicalMailbox — normalização antiabuso do e-mail', () => {
-  it('maiúsculas e espaços', () => {
+describe('canonicalMailbox — regras seguras e documentadas por provedor (Fase 3.4)', () => {
+  it('sempre: só minúsculas e espaços', () => {
     assert.equal(canonicalMailbox('  Maria.Souza@Clinica.COM.br '), 'maria.souza@clinica.com.br')
   })
-  it('remove +sufixo em qualquer provedor', () => {
-    assert.equal(canonicalMailbox('maria+teste@clinica.com.br'), 'maria@clinica.com.br')
-    assert.equal(canonicalMailbox('maria+a+b@outlook.com'), 'maria@outlook.com')
-  })
-  it('Gmail: ignora pontos e unifica googlemail.com', () => {
+  it('Gmail: ignora +sufixo e pontos, sem trocar o domínio', () => {
     assert.equal(canonicalMailbox('Maria.Souza+promo@gmail.com'), 'mariasouza@gmail.com')
-    assert.equal(canonicalMailbox('m.a.r.i.a.souza@googlemail.com'), 'mariasouza@gmail.com')
+    assert.equal(canonicalMailbox('m.a.r.i.a.souza+x@googlemail.com'), 'mariasouza@googlemail.com')
+    assert.notEqual(canonicalMailbox('maria@googlemail.com'), canonicalMailbox('maria@gmail.com'), 'domínios não são unificados')
   })
-  it('fora do Gmail os pontos são preservados (são caixas diferentes)', () => {
+  it('Proton: ignora +sufixo, ".", "_" e "-" (documentado como transparente)', () => {
+    assert.equal(canonicalMailbox('maria.so_u-za+news@proton.me'), 'mariasouza@proton.me')
+    assert.equal(canonicalMailbox('Maria+x@PM.me'), 'maria@pm.me')
+  })
+  it('Fastmail: ignora apenas +sufixo', () => {
+    assert.equal(canonicalMailbox('maria.souza+loja@fastmail.com'), 'maria.souza@fastmail.com')
+  })
+  it('demais provedores e domínios corporativos: +sufixo e pontos PRESERVADOS (contatos diferentes)', () => {
+    for (const email of ['maria+teste@clinica.com.br', 'maria+a@outlook.com', 'maria+a@hotmail.com',
+      'maria+a@icloud.com', 'maria-a@yahoo.com', 'maria+a@empresa-no-google-workspace.com']) {
+      assert.equal(canonicalMailbox(email), email, email)
+    }
     assert.notEqual(canonicalMailbox('maria.souza@clinica.com.br'), canonicalMailbox('mariasouza@clinica.com.br'))
+    assert.notEqual(canonicalMailbox('maria+1@outlook.com'), canonicalMailbox('maria@outlook.com'))
   })
   it('não confunde domínios diferentes', () => {
     assert.notEqual(canonicalMailbox('maria@gmail.com.br'), canonicalMailbox('maria@gmail.com'))
@@ -50,7 +59,7 @@ describe('parseLimitExemptMailboxes — isenção administrativa do limite de 30
     assert.deepEqual(parseLimitExemptMailboxes(undefined), [])
   })
   it('normaliza e ignora entradas inválidas', () => {
-    assert.deepEqual(parseLimitExemptMailboxes(' Teste+1@Gmail.com , invalido, outra@clinica.com.br '),
-      ['teste@gmail.com', 'outra@clinica.com.br'])
+    assert.deepEqual(parseLimitExemptMailboxes(' Teste+1@Gmail.com , invalido, outra+x@clinica.com.br '),
+      ['teste@gmail.com', 'outra+x@clinica.com.br'])
   })
 })

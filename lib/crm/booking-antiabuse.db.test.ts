@@ -12,7 +12,7 @@ import { getBookingForm } from './booking-forms'
 import { checkAvailabilityAccess, confirmBookingRequest, type BookingSession, type ConfirmDeps } from './booking-confirmation'
 import { handleLeadIntake } from './booking-intake-request'
 import {
-  canonicalMailbox, checkBookingEligibility, finalizeBookingReservation, reserveBookingSlot, type ReserveInput,
+  SQL_CANONICAL_MAILBOX, canonicalMailbox, checkBookingEligibility, finalizeBookingReservation, reserveBookingSlot, type ReserveInput,
 } from './booking-reservation'
 import { listBookingSlots, type BookingSlot } from './booking-slots'
 import { saveLeadSubmission, type LeadSubmissionProtection } from './lead-intake'
@@ -82,19 +82,18 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
 
   describe('regras por caixa de e-mail', () => {
     it('canonicalMailbox (JS) e a expressão SQL produzem o mesmo resultado', async () => {
-      const samples = ['A.B+x@Gmail.com', 'a.b@googlemail.com', 'Maria+1@Clinica.com.br', 'maria.souza@clinica.com.br',
-        '  Spaces@Exemplo.com', 'plain@exemplo.com', 'x+@gmail.com', 'UPPER.Case+Tag@Outlook.COM']
+      const samples = ['A.B+x@Gmail.com', 'a.b+y@googlemail.com', 'Maria+1@Clinica.com.br', 'maria.souza@clinica.com.br',
+        '  Spaces@Exemplo.com', 'plain@exemplo.com', 'x+@gmail.com', 'UPPER.Case+Tag@Outlook.COM',
+        'ma.ri_a-x+news@Proton.me', 'p.q+r@pm.me', 'f.g+h@fastmail.com', 'maria-a@yahoo.com', 'i.j+k@icloud.com']
       const leads: string[] = []
       for (const s of samples) {
         const [row] = await q<{ id: string }>(`INSERT INTO crm.leads (full_name, email, stage, is_test) VALUES ('Canon', $1, 'new', true) RETURNING id`,
           [s.replace('@', '.' + randomUUID().slice(0, 4) + '@')])
         leads.push(row.id)
       }
-      const rows = await q<{ email: string; canon: string }>(`SELECT l.email, (CASE
-          WHEN split_part(lower(trim(l.email)), '@', 2) IN ('gmail.com', 'googlemail.com')
-            THEN replace(split_part(split_part(lower(trim(l.email)), '@', 1), '+', 1), '.', '') || '@gmail.com'
-          ELSE split_part(split_part(lower(trim(l.email)), '@', 1), '+', 1) || '@' || split_part(lower(trim(l.email)), '@', 2)
-        END) AS canon FROM crm.leads l WHERE l.id = ANY($1::uuid[])`, [leads])
+      // Uses the exact production expression (exported), not a copy.
+      const rows = await q<{ email: string; canon: string }>(`SELECT l.email, ${SQL_CANONICAL_MAILBOX} AS canon
+        FROM crm.leads l WHERE l.id = ANY($1::uuid[])`, [leads])
       assert.equal(rows.length, samples.length)
       for (const row of rows) assert.equal(row.canon, canonicalMailbox(row.email), row.email)
     })
@@ -103,10 +102,24 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
       const base = 'maria.alias' + randomUUID().slice(0, 6)
       const cal = calendar()
       await book(await submit(base + '@gmail.com'), slotAt(Date.now() + 3 * DAY), cal)
-      for (const alias of [base.replace('.', '') + '@gmail.com', base + '+promo@gmail.com', base.toUpperCase() + '@GoogleMail.com']) {
+      for (const alias of [base.replace('.', '') + '@gmail.com', base + '+promo@gmail.com', base.toUpperCase() + '@Gmail.com']) {
         const lead = await submit(alias)
         const r = await reserveBookingSlot(pool, reserveInput(lead, slotAt(Date.now() + 5 * DAY), cal))
         assert.deepEqual(r, { status: 'active_meeting' }, alias)
+      }
+      // Fase 3.4: other domains are never unified with Gmail.
+      const other = await submit(base + '@googlemail.com')
+      assert.equal((await reserveBookingSlot(pool, reserveInput(other, slotAt(Date.now() + 6 * DAY), cal))).status, 'reserved')
+    })
+
+    it('provedores sem regra documentada: +sufixo identifica OUTRO contato (sem unificação indevida)', async () => {
+      const base = 'corp' + randomUUID().slice(0, 6)
+      const cal = calendar()
+      for (const [i, domain] of ['clinica-exemplo.com.br', 'outlook.com'].entries()) {
+        await book(await submit(base + '@' + domain), slotAt(Date.now() + (3 + i) * DAY), cal)
+        const plus = await submit(base + '+agenda@' + domain)
+        assert.equal((await reserveBookingSlot(pool, reserveInput(plus, slotAt(Date.now() + (8 + i) * DAY), cal))).status,
+          'reserved', domain)
       }
     })
 

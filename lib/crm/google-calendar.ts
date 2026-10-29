@@ -3,6 +3,10 @@ import 'server-only'
 import type { BusyInterval } from '@/lib/crm/booking-slots'
 import { CRM_BOOKING_TIME_ZONE } from '@/lib/crm/booking-slots'
 import { getGoogleRefreshToken, googleOAuthConfig } from '@/lib/crm/google-oauth'
+import {
+  cancelGoogleEvent, readGoogleEventState,
+  type GoogleCancelResult, type GoogleEventState, type GoogleRequest,
+} from '@/lib/crm/google-event-ops'
 
 /**
  * Adaptador de servidor: Google Calendar API <-> Cassiellos.
@@ -155,4 +159,32 @@ export async function createGoogleBooking(input: {
   const htmlLink = 'htmlLink' in result && typeof result.htmlLink === 'string'
     ? result.htmlLink : null
   return { id: result.id, meetingUrl, htmlLink }
+}
+
+/**
+ * Fase 3.4 — requisição GET/DELETE autenticada para as operações administrativas
+ * (cancelar evento e conferir estado). Mesmo escopo já autorizado; tokens nunca
+ * são registrados nem devolvidos.
+ */
+const googleEventRequest: GoogleRequest = async (method, path) => {
+  const config = await credentials()
+  if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
+  const token = await googleAccessToken(config)
+  const response = await fetch('https://www.googleapis.com/calendar/v3/' + path, {
+    method,
+    cache: 'no-store',
+    headers: { Authorization: 'Bearer ' + token },
+    signal: AbortSignal.timeout(8_000),
+  })
+  return { status: response.status, json: () => response.json() }
+}
+
+/** Cancela no Google o evento de uma reunião (usa o calendar_id gravado na reunião). */
+export function cancelBookingEvent(calendarId: string, eventId: string): Promise<GoogleCancelResult> {
+  return cancelGoogleEvent(googleEventRequest, calendarId, eventId)
+}
+
+/** Consulta, sem alterar nada, o estado de um evento (reconciliação de reservas). */
+export function readBookingEventState(calendarId: string, eventId: string): Promise<GoogleEventState> {
+  return readGoogleEventState(googleEventRequest, calendarId, eventId)
 }

@@ -14,8 +14,8 @@ import type { PoolClient } from 'pg'
  * - Comparações em timestamptz (instante absoluto): independem do fuso.
  *
  * Proteção antiabuso (Fase 3 / item 4):
- * - As regras valem por CAIXA DE E-MAIL canônica (canonicalMailbox): variações
- *   como maiúsculas, "+tag" e pontos do Gmail contam como o mesmo e-mail.
+ * - As regras valem por CAIXA DE E-MAIL canônica (canonicalMailbox): maiúsculas e
+ *   espaços sempre; "+sufixo"/pontos só nos provedores que documentam isso.
  * - Uma reunião futura ativa por e-mail e no máximo 3 agendamentos por e-mail
  *   em 30 dias (reservas processing/confirmed criadas na janela).
  * - Trava transacional por caixa de e-mail: confirmações simultâneas (inclusive
@@ -40,26 +40,55 @@ export const DEFAULT_BOOKING_LIMITS = { maxBookingsPerMailbox: 3, windowDays: 30
 /** Namespace da trava consultiva por caixa de e-mail (lead-intake usa 241023). */
 export const BOOKING_LEAD_LOCK_NAMESPACE = 241025
 
-const GMAIL_DOMAINS = ['gmail.com', 'googlemail.com']
-
 /**
- * Forma canônica do e-mail para as regras antiabuso (NÃO altera o cadastro):
- * minúsculas, sem espaços, sem "+sufixo" e, no Gmail, sem pontos.
+ * Normalização antiabuso por provedor (Fase 3.4 — regras seguras e documentadas).
+ * Só removemos "+sufixo" ou pontos quando o PRÓPRIO provedor documenta que essas
+ * variações chegam à mesma caixa. Nos demais domínios (Outlook, iCloud, Yahoo,
+ * domínios corporativos, Google Workspace etc.) apenas minúsculas e espaços:
+ * endereços diferentes continuam sendo contatos diferentes.
+ * - Gmail (gmail.com, googlemail.com): "+sufixo" e pontos ignorados
+ *   (support.google.com/mail/answer/7436150 · support.google.com/a/users/answer/9282734).
+ * - Proton (proton.me, protonmail.com, protonmail.ch, pm.me): "+sufixo"; ".", "_" e "-" são transparentes
+ *   (proton.me/support/addresses-and-aliases · proton.me/support/change-username).
+ * - Fastmail (fastmail.com): "+sufixo" (fastmail.help/hc/en-us/articles/360060591053).
+ * Os domínios nunca são unificados entre si. O cadastro e o endereço usado nos
+ * convites NÃO mudam: a forma canônica serve apenas para os limites e a trava.
  */
+export const MAILBOX_PROVIDER_RULES = {
+  plusAndDots: ['gmail.com', 'googlemail.com'],
+  plusAndSeparators: ['proton.me', 'protonmail.com', 'protonmail.ch', 'pm.me'],
+  plusOnly: ['fastmail.com'],
+} as const
+
+/** Forma canônica do e-mail para as regras antiabuso (não altera o cadastro). */
 export function canonicalMailbox(email: string): string {
   // Mirrors SQL split_part(…, '@', 1|2) exactly (see SQL_CANONICAL_MAILBOX).
-  const [localPart = '', domain = ''] = email.trim().toLowerCase().split('@')
-  const local = localPart.split('+')[0]
-  return GMAIL_DOMAINS.includes(domain)
-    ? local.replaceAll('.', '') + '@gmail.com'
-    : local + '@' + domain
+  const value = email.trim().toLowerCase()
+  const [localPart = '', domain = ''] = value.split('@')
+  const base = localPart.split('+')[0]
+  if ((MAILBOX_PROVIDER_RULES.plusAndDots as readonly string[]).includes(domain)) return base.replaceAll('.', '') + '@' + domain
+  if ((MAILBOX_PROVIDER_RULES.plusAndSeparators as readonly string[]).includes(domain)) return base.replace(/[._-]/g, '') + '@' + domain
+  if ((MAILBOX_PROVIDER_RULES.plusOnly as readonly string[]).includes(domain)) return base + '@' + domain
+  return value
 }
 
+function sqlList(domains: readonly string[]): string {
+  if (!domains.every(d => /^[a-z0-9.-]+$/.test(d))) throw new Error('INVALID_DOMAIN_RULE')
+  return domains.map(d => "'" + d + "'").join(', ')
+}
+const E = 'lower(trim(l.email))'
+const LOCAL_BASE = `split_part(split_part(${E}, '@', 1), '+', 1)`
+const DOMAIN = `split_part(${E}, '@', 2)`
+
 /** Mesma regra de canonicalMailbox, em SQL, aplicada a crm.leads (alias l). */
-const SQL_CANONICAL_MAILBOX = `(CASE
-  WHEN split_part(lower(trim(l.email)), '@', 2) IN ('gmail.com', 'googlemail.com')
-    THEN replace(split_part(split_part(lower(trim(l.email)), '@', 1), '+', 1), '.', '') || '@gmail.com'
-  ELSE split_part(split_part(lower(trim(l.email)), '@', 1), '+', 1) || '@' || split_part(lower(trim(l.email)), '@', 2)
+export const SQL_CANONICAL_MAILBOX = `(CASE
+  WHEN ${DOMAIN} IN (${sqlList(MAILBOX_PROVIDER_RULES.plusAndDots)})
+    THEN replace(${LOCAL_BASE}, '.', '') || '@' || ${DOMAIN}
+  WHEN ${DOMAIN} IN (${sqlList(MAILBOX_PROVIDER_RULES.plusAndSeparators)})
+    THEN regexp_replace(${LOCAL_BASE}, '[._-]', '', 'g') || '@' || ${DOMAIN}
+  WHEN ${DOMAIN} IN (${sqlList(MAILBOX_PROVIDER_RULES.plusOnly)})
+    THEN ${LOCAL_BASE} || '@' || ${DOMAIN}
+  ELSE ${E}
 END)`
 
 /** Lista de e-mails isentos SOMENTE do limite de 30 dias (decisão administrativa). */
