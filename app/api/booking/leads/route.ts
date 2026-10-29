@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { createBookingGrant } from '@/lib/crm/booking-grant'
+import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 
 export const runtime = 'nodejs'
@@ -107,13 +108,16 @@ async function saveLead(input: {
       return { leadId: submitted.rows[0].lead_id, submissionId: submitted.rows[0].id, reused: true }
     }
 
-    const existing = await client.query<{ id: string }>(
-      'SELECT id FROM crm.leads WHERE lower(email) = $1 LIMIT 1 FOR UPDATE',
+    const existing = await client.query<{ id: string; is_test: boolean }>(
+      'SELECT id, is_test FROM crm.leads WHERE lower(email) = $1 LIMIT 1 FOR UPDATE',
       [input.email],
     )
     let leadId: string
+    let isTest: boolean
     if (existing.rows[0]) {
+      // Existing leads keep their real/test classification.
       leadId = existing.rows[0].id
+      isTest = existing.rows[0].is_test
       await client.query(
         `UPDATE crm.leads SET full_name = $2, whatsapp = $3,
          company = $4, segment = $5, updated_at = now()
@@ -121,10 +125,11 @@ async function saveLead(input: {
         [leadId, input.name, input.phone, input.answers.clinic ?? null, input.niche],
       )
     } else {
+      isTest = classifyNewLeadAsTest({ email: input.email })
       const result = await client.query<{ id: string }>(
-        `INSERT INTO crm.leads (full_name, email, whatsapp, company, segment, stage)
-         VALUES ($1,$2,$3,$4,$5,'new') RETURNING id`,
-        [input.name, input.email, input.phone, input.answers.clinic ?? null, input.niche],
+        `INSERT INTO crm.leads (full_name, email, whatsapp, company, segment, stage, is_test)
+         VALUES ($1,$2,$3,$4,$5,'new',$6) RETURNING id`,
+        [input.name, input.email, input.phone, input.answers.clinic ?? null, input.niche, isTest],
       )
       leadId = result.rows[0].id
     }
@@ -147,7 +152,8 @@ async function saveLead(input: {
     await client.query(
       `INSERT INTO crm.lead_activities (lead_id, activity_kind, performed_by, details)
        VALUES ($1, 'form_completed', 'public_booking', $2::jsonb)`,
-      [leadId, JSON.stringify({ submissionId, formSlug: input.formSlug, formVersion: input.formVersion, environment: 'preview' })],
+      [leadId, JSON.stringify({ submissionId, formSlug: input.formSlug, formVersion: input.formVersion,
+        environment: 'preview', bookingMode: getCrmBookingMode(), isTest })],
     )
     await client.query('COMMIT')
     committed = true
