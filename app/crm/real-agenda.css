@@ -1,0 +1,29 @@
+#cassiellos-crm .crm-real-agenda{padding:0;overflow:hidden}
+#cassiellos-crm .crm-real-agenda-title{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 23px 17px}
+#cassiellos-crm .crm-real-agenda-title p{font-size:12px;color:#9eb0c6;margin:6px 0 0}
+#cassiellos-crm .crm-real-agenda-notice{margin:0 23px 18px;padding:13px 15px;border:1px solid rgba(34,199,242,.24);background:rgba(34,199,242,.06);border-radius:10px;color:#a8c3d8;font-size:11px;line-height:1.6}
+#cassiellos-crm .crm-real-agenda-notice strong{color:#74dbf5;letter-spacing:.05em;margin-right:8px}
+#cassiellos-crm .crm-real-agenda-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;padding:0 23px 23px}
+#cassiellos-crm .crm-real-agenda-stats>div{border:1px solid var(--crm-border);background:rgba(255,255,255,.023);border-radius:12px;padding:16px}
+#cassiellos-crm .crm-real-agenda-stats strong{display:block;font-size:27px;color:#f4f7ff;font-weight:800;font-variant-numeric:tabular-nums}
+#cassiellos-crm .crm-real-agenda-stats span{display:block;font-size:11px;color:#92a6bf;margin-top:5px}
+#cassiellos-crm .crm-real-agenda-filters{display:flex;gap:8px;padding:18px 23px;flex-wrap:wrap;border-top:1px solid var(--crm-border)}
+#cassiellos-crm .crm-real-agenda-filters button{padding:8px 12px;border-radius:8px;border:1px solid var(--crm-border);color:#9fafc5;background:#101e30;font-size:11px}
+#cassiellos-crm .crm-real-agenda-filters button[data-selected=true]{border-color:rgba(241,60,75,.55);background:rgba(241,60,75,.12);color:white}
+#cassiellos-crm .crm-real-agenda-item{display:flex;align-items:center;gap:17px;padding:18px 23px;border-top:1px solid var(--crm-border);min-width:0}
+#cassiellos-crm .crm-real-agenda-content{flex:1;min-width:0;display:grid;gap:5px}
+#cassiellos-crm .crm-real-agenda-content strong{font-size:14px;color:#eff5ff;overflow-wrap:anywhere}
+#cassiellos-crm .crm-real-agenda-content span{font-size:11px;color:#9baec6}
+#cassiellos-crm .crm-real-agenda-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+#cassiellos-crm .crm-real-agenda-meet{color:white;background:#246bff;border:1px solid rgba(255,255,255,.13);padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap}
+#cassiellos-crm .crm-real-agenda-meet:hover{background:#397afa}
+#cassiellos-crm .crm-real-agenda-message{padding:24px;color:#a5b7cc;font-size:13px;line-height:1.7;margin:0}
+#cassiellos-crm .crm-real-agenda-message a{color:#7bdafa;text-decoration:underline}
+#cassiellos-crm .crm-real-agenda-detail{margin:18px 23px 24px;padding:19px;border:1px solid rgba(34,199,242,.22);border-radius:12px;background:#0b192c}
+#cassiellos-crm .crm-real-agenda-detail>strong{display:block;margin-bottom:17px;color:#eef4ff;font-size:15px}
+#cassiellos-crm .crm-real-agenda-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:0}
+#cassiellos-crm .crm-real-agenda-detail dl>div{border:1px solid var(--crm-border);padding:11px;border-radius:9px}
+#cassiellos-crm .crm-real-agenda-detail dt{font-size:10px;color:#8ca4be;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+#cassiellos-crm .crm-real-agenda-detail dd{margin:0;color:#f1f5fd;font-size:12px;overflow-wrap:anywhere}
+@media(max-width:850px){#cassiellos-crm .crm-real-agenda-item{flex-wrap:wrap}#cassiellos-crm .crm-real-agenda-actions{width:100%;justify-content:flex-start;padding-left:65px}}
+@media(max-width:650px){#cassiellos-crm .crm-real-agenda-title{align-items:flex-start;flex-direction:column}#cassiellos-crm .crm-real-agenda-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#cassiellos-crm .crm-real-agenda-item{gap:12px;padding:15px}#cassiellos-crm .crm-real-agenda-actions{padding-left:0}#cassiellos-crm .crm-real-agenda-detail dl{grid-template-columns:1fr}#cassiellos-crm .crm-real-agenda-notice,#cassiellos-crm .crm-real-agenda-detail{margin-left:15px;margin-right:15px}}
