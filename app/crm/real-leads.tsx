@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './real-leads.css'
+import LeadManagement from './lead-management'
 
 type StoredLead = {
   id: string
@@ -98,7 +99,7 @@ export default function RealLeadsPanel({ search }: { search: string }) {
       </button>
     </div>
     <div className="crm-real-info" role="status">
-      <strong>NEON PREVIEW</strong> Exibição real e somente leitura. O dashboard, o funil e as outras telas ainda são demonstrativos.
+      <strong>NEON PREVIEW</strong> Leads reais no Neon Preview. A ficha do lead permite registrar ações administrativas com histórico.
     </div>
     {state === 'loading' ? <div className="crm-real-message">Carregando leads do banco…</div> : null}
     {state === 'unauthorized' ? <div className="crm-real-message" role="alert">
@@ -156,5 +157,6 @@ export default function RealLeadsPanel({ search }: { search: string }) {
         <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
       </div>
     </div> : null}
+    {state === 'ready' && active && <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)}/>}
   </section>
 }
