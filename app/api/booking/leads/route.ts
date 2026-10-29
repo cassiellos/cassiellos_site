@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { createBookingGrant } from '@/lib/crm/booking-grant'
+import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,6 @@ export const maxDuration = 20
 
 const POLICY_VERSION = '2026-08-22'
 const MAX_BODY_SIZE = 12_000
-const PREVIEW_ORIGIN = 'https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app'
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const
 
 function response(body: unknown, status: number) {
@@ -163,9 +163,9 @@ export async function POST(request: NextRequest) {
   if (process.env.VERCEL_ENV !== 'preview') return response({ error: 'NOT_FOUND' }, 404)
   const origin = request.headers.get('origin')
   // Vercel may use the deployment hostname internally even when the browser uses
-  // the stable Git branch alias. Check against the allowlisted Preview origin,
-  // not NextRequest.nextUrl.origin, without weakening the same-origin requirement.
-  if (origin !== PREVIEW_ORIGIN) return response({ error: 'FORBIDDEN' }, 403)
+  // the stable Git branch alias or crm.cassiellos.com.br. Check against the allowlisted
+  // Preview origins, not NextRequest.nextUrl.origin, without weakening the same-origin requirement.
+  if (!isCrmPreviewOrigin(origin)) return response({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return response({ error: 'INVALID_CONTENT_TYPE' }, 415)
   const length = Number(request.headers.get('content-length') || '0')
