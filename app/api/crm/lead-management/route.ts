@@ -66,8 +66,10 @@ export async function POST(req:NextRequest){
    if(existing.rows.length){await client.query('ROLLBACK');committed=true;return send({error:'CONTRACT_ALREADY_WON'},409)}
    const meeting=await client.query("SELECT id FROM crm.appointments WHERE lead_id=$1 AND status='completed' ORDER BY completed_at DESC LIMIT 1",[leadId])
    if(!meeting.rows[0]){await client.query('ROLLBACK');committed=true;return send({error:'MEETING_NOT_COMPLETED'},409)}
-   const deal=await client.query(`INSERT INTO crm.deals(lead_id,appointment_id,status,amount,contract_reference,closed_at,description)
-     VALUES($1,$2,'won',$3,$4,now(),'Contrato registrado pelo administrador') RETURNING id`,[leadId,meeting.rows[0].id,amount,reference])
+   // The contract inherits the lead's real/test classification (missing lead -> test).
+   const deal=await client.query(`INSERT INTO crm.deals(lead_id,appointment_id,status,amount,contract_reference,closed_at,description,is_test)
+     VALUES($1,$2,'won',$3,$4,now(),'Contrato registrado pelo administrador',
+       COALESCE((SELECT l.is_test FROM crm.leads l WHERE l.id=$1),true)) RETURNING id`,[leadId,meeting.rows[0].id,amount,reference])
    await client.query("UPDATE crm.leads SET stage='customer',updated_at=now() WHERE id=$1",[leadId])
    await client.query(`INSERT INTO crm.lead_activities(lead_id,deal_id,activity_kind,performed_by,details)
      VALUES($1,$2,'contract_won','crm_admin',$3::jsonb)`,[leadId,deal.rows[0].id,JSON.stringify({amount,contractReference:reference})])
