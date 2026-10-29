@@ -132,15 +132,19 @@ async function finalizeBooking(input: {
   try {
     await client.query('BEGIN')
     await client.query('SET LOCAL statement_timeout = 6000')
-    const appointment = await client.query<{ id: string }>(
+    // The meeting inherits the lead's real/test classification (missing lead -> test).
+    const appointment = await client.query<{ id: string; is_test: boolean }>(
       `INSERT INTO crm.appointments (lead_id, calendar_id, starts_at, ends_at,
-          status, calendar_event_id, meeting_url, confirmed_at)
+          status, calendar_event_id, meeting_url, confirmed_at, is_test)
         VALUES ($1, $2, $3::timestamptz, $4::timestamptz,
-          'confirmed', $5, $6, now()) RETURNING id`,
+          'confirmed', $5, $6, now(),
+          COALESCE((SELECT l.is_test FROM crm.leads l WHERE l.id = $1), true))
+        RETURNING id, is_test`,
       [input.leadId, input.calendarId, input.startAt,
         input.endAt, input.eventId, input.meetingUrl],
     )
     const appointmentId = appointment.rows[0].id
+    const isTest = appointment.rows[0].is_test !== false
     await client.query(
       `UPDATE crm.booking_requests SET status = 'confirmed',
           google_event_id = $2, appointment_id = $3, updated_at = now()
@@ -152,10 +156,12 @@ async function finalizeBooking(input: {
          (lead_id, appointment_id, activity_kind, performed_by, details)
          VALUES ($1, $2, 'meeting_scheduled', 'public_booking', $3::jsonb)`,
       [input.leadId, appointmentId, JSON.stringify({
-        formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: 'preview',
+        formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: 'preview', isTest,
       })],
     )
     // Internal event only; Meta CAPI dispatch is a separate, not-yet-enabled pipeline.
+    // metadata.isTest is mandatory: only isTest === false may ever be sent to Meta
+    // (see isMetaDispatchAllowed in lib/crm/booking-mode.ts).
     await client.query(
       `INSERT INTO crm.tracking_events
          (lead_id, appointment_id, event_id, event_name,
@@ -164,7 +170,7 @@ async function finalizeBooking(input: {
       [input.leadId, appointmentId,
         'chronos_scheduled_' + input.bookingId.replaceAll('-', ''),
         input.pageOrigin + '/agendar/' + encodeURIComponent(input.formSlug),
-        JSON.stringify({ formSlug: input.formSlug, environment: 'preview' })],
+        JSON.stringify({ formSlug: input.formSlug, environment: 'preview', isTest })],
     )
     await client.query('COMMIT')
     committed = true
