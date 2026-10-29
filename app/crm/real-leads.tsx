@@ -158,6 +158,6 @@ export default function RealLeadsPanel({ search }: { search: string }) {
         <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
       </div>
     </div> : null}
-    {state === 'ready' && active && <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)}/>}
+    {state === 'ready' && active && <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)} onChanged={load}/>}
   </section>
 }

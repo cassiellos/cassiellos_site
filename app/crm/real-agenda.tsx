@@ -73,7 +73,7 @@ export default function RealAgendaPanel() {
         {state === 'loading' ? 'Carregando…' : 'Atualizar agenda'}
       </button>
     </div>
-    <div className="crm-real-agenda-notice"><strong>DADOS REAIS · NEON PREVIEW</strong> Somente leitura. Reuniões não são alteradas nesta tela.</div>
+    <div className="crm-real-agenda-notice"><strong>DADOS REAIS · NEON PREVIEW</strong> Somente leitura. Para cancelar ou marcar falta, abra a ficha do lead em Leads.</div>
     {state === 'ready' && totals && <div className="crm-real-agenda-stats">
       {[
         ['Total de reuniões', totals.total],
@@ -87,7 +87,7 @@ export default function RealAgendaPanel() {
     {state === 'error' && <p className="crm-real-agenda-message" role="alert">Não foi possível consultar os agendamentos. Clique em Atualizar agenda para tentar novamente.</p>}
     {state === 'ready' && <>
       <div className="crm-real-agenda-filters" aria-label="Filtrar reuniões">
-        {[['all', 'Todas'], ['confirmed', 'Confirmadas'], ['completed', 'Realizadas'], ['cancelled', 'Canceladas']].map(([key, label]) =>
+        {[['all', 'Todas'], ['confirmed', 'Confirmadas'], ['completed', 'Realizadas'], ['cancelled', 'Canceladas'], ['no_show', 'Faltas']].map(([key, label]) =>
           <button key={key} type="button" aria-pressed={filter === key} data-selected={filter === key} onClick={() => setFilter(key)}>{label}</button>)}
       </div>
       {visible.length === 0 ? <p className="crm-real-agenda-message">Nenhuma reunião registrada neste filtro.</p> :

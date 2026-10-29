@@ -16,4 +16,6 @@
 #cassiellos-crm .crm-lead-timeline strong{display:block}
 #cassiellos-crm .crm-lead-timeline small{display:block;color:#879fb9;margin-top:3px}
 #cassiellos-crm .crm-lead-timeline p{margin:6px 0 0;overflow-wrap:anywhere}
-@media(max-width:680px){#cassiellos-crm .crm-lead-management{margin:16px 14px;padding:16px}#cassiellos-crm .crm-lead-management-fields{grid-template-columns:1fr}}
+@media(max-width:680px){#cassiellos-crm .crm-lead-management{margin:16px 14px;padding:16px}#cassiellos-crm .crm-lead-management-fields{grid-template-columns:1fr}}#cassiellos-crm .crm-lead-management-meeting-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#cassiellos-crm .crm-meeting-warning{flex-basis:100%;color:#ffd38a;font-size:11px;line-height:1.5}
+#cassiellos-crm .crm-btn-danger{border-color:rgba(241,60,75,.55)!important;color:#ffc4cb!important}

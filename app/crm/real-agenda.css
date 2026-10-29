@@ -26,4 +26,8 @@
 #cassiellos-crm .crm-real-agenda-detail dt{font-size:10px;color:#8ca4be;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 #cassiellos-crm .crm-real-agenda-detail dd{margin:0;color:#f1f5fd;font-size:12px;overflow-wrap:anywhere}
 @media(max-width:850px){#cassiellos-crm .crm-real-agenda-item{flex-wrap:wrap}#cassiellos-crm .crm-real-agenda-actions{width:100%;justify-content:flex-start;padding-left:65px}}
-@media(max-width:650px){#cassiellos-crm .crm-real-agenda-title{align-items:flex-start;flex-direction:column}#cassiellos-crm .crm-real-agenda-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#cassiellos-crm .crm-real-agenda-item{gap:12px;padding:15px}#cassiellos-crm .crm-real-agenda-actions{padding-left:0}#cassiellos-crm .crm-real-agenda-detail dl{grid-template-columns:1fr}#cassiellos-crm .crm-real-agenda-notice,#cassiellos-crm .crm-real-agenda-detail{margin-left:15px;margin-right:15px}}
+@media(max-width:650px){#cassiellos-crm .crm-real-agenda-title{align-items:flex-start;flex-direction:column}#cassiellos-crm .crm-real-agenda-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#cassiellos-crm .crm-real-agenda-item{gap:12px;padding:15px}#cassiellos-crm .crm-real-agenda-actions{padding-left:0}#cassiellos-crm .crm-real-agenda-detail dl{grid-template-columns:1fr}#cassiellos-crm .crm-real-agenda-notice,#cassiellos-crm .crm-real-agenda-detail{margin-left:15px;margin-right:15px}}#cassiellos-crm .crm-stuck-reservations{margin-top:20px}
+#cassiellos-crm .crm-stuck-check{font-size:11px;color:#9fd9ef}
+#cassiellos-crm .crm-stuck-check[data-state=active]{color:#ffd38a}
+#cassiellos-crm .crm-stuck-check[data-state=unavailable]{color:#ffbfc9}
+#cassiellos-crm .crm-btn-danger{border-color:rgba(241,60,75,.55)!important;color:#ffc4cb!important}

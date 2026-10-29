@@ -7,6 +7,7 @@ import RealLeadsPanel from './real-leads'
 import RealAgendaPanel from './real-agenda'
 import RealDashboard from './real-dashboard'
 import RealFunnel from './real-funnel'
+import StuckReservations from './stuck-reservations'
 
 type View = 'dashboard' | 'leads' | 'agenda' | 'funil' | 'conversoes' | 'relatorios' | 'configuracoes'
 type Lead = { id: string; company: string; contact: string; origin: string; status: string; date: string; amount: string; initials: string }
@@ -192,7 +193,7 @@ export default function MiniCrm() {
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
           {view === 'leads' && <RealLeadsPanel search={search}/>}
 
-          {view === 'agenda' && <RealAgendaPanel/>}
+          {view === 'agenda' && <><RealAgendaPanel/><StuckReservations/></>}
           {view === 'funil' && <RealFunnel/>}
           {view === 'conversoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Eventos da jornada</div><div className="crm-panel-subtitle">Plano de mensuração — nomes da estratégia Shark Scale</div></div><Icon name="target"/></div>{[
             ['ChronosView','Visualização do formulário'],
