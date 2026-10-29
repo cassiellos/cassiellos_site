@@ -1,0 +1,21 @@
+#cassiellos-crm .crm-real-funnel-intro{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 17px;margin-bottom:18px;border:1px solid rgba(34,199,242,.24);border-radius:10px;background:rgba(34,199,242,.07);font-size:11px;color:#b4c6d9}
+#cassiellos-crm .crm-real-funnel-intro strong{color:#70d7f3;letter-spacing:.07em}
+#cassiellos-crm .crm-real-funnel-intro span{flex:1;min-width:200px}
+#cassiellos-crm .crm-real-funnel-scroll{max-width:100%;overflow-x:auto;padding-bottom:14px}
+#cassiellos-crm .crm-real-funnel-grid{display:grid;grid-template-columns:repeat(7,minmax(200px,1fr));gap:13px;min-width:1490px}
+#cassiellos-crm .crm-real-funnel-col{background:#0d192a;border:1px solid #22354c;border-radius:13px;min-height:300px;overflow:hidden}
+#cassiellos-crm .crm-real-funnel-col-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:17px 13px;border-bottom:1px solid #22354c}
+#cassiellos-crm .crm-real-funnel-col-head strong{font-size:12px;color:#e7eef8}
+#cassiellos-crm .crm-real-funnel-col-head span{background:#1c304a;border-radius:7px;padding:3px 8px;color:#a5d9f1;font-weight:700;font-size:12px}
+#cassiellos-crm .crm-real-funnel-cards{padding:12px;display:grid;gap:10px;align-content:start}
+#cassiellos-crm .crm-real-funnel-cards>p{font-size:11px;color:#8299b2}
+#cassiellos-crm .crm-real-funnel-card{padding:14px;border:1px solid #304056;border-radius:10px;background:#14243a;display:grid;gap:7px}
+#cassiellos-crm .crm-real-funnel-card>strong{font-size:13px;color:#f0f5ff;overflow-wrap:anywhere}
+#cassiellos-crm .crm-real-funnel-card small{font-size:11px;color:#a0b3c9;overflow-wrap:anywhere}
+#cassiellos-crm .crm-real-funnel-card label{display:grid;gap:7px;margin-top:6px;font-size:10px;color:#afc1d7}
+#cassiellos-crm .crm-real-funnel-card select{width:100%;min-height:37px;padding:8px;color:#f4f6fa;background:#0c1728;border:1px solid #425672;border-radius:7px;font-size:11px}
+#cassiellos-crm .crm-real-funnel-automatic{margin-top:7px;font-size:10px;color:#82d4e3}
+#cassiellos-crm .crm-real-funnel-footer{font-size:11px;color:#899db6;line-height:1.7;margin:15px 0}
+#cassiellos-crm .crm-real-funnel-message{padding:23px;font-size:12px;color:#bbcadc}
+#cassiellos-crm .crm-real-funnel-message a{color:#75d6f6;text-decoration:underline}
+@media(max-width:700px){#cassiellos-crm .crm-real-funnel-grid{grid-template-columns:repeat(7,minmax(178px,1fr));min-width:1324px}#cassiellos-crm .crm-real-funnel-intro{align-items:flex-start;flex-direction:column}}
