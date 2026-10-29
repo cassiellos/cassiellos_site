@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { track } from '@vercel/analytics'
+import { META_CLICK_ID_PARAM, isMetaTrackedPath } from '@/lib/marketing/meta'
 
 const ANALYTICS_FLOW_ENDPOINT = '/api/analyticsflow/events'
 const ANALYTICS_FLOW_CLIENT = 'cassiellos-site'
@@ -23,8 +24,11 @@ function safeReferrer() {
 
 function attribution() {
   const params = new URLSearchParams(window.location.search)
+  // Decision G2: on the booking funnel the Meta click id never goes to navigation analytics;
+  // it is only stored in the CRM, and only with marketing consent. Other pages are unchanged.
+  const funnel = isMetaTrackedPath(window.location.pathname)
   return Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'gclid', 'fbclid']
-    .map((key) => [key, params.get(key) || null]))
+    .map((key) => [key, funnel && key === META_CLICK_ID_PARAM ? null : params.get(key) || null]))
 }
 
 function trackAnalyticsFlow(eventType: 'page_view' | 'cta_click' | 'whatsapp_click' | 'form_submit', contentId?: string) {

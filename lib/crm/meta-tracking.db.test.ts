@@ -17,6 +17,7 @@ import { changeMarketingConsent, readMarketingConsentState } from './marketing-c
 import { buildMetaServerEvent } from './meta-events'
 import { TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike } from './turnstile'
 import { leadTrackingEventId } from '../marketing/meta'
+import { serializeConsent } from '../marketing/consent'
 
 const url = process.env.CRM_INTEGRATION_DATABASE_URL
 const skip = !url ? 'CRM_INTEGRATION_DATABASE_URL não definida' : false
@@ -48,7 +49,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     })
 
   /** Pipeline real navegador → handler → banco (Siteverify simulado com as chaves oficiais de teste). */
-  function intakeDeps(): IntakeDeps {
+  function intakeDeps(opts: { isTest?: boolean } = {}): IntakeDeps {
     const siteverify: FetchLike = async () => ({ ok: true, status: 200, json: async () => ({
       success: true, hostname: HOST, action: TURNSTILE_BOOKING_ACTION, challenge_ts: new Date().toISOString() }) })
     return {
@@ -60,7 +61,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
       consumeIpQuota: async () => true,
       saveLead: input => saveLeadSubmission(pool, input),
       createGrant: data => 'grant:' + data.submissionId,
-      classifyNewLeadAsTest: () => false,
+      classifyNewLeadAsTest: () => opts.isTest === true,
       bookingMode: 'live',
       publicOrigin: ORIGIN,
       log: () => undefined,
@@ -78,7 +79,8 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
 
   it('C2: o navegador manda fbp/fbc, mas NADA disso chega ao banco (só sim/não)', async () => {
     const address = email('c2')
-    const r = await handleLeadIntake(intakeDeps(), { remoteIp: null, value: {
+    // The consent cookie of the request confirms the choice (server-side validation, G2).
+    const r = await handleLeadIntake(intakeDeps(), { remoteIp: null, cookieHeader: 'cassiellos_consent=' + serializeConsent(true), value: {
       formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead C2', email: address, whatsapp: '(31) 90000-0071',
       answers: { clinic: 'Clínica C2', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
       attribution: {}, privacyAccepted: true, turnstileToken: K.dummyToken,
@@ -174,7 +176,8 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     assert.deepEqual(rows, [{ granted: true, revoked: true }, { granted: false, revoked: false }], 'histórico preservado')
     const [activity] = await q<{ performed_by: string; details: Record<string, unknown> }>(
       "SELECT performed_by, details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [session.leadId])
-    assert.deepEqual(activity, { performed_by: 'visitor', details: { source: 'visitor_preferences', policyVersion: MARKETING_POLICY_VERSION } })
+    assert.deepEqual(activity, { performed_by: 'visitor',
+      details: { source: 'visitor_preferences', policyVersion: MARKETING_POLICY_VERSION, clickIdsRemoved: 0 } })
     assert.deepEqual(await leadSnapshot(session.leadId), before, 'cadastro do lead não muda')
     assert.deepEqual(await q('SELECT id, status FROM crm.appointments WHERE lead_id = $1', [session.leadId]), meetingsBefore)
 
@@ -207,7 +210,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     const [activity] = await q<{ performed_by: string; details: Record<string, unknown> }>(
       "SELECT performed_by, details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [session.leadId])
     assert.deepEqual(activity, { performed_by: 'crm_admin',
-      details: { source: 'privacy_request', policyVersion: MARKETING_POLICY_VERSION, sessionRef: 'abc123' } })
+      details: { source: 'privacy_request', policyVersion: MARKETING_POLICY_VERSION, clickIdsRemoved: 0, sessionRef: 'abc123' } })
     assert.deepEqual(await changeMarketingConsent(pool, { leadId: randomUUID(), granted: false, source: 'privacy_request' }),
       { outcome: 'not_found' })
   })
@@ -229,5 +232,121 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     assert.equal(r.status, 401)
     assert.equal((await q('SELECT 1 FROM crm.meta_deliveries')).length, 0)
     assert.equal((await q("SELECT 1 FROM crm.form_submissions WHERE answers::text LIKE '%fb.1.%'")).length, 0)
+  })
+
+  // ── Decisão G2 — fbclid só com consentimento validado no servidor ──────────────────────────
+  const ACCEPTED = 'cassiellos_consent=' + serializeConsent(true)
+  const REFUSED = 'cassiellos_consent=' + serializeConsent(false)
+  const CLICK = 'IwAR0g2ClickId_' + randomUUID().slice(0, 8)
+  async function intake(address: string, opts: { marketing?: Record<string, unknown>; cookie?: string | null; isTest?: boolean } = {}) {
+    const r = await handleLeadIntake(intakeDeps({ isTest: opts.isTest }), { remoteIp: null, cookieHeader: opts.cookie ?? null, value: {
+      formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead G2', email: address, whatsapp: '(31) 90000-0072',
+      answers: { clinic: 'Clínica G2', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
+      attribution: { utm_source: 'meta', utm_campaign: 'g2', fbclid: CLICK },
+      privacyAccepted: true, turnstileToken: K.dummyToken, marketing: opts.marketing ?? {},
+    } })
+    assert.equal(r.status, 201)
+    const [lead] = await q<{ id: string }>('SELECT id FROM crm.leads WHERE email = $1', [address])
+    return { response: r, leadId: lead.id }
+  }
+  const attributions = async (leadId: string) => (await q<{ a: Record<string, string> }>(
+    "SELECT answers->'attribution' AS a FROM crm.form_submissions WHERE lead_id = $1 ORDER BY submitted_at, id", [leadId])).map(r => r.a)
+
+  it('G2-1/7 cadastro REAL com consentimento e fbclid: fbclid guardado, Lead para o navegador', async () => {
+    const { response, leadId } = await intake(email('g2.aceite'), { marketing: GRANT, cookie: ACCEPTED })
+    assert.deepEqual(await attributions(leadId), [{ utm_source: 'meta', utm_campaign: 'g2', fbclid: CLICK }])
+    assert.deepEqual(response.body.tracking, { lead: { eventName: 'Lead', eventId: leadTrackingEventId(leadId) } })
+  })
+
+  it('G2-2 sem consentimento e com fbclid na URL: fbclid descartado, utm_* preservados', async () => {
+    for (const cookie of [null, ACCEPTED]) { // a lone cookie without the body choice is not consent
+      const { leadId } = await intake(email('g2.semconsent'), { marketing: {}, cookie })
+      assert.deepEqual(await attributions(leadId), [{ utm_source: 'meta', utm_campaign: 'g2' }])
+    }
+    const forged = await intake(email('g2.forjado'), { marketing: GRANT, cookie: null })
+    assert.deepEqual(await attributions(forged.leadId), [{ utm_source: 'meta', utm_campaign: 'g2' }], 'aceite sem cookie não vale')
+  })
+
+  it('G2-3 recusa de cookies: fbclid descartado e nenhum consentimento de marketing', async () => {
+    const { leadId } = await intake(email('g2.recusa'), { marketing: REFUSE, cookie: REFUSED })
+    assert.deepEqual(await attributions(leadId), [{ utm_source: 'meta', utm_campaign: 'g2' }])
+    assert.equal((await readMarketingConsentState(pool, leadId)).granted, false)
+  })
+
+  it('G2-4/9 revogação apaga o fbclid de TODOS os envios, preserva o resto e audita só a quantidade', async () => {
+    const address = email('g2.revoga')
+    const first = await intake(address, { marketing: GRANT, cookie: ACCEPTED })
+    await intake(address, { marketing: GRANT, cookie: ACCEPTED })
+    // Legacy row stored before G2 (fbclid without consent), written directly at the storage level.
+    await q(`UPDATE crm.form_submissions SET answers = jsonb_set(answers, '{attribution,fbclid}', to_jsonb($2::text))
+              WHERE id = (SELECT id FROM crm.form_submissions WHERE lead_id = $1 ORDER BY submitted_at DESC, id DESC LIMIT 1)`,
+      [first.leadId, CLICK])
+    const leadBefore = await leadSnapshot(first.leadId)
+    const counts = async () => (await q<{ s: string; c: string; a: string }>(
+      `SELECT (SELECT count(*) FROM crm.form_submissions WHERE lead_id = $1) AS s,
+              (SELECT count(*) FROM crm.consents WHERE lead_id = $1) AS c,
+              (SELECT count(*) FROM crm.lead_activities WHERE lead_id = $1) AS a`, [first.leadId]))[0]
+    const before = await counts()
+    const session = { leadId: first.leadId, submissionId: 'x', formSlug: 'odontologia' }
+    assert.equal((await visitorChange(session, false)).status, 200)
+    assert.deepEqual(await attributions(first.leadId), [
+      { utm_source: 'meta', utm_campaign: 'g2' }, { utm_source: 'meta', utm_campaign: 'g2' }])
+    const [answers] = await q<{ q: Record<string, string> }>(
+      "SELECT answers->'questions' AS q FROM crm.form_submissions WHERE lead_id = $1 LIMIT 1", [first.leadId])
+    assert.equal(answers.q.clinic, 'Clínica G2', 'respostas do formulário preservadas')
+    assert.deepEqual(await leadSnapshot(first.leadId), leadBefore, 'cadastro do lead não muda')
+    const after = await counts()
+    assert.equal(after.s, before.s, 'nenhum envio apagado')
+    assert.equal(Number(after.c), Number(before.c) + 1, 'histórico de consentimento só cresce')
+    assert.equal(Number(after.a), Number(before.a) + 1, 'uma atividade de auditoria')
+    const [activity] = await q<{ details: Record<string, unknown> }>(
+      "SELECT details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_consent_revoked'", [first.leadId])
+    assert.deepEqual(activity.details, { source: 'visitor_preferences', policyVersion: MARKETING_POLICY_VERSION, clickIdsRemoved: 2 })
+    const everything = JSON.stringify(await q(
+      `SELECT (SELECT json_agg(s.answers) FROM crm.form_submissions s WHERE s.lead_id = $1) AS s,
+              (SELECT json_agg(a) FROM crm.lead_activities a WHERE a.lead_id = $1) AS a,
+              (SELECT json_agg(t) FROM crm.tracking_events t WHERE t.lead_id = $1) AS t`, [first.leadId]))
+    assert.equal(everything.includes(CLICK), false, 'o valor do fbclid não sobra em lugar nenhum')
+  })
+
+  it('G2 pedido ao canal sem autorização ativa: apaga fbclid antigo mesmo assim, com auditoria', async () => {
+    const { leadId } = await intake(email('g2.legado'), { marketing: {}, cookie: null })
+    await q(`UPDATE crm.form_submissions SET answers = jsonb_set(answers, '{attribution,fbclid}', to_jsonb($2::text)) WHERE lead_id = $1`, [leadId, CLICK])
+    const r = await changeMarketingConsent(pool, { leadId, granted: false, source: 'privacy_request', adminSessionRef: 'ref9' })
+    assert.deepEqual(r.outcome === 'unchanged' && r.clickIdsRemoved, 1)
+    assert.deepEqual(await attributions(leadId), [{ utm_source: 'meta', utm_campaign: 'g2' }])
+    const [activity] = await q<{ performed_by: string; details: Record<string, unknown> }>(
+      "SELECT performed_by, details FROM crm.lead_activities WHERE lead_id = $1 AND activity_kind = 'marketing_identifiers_removed'", [leadId])
+    assert.deepEqual(activity, { performed_by: 'crm_admin', details: { source: 'privacy_request', clickIdsRemoved: 1, sessionRef: 'ref9' } })
+  })
+
+  it('G2-5 reenvio: sem escolha não guarda fbclid novo nem apaga o anterior; recusa explícita apaga tudo', async () => {
+    const address = email('g2.reenvio')
+    const { leadId } = await intake(address, { marketing: GRANT, cookie: ACCEPTED })
+    await intake(address, { marketing: {}, cookie: null })
+    assert.deepEqual(await attributions(leadId), [
+      { utm_source: 'meta', utm_campaign: 'g2', fbclid: CLICK }, { utm_source: 'meta', utm_campaign: 'g2' }])
+    assert.equal((await readMarketingConsentState(pool, leadId)).granted, true)
+    await intake(address, { marketing: REFUSE, cookie: REFUSED })
+    assert.deepEqual((await attributions(leadId)).map(a => 'fbclid' in a), [false, false, false])
+    assert.equal((await readMarketingConsentState(pool, leadId)).granted, false)
+    assert.equal((await q("SELECT 1 FROM crm.tracking_events WHERE lead_id = $1 AND event_name = 'Lead'", [leadId])).length, 1)
+  })
+
+  it('G2-6 lead de TESTE: mesma regra do fbclid e nenhuma conversão', async () => {
+    const accepted = await intake(email('g2.teste.aceite'), { marketing: GRANT, cookie: ACCEPTED, isTest: true })
+    assert.equal('fbclid' in (await attributions(accepted.leadId))[0], true)
+    assert.equal('tracking' in accepted.response.body, false, 'lead de teste nunca recebe Lead')
+    const refused = await intake(email('g2.teste.recusa'), { marketing: REFUSE, cookie: REFUSED, isTest: true })
+    assert.equal('fbclid' in (await attributions(refused.leadId))[0], false)
+  })
+
+  it('G2-8 agendamento depois de recusar marketing funciona normalmente', async () => {
+    const address = email('g2.agenda')
+    const { leadId } = await intake(address, { marketing: REFUSE, cookie: REFUSED })
+    const [sub] = await q<{ id: string }>('SELECT id FROM crm.form_submissions WHERE lead_id = $1', [leadId])
+    const booked = await confirmFor({ leadId, submissionId: sub.id, formSlug: 'odontologia' }, address)
+    assert.equal(booked.status, 201)
+    assert.equal((await q("SELECT 1 FROM crm.appointments WHERE lead_id = $1 AND status = 'confirmed'", [leadId])).length, 1)
   })
 })

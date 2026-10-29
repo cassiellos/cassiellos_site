@@ -11,6 +11,10 @@ import type { ConnectablePool } from './booking-reservation'
  * - O estado atual é o registro mais recente. A futura Conversions API deve consultar
  *   readMarketingConsentState NO MOMENTO DO ENVIO: consentimento revogado = nada é enviado.
  * - Revogar NÃO altera dados comerciais do lead (cadastro, reuniões, contratos, linha do tempo).
+ * - Decisão G2: na revogação (ou recusa explícita) o identificador de clique da Meta (fbclid)
+ *   guardado nos envios do lead é APAGADO — ele só existia por causa do consentimento. Os demais
+ *   parâmetros de campanha (utm_*) e as respostas do formulário são preservados. A atividade
+ *   registra só a quantidade removida, nunca o valor.
  * - Toda mudança gera uma atividade na linha do tempo do lead (quem/como/quando).
  * - O administrador só pode REVOGAR (pedido do titular pelo canal de privacidade);
  *   autorização só vem do próprio visitante (formulário ou "Preferências de cookies").
@@ -58,8 +62,21 @@ export type MarketingConsentChange = {
 }
 
 export type MarketingConsentChangeResult =
-  | { outcome: 'changed' | 'unchanged'; state: MarketingConsentState }
+  | { outcome: 'changed' | 'unchanged'; state: MarketingConsentState; clickIdsRemoved: number }
   | { outcome: 'not_allowed' }
+
+/** Apaga o fbclid das atribuições guardadas do lead (somente essa chave). Devolve quantos envios mudaram. */
+export async function removeStoredClickIds(db: Queryable, leadId: string): Promise<number> {
+  const result = await db.query(
+    `UPDATE crm.form_submissions
+        SET answers = jsonb_set(answers, '{attribution}', (answers->'attribution') - 'fbclid')
+      WHERE lead_id = $1
+        AND jsonb_typeof(answers->'attribution') = 'object'
+        AND (answers->'attribution') ? 'fbclid'`,
+    [leadId],
+  )
+  return result.rowCount ?? 0
+}
 
 /** Aplica a mudança dentro de uma transação já aberta (o chamador trava o lead). */
 export async function applyMarketingConsentChange(
@@ -69,9 +86,21 @@ export async function applyMarketingConsentChange(
   // Consent can only be GIVEN by the visitor; an administrator may only record a revocation.
   if (input.granted && input.source === 'privacy_request') return { outcome: 'not_allowed' }
   const current = await readMarketingConsentState(client, input.leadId)
-  if (current.granted === input.granted) return { outcome: 'unchanged', state: current }
-  // Revocation is only meaningful when an active authorization exists.
   const policyVersion = input.policyVersion ?? LEGAL_POLICY_VERSION
+  // Refusal/revocation always erases stored click ids (also legacy ones stored before G2).
+  const clickIdsRemoved = input.granted ? 0 : await removeStoredClickIds(client, input.leadId)
+  if (current.granted === input.granted) {
+    if (clickIdsRemoved > 0) {
+      await client.query(
+        `INSERT INTO crm.lead_activities (lead_id, activity_kind, performed_by, details)
+         VALUES ($1, 'marketing_identifiers_removed', $2, $3::jsonb)`,
+        [input.leadId, input.source === 'privacy_request' ? 'crm_admin' : 'visitor',
+          JSON.stringify({ source: input.source, clickIdsRemoved,
+            ...(input.adminSessionRef ? { sessionRef: input.adminSessionRef } : {}) })],
+      )
+    }
+    return { outcome: 'unchanged', state: current, clickIdsRemoved }
+  }
   if (!input.granted) {
     await client.query(
       `UPDATE crm.consents SET revoked_at = clock_timestamp()
@@ -91,10 +120,11 @@ export async function applyMarketingConsentChange(
       input.source === 'privacy_request' ? 'crm_admin' : 'visitor',
       JSON.stringify({
         source: input.source, policyVersion,
+        ...(input.granted ? {} : { clickIdsRemoved }),
         ...(input.adminSessionRef ? { sessionRef: input.adminSessionRef } : {}),
       })],
   )
-  return { outcome: 'changed', state: await readMarketingConsentState(client, input.leadId) }
+  return { outcome: 'changed', state: await readMarketingConsentState(client, input.leadId), clickIdsRemoved }
 }
 
 /** Transação própria com trava do lead. Lead inexistente → 'not_found'. */

@@ -7,6 +7,8 @@
  * - O CRM mantém seus nomes internos; o mapeamento para a Meta fica centralizado aqui.
  */
 
+import { CONSENT_COOKIE, parseConsent, readCookie } from './consent'
+
 /** Páginas públicas do funil (prefixos). Ajuste aqui, não espalhe pelo código. */
 export const META_TRACKED_PATH_PREFIXES: readonly string[] = ['/agendar/']
 
@@ -72,4 +74,38 @@ export function sanitizeMarketingConsent(raw: unknown): MarketingConsentInput {
   const value = raw as Record<string, unknown>
   const consent = value.consent === true
   return { consent, decided: consent || value.decided === true }
+}
+
+/**
+ * Escolha de marketing VALIDADA NO SERVIDOR antes de qualquer gravação.
+ * - Aceite só vale se o cookie de consentimento da própria requisição (cassiellos_consent,
+ *   válido e na versão atual) também registrar o aceite. Divergência = sem consentimento.
+ * - Recusa explícita vale mesmo sem cookie (é a opção mais protetiva).
+ * O servidor não tem como verificar mais do que a escolha guardada pelo navegador.
+ */
+export function resolveMarketingConsent(claimed: unknown, cookieHeader: string | null | undefined): MarketingConsentInput {
+  const body = sanitizeMarketingConsent(claimed)
+  const stored = parseConsent(readCookie(cookieHeader || '', CONSENT_COOKIE))
+  if (body.consent && stored?.marketing === true) return { consent: true, decided: true }
+  if (body.decided && !body.consent) return { consent: false, decided: true }
+  return { consent: false, decided: false }
+}
+
+/**
+ * Identificador de clique da Meta presente nos links de anúncios (decisão G2, 29/10/2026):
+ * só é guardado no CRM com consentimento de marketing validado; nas páginas do funil nunca vai
+ * para as ferramentas de medição de navegação (Vercel Analytics, AnalyticsFlow/cassiellOS).
+ */
+export const META_CLICK_ID_PARAM = 'fbclid'
+
+/** Remove o fbclid da URL de um evento de medição quando a página é do funil de agendamento. */
+export function stripFunnelClickId(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (!isMetaTrackedPath(parsed.pathname) || !parsed.searchParams.has(META_CLICK_ID_PARAM)) return url
+    parsed.searchParams.delete(META_CLICK_ID_PARAM)
+    return parsed.toString()
+  } catch {
+    return url
+  }
 }

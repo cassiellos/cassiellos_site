@@ -274,15 +274,17 @@ export default function BookingExperience({
     setSaveError('')
     try {
       if (!submissionKey.current) submissionKey.current = window.crypto.randomUUID()
+      const marketingChoice = readMarketingConsent()
       const attribution: Record<string, string> = {}
       const params = new URLSearchParams(window.location.search)
       for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']) {
+        // Decision G2: the Meta click id is only sent with marketing consent (the server checks again).
+        if (key === 'fbclid' && !marketingChoice.consent) continue
         const value = params.get(key)
         if (value) attribution[key] = value.slice(0, 180)
       }
       const answers: Record<string, string> = {}
       for (const field of form.fields) answers[field.name] = attendee[field.name]
-      const marketingChoice = readMarketingConsent()
       const response = await fetch('/api/booking/leads', {
         method: 'POST',
         cache: 'no-store',

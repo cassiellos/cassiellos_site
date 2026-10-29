@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg'
 import { LEGAL_POLICY_VERSION } from '../legal/policy'
-import { leadTrackingEventId, type MarketingConsentInput } from '../marketing/meta'
+import { META_CLICK_ID_PARAM, leadTrackingEventId, type MarketingConsentInput } from '../marketing/meta'
 import { applyMarketingConsentChange } from './marketing-consent'
 
 /**
@@ -27,6 +27,17 @@ import { applyMarketingConsentChange } from './marketing-consent'
  */
 export const LEAD_POLICY_VERSION = LEGAL_POLICY_VERSION
 export const MARKETING_POLICY_VERSION = LEGAL_POLICY_VERSION
+
+/** Decision G2: the Meta click id (fbclid) is stored only with marketing consent. */
+export function attributionForStorage(
+  attribution: Record<string, string>,
+  marketing: MarketingConsentInput | null | undefined,
+): Record<string, string> {
+  if (marketing?.consent === true || !(META_CLICK_ID_PARAM in attribution)) return attribution
+  const { [META_CLICK_ID_PARAM]: _dropped, ...rest } = attribution
+  void _dropped
+  return rest
+}
 
 export type MergeableLeadField = 'full_name' | 'whatsapp' | 'company' | 'segment'
 const MERGEABLE_FIELDS: readonly MergeableLeadField[] = ['full_name', 'whatsapp', 'company', 'segment']
@@ -188,7 +199,7 @@ export async function saveLeadSubmission(
         JSON.stringify({
           niche: input.niche, formSlug: input.formSlug,
           contact: { name: input.name, email, whatsapp: input.phone },
-          questions: input.answers, attribution: input.attribution,
+          questions: input.answers, attribution: attributionForStorage(input.attribution, input.marketing),
           ...(input.protection ? { protection: input.protection } : {}),
           // Only the yes/no choice is stored; never browser identifiers (decision C2).
           ...(input.marketing ? { marketing: {

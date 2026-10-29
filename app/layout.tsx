@@ -16,7 +16,7 @@ import SiteFooter from '@/components/site-footer'
 import { LeviProvider } from '@/components/levi-provider'
 import LeviWidget from '@/components/levi-widget'
 import SiteInteractionTracker from '@/components/site-interaction-tracker'
-import { Analytics } from '@vercel/analytics/next'
+import PrivacyAnalytics from '@/components/marketing/privacy-analytics'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 import MetaPixel from '@/components/marketing/meta-pixel'
@@ -91,7 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteFooter />
           {SHOW_LEVI_WIDGET && <LeviWidget />}
         </LeviProvider>
-        <Analytics />
+        <PrivacyAnalytics />
         <SiteInteractionTracker />
         <SpeedInsights />
         <MetaPixel pixelId={meta.enabled ? meta.pixelId : null} />

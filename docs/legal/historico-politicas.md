@@ -13,10 +13,17 @@ sempre iguais (decisão E de 29/10/2026).
 | Privacidade: 29/10/2026 | main (produção, `e998bf1`) | Seções 1–10 (inclui Google Calendar); contato cassiellosagencia@gmail.com | Publicada |
 | Privacidade: 29/10/2026 (texto Turnstile) | Preview `feature/mini-crm-shark-scale` (`dae52f7`) | Texto da main + seção 10 (Cloudflare Turnstile) | Publicada no Preview |
 | (rascunho) `LEGAL_POLICY_VERSION = 2026-10-29` | branch local `local/meta-pixel-prep` | v2 Meta Pixel: controlador, canal de privacidade, seção 11 (Meta Pixel; C2; revogação; CAPI inativa; sem remarketing), Política de Cookies v2 | **Não publicada** — a data será trocada pela data efetiva da publicação |
+| (rascunho, mesma versão) | branch local `local/meta-pixel-prep` | Decisão G2: `fbclid` só com consentimento, apagado na revogação, fora da medição de navegação no funil; remarketing/públicos dependem de nova revisão | **Não publicada** |
 
 Observação: até esta etapa, o cadastro gravava `LEAD_POLICY_VERSION = 2026-08-22` para o
 consentimento de contato, mesmo com o texto de 29/10 no Preview. Com a v2, as duas finalidades
 passam a usar a mesma versão das políticas.
+
+## Registros de escopo
+
+- Remarketing e públicos personalizados **não** fazem parte do escopo inicial; implantá-los exige nova revisão
+  das políticas e do aviso de cookies antes da ativação.
+- O prazo de retenção dos registros de consentimento **ainda depende de validação jurídica** (não inventar).
 
 ## Checklist de publicação (D3)
 

@@ -13,6 +13,7 @@ const descriptions:Record<string,string>={
  meeting_cancelled:'Reunião cancelada',meeting_cancel_sync_failed:'Cancelamento não confirmado pelo Google',
  meeting_no_show:'Não compareceu',classification_changed:'Classificação alterada',booking_reconciled:'Reserva reconciliada',
  marketing_consent_granted:'Consentimento de marketing concedido',marketing_consent_revoked:'Consentimento de marketing revogado',
+ marketing_identifiers_removed:'Identificador de clique de anúncio apagado',
 }
 const consentSources:Record<string,string>={form_submission:'pelo visitante no envio do formulário',visitor_preferences:'pelo visitante em Preferências de cookies',privacy_request:'por pedido do titular (registrado pelo administrador)'}
 const meetingStatus:Record<string,string>={confirmed:'Confirmada',completed:'Realizada',cancelled:'Cancelada',no_show:'Não compareceu',pending:'Pendente',rescheduled:'Reagendada'}
@@ -98,7 +99,7 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
     <p>Consentimento de marketing: <strong>{info.marketingConsent?.granted?'autorizado':'não autorizado'}</strong>
      {info.marketingConsent?.recordedAt?' · último registro em '+fmt.format(new Date(info.marketingConsent.recordedAt)):''}
      {info.marketingConsent?.policyVersion?' · versão da política '+info.marketingConsent.policyVersion:''}.
-     {' '}Identificadores de navegador (fbp/fbc) não são guardados no CRM.</p>
+     {' '}Identificadores de navegador (fbp/fbc) não são guardados no CRM; o fbclid só é guardado com autorização e é apagado na revogação.</p>
     {info.marketingConsent?.granted&&<button className="crm-btn" type="button" disabled={busy} onClick={revokeMarketingAction}>Registrar revogação (pedido do titular)</button>}
    </div>
    <div className="crm-lead-management-section">
@@ -143,8 +144,9 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
        {a.activity_kind==='classification_changed'&&<p>{a.details?.from==='test'?'Teste':'Real'} → {a.details?.to==='test'?'Teste':'Real'}{typeof a.details?.reason==='string'&&a.details.reason?' · '+a.details.reason:''}</p>}
        {a.activity_kind==='meeting_cancelled'&&<p>{a.details?.google==='no_event'?'Sem evento no Google.':'Google Calendar: cancelamento confirmado.'}{typeof a.details?.reason==='string'&&a.details.reason?' Motivo: '+a.details.reason:''}</p>}
        {a.activity_kind==='meeting_cancel_sync_failed'&&<p>Nada foi liberado; a reunião continua ativa.</p>}
-       {(a.activity_kind==='marketing_consent_granted'||a.activity_kind==='marketing_consent_revoked')&&typeof a.details?.source==='string'&&
-        <p>Registrado {consentSources[a.details.source]||a.details.source}.</p>}
+       {(a.activity_kind==='marketing_consent_granted'||a.activity_kind==='marketing_consent_revoked'||a.activity_kind==='marketing_identifiers_removed')&&typeof a.details?.source==='string'&&
+        <p>Registrado {consentSources[a.details.source]||a.details.source}.
+         {typeof a.details?.clickIdsRemoved==='number'&&a.details.clickIdsRemoved>0?' Identificador de clique (fbclid) apagado de '+a.details.clickIdsRemoved+' envio(s).':''}</p>}
        {a.activity_kind==='booking_reconciled'&&<p>{a.details?.decision==='adopt'?'Evento encontrado no Google: reunião registrada no CRM.':'Sem evento ativo no Google: reserva encerrada e horário liberado.'}</p>}
       </li>)}</ol>}
    </div>

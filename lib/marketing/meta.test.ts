@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { CONSENT_VERSION, hasMarketingConsent, parseConsent, serializeConsent } from './consent'
 import {
   META_EVENT_MAP, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
-  leadTrackingEventId, metaEventNameFor, sanitizeMarketingConsent,
+  leadTrackingEventId, metaEventNameFor, resolveMarketingConsent, sanitizeMarketingConsent, stripFunnelClickId,
 } from './meta'
 
 describe('consentimento de marketing', () => {
@@ -73,5 +73,27 @@ describe('decisão C2 — o CRM recebe só sim/não; fbp/fbc nunca', () => {
       consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123', email: 'x@y.com',
     }), { consent: true, decided: true })
     assert.deepEqual(sanitizeMarketingConsent({ consent: 'true', decided: 'yes' }), { consent: false, decided: false })
+  })
+})
+
+describe('decisão G2 — consentimento validado no servidor e fbclid fora da medição do funil', () => {
+  const accepted = 'outro=1; cassiellos_consent=' + serializeConsent(true, new Date('2026-10-29T12:00:00Z'))
+  const refused = 'cassiellos_consent=' + serializeConsent(false, new Date('2026-10-29T12:00:00Z'))
+  it('aceite só vale com o cookie da requisição confirmando', () => {
+    assert.deepEqual(resolveMarketingConsent({ consent: true, decided: true }, accepted), { consent: true, decided: true })
+    assert.deepEqual(resolveMarketingConsent({ consent: true, decided: true }, ''), { consent: false, decided: false })
+    assert.deepEqual(resolveMarketingConsent({ consent: true, decided: true }, refused), { consent: false, decided: false })
+    assert.deepEqual(resolveMarketingConsent({ consent: true }, 'cassiellos_consent=lixo'), { consent: false, decided: false })
+    assert.deepEqual(resolveMarketingConsent(undefined, accepted), { consent: false, decided: false }, 'cookie sozinho não basta')
+  })
+  it('recusa explícita vale mesmo sem cookie', () => {
+    assert.deepEqual(resolveMarketingConsent({ consent: false, decided: true }, null), { consent: false, decided: true })
+  })
+  it('fbclid sai da URL de medição só nas páginas do funil', () => {
+    assert.equal(stripFunnelClickId('https://crm.cassiellos.com.br/agendar/odontologia?utm_source=meta&fbclid=IwAR0abc'),
+      'https://crm.cassiellos.com.br/agendar/odontologia?utm_source=meta')
+    assert.equal(stripFunnelClickId('https://cassiellos.com.br/?fbclid=IwAR0abc'), 'https://cassiellos.com.br/?fbclid=IwAR0abc')
+    assert.equal(stripFunnelClickId('https://crm.cassiellos.com.br/agendar/odontologia'), 'https://crm.cassiellos.com.br/agendar/odontologia')
+    assert.equal(stripFunnelClickId('não é url'), 'não é url')
   })
 })

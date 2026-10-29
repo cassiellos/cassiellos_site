@@ -1,6 +1,6 @@
 import type { BookingForm } from './booking-forms'
 import type { LeadSubmissionInput, LeadSubmissionResult } from './lead-intake'
-import { sanitizeMarketingConsent } from '../marketing/meta'
+import { META_CLICK_ID_PARAM, resolveMarketingConsent } from '../marketing/meta'
 import {
   TURNSTILE_BOOKING_ACTION, publicTurnstileError,
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
@@ -69,7 +69,11 @@ export type HandlerResponse = { status: number; body: Record<string, unknown> }
 
 export async function handleLeadIntake(
   deps: IntakeDeps,
-  input: { value: Record<string, unknown>; remoteIp: string | null },
+  input: {
+    value: Record<string, unknown>; remoteIp: string | null
+    /** Cabeçalho Cookie da requisição: valida a escolha de marketing (cassiellos_consent) no servidor. */
+    cookieHeader?: string | null
+  },
 ): Promise<HandlerResponse> {
   const value = input.value
   if (value.website) return { status: 400, body: { error: 'INVALID_REQUEST' } } // hidden bot trap
@@ -89,10 +93,15 @@ export async function handleLeadIntake(
   if (!answers) return { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } }
   if (value.privacyAccepted !== true) return { status: 400, body: { error: 'PRIVACY_NOT_ACCEPTED' } }
 
+  // Marketing choice validated on the server (body + consent cookie of this request).
+  // Only the yes/no choice reaches the CRM; fbp/fbc are discarded (decision C2).
+  const marketing = resolveMarketingConsent(value.marketing, input.cookieHeader)
   const attribution: Record<string, string> = {}
   const rawAttribution = value.attribution
   if (rawAttribution && typeof rawAttribution === 'object' && !Array.isArray(rawAttribution)) {
     for (const key of ATTRIBUTION_KEYS) {
+      // Decision G2: the Meta click id is kept ONLY with validated marketing consent.
+      if (key === META_CLICK_ID_PARAM && !marketing.consent) continue
       const safe = clean((rawAttribution as Record<string, unknown>)[key], 180)
       if (safe) attribution[key] = safe
     }
@@ -119,8 +128,6 @@ export async function handleLeadIntake(
 
   try {
     if (!(await deps.consumeIpQuota())) return { status: 429, body: { error: 'TOO_MANY_REQUESTS' } }
-    // Only the yes/no marketing choice reaches the CRM; fbp/fbc are discarded (decision C2).
-    const marketing = sanitizeMarketingConsent(value.marketing)
     const result = await deps.saveLead({
       idempotencyKey, name, email, phone, formSlug: form.slug,
       formVersion: form.version, niche: form.niche, answers, attribution,
