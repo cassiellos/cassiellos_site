@@ -5,6 +5,7 @@ import './real-agenda.css'
 
 type Appointment = {
   id: string
+  isTest: boolean
   leadId: string
   name: string
   company: string | null
@@ -97,7 +98,7 @@ export default function RealAgendaPanel() {
             return <article className="crm-real-agenda-item" key={appointment.id}>
               <div className="crm-date-block"><b>{dayNumber.format(start)}</b><small>{shortMonth.format(start)}</small></div>
               <div className="crm-real-agenda-content">
-                <strong>{appointment.company || appointment.name}</strong>
+                <strong>{appointment.company || appointment.name} {appointment.isTest && <span className="crm-test-tag">TESTE</span>}</strong>
                 <span>{appointment.name} · {fullDate.format(start)}</span>
                 <span>{hourTime.format(start)}–{hourTime.format(end)} · {appointment.niche || 'Diagnóstico estratégico'}</span>
               </div>
