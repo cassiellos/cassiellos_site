@@ -32,12 +32,13 @@ function LeadGraph({days}:{days:Data['days']}) {
 
 export default function RealDashboard({period,openView}:{period:'7d'|'30d';openView:(view:'leads'|'agenda'|'funil')=>void}) {
   const [data,setData]=useState<Data|null>(null)
+  const [showTests,setShowTests]=useState(false)
   const [state,setState]=useState<'loading'|'ready'|'unauthorized'|'error'>('loading')
   const [refresh,setRefresh]=useState(0)
   useEffect(()=>{
     const controller=new AbortController()
     setState('loading')
-    fetch('/api/crm/dashboard?period='+period,{cache:'no-store',credentials:'same-origin',signal:controller.signal})
+    fetch('/api/crm/dashboard?period='+period+'&mode='+(showTests?'test':'operational'),{cache:'no-store',credentials:'same-origin',signal:controller.signal})
       .then(async response=>{
         if(response.status===401) throw new Error('UNAUTHORIZED')
         if(!response.ok) throw new Error('UNAVAILABLE')
@@ -47,7 +48,7 @@ export default function RealDashboard({period,openView}:{period:'7d'|'30d';openV
       }).then(result=>{if(!controller.signal.aborted){setData(result);setState('ready')}})
       .catch(error=>{if(!controller.signal.aborted)setState(error instanceof Error&&error.message==='UNAUTHORIZED'?'unauthorized':'error')})
     return ()=>controller.abort()
-  },[period,refresh])
+  },[period,refresh,showTests])
   const metricItems=useMemo(()=>data?[
     ['Leads recebidos',data.metrics.leads,'users'],
     ['Reuniões agendadas',data.metrics.scheduled,'calendar'],
@@ -59,8 +60,8 @@ export default function RealDashboard({period,openView}:{period:'7d'|'30d';openV
     ['Agendados',data.metrics.scheduled],['Contratos',data.metrics.contracts],
   ] as const:[],[data])
   return <div className="crm-live-dashboard">
-    <div className="crm-live-state"><strong>DADOS REAIS · NEON PREVIEW</strong><span>Período: últimos {period==='7d'?'7':'30'} dias. As métricas são baseadas em registros do banco, não em demonstrações.</span>
-      <button type="button" className="crm-btn" onClick={()=>setRefresh(v=>v+1)} disabled={state==='loading'}>Atualizar</button></div>
+    <div className="crm-live-state"><strong>{showTests ? "DADOS DE TESTE · NEON PREVIEW" : "DADOS OPERACIONAIS · NEON PREVIEW"}</strong><span>Período: últimos {period==='7d'?'7':'30'} dias. {showTests ? 'Exibindo exclusivamente registros marcados como teste.' : 'Excluindo registros de teste de todas as métricas.'}</span>
+      <button type="button" className="crm-btn" onClick={()=>setShowTests(v=>!v)} disabled={state==='loading'}>{showTests ? "Ver operação" : "Ver testes"}</button><button type="button" className="crm-btn" onClick={()=>setRefresh(v=>v+1)} disabled={state==='loading'}>Atualizar</button></div>
     {state==='loading'&&<div className="crm-card crm-live-message">Consultando dados reais do Neon…</div>}
     {state==='unauthorized'&&<div className="crm-card crm-live-message" role="alert">Sua sessão expirou. <a href="/crm/login">Entrar novamente.</a></div>}
     {state==='error'&&<div className="crm-card crm-live-message" role="alert">Não foi possível consultar o banco. Clique em Atualizar para tentar novamente.</div>}
