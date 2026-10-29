@@ -1,17 +1,16 @@
 import { createHmac } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
-import type { PoolClient } from 'pg'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { createBookingGrant } from '@/lib/crm/booking-grant'
 import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
+import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 20
 
-const POLICY_VERSION = '2026-08-22'
 const MAX_BODY_SIZE = 12_000
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const
 
@@ -79,91 +78,6 @@ async function intakeAllowed(request: NextRequest): Promise<boolean> {
   return (result.rows[0]?.request_count ?? 999) <= 10
 }
 
-async function saveLead(input: {
-  idempotencyKey: string
-  name: string
-  email: string
-  phone: string
-  formSlug: string
-  formVersion: string
-  niche: string
-  answers: Record<string, string>
-  attribution: Record<string, string>
-}): Promise<{ leadId: string; submissionId: string; reused: boolean }> {
-  const client: PoolClient = await getCrmPool().connect()
-  let committed = false
-  try {
-    await client.query('BEGIN')
-    await client.query('SET LOCAL statement_timeout = 6000')
-    // Serialize duplicate submissions for this person across simultaneous requests.
-    await client.query('SELECT pg_advisory_xact_lock(241023, hashtext($1))', [input.email])
-
-    const submitted = await client.query<{ lead_id: string; id: string }>(
-      'SELECT lead_id, id FROM crm.form_submissions WHERE idempotency_key = $1',
-      [input.idempotencyKey],
-    )
-    if (submitted.rows[0]) {
-      await client.query('COMMIT')
-      committed = true
-      return { leadId: submitted.rows[0].lead_id, submissionId: submitted.rows[0].id, reused: true }
-    }
-
-    const existing = await client.query<{ id: string; is_test: boolean }>(
-      'SELECT id, is_test FROM crm.leads WHERE lower(email) = $1 LIMIT 1 FOR UPDATE',
-      [input.email],
-    )
-    let leadId: string
-    let isTest: boolean
-    if (existing.rows[0]) {
-      // Existing leads keep their real/test classification.
-      leadId = existing.rows[0].id
-      isTest = existing.rows[0].is_test
-      await client.query(
-        `UPDATE crm.leads SET full_name = $2, whatsapp = $3,
-         company = $4, segment = $5, updated_at = now()
-         WHERE id = $1`,
-        [leadId, input.name, input.phone, input.answers.clinic ?? null, input.niche],
-      )
-    } else {
-      isTest = classifyNewLeadAsTest({ email: input.email })
-      const result = await client.query<{ id: string }>(
-        `INSERT INTO crm.leads (full_name, email, whatsapp, company, segment, stage, is_test)
-         VALUES ($1,$2,$3,$4,$5,'new',$6) RETURNING id`,
-        [input.name, input.email, input.phone, input.answers.clinic ?? null, input.niche, isTest],
-      )
-      leadId = result.rows[0].id
-    }
-
-    const submission = await client.query<{ id: string }>(
-      `INSERT INTO crm.form_submissions
-       (lead_id, form_version, answers, idempotency_key, status)
-       VALUES ($1,$2,$3::jsonb,$4,'validated') RETURNING id`,
-      [leadId, input.formVersion,
-        JSON.stringify({ niche: input.niche, formSlug: input.formSlug,
-          questions: input.answers, attribution: input.attribution }), input.idempotencyKey],
-    )
-    const submissionId = submission.rows[0].id
-    await client.query(
-      `INSERT INTO crm.consents
-       (lead_id, purpose, legal_basis, granted, policy_version)
-       VALUES ($1,'diagnostic_contact','consent',true,$2)`,
-      [leadId, POLICY_VERSION],
-    )
-    await client.query(
-      `INSERT INTO crm.lead_activities (lead_id, activity_kind, performed_by, details)
-       VALUES ($1, 'form_completed', 'public_booking', $2::jsonb)`,
-      [leadId, JSON.stringify({ submissionId, formSlug: input.formSlug, formVersion: input.formVersion,
-        environment: 'preview', bookingMode: getCrmBookingMode(), isTest })],
-    )
-    await client.query('COMMIT')
-    committed = true
-    return { leadId, submissionId, reused: false }
-  } finally {
-    if (!committed) await client.query('ROLLBACK').catch(() => undefined)
-    client.release(committed ? undefined : true)
-  }
-}
-
 export async function POST(request: NextRequest) {
   // Preview only: no production intake before integration review and approval.
   if (process.env.VERCEL_ENV !== 'preview') return response({ error: 'NOT_FOUND' }, 404)
@@ -214,9 +128,10 @@ export async function POST(request: NextRequest) {
   }
   try {
     if (!(await intakeAllowed(request))) return response({ error: 'TOO_MANY_REQUESTS' }, 429)
-    const result = await saveLead({
+    const result = await saveLeadSubmission(getCrmPool(), {
       idempotencyKey, name, email, phone, formSlug: form.slug,
       formVersion: form.version, niche: form.niche, answers, attribution,
+      newLeadIsTest: classifyNewLeadAsTest({ email }), bookingMode: getCrmBookingMode(),
     })
     return response({
       ok: true,
