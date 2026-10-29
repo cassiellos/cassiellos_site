@@ -1,0 +1,19 @@
+#cassiellos-crm .crm-lead-management{margin:20px 22px;padding:20px;border:1px solid rgba(34,199,242,.25);border-radius:13px;background:#0b1a2e;color:#eaf2fc}
+#cassiellos-crm .crm-lead-management-head{display:flex;align-items:start;justify-content:space-between;gap:14px;border-bottom:1px solid #23374e;padding-bottom:15px}
+#cassiellos-crm .crm-lead-management-head strong{font-size:17px}
+#cassiellos-crm .crm-lead-management-head small{display:block;color:#90a7c0;margin-top:4px}
+#cassiellos-crm .crm-lead-management-section{padding:18px 0;border-bottom:1px solid #24364a}
+#cassiellos-crm .crm-lead-management-section:last-child{border-bottom:0}
+#cassiellos-crm .crm-lead-management-section h3{font-size:14px;margin:0 0 12px;color:#e6f1fd}
+#cassiellos-crm .crm-lead-management-section p{font-size:12px;color:#9fb2c9;line-height:1.6}
+#cassiellos-crm .crm-lead-management-section textarea,#cassiellos-crm .crm-lead-management-section input{display:block;width:100%;box-sizing:border-box;background:#0a1425;border:1px solid #36506d;border-radius:8px;color:#f2f6fc;padding:11px;font:inherit;font-size:12px;margin-bottom:12px}
+#cassiellos-crm .crm-lead-management-section label{font-size:11px;color:#a6bad2;display:block}
+#cassiellos-crm .crm-lead-management-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#cassiellos-crm .crm-lead-management-meeting{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid #293c55;border-radius:9px;margin:8px 0;font-size:12px}
+#cassiellos-crm .crm-lead-management-error{color:#ffbfc9!important}
+#cassiellos-crm .crm-lead-timeline{padding:0 0 0 20px;margin:0;display:grid;gap:13px}
+#cassiellos-crm .crm-lead-timeline li{padding-left:7px;font-size:12px}
+#cassiellos-crm .crm-lead-timeline strong{display:block}
+#cassiellos-crm .crm-lead-timeline small{display:block;color:#879fb9;margin-top:3px}
+#cassiellos-crm .crm-lead-timeline p{margin:6px 0 0;overflow-wrap:anywhere}
+@media(max-width:680px){#cassiellos-crm .crm-lead-management{margin:16px 14px;padding:16px}#cassiellos-crm .crm-lead-management-fields{grid-template-columns:1fr}}
