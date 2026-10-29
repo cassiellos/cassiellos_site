@@ -18,19 +18,31 @@ o sistema não está pronto para uso público só com estas proteções.
 
 ## Regras por e-mail
 
-- O e-mail é comparado na forma canônica: minúsculas, sem espaços, sem `+sufixo`; no Gmail/Googlemail, sem pontos.
-  O cadastro do lead **não** é alterado; a forma canônica só serve para as regras.
+- O e-mail é comparado numa forma canônica **por provedor** (revisada na Fase 3.4).
+  O cadastro do lead e o endereço usado nos convites **não** mudam; a forma canônica serve apenas para as regras.
+  Leads diferentes nunca são unificados.
+
+  | Provedor (domínio) | Regra | Documentação oficial |
+  |---|---|---|
+  | Gmail (`gmail.com`, `googlemail.com`) | ignora `+sufixo` e pontos | support.google.com/mail/answer/7436150 · support.google.com/a/users/answer/9282734 |
+  | Proton (`proton.me`, `protonmail.com`, `protonmail.ch`, `pm.me`) | ignora `+sufixo`, `.`, `_` e `-` | proton.me/support/addresses-and-aliases · proton.me/support/change-username |
+  | Fastmail (`fastmail.com`) | ignora `+sufixo` | fastmail.help/hc/en-us/articles/360060591053 |
+  | Todos os demais (Outlook, Hotmail, iCloud, Yahoo, corporativos, Google Workspace…) | só minúsculas e espaços | sem documentação oficial: tratados como caixas diferentes |
+
+  Os domínios nunca são unificados entre si (por exemplo, `googlemail.com` ≠ `gmail.com`).
 - **Uma reunião futura ativa por e-mail** (pending/confirmed até o término, ou reserva `processing` ainda não encerrada).
 - **No máximo 3 agendamentos por e-mail em 30 dias** (reservas `processing`/`confirmed` criadas na janela; falhas antes do Google não contam).
 - Mensagens públicas são genéricas: nunca mostram data, horário, link do Meet ou se o lead já existia.
 
 ## Contato legítimo bloqueado — como o administrador resolve
 
-1. **"Já existe uma reunião para este contato"**: confira a ficha do lead no CRM. Se a reunião vai acontecer, nada a fazer.
-   Para remarcar, combine o novo horário diretamente com o contato, pelo Google Calendar ou WhatsApp.
-   O cancelamento e a marcação de falta pelo CRM ficam para a Fase 3.4, que ainda não foi implementada.
-2. **Reserva presa em `processing`** (falha ambígua com o Google): não apague a reserva. Confira no Google Calendar
-   se o evento existe. O bloqueio termina sozinho no fim do horário reservado.
+1. **"Já existe uma reunião para este contato"**: abra a ficha do lead (CRM → Leads). Se a reunião não vai acontecer,
+   use **Cancelar reunião** (cancela no Google e libera o horário). Depois de iniciada sem o participante, use
+   **Marcar como não compareceu**. Em ambos os casos o contato pode agendar de novo pelas regras normais.
+   Veja `docs/crm/controles-administrativos.md`.
+2. **Reserva presa em `processing`** (falha ambígua com o Google): CRM → Agenda → **Reservas em processamento** →
+   **Conferir no Google**. Sem evento → **Encerrar e liberar**. Com evento ativo → **Registrar reunião**.
+   Nada é apagado e o servidor confere o Google de novo antes de agir. O bloqueio também termina sozinho no fim do horário.
 3. **"Não foi possível concluir o agendamento online"** (limite de 3 em 30 dias): o bloqueio expira 30 dias após cada
    agendamento. Para liberar antes, há duas opções:
    - agendar manualmente;
