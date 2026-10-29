@@ -27,6 +27,7 @@ function input(overrides: Partial<LeadSubmissionInput> = {}): LeadSubmissionInpu
     attribution: { utm_source: 'teste', utm_campaign: 'integracao' },
     newLeadIsTest: true,
     bookingMode: 'test',
+    protection: { turnstile: 'verified', action: 'booking_lead', hostname: 'crm.cassiellos.com.br', challengeTs: null },
     ...overrides,
   }
 }

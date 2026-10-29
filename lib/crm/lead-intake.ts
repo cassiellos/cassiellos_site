@@ -75,6 +75,18 @@ export type LeadSubmissionInput = {
   /** Classificação aplicada SOMENTE se o lead for criado agora. */
   newLeadIsTest: boolean
   bookingMode: string
+  /**
+   * Resultado da verificação antiabuso feita NO SERVIDOR antes da gravação
+   * (Fase 3 / item 4). Só envios com turnstile 'verified' podem confirmar reunião.
+   */
+  protection?: LeadSubmissionProtection | null
+}
+
+export type LeadSubmissionProtection = {
+  turnstile: 'verified'
+  action: string
+  hostname: string
+  challengeTs: string | null
 }
 
 export type LeadSubmissionResult = {
@@ -160,6 +172,7 @@ export async function saveLeadSubmission(
           niche: input.niche, formSlug: input.formSlug,
           contact: { name: input.name, email, whatsapp: input.phone },
           questions: input.answers, attribution: input.attribution,
+          ...(input.protection ? { protection: input.protection } : {}),
         }), input.idempotencyKey],
     )
     const submissionId = submission.rows[0].id

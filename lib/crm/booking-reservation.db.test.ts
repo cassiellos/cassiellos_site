@@ -47,6 +47,7 @@ describe('reserveBookingSlot — regras de reagendamento (PostgreSQL descartáve
       formSlug: 'odontologia', formVersion: 'odontologia-v2', niche: 'Clínicas odontológicas',
       answers: { clinic: 'Clínica Reagenda', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
       attribution: {}, newLeadIsTest: isTest, bookingMode: isTest ? 'test' : 'live',
+      protection: { turnstile: 'verified', action: 'booking_lead', hostname: 'crm.cassiellos.com.br', challengeTs: null },
     })
     return { leadId: r.leadId, submissionId: r.submissionId, email: address }
   }
