@@ -171,3 +171,4 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-security-status[data-state=error]{color:#ffd4da}
 #cassiellos-booking .booking-security-status[data-state=error] svg{color:var(--booking-red)}
 #cassiellos-booking .booking-security-status a{color:#9ddff2;text-decoration:underline;text-underline-offset:2px}
+#cassiellos-booking .booking-cookie-prefs{background:none;border:0;padding:0;color:#9ddff2;font-size:11px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
+import { CONSENT_OPEN_EVENT, readMarketingSignals, trackMetaConversion } from '@/lib/marketing/meta-client'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
@@ -88,8 +89,8 @@ function Icon({ name }: { name: 'calendar' | 'clock' | 'video' | 'shield' | 'arr
 const TURNSTILE_ACTION = 'booking_lead'
 
 export default function BookingExperience({
-  form, bookingEnabled, turnstileSiteKey,
-}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null }) {
+  form, bookingEnabled, turnstileSiteKey, marketingEnabled = false,
+}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; marketingEnabled?: boolean }) {
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -260,6 +261,8 @@ export default function BookingExperience({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
           name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
           answers, attribution, privacyAccepted, turnstileToken,
+          // Only the cookie choice; fbp/fbc travel only if marketing was accepted.
+          marketing: readMarketingSignals(),
         }),
       })
       // Each Turnstile token is single-use: always request a fresh one afterwards.
@@ -276,6 +279,12 @@ export default function BookingExperience({
       if (!('bookingToken' in result) || typeof result.bookingToken !== 'string' ||
         !result.bookingToken) throw new Error('INVALID_RESPONSE')
       setBookingToken(result.bookingToken)
+      // "Lead" only when the backend registered a NEW real lead (event_id from the CRM).
+      if ('tracking' in result && result.tracking && typeof result.tracking === 'object' &&
+        'lead' in result.tracking && result.tracking.lead && typeof result.tracking.lead === 'object' &&
+        'eventId' in result.tracking.lead) {
+        trackMetaConversion('Lead', result.tracking.lead.eventId, { content_name: form.slug })
+      }
       setLeadSaved(true)
       setStep(2)
     } catch (error) {
@@ -318,6 +327,12 @@ export default function BookingExperience({
         throw new Error(code)
       }
       if (!('ok' in data) || data.ok !== true) throw new Error('BOOKING_UNAVAILABLE')
+      // "Schedule" only after the backend confirmed the meeting of a REAL lead.
+      if ('tracking' in data && data.tracking && typeof data.tracking === 'object' &&
+        'schedule' in data.tracking && data.tracking.schedule && typeof data.tracking.schedule === 'object' &&
+        'eventId' in data.tracking.schedule) {
+        trackMetaConversion('Schedule', data.tracking.schedule.eventId, { content_name: form.slug })
+      }
       setConfirmedMeetUrl('googleMeetUrl' in data && typeof data.googleMeetUrl === 'string'
         ? data.googleMeetUrl : null)
       setStep(4)
@@ -596,7 +611,9 @@ export default function BookingExperience({
         </div>
       </section>
     </main>
-    <footer className="booking-footer"><span>© Cassiellos · Experiência em desenvolvimento</span>
+    <footer className="booking-footer"><span>© Cassiellos · Experiência em desenvolvimento
+      {marketingEnabled && <> · <button type="button" className="booking-cookie-prefs"
+        onClick={() => window.dispatchEvent(new Event(CONSENT_OPEN_EVENT))}>Preferências de cookies</button></>}</span>
       <span>Ambiente Preview · {form.niche}</span></footer>
   </div>
 }

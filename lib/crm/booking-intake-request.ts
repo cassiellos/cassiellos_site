@@ -1,5 +1,6 @@
 import type { BookingForm } from './booking-forms'
 import type { LeadSubmissionInput, LeadSubmissionResult } from './lead-intake'
+import { sanitizeMarketingSignals } from '../marketing/meta'
 import {
   TURNSTILE_BOOKING_ACTION, publicTurnstileError,
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
@@ -58,6 +59,8 @@ export type IntakeDeps = {
   createGrant: (data: { leadId: string; submissionId: string; formSlug: string }) => string
   classifyNewLeadAsTest: (email: string) => boolean
   bookingMode: string
+  /** Origem pública do funil (ex.: https://crm.cassiellos.com.br) para o evento Lead. */
+  publicOrigin?: string
   /** Somente códigos e motivos — nunca token, IP, e-mail ou segredo. */
   log?: (event: string, details: { reason?: TurnstileFailure | string; codes?: string[] }) => void
 }
@@ -116,12 +119,19 @@ export async function handleLeadIntake(
 
   try {
     if (!(await deps.consumeIpQuota())) return { status: 429, body: { error: 'TOO_MANY_REQUESTS' } }
+    // fbp/fbc are kept ONLY when the visitor accepted marketing cookies.
+    const marketing = sanitizeMarketingSignals(value.marketing)
     const result = await deps.saveLead({
       idempotencyKey, name, email, phone, formSlug: form.slug,
       formVersion: form.version, niche: form.niche, answers, attribution,
       newLeadIsTest: deps.classifyNewLeadAsTest(email), bookingMode: deps.bookingMode,
       protection: { turnstile: 'verified', action: check.action, hostname: check.hostname, challengeTs: check.challengeTs },
+      marketing,
+      eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar/' + encodeURIComponent(form.slug) : null,
     })
+    // Browser Lead event only for a NEW, REAL lead (never tests, reuses or resubmissions).
+    const leadEvent = !result.reused && !result.resubmitted && result.isTest === false && result.leadEventId
+      ? { lead: { eventName: 'Lead', eventId: result.leadEventId } } : null
     return {
       status: result.reused ? 200 : 201,
       body: {
@@ -132,6 +142,7 @@ export async function handleLeadIntake(
           leadId: result.leadId, submissionId: result.submissionId, formSlug: form.slug,
         }),
         reused: result.reused, environment: 'preview',
+        ...(leadEvent ? { tracking: leadEvent } : {}),
       },
     }
   } catch {

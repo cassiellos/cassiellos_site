@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     createGrant: createBookingGrant,
     classifyNewLeadAsTest: email => classifyNewLeadAsTest({ email }),
     bookingMode: getCrmBookingMode(),
+    publicOrigin: CRM_CANONICAL_ORIGIN,
     // Reason codes only: never the token, IP, e-mail or secret.
     log: (event, details) => console.warn('[booking-leads]', event, details.reason ?? '', (details.codes ?? []).join(',')),
   }, { value, remoteIp: forwardedFor })

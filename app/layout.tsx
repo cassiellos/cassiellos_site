@@ -19,6 +19,8 @@ import SiteInteractionTracker from '@/components/site-interaction-tracker'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
+import MetaPixel from '@/components/marketing/meta-pixel'
+import { getMetaPixelConfig } from '@/lib/marketing/meta'
 
 const SHOW_LEVI_WIDGET = false
 
@@ -70,6 +72,8 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Meta Pixel: off unless META_PIXEL_ENABLED=true and META_PIXEL_ID are set (server env).
+  const meta = getMetaPixelConfig()
   return (
     <html lang="pt-BR" className={`${inter.variable} ${interTight.variable}`}>
       <head>
@@ -90,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <SiteInteractionTracker />
         <SpeedInsights />
+        <MetaPixel pixelId={meta.enabled ? meta.pixelId : null} />
       </body>
     </html>
   )

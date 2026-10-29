@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
+import { getMetaPixelConfig } from '@/lib/marketing/meta'
 import BookingExperience from './booking-experience'
 import './booking.css'
 
@@ -32,5 +33,7 @@ export default async function NicheBookingPage({
   // configuration is complete (otherwise the form stays blocked: fail closed).
   const turnstile = getTurnstileConfig()
   const turnstileSiteKey = turnstile.status === 'ready' ? turnstile.siteKey : null
-  return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey} />
+  const marketingEnabled = getMetaPixelConfig().enabled
+  return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey}
+    marketingEnabled={marketingEnabled} />
 }

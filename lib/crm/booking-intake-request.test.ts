@@ -146,4 +146,41 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     assert.equal(r.status, 201)
     assert.equal('resubmitted' in r.body, false)
   })
+
+  it('Lead no navegador: só para lead NOVO e REAL (event_id vindo do CRM)', async () => {
+    const cases = [
+      { result: { reused: false, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: true },
+      { result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: false },
+      { result: { reused: false, resubmitted: true, isTest: false, leadEventId: null }, expect: false },
+      { result: { reused: true, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: false },
+    ]
+    for (const c of cases) {
+      const t = setup()
+      t.deps.saveLead = async () => ({ leadId: randomUUID(), submissionId: randomUUID(), ...c.result })
+      const r = await handleLeadIntake(t.deps, { value: body(), remoteIp: null })
+      assert.equal('tracking' in r.body, c.expect, JSON.stringify(c.result))
+      if (c.expect) assert.deepEqual(r.body.tracking, { lead: { eventName: 'Lead', eventId: 'lead_abc123def456' } })
+    }
+  })
+
+  it('fbp/fbc só seguem para o CRM com consentimento de marketing (e nunca outros campos)', async () => {
+    const t = setup()
+    await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false, fbp: 'fb.1.1730000000000.1234567890' } }), remoteIp: null })
+    assert.deepEqual(t.saved[0].marketing, { consent: false })
+    const t2 = setup()
+    await handleLeadIntake(t2.deps, { value: body({ marketing: {
+      consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123', email: 'x@y.com',
+    } }), remoteIp: null })
+    assert.deepEqual(t2.saved[0].marketing, { consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123' })
+    const t3 = setup()
+    await handleLeadIntake(t3.deps, { value: body(), remoteIp: null })
+    assert.deepEqual(t3.saved[0].marketing, { consent: false }, 'sem escolha = recusa')
+  })
+
+  it('recusar marketing não impede o cadastro', async () => {
+    const t = setup()
+    const r = await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false } }), remoteIp: null })
+    assert.equal(r.status, 201)
+    assert.equal(t.saved.length, 1)
+  })
 })

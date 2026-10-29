@@ -141,6 +141,9 @@ export async function confirmBookingRequest(
         googleMeetUrl: event.meetingUrl, googleCalendarUrl: event.htmlLink,
         meetPending: !event.meetingUrl,
         environment: 'preview',
+        // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.
+        ...(saved.isTest === false
+          ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } } : {}),
       },
     }
   } catch {
