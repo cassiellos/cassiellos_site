@@ -4,6 +4,12 @@ Estado: código pronto e **desligado por padrão**. Nada é enviado à Meta enqu
 `META_PIXEL_ENABLED` não for `true` **e** `META_PIXEL_ID` não estiver configurado.
 A Conversions API **não** está ativa (sem token, sem rotina de envio).
 
+Situação em 29/10/2026:
+- dataset criado (passo 1) e domínio verificado (passo 2) — ver "Ativação";
+- **Pixel desligado**: nenhuma variável `META_PIXEL_*` configurada na Vercel, nenhum deploy com o Pixel;
+- **Meta CAPI desativada**: sem token, sem envio, fila `crm.meta_deliveries` sem uso;
+- passos 3 a 5 dependem de autorização própria.
+
 ## Arquitetura
 
 | Peça | Onde | Regra |
@@ -27,7 +33,14 @@ A Conversions API **não** está ativa (sem token, sem rotina de envio).
    - conexão automática à API de Conversões da Meta **desmarcada**;
    - sem categoria e sem integração Shopify;
    - nenhum evento recebido.
-2. Verificar o domínio `cassiellos.com.br` no portfólio. O portfólio ainda não tem domínios.
+2. ✅ Domínio **cassiellos.com.br** verificado em 29/10/2026. Dados:
+   - ID do domínio na Meta **1908921123810760**;
+   - pertence ao portfólio **Cassiellos (880054796119648)**;
+   - status **Verified**;
+   - método: registro **TXT na Cloudflare** (zona cassiellos.com.br, nome `@`, TTL Auto),
+     `facebook-domain-verification=xfzcc6yz2abjlftucob6izw2448ju3`;
+   - o TXT deve ficar **permanentemente** no DNS (removê-lo pode desfazer a verificação);
+   - nenhum parceiro atribuído e nenhum ativo conectado ao domínio.
 3. Configurar `META_PIXEL_ID=28992534033707610` e `META_PIXEL_ENABLED=true` (Preview, branch) e fazer um novo deploy.
 4. Validar com a ferramenta "Testar eventos" do Gerenciador de Eventos e com a extensão Meta Pixel Helper,
    usando apenas leads de teste. Leads de teste **não** disparam Lead nem Schedule; só aparecem PageViews.
