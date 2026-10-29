@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 const headers = {'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow','X-Content-Type-Options':'nosniff'}
 const allowed = ['new','contacted','qualified','disqualified'] as const
-type Row = {id:string;full_name:string;company:string|null;segment:string|null;stage:string;created_at:Date;meeting_status:string|null;deal_won:boolean}
+type Row = {id:string;full_name:string;company:string|null;segment:string|null;stage:string;created_at:Date;is_test:boolean;meeting_status:string|null;deal_won:boolean}
 function auth(req:NextRequest){return verifyCrmSession(req.cookies.get(crmSessionCookieName())?.value)}
 function reply(value:unknown,status=200){return NextResponse.json(value,{status,headers})}
 export async function GET(req:NextRequest){
@@ -14,14 +14,14 @@ export async function GET(req:NextRequest){
  if(!auth(req))return reply({error:'UNAUTHORIZED'},401)
  try{
   const rows=await withCrmReadOnlyTransaction(async client=>(await client.query<Row>(
-   `SELECT l.id,l.full_name,l.company,l.segment,l.stage,l.created_at,
+   `SELECT l.id,l.full_name,l.company,l.segment,l.stage,l.created_at,l.is_test,
       (SELECT a.status FROM crm.appointments a WHERE a.lead_id=l.id AND a.status <> 'cancelled'
        ORDER BY a.created_at DESC LIMIT 1) AS meeting_status,
       EXISTS(SELECT 1 FROM crm.deals d WHERE d.lead_id=l.id AND d.status='won') AS deal_won
       FROM crm.leads l ORDER BY l.created_at DESC,l.id DESC LIMIT 150`
   )).rows)
   return reply({ok:true,leads:rows.map(r=>({
-   id:r.id,name:r.full_name,company:r.company,niche:r.segment,stage:r.stage,
+   id:r.id,isTest:r.is_test,name:r.full_name,company:r.company,niche:r.segment,stage:r.stage,
    meetingStatus:r.meeting_status,dealWon:r.deal_won,
    lane:r.deal_won?'closed':r.meeting_status==='completed'?'completed':
      r.meeting_status==='confirmed'?'scheduled':r.stage==='qualified'?'qualified':
