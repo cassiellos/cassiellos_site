@@ -37,6 +37,7 @@ export default function LeadManagement({leadId,onClose}:{leadId:string;onClose:(
    setNote('');setAmount('');setReference('');setRefresh(x=>x+1)
   }catch(e){const code=e instanceof Error?e.message:'FAILED'
    setError(code==='MEETING_NOT_COMPLETED'?'Conclua primeiro a reunião antes de registrar um contrato.':
+    code==='MEETING_NOT_CONFIRMABLE'?'A reunião ainda não terminou ou já foi concluída. Atualize a ficha.':
     code==='CONTRACT_ALREADY_WON'?'Já existe um contrato ganho para este lead.':
     'Não foi possível salvar a alteração. Verifique os dados e tente novamente.')
   }finally{setBusy(false)}
@@ -57,8 +58,10 @@ export default function LeadManagement({leadId,onClose}:{leadId:string;onClose:(
     {info.appointments.length===0?<p>Nenhuma reunião registrada.</p>:
       info.appointments.map(a=><div className="crm-lead-management-meeting" key={a.id}>
        <span>{fmt.format(new Date(a.starts_at))} · {a.status==='confirmed'?'Confirmada':a.status==='completed'?'Realizada':a.status}</span>
-       {a.status==='confirmed'&&<button className="crm-btn" type="button" disabled={busy}
-         onClick={()=>{if(window.confirm('Confirma que esta reunião realmente aconteceu?'))action({action:'complete_meeting',appointmentId:a.id})}}>Marcar como realizada</button>}
+       {a.status==='confirmed'&&(new Date(a.ends_at).getTime()>Date.now()
+         ? <small className="crm-meeting-awaiting">Disponível após o término da reunião.</small>
+         : <button className="crm-btn" type="button" disabled={busy}
+         onClick={()=>{if(window.confirm('Confirma que esta reunião realmente aconteceu?'))action({action:'complete_meeting',appointmentId:a.id})}}>Marcar como realizada</button>)}
       </div>)}
    </div>
    <div className="crm-lead-management-section"><h3>Fechamento comercial</h3>
