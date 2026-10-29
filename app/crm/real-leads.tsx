@@ -6,6 +6,7 @@ import LeadManagement from './lead-management'
 
 type StoredLead = {
   id: string
+  isTest: boolean
   name: string
   email: string | null
   whatsapp: string | null
@@ -119,7 +120,7 @@ export default function RealLeadsPanel({ search }: { search: string }) {
       <tbody>{filtered.map(lead => <tr key={lead.id}>
         <td><div className="crm-company">
           <span className="crm-company-logo">{initials(lead.company || lead.name)}</span>
-          <span>{lead.company || 'Empresa não informada'}
+          <span>{lead.company || 'Empresa não informada'} {lead.isTest && <span className="crm-test-tag">TESTE</span>}
             <span className="crm-real-person">{lead.name}</span>
           </span>
         </div></td>
