@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
+import { isAllowedOAuthRedirectHost } from '@/lib/crm/preview-origins'
 
 export const GOOGLE_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/calendar.freebusy',
@@ -32,7 +33,7 @@ export function googleOAuthConfig(): GoogleOAuthConfig | null {
   if (!clientId || !clientSecret || !redirectUri || !encryptionKey()) return null
   try {
     const url = new URL(redirectUri)
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.vercel.app') ||
+    if (url.protocol !== 'https:' || !isAllowedOAuthRedirectHost(url.hostname) ||
       url.username || url.password || url.port || url.search || url.hash ||
       url.pathname !== '/api/crm/google/oauth/callback') return null
   } catch {
