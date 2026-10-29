@@ -4,13 +4,12 @@ import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { getCrmPool } from '@/lib/crm/db'
 import { isBookableDate, listBookingSlots } from '@/lib/crm/booking-slots'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
+import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import type { PoolClient } from 'pg'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
-
-const PREVIEW_ORIGIN = 'https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app'
 
 function json(data: unknown, status: number) {
   return NextResponse.json(data, {
@@ -126,7 +125,7 @@ async function releaseBeforeGoogle(bookingId: string, reason: string): Promise<v
 async function finalizeBooking(input: {
   bookingId: string; leadId: string; submissionId: string
   eventId: string; meetingUrl: string | null; startAt: string; endAt: string
-  calendarId: string; formSlug: string
+  calendarId: string; formSlug: string; pageOrigin: string
 }): Promise<{ appointmentId: string }> {
   const client = await getCrmPool().connect()
   let committed = false
@@ -164,7 +163,7 @@ async function finalizeBooking(input: {
          VALUES ($1, $2, $3, 'Chronos_Scheduled', 'server', $4, 'website', $5::jsonb)`,
       [input.leadId, appointmentId,
         'chronos_scheduled_' + input.bookingId.replaceAll('-', ''),
-        PREVIEW_ORIGIN + '/agendar/' + encodeURIComponent(input.formSlug),
+        input.pageOrigin + '/agendar/' + encodeURIComponent(input.formSlug),
         JSON.stringify({ formSlug: input.formSlug, environment: 'preview' })],
     )
     await client.query('COMMIT')
@@ -184,7 +183,8 @@ async function finalizeBooking(input: {
 export async function POST(request: NextRequest) {
   if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
   if (!bookingsEnabled()) return json({ error: 'BOOKING_DISABLED' }, 423)
-  if (request.headers.get('origin') !== PREVIEW_ORIGIN) return json({ error: 'FORBIDDEN' }, 403)
+  const origin = request.headers.get('origin')
+  if (!isCrmPreviewOrigin(origin)) return json({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return json({ error: 'INVALID_REQUEST' }, 400)
 
@@ -264,6 +264,7 @@ export async function POST(request: NextRequest) {
       leadId: grant.leadId, submissionId: grant.submissionId,
       eventId: event.id, meetingUrl: event.meetingUrl,
       startAt: normalizedStart, endAt: finishAt, calendarId, formSlug: form.slug,
+      pageOrigin: origin,
     })
     return json({
       ok: true, appointmentId: saved.appointmentId, bookingRequestId: reservation.id,
