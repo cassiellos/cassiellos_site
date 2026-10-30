@@ -4,8 +4,25 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
+import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
+/** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
+type Confirmation = { bookingRequestId: string; startAt: string; endAt: string; meetUrl: string | null; title: string }
+
+const MEET_URL = /^https:\/\/meet\.google\.com\/[a-z0-9-]{3,64}(?:\?[^\s]*)?$/i
+const timeFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+const dateFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: 'numeric', month: 'long' })
+
+/** Baixa o .ics gerado no navegador (Blob + âncora fora do documento: não passa pelos rastreadores de clique). */
+function downloadIcs(content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'reuniao-cassiellos.ics'
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1_000)
+}
 type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
 type Question = {
   name: keyof Attendee
@@ -109,7 +126,8 @@ export default function BookingExperience({
   const [bookingToken, setBookingToken] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [confirmationError, setConfirmationError] = useState('')
-  const [confirmedMeetUrl, setConfirmedMeetUrl] = useState<string | null>(null)
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [availabilityError, setAvailabilityError] = useState('')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
@@ -318,8 +336,15 @@ export default function BookingExperience({
         throw new Error(code)
       }
       if (!('ok' in data) || data.ok !== true) throw new Error('BOOKING_UNAVAILABLE')
-      setConfirmedMeetUrl('googleMeetUrl' in data && typeof data.googleMeetUrl === 'string'
-        ? data.googleMeetUrl : null)
+      const value = data as Record<string, unknown>
+      const startAt = typeof value.startAt === 'string' ? value.startAt : chosen.startAt
+      const endAt = typeof value.endAt === 'string' ? value.endAt : chosen.endAt
+      setConfirmation({
+        bookingRequestId: typeof value.bookingRequestId === 'string' ? value.bookingRequestId : '',
+        startAt, endAt,
+        meetUrl: typeof value.googleMeetUrl === 'string' && MEET_URL.test(value.googleMeetUrl) ? value.googleMeetUrl : null,
+        title: typeof value.meetingTitle === 'string' ? value.meetingTitle : form.meetingName,
+      })
       setStep(4)
     } catch (error) {
       const code = error instanceof Error ? error.message : ''
@@ -575,22 +600,46 @@ export default function BookingExperience({
             </button>
           </div>}
 
-          {step === 4 && <div className="booking-review" role="status">
+          {step === 4 && <div className="booking-review booking-confirmed" role="status">
             <div className="booking-card-heading">
               <div className="booking-step-label">AGENDAMENTO CONFIRMADO</div>
               <h2>Reunião registrada com sucesso.</h2>
-              <p>O compromisso foi criado no Google Calendar e registrado no Mini CRM.</p>
+              <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: use os botões para
+                salvar a reunião na sua agenda.</p>
             </div>
             <div className="booking-review-list">
-              <div><small>DATA</small><strong>{date && humanDate(date)}</strong></div>
-              <div><small>HORÁRIO</small><strong>{chosen?.localTime} · Brasília</strong></div>
+              <div><small>DATA</small><strong>{confirmation ? dateFormat.format(new Date(confirmation.startAt)) : date && humanDate(date)}</strong></div>
+              <div><small>HORÁRIO</small><strong>{confirmation ? timeFormat.format(new Date(confirmation.startAt)) : chosen?.localTime} · Brasília · {form.durationMinutes} minutos</strong></div>
               <div><small>PARTICIPANTE</small><strong>{attendee.name}</strong></div>
             </div>
-            {confirmedMeetUrl
-              ? <a className="booking-primary" href={confirmedMeetUrl}
-                  target="_blank" rel="noreferrer">Abrir Google Meet <Icon name="arrow"/></a>
-              : <p className="booking-demo-confirm">O Google Calendar confirmou o evento.
-                  O link do Meet pode ficar disponível após o processamento da videoconferência.</p>}
+            {confirmation?.meetUrl ? <>
+              <div className="booking-meet-link">
+                <small>LINK DA REUNIÃO (GOOGLE MEET)</small>
+                <input readOnly value={confirmation.meetUrl} aria-label="Link do Google Meet"
+                  onFocus={event => event.currentTarget.select()}/>
+              </div>
+              <div className="booking-confirmed-actions">
+                <button type="button" className="booking-secondary" onClick={async () => {
+                  try { await navigator.clipboard.writeText(confirmation.meetUrl!); setCopyState('copied') }
+                  catch { setCopyState('failed') }
+                }}><Icon name="check"/>{copyState === 'copied' ? 'Link copiado' : 'Copiar link'}</button>
+                <a className="booking-secondary" href={confirmation.meetUrl} target="_blank" rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"><Icon name="video"/>Abrir Google Meet</a>
+              </div>
+              {copyState === 'failed' && <p className="booking-calendar-hint" role="alert">Não foi possível copiar automaticamente.
+                Selecione o link acima e copie manualmente.</p>}
+            </> : <p className="booking-demo-confirm">O Google Calendar confirmou o evento. O link do Meet ainda está sendo
+                gerado; nossa equipe enviará o link pelo contato informado.</p>}
+            {confirmation && <div className="booking-confirmed-actions" aria-label="Adicionar à minha agenda">
+              <a className="booking-secondary" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
+                href={googleCalendarTemplateUrl({ title: confirmation.title, startAt: confirmation.startAt,
+                  endAt: confirmation.endAt, meetUrl: confirmation.meetUrl })}>
+                <Icon name="calendar"/>Adicionar ao Google Agenda</a>
+              <button type="button" className="booking-secondary" onClick={() => downloadIcs(buildIcs({
+                uid: confirmation.bookingRequestId || confirmation.startAt, title: confirmation.title,
+                startAt: confirmation.startAt, endAt: confirmation.endAt, meetUrl: confirmation.meetUrl,
+              }))}><Icon name="calendar"/>Baixar para Apple / Outlook (.ics)</button>
+            </div>}
             <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>
           </div>}
         </div>
