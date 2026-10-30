@@ -3,6 +3,7 @@ import 'server-only'
 import type { BusyInterval } from '@/lib/crm/booking-slots'
 import { CRM_BOOKING_TIME_ZONE } from '@/lib/crm/booking-slots'
 import { getGoogleRefreshToken, googleOAuthConfig } from '@/lib/crm/google-oauth'
+import { buildBookingEventRequest, parseCreatedEvent, type BookingEventInput } from './booking-event'
 import {
   cancelGoogleEvent, readGoogleEventState,
   type GoogleCancelResult, type GoogleEventState, type GoogleRequest,
@@ -120,45 +121,14 @@ export type GoogleCreatedEvent = {
 }
 
 /**
- * Criar convite e solicitar link Google Meet. Reservado para o fluxo transacional
- * de agendamento, a ser ativado depois da conexão OAuth e deduplicação no Neon.
+ * Cria o evento do agendamento na agenda da Cassiellos com Google Meet e SEM CONVIDADOS
+ * (nenhum convite automático para e-mail não verificado). Ver lib/crm/booking-event.ts.
  */
-export async function createGoogleBooking(input: {
-  title: string
-  description: string
-  startAt: string
-  endAt: string
-  guestEmail: string
-  requestId: string
-  googleEventId: string
-}): Promise<GoogleCreatedEvent> {
+export async function createGoogleBooking(input: BookingEventInput): Promise<GoogleCreatedEvent> {
   const config = await credentials()
   if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
-  const endpoint = 'calendars/' + encodeURIComponent(config.calendarId) +
-    '/events?sendUpdates=all&conferenceDataVersion=1'
-  const result = await calendarRequest(config, endpoint, {
-    id: input.googleEventId,
-    summary: input.title,
-    description: input.description,
-    start: { dateTime: input.startAt, timeZone: CRM_BOOKING_TIME_ZONE },
-    end: { dateTime: input.endAt, timeZone: CRM_BOOKING_TIME_ZONE },
-    attendees: [{ email: input.guestEmail }],
-    conferenceData: {
-      createRequest: {
-        requestId: input.requestId,
-        conferenceSolutionKey: { type: 'hangoutsMeet' },
-      },
-    },
-  })
-  if (!result || typeof result !== 'object' || !('id' in result) ||
-      typeof result.id !== 'string') {
-    throw new Error('CRM_GOOGLE_EVENT_UNCONFIRMED')
-  }
-  const meetingUrl = 'hangoutLink' in result && typeof result.hangoutLink === 'string'
-    ? result.hangoutLink : null
-  const htmlLink = 'htmlLink' in result && typeof result.htmlLink === 'string'
-    ? result.htmlLink : null
-  return { id: result.id, meetingUrl, htmlLink }
+  const { path, body } = buildBookingEventRequest(config.calendarId, input)
+  return parseCreatedEvent(await calendarRequest(config, path, body))
 }
 
 /**

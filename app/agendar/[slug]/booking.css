@@ -171,3 +171,9 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-security-status[data-state=error]{color:#ffd4da}
 #cassiellos-booking .booking-security-status[data-state=error] svg{color:var(--booking-red)}
 #cassiellos-booking .booking-security-status a{color:#9ddff2;text-decoration:underline;text-underline-offset:2px}
+#cassiellos-booking .booking-meet-link{margin-top:18px;display:grid;gap:7px}
+#cassiellos-booking .booking-meet-link small{color:#8ca0bb;font-size:10px;letter-spacing:.09em;font-weight:750}
+#cassiellos-booking .booking-meet-link input{width:100%;min-height:46px;padding:0 13px;border:1px solid var(--booking-border);border-radius:9px;background:rgba(255,255,255,.04);color:#eef5ff;font-size:13px;font-family:inherit}
+#cassiellos-booking .booking-confirmed-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+#cassiellos-booking .booking-confirmed-actions .booking-secondary{text-decoration:none;text-align:center}
+@media(max-width:560px){#cassiellos-booking .booking-confirmed-actions{grid-template-columns:1fr}}

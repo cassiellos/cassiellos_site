@@ -8,6 +8,8 @@ import {
   DEFAULT_AVAILABILITY_RULES, isWithinWindow, listAvailableSlots, type AvailabilityRules,
 } from './availability/engine'
 import type { HandlerResponse } from './booking-intake-request'
+import type { BookingEventInput } from './booking-event'
+import { isGoogleMeetUrl } from './booking-event'
 
 /** Grade de horários: 30 min (decisão D3). Como o fuso é -03:00, a grade local coincide com a UTC. */
 const SLOT_GRID_MS = 30 * 60_000
@@ -32,10 +34,8 @@ export type ConfirmDeps = {
   verifySession: (token: unknown) => BookingSession | null
   getForm: (slug: string) => BookingForm | null
   readBusy: (day: string) => Promise<BusyInterval[]>
-  createEvent: (input: {
-    title: string; description: string; startAt: string; endAt: string
-    guestEmail: string; requestId: string; googleEventId: string
-  }) => Promise<CreatedEvent>
+  /** Evento SEM convidados (nenhum e-mail do lead é enviado ao Google). */
+  createEvent: (input: BookingEventInput) => Promise<CreatedEvent>
   calendarId: string
   allowedEmail: string
   limits?: EligibilityInput['limits']
@@ -45,6 +45,39 @@ export type ConfirmDeps = {
    * Sem esta dependência, valem as regras padrão do código (inclui feriados).
    */
   loadRules?: () => Promise<AvailabilityRules>
+}
+
+/**
+ * Mesma sessão depois de confirmada (página recarregada, clique repetido): devolve a reunião
+ * registrada — inclusive o link do Meet — SOMENTE ao titular da sessão assinada daquela inscrição.
+ * Como não há convite por e-mail, é assim que o visitante recupera o link sem criar outro evento.
+ */
+async function alreadyConfirmed(
+  pool: ConnectablePool, bookingId: string, session: BookingSession, meetingTitle: string,
+): Promise<HandlerResponse> {
+  const base = { ok: true, alreadyConfirmed: true, bookingRequestId: bookingId }
+  const client = await pool.connect()
+  try {
+    const found = await client.query<{ starts_at: Date; ends_at: Date; meeting_url: string | null }>(
+      `SELECT a.starts_at, a.ends_at, a.meeting_url
+         FROM crm.booking_requests b JOIN crm.appointments a ON a.id = b.appointment_id
+        WHERE b.id = $1 AND b.lead_id = $2 AND b.submission_id = $3 AND b.status = 'confirmed'
+          AND a.status IN ('pending', 'confirmed') AND a.ends_at > now()`,
+      [bookingId, session.leadId, session.submissionId])
+    const row = found.rows[0]
+    if (!row) return { status: 200, body: base }
+    const startAt = new Date(row.starts_at).toISOString()
+    const meetUrl = isGoogleMeetUrl(row.meeting_url) ? row.meeting_url : null
+    return { status: 200, body: {
+      ...base, date: bookingDay(startAt), startAt, endAt: new Date(row.ends_at).toISOString(),
+      googleMeetUrl: meetUrl, meetPending: !meetUrl, meetingTitle, invitationSent: false,
+    } }
+  } finally { client.release() }
+}
+
+/** Referência interna não pessoal usada no evento do Google (8 primeiros caracteres da reserva). */
+export function bookingReference(bookingId: string): string {
+  return bookingId.replaceAll('-', '').slice(0, 8).toLowerCase()
 }
 
 export function bookingDay(startAt: string): string {
@@ -110,6 +143,7 @@ export async function confirmBookingRequest(
 
     // Read-only gate: blocked contacts never trigger a Google request.
     const eligibility = await checkBookingEligibility(deps.pool, base)
+    if (eligibility.status === 'already_confirmed') return alreadyConfirmed(deps.pool, eligibility.id, session, form.meetingName)
     if (eligibility.status !== 'eligible') return blockedResponse(eligibility)!
 
     // Google external availability is checked first; internal races are guarded
@@ -123,6 +157,7 @@ export async function confirmBookingRequest(
       ...base, startAt: normalizedStart, endAt: finishAt, calendarId: deps.calendarId,
     })
     if (reservation.status === 'slot_unavailable') return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
+    if (reservation.status === 'already_confirmed') return alreadyConfirmed(deps.pool, reservation.id, session, form.meetingName)
     if (reservation.status !== 'reserved') {
       return blockedResponse(reservation) ?? { status: 409, body: { error: 'BOOKING_ALREADY_PROCESSING' } }
     }
@@ -141,19 +176,19 @@ export async function confirmBookingRequest(
       return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
     }
 
+    // Sem convidados: o e-mail do lead (reservation.email) NÃO vai ao Google.
     const event = await deps.createEvent({
       title: form.meetingName,
-      description: 'Agendamento do diagnóstico estratégico Cassiellos.',
       startAt: normalizedStart,
       endAt: finishAt,
-      guestEmail: reservation.email,
       requestId: reservation.id,
       googleEventId: 'c' + reservation.id.replaceAll('-', ''),
+      reference: bookingReference(reservation.id),
     })
     const saved = await finalizeBookingReservation(deps.pool, {
       bookingId: reservation.id,
       leadId: session.leadId, submissionId: session.submissionId,
-      eventId: event.id, meetingUrl: event.meetingUrl,
+      eventId: event.id, meetingUrl: isGoogleMeetUrl(event.meetingUrl) ? event.meetingUrl : null,
       startAt: normalizedStart, endAt: finishAt, calendarId: deps.calendarId, formSlug: form.slug,
       pageOrigin: input.pageOrigin,
     })
@@ -162,8 +197,11 @@ export async function confirmBookingRequest(
       body: {
         ok: true, appointmentId: saved.appointmentId, bookingRequestId: reservation.id,
         date: day, startAt: normalizedStart, endAt: finishAt,
-        googleMeetUrl: event.meetingUrl, googleCalendarUrl: event.htmlLink,
-        meetPending: !event.meetingUrl,
+        // Sem htmlLink: ele aponta para a agenda interna da Cassiellos (não serve ao visitante).
+        googleMeetUrl: isGoogleMeetUrl(event.meetingUrl) ? event.meetingUrl : null,
+        meetPending: !isGoogleMeetUrl(event.meetingUrl),
+        meetingTitle: form.meetingName,
+        invitationSent: false,
         environment: 'preview',
       },
     }
