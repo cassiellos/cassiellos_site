@@ -6,12 +6,18 @@
 -- 1) Antecedência mínima 3 h → 2 h e último início 17h30 → 18h00 (a reunião termina às 18h30):
 --    muda os PADRÕES das colunas e a linha de configuração SOMENTE onde ainda estiver com o padrão
 --    anterior (180 min / término 18h00). Valores personalizados pelo administrador são mantidos.
--- 2) Capacidade diária reservada para atividades internas (3 a 4 horários por dia útil, almoço
---    12h00–13h30 priorizado). A distribuição é calculada no código a partir da data e de uma
---    semente; aqui ficam só a configuração e os ajustes por data (liberar, reservar, desligar o dia).
+-- 2) Capacidade diária reservada para atividades internas, criada DESLIGADA (decisão D1): nenhum
+--    horário é reservado até o administrador ativar pelo painel. Quando ativada: 3 a 4 horários por
+--    dia útil, almoço 12h00–13h30 priorizado. A distribuição é calculada no código a partir da data e
+--    de uma semente; aqui ficam só a configuração e os ajustes por data (liberar, reservar, desligar o dia).
 --    Ajustes nunca são apagados: são revogados (revoked_at) para manter o histórico.
 
 BEGIN;
+
+-- Segurança operacional: se outra sessão segurar a tabela, desiste em 5 s (ROLLBACK automático) em vez de
+-- enfileirar e fazer as leituras da agenda esperarem.
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
 
 ALTER TABLE crm.availability_settings ALTER COLUMN min_notice_minutes SET DEFAULT 120;
 ALTER TABLE crm.availability_settings ALTER COLUMN close_minute SET DEFAULT 1110;
@@ -25,7 +31,7 @@ UPDATE crm.availability_settings
 
 CREATE TABLE IF NOT EXISTS crm.availability_capacity (
     id                  smallint PRIMARY KEY DEFAULT 1,
-    enabled             boolean  NOT NULL DEFAULT true,
+    enabled             boolean  NOT NULL DEFAULT false,
     min_per_day         smallint NOT NULL DEFAULT 3,
     max_per_day         smallint NOT NULL DEFAULT 4,
     lunch_start_minute  smallint NOT NULL DEFAULT 720,
@@ -43,7 +49,7 @@ CREATE TABLE IF NOT EXISTS crm.availability_capacity (
     CONSTRAINT availability_capacity_seed CHECK (seed BETWEEN 1 AND 1000000)
 );
 
--- Configuração inicial: ligada, 3 a 4 horários por dia útil, almoço 12h00–13h30.
+-- Configuração inicial: DESLIGADA (D1); quando ativada, 3 a 4 horários por dia útil, almoço 12h00–13h30.
 INSERT INTO crm.availability_capacity (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS crm.availability_capacity_overrides (

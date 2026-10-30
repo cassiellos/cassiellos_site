@@ -180,7 +180,7 @@ describe('disponibilidade — migração 0009 e capacidade diária (PostgreSQL d
   before(() => { pool = new Pool({ connectionString: url, max: 4 }) })
   after(async () => {
     await pool.query("UPDATE crm.availability_capacity_overrides SET revoked_at = now(), revoked_by = 'teardown' WHERE revoked_at IS NULL")
-    await pool.query(`UPDATE crm.availability_capacity SET enabled = true, min_per_day = 3, max_per_day = 4,
+    await pool.query(`UPDATE crm.availability_capacity SET enabled = false, min_per_day = 3, max_per_day = 4,
       lunch_start_minute = 720, lunch_end_minute = 810, seed = 1 WHERE id = 1`)
     await pool.query(`UPDATE crm.availability_settings SET working_days = '{1,2,3,4,5}', open_minute = 540, close_minute = 1110,
       min_notice_minutes = 120, window_days = 3 WHERE id = 1`)
@@ -190,11 +190,20 @@ describe('disponibilidade — migração 0009 e capacidade diária (PostgreSQL d
   const hh = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
   const offered = async (day: string) => listAvailableSlots(day, [], legacy(await loadAvailabilityRules(pool))).map(s => s.localTime)
 
-  it('0009: capacidade ligada (3–4, almoço 12h00–13h30, semente 1) e nenhum ajuste por data', async () => {
+  it('0009: capacidade criada DESLIGADA (D1) — nenhuma reserva interna e oferta completa; nenhum ajuste por data', async () => {
     const rules = await loadAvailabilityRules(pool)
     assert.equal(rules.capacity.source, 'database')
     assert.deepEqual(rules.capacity.settings, DEFAULT_CAPACITY_SETTINGS)
+    assert.equal(rules.capacity.settings.enabled, false)
+    const day = upcoming(3)
+    assert.deepEqual(capacityForDate(day, rules.settings, rules.capacity).effective, [])
+    assert.equal(listAvailableSlots(day, [], legacy(rules)).length, 19)
     assert.equal((await pool.query('SELECT count(*)::int AS n FROM crm.availability_capacity_overrides WHERE revoked_at IS NULL')).rows[0].n, 0)
+    // Ativação pelo painel (a partir daqui os testes usam a capacidade ligada; o teardown volta a desligar).
+    const on = await act({ action: 'save_capacity', capacity: { enabled: true, minPerDay: 3, maxPerDay: 4, lunchStartMinute: 720, lunchEndMinute: 810 } })
+    assert.equal(on.status, 200)
+    const active = await loadAvailabilityRules(pool)
+    assert.equal(capacityForDate(day, active.settings, active.capacity).effective.length >= 3, true)
   })
 
   it('0009 é reexecutável: converte só o padrão anterior (180 / 1080) e preserva valores personalizados', async () => {

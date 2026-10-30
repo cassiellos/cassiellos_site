@@ -115,7 +115,7 @@ describe('disponibilidade — leitura, entrada do painel e ações', () => {
       : sql.includes('availability_capacity_overrides') ? { rows: [{ id: 'o1', day: '2031-03-05', action: 'release', minute: 720, reason: '' }] }
       : { rows: [] })
     const rules = await loadAvailabilityRules(ok)
-    assert.deepEqual(rules.capacity.settings, { ...DEFAULT_CAPACITY_SETTINGS, seed: 7 })
+    assert.deepEqual(rules.capacity.settings, { ...DEFAULT_CAPACITY_SETTINGS, enabled: true, seed: 7 })
     assert.deepEqual(rules.capacity.overrides, [{ id: 'o1', date: '2031-03-05', action: 'release', minute: 720, reason: '' }])
     assert.ok(ok.calls.find(c => c.sql.includes('FROM crm.availability_capacity_overrides'))!.sql.includes('revoked_at IS NULL'))
   })
@@ -164,7 +164,7 @@ describe('disponibilidade — leitura, entrada do painel e ações', () => {
   })
 
   it('painel: capacidade dos próximos 10 dias úteis; reserva que coincide com reunião confirmada é sinalizada (reunião mantida)', () => {
-    const cap: CapacityRules = { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' }
+    const cap: CapacityRules = { settings: { ...DEFAULT_CAPACITY_SETTINGS, enabled: true }, overrides: [], source: 'database' }
     const rules: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, capacity: cap, source: 'database' }
     const day = '2026-11-10'
     const m = generatedHolds(day, rules.settings, cap.settings)[0]
@@ -279,7 +279,7 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
 
   it('horário reservado para atividades internas: 409 sem banco e sem Google; horário liberado volta a passar', async () => {
     const wednesday = upcoming(3)
-    const cap: CapacityRules = { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' }
+    const cap: CapacityRules = { settings: { ...DEFAULT_CAPACITY_SETTINGS, enabled: true }, overrides: [], source: 'database' }
     const withCap: AvailabilityRules = { ...LEGACY, capacity: cap }
     const holds = generatedHolds(wednesday, withCap.settings, cap.settings)
     const iso = (m: number) => new Date(Date.parse(wednesday + 'T00:00:00-03:00') + m * 60_000).toISOString()

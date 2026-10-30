@@ -28,3 +28,4 @@
 #cassiellos-crm .crm-capacity-chip em{font-style:normal;color:#f5c26b}
 #cassiellos-crm .crm-capacity-chip button{background:transparent;border:1px solid var(--crm-border);color:#cfe0f5;border-radius:999px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:inherit;text-decoration:none}
 #cassiellos-crm .crm-capacity-chip button:disabled{opacity:.5;cursor:not-allowed}
+#cassiellos-crm .crm-capacity-chip[data-kind="preview"]{border-style:dashed;color:#9eb0c6;background:transparent;padding:4px 9px}

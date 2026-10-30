@@ -12,11 +12,13 @@ Não inclui o agendamento sem convite, a privacidade nem o Meta Pixel.
 | Primeiro início | 09h00 | `DEFAULT_BOOKING_POLICY.openMinute` |
 | Último início | 18h00, com término às 18h30 (início às 18h30 é recusado) | `lastStartMinute`; no banco, `close_minute` = 1110 |
 | Janela | 3 dias corridos (sem mudança) | `maximumDaysAhead` |
-| Capacidade diária | 3 a 4 horários por dia útil para atividades internas, com almoço 12h00–13h30 priorizado | `lib/crm/availability/capacity.ts` |
+| Capacidade diária | **Criada desligada (D1).** Quando ativada pelo painel: 3 a 4 horários por dia útil para atividades internas, com almoço 12h00–13h30 priorizado | `lib/crm/availability/capacity.ts` |
 
 Exemplos aprovados (testados): 13h00 → 15h00; 15h00 → 17h00. Também: 09h10 → 11h30; 16h00 → só 18h00; 16h01 → nenhum.
 
 ## 2. Capacidade diária (bloqueios operacionais variáveis)
+
+**Estado inicial (decisão D1): DESLIGADA.** Depois da 0009, nenhum horário é reservado até o administrador marcar "Reservas automáticas ativas" e salvar. Enquanto estiver desligada, o painel mostra uma prévia tracejada do que seria reservado em cada dia, sem aplicar nada.
 
 **Como os horários são escolhidos**
 
@@ -72,7 +74,7 @@ Arquivo: `db/migrations/0009_availability_capacity.sql`. Transação única, ree
 | Parte | Efeito |
 |---|---|
 | `availability_settings` | Os padrões passam a 120 min e término 1110. A linha atual só muda onde ainda estiver no padrão anterior (180 / 1080), marcada com `updated_by = 'migration:0009'`. Valores personalizados são mantidos |
-| `availability_capacity` (nova) | Linha única: ligada, 3–4, almoço 720–810, semente 1 |
+| `availability_capacity` (nova) | Linha única: **desligada** (`enabled = false`), 3–4, almoço 720–810, semente 1 |
 | `availability_capacity_overrides` (nova) | Ajustes por data (`release`, `hold`, `day_off`), revogáveis, com um ajuste ativo por data, ação e horário |
 
 ### Auditoria em banco descartável (PostgreSQL 16, histórico simulado)
@@ -94,7 +96,7 @@ Arquivo: `db/migrations/0009_availability_capacity.sql`. Transação única, ree
 | Publicado (`c366dc3`) × 0008 | Situação atual: 3 h, último início 17h30 |
 | Publicado (`c366dc3`) × 0008 + 0009 | Funciona: 2 h, último início 18h00, sem capacidade (o código antigo ignora as tabelas novas) |
 | Novo × só 0008 | Funciona: 3 h, último início 17h30 (valores do banco), capacidade desligada |
-| Novo × 0008 + 0009 | Regras novas completas: 2 h, 18h00 e 3–4 reservas internas por dia útil |
+| Novo × 0008 + 0009 | Regras novas: 2 h e último início 18h00; capacidade desligada até ser ativada pelo painel |
 
 As duas ordens são seguras. Ordem sugerida: publicar o código e depois aplicar a 0009.
 
@@ -102,7 +104,7 @@ As duas ordens são seguras. Ordem sugerida: publicar o código e depois aplicar
 
 ## 4. Riscos e pendências
 
-- **Capacidade ligada já na 0009.** Ao aplicar a migração, 3 a 4 horários por dia útil deixam de ser oferecidos imediatamente. Para começar desligada, basta trocar o padrão `enabled` para `false` na 0009 antes de aplicar e ligar depois pelo painel.
+- **Ativação da capacidade.** A capacidade começa desligada (D1). Ao ativá-la pelo painel, 3 a 4 horários por dia útil deixam de ser oferecidos imediatamente, inclusive nos dias já visíveis ao público.
 - **Redistribuir** muda as reservas também nos dias já visíveis ao público. É uma ação administrativa explícita e pede confirmação.
 - **Reunião anterior à capacidade.** Uma reserva interna que coincida com uma reunião criada antes da capacidade não reserva tempo real naquele horário. O painel sinaliza esse caso.
 - **Testes de navegador** usaram o handler real contra banco descartável, sem Neon e sem Google. O comportamento com o Google será conferido após a publicação.

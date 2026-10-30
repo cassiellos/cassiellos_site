@@ -21,8 +21,8 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
   18h30 é recusado (409). No banco, `close_minute` continua sendo o término da última reunião (1110 = 18h30); o
   painel mostra "Último início".
 - **Janela de 3 dias corridos**: sem mudança.
-- **Capacidade diária**: de 3 a 4 horários por dia útil reservados para atividades internas, com o almoço
-  priorizado. Detalhes em `docs/crm/ajuste-final-disponibilidade.md`.
+- **Capacidade diária**: criada **desligada** (D1). Quando ativada pelo painel, reserva de 3 a 4 horários por dia útil
+  para atividades internas, com o almoço priorizado. Detalhes em `docs/crm/ajuste-final-disponibilidade.md`.
 - Valem no Preview só depois da migração 0009 (preparada, **não aplicada**) ou de um ajuste salvo no painel.
 
 ## 0.1 Regras comerciais de 30/10/2026 (R-1/R-2) — histórico, substituídas pelo item 0.0

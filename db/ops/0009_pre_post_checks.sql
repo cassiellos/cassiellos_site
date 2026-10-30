@@ -22,7 +22,7 @@ SELECT (SELECT count(*) FROM crm.leads) AS leads,
        (SELECT count(*) FROM crm.availability_exceptions WHERE revoked_at IS NULL) AS excecoes_ativas,
        (SELECT count(*) FROM crm.holiday_rules) AS ajustes_feriados;
 
--- 4) Depois: capacidade (ligada, 3–4, 720–810, semente 1) e nenhum ajuste por data.
+-- 4) Depois: capacidade DESLIGADA (enabled = false; 3–4, 720–810, semente 1) e nenhum ajuste por data.
 -- (Executar só depois de aplicar; antes, retorna erro de tabela inexistente — esperado.)
 -- SELECT * FROM crm.availability_capacity;
 -- SELECT count(*) AS ajustes FROM crm.availability_capacity_overrides;

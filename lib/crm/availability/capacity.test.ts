@@ -9,7 +9,9 @@ import { capacityPlan } from './admin'
 import { addDays } from './holidays'
 
 const S = DEFAULT_AVAILABILITY_RULES.settings // seg–sex, 09:00–18:00 (término 18:30), 30 min
-const CAP: CapacityRules = { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' }
+/** Capacidade ATIVADA (o padrão é desligado — decisão D1). */
+const ON = { ...DEFAULT_CAPACITY_SETTINGS, enabled: true }
+const CAP: CapacityRules = { settings: ON, overrides: [], source: 'database' }
 const RULES: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, capacity: CAP }
 const at = (local: string) => new Date(local + '-03:00')
 const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
@@ -23,6 +25,24 @@ function workingDays(from: string, count: number): string[] {
   return out
 }
 const DAYS = workingDays('2026-11-03', 3 * 261) // ~3 anos de dias úteis
+
+describe('capacidade diária — estado inicial (D1)', () => {
+  it('padrão DESLIGADO: nenhuma reserva, oferta completa; a prévia mostra o que seria reservado sem aplicar', () => {
+    assert.equal(DEFAULT_CAPACITY_SETTINGS.enabled, false)
+    const off: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, capacity: { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' } }
+    const day = '2026-11-10'
+    assert.deepEqual(heldMinutes(day, S, off.capacity), [])
+    assert.equal(listAvailableSlots(day, [], off, at('2026-11-09T09:00:00')).length, 19)
+    const plan = capacityPlan(off, at('2026-11-09T08:00:00'))
+    const target = plan.find(d => d.date === day)!
+    assert.deepEqual(target.effective, [])
+    assert.deepEqual(target.preview, generatedHolds(day, S, ON))
+    // Ativada, a prévia some e as reservas passam a valer.
+    const on = capacityPlan(RULES, at('2026-11-09T08:00:00')).find(d => d.date === day)!
+    assert.deepEqual(on.preview, [])
+    assert.deepEqual(on.effective, generatedHolds(day, S, ON))
+  })
+})
 
 describe('capacidade diária — distribuição determinística por data', () => {
   it('3 ou 4 horários por dia útil, sempre na grade 09:00–18:00; os dois tamanhos ocorrem', () => {

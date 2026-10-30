@@ -1,5 +1,6 @@
 import { capacityOf, closedDates, describeDate, lastStartMinute, localDate, localInstant, weekdayOf, type AvailabilityRules } from './engine'
 import { addDays, holidaysForYear, type BlockRule } from './holidays'
+import { previewHolds } from './capacity'
 import {
   AvailabilityMigrationPendingError, CapacityMigrationPendingError, addBlock, addCapacityOverride, addException,
   loadAvailabilityRules, parseCapacityOverride, redistributeCapacity, revokeCapacityOverride, revokeEntry, saveCapacitySettings, saveSettings,
@@ -53,6 +54,8 @@ export function capacityPlan(rules: AvailabilityRules, now: Date = new Date(), m
       .filter(h => h.date === date && h.block.type !== 'none')
     days.push({
       ...capacity, withMeeting, holidays: dayHolidays.map(h => h.name),
+      /** Capacidade desligada: o que seria reservado se fosse ativada (apenas exibição; nada é aplicado). */
+      preview: previewHolds(date, rules.settings, rules.capacity.settings),
       /** Feriado/política de dia inteiro: o dia já está fechado e as reservas internas não têm efeito. */
       closedByHoliday: dayHolidays.some(h => h.block.type === 'full'),
       inWindow: date <= addDays(today, rules.settings.windowDays),

@@ -33,8 +33,12 @@ export type CapacitySettings = {
   seed: number
 }
 
+/**
+ * Configuração inicial (decisão D1): DESLIGADA. Nenhum horário é reservado até o administrador ativar
+ * pelo painel. Quando ativada, reserva de 3 a 4 horários por dia útil com almoço 12h00–13h30 priorizado.
+ */
 export const DEFAULT_CAPACITY_SETTINGS: CapacitySettings = {
-  enabled: true, minPerDay: 3, maxPerDay: 4, lunchStartMinute: 12 * 60, lunchEndMinute: 13 * 60 + 30, seed: 1,
+  enabled: false, minPerDay: 3, maxPerDay: 4, lunchStartMinute: 12 * 60, lunchEndMinute: 13 * 60 + 30, seed: 1,
 }
 
 export const CAPACITY_LIMITS = {
@@ -60,6 +64,11 @@ export type CapacityRules = {
 /** Sem a migração 0009 não há como o administrador liberar horários: a capacidade fica DESLIGADA. */
 export const DISABLED_CAPACITY: CapacityRules = {
   settings: { ...DEFAULT_CAPACITY_SETTINGS, enabled: false }, overrides: [], source: 'defaults',
+}
+
+/** Prévia para o painel: o que seria reservado na data SE a capacidade fosse ativada (nada é aplicado). */
+export function previewHolds(date: string, s: CapacityGridSettings, cap: CapacitySettings): number[] {
+  return cap.enabled ? [] : generatedHolds(date, s, { ...cap, enabled: true })
 }
 
 const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x)

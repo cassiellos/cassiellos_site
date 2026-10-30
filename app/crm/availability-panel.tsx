@@ -24,6 +24,7 @@ type Override = { minute: number; id: string; reason: string }
 type CapacityDay = {
   date: string; generated: number[]; released: Override[]; manual: Override[]; dayOff: { id: string; reason: string } | null
   effective: number[]; withMeeting: number[]; holidays: string[]; closedByHoliday: boolean; inWindow: boolean
+  preview: number[]
 }
 type Overview = {
   source: 'database' | 'defaults'; migrationPending: boolean; settings: Settings; holidays: Holiday[]
@@ -166,13 +167,16 @@ export default function AvailabilityPanel() {
     <section className="crm-card crm-real-agenda" aria-labelledby="crm-capacity-title">
       <div className="crm-real-agenda-title"><div>
         <div className="crm-panel-title" id="crm-capacity-title">Capacidade diária · atividades internas</div>
-        <p>Reserva {capacity.minPerDay === capacity.maxPerDay ? capacity.minPerDay : capacity.minPerDay + ' a ' + capacity.maxPerDay} horários
+        <p>{data.capacity.settings.enabled ? 'Reserva' : 'Quando ativada, reserva'} {capacity.minPerDay === capacity.maxPerDay ? capacity.minPerDay : capacity.minPerDay + ' a ' + capacity.maxPerDay} horários
           por dia útil para trabalho interno, priorizando o almoço ({hhmm(capacity.lunchStartMinute)}–{hhmm(capacity.lunchEndMinute)}).
           A distribuição é fixa por data e igual para todos os visitantes, que veem apenas que o horário não está disponível.
           Nenhuma reunião é criada, e reuniões já confirmadas nunca são alteradas.</p>
       </div></div>
       {data.capacity.migrationPending && <p className="crm-real-agenda-message" role="status">Migração 0009 pendente: a capacidade
         diária está desligada e não reserva nenhum horário. Os controles ficam bloqueados até a autorização.</p>}
+      {!data.capacity.migrationPending && !data.capacity.settings.enabled && <p className="crm-real-agenda-message" role="status">
+        Reservas automáticas DESLIGADAS: nenhum horário é reservado. A prévia abaixo mostra o que seria reservado ao ativar
+        (marque &quot;Reservas automáticas ativas&quot; e salve).</p>}
       <div className="crm-availability-form">
         <label className="crm-availability-check"><input type="checkbox" checked={capacity.enabled} disabled={capacityLocked}
           onChange={e => setCapacity({ ...capacity, enabled: e.target.checked })}/>Reservas automáticas ativas</label>
@@ -201,6 +205,7 @@ export default function AvailabilityPanel() {
         const status = day.closedByHoliday ? day.holidays.join(' · ') + ' · dia fechado ao público (reservas internas sem efeito)'
           : day.dayOff ? 'Reservas automáticas desligadas neste dia' + (day.dayOff.reason ? ' · ' + day.dayOff.reason : '')
           : day.effective.length ? day.effective.length + ' horário(s) reservado(s) para atividades internas'
+          : !data.capacity.settings.enabled ? 'Reservas automáticas desligadas'
           : 'Sem reservas internas'
         return <article className="crm-real-agenda-item crm-capacity-day" key={day.date}>
           <div className="crm-real-agenda-content">
@@ -219,6 +224,8 @@ export default function AvailabilityPanel() {
                     {own ? 'Remover' : 'Liberar'}</button>
                 </span>
               })}
+              {!data.capacity.migrationPending && day.preview.map(m => <span className="crm-capacity-chip" key={'p' + m} data-kind="preview"
+                title="Prévia: não aplicada enquanto a capacidade estiver desligada">{hhmm(m)}{isLunch(m) ? ' · almoço' : ''} · prévia</span>)}
               {day.released.map(r => <span className="crm-capacity-chip" key={'r' + r.minute} data-kind="released">
                 {hhmm(r.minute)} · liberado
                 <button type="button" disabled={capacityLocked} aria-label={'Restaurar reserva das ' + hhmm(r.minute)}
