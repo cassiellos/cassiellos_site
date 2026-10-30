@@ -111,6 +111,8 @@ describe('disponibilidade — leitura, entrada do painel e ações', () => {
   })
 })
 
+const LEGACY = { ...DEFAULT_AVAILABILITY_RULES, settings: { ...DEFAULT_AVAILABILITY_RULES.settings, minNoticeMinutes: 720, windowDays: 30 } }
+
 describe('confirmação — validação no servidor (chamada direta à API)', () => {
   const session = { leadId: 'l', submissionId: 's', formSlug: 'odontologia' }
   function deps(rulesBlockDay: string | null) {
@@ -122,9 +124,9 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
       readBusy: async () => { calls.readBusy++; return [] },
       createEvent: async () => { calls.createEvent++; return { id: 'evt', meetingUrl: null, htmlLink: null } },
       calendarId: 'cal', allowedEmail: 'x@exemplo.com',
-      loadRules: async () => rulesBlockDay ? { ...DEFAULT_AVAILABILITY_RULES, blocks: [{
+      loadRules: async () => rulesBlockDay ? { ...LEGACY, blocks: [{
         id: 'b', startsAt: new Date(rulesBlockDay + 'T00:00:00-03:00').toISOString(),
-        endsAt: new Date(rulesBlockDay + 'T23:59:00-03:00').toISOString(), category: 'day', reason: '' }] } : DEFAULT_AVAILABILITY_RULES,
+        endsAt: new Date(rulesBlockDay + 'T23:59:00-03:00').toISOString(), category: 'day', reason: '' }] } : LEGACY,
     }
     return { calls, value }
   }
@@ -191,5 +193,17 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
     const r = await confirmBookingRequest(value, { bookingToken: 't', startAt: day + 'T13:00:00.000Z', pageOrigin: ORIGIN })
     assert.ok(r.status >= 500, JSON.stringify(r))
     assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
+  })
+
+  it('12. padrão 3 h / 3 dias na API: hoje + 4 e menos de 3 h recusados (409) sem banco e sem Google', async () => {
+    const day4 = new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10)
+    const soon = new Date(Math.ceil((Date.now() + 3_600_000) / 1_800_000) * 1_800_000).toISOString()
+    for (const startAt of [day4 + 'T13:00:00.000Z', soon]) {
+      const { calls, value } = deps(null)
+      value.loadRules = async () => DEFAULT_AVAILABILITY_RULES
+      const r = await confirmBookingRequest(value, { bookingToken: 't', startAt, pageOrigin: ORIGIN })
+      assert.deepEqual(r, { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }, startAt)
+      assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
+    }
   })
 })

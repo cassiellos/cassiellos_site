@@ -13,6 +13,21 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 | D-D | **Aprovada** | 409 `SLOT_UNAVAILABLE` para conflitos de disponibilidade; 400 `INVALID_SLOT` só para pedido estruturalmente inválido; mensagem clara ao visitante, sem detalhes técnicos (ver seção 3). |
 | D-E | **Aprovada** | Revisar as datas de 2027 quando o calendário federal oficial de 2027 for publicado (ver seção 6). |
 
+## 0.1 Regras comerciais de 30/10/2026 (R-1/R-2)
+
+- **Antecedência mínima: 3 h** (antes 12 h). O primeiro horário é o próximo slot de 30 min a partir de agora + 3 h, e a
+  reunião precisa terminar dentro do expediente. Exemplos: 09h00 → 12h00; 09h10 → 12h30; 13h00 → 16h00; 15h00 → nenhum
+  no mesmo dia.
+- **Janela: 3 dias corridos** (antes 30), contados por data em America/Sao_Paulo, com hoje incluído. Exemplos: segunda →
+  até quinta; sexta → até segunda. Sem dias extras para compensar fins de semana ou feriados.
+- **Sem horários na janela:** o formulário mostra "Não encontramos horários disponíveis nos próximos 3 dias. Volte em
+  breve para consultar novas datas." A regra comercial não é contornada.
+- O servidor recusa com 409 qualquer horário fora dessas regras, inclusive por chamada direta à API. Exceções
+  administrativas não ultrapassam janela nem antecedência. O administrador pode ajustar dentro dos limites (antecedência
+  de 0 a 7 dias; janela de 1 a 90 dias).
+- Padrões atualizados no código e no arquivo da migração 0008 (`min_notice_minutes` 180, `window_days` 3). A migração
+  continua **não aplicada**.
+
 ## 1. Auditoria da lógica anterior (base `dae52f7`)
 
 | Item | Como funcionava | Onde |

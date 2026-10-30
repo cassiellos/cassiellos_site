@@ -112,7 +112,7 @@ export default function AvailabilityPanel() {
   return <div className="crm-availability">
     {data.migrationPending && <section className="crm-card crm-real-agenda-notice crm-availability-notice" role="status">
       <strong>MIGRAÇÃO PENDENTE</strong>A migração 0008 ainda não foi aplicada no Neon Preview. A agenda já usa o padrão do código
-      (seg–sex, 09h–18h, 30 min, 12 h de antecedência, 30 dias, feriados e políticas comerciais). As alterações abaixo ficam
+      (seg–sex, 09h–18h, 30 min, 3 h de antecedência, 3 dias corridos, feriados e políticas comerciais). As alterações abaixo ficam
       bloqueadas até a autorização D4.
     </section>}
     {message && <section className="crm-card"><p className="crm-real-agenda-message" role="status">{message}</p></section>}

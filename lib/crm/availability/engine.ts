@@ -25,7 +25,8 @@ export type AvailabilitySettings = {
 
 export const DEFAULT_AVAILABILITY_SETTINGS: AvailabilitySettings = {
   workingDays: [1, 2, 3, 4, 5], openMinute: 9 * 60, closeMinute: 18 * 60, slotMinutes: 30,
-  minNoticeMinutes: 12 * 60, windowDays: 30,
+  // Regras comerciais de 30/10/2026: antecedência mínima de 3 h; janela de 3 dias corridos (datas em São Paulo).
+  minNoticeMinutes: 3 * 60, windowDays: 3,
 }
 
 /** Limites seguros para o que o administrador pode configurar. */

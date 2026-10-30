@@ -53,7 +53,7 @@ function monthDays(month: string): (string | null)[] {
 }
 
 function workingDate(day: string, today: string): boolean {
-  if (day < today || day > plusDays(today, 30)) return false
+  if (day < today || day > plusDays(today, 3)) return false
   const weekDay = new Date(day + 'T12:00:00Z').getUTCDay()
   return weekDay !== 0 && weekDay !== 6
 }
@@ -218,7 +218,14 @@ export default function BookingExperience({
   const totalStages = questions.length + 3
   const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
-  const maxMonth = serverCalendar ? serverCalendar.lastDate.slice(0, 7) : today ? plusDays(today, 30).slice(0, 7) : ''
+  // Nenhuma data da janela tem horário (fim de semana, feriado, bloqueio ou antecedência): mensagem aprovada (R-2).
+  const windowClosed = Boolean(serverCalendar) && (() => {
+    for (let day = serverCalendar!.today; day <= serverCalendar!.lastDate; day = plusDays(day, 1)) {
+      if (!serverCalendar!.closedDates.includes(day)) return false
+    }
+    return true
+  })()
+  const maxMonth = serverCalendar ? serverCalendar.lastDate.slice(0, 7) : today ? plusDays(today, 3).slice(0, 7) : ''
   const firstMonth = today ? today.slice(0, 7) : ''
 
   function update(name: keyof Attendee, value: string) {
@@ -551,7 +558,8 @@ export default function BookingExperience({
                 <strong>{date ? humanDate(date) : 'Selecione um dia'}</strong>
                 <small>Horário de Brasília · 30 minutos</small>
               </div>
-              {!date && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
+              {windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
+              {!date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
               {loading && <p className="booking-calendar-hint">Consultando disponibilidade real…</p>}
               {failed && <div className="booking-availability-error" role="alert">
                 {availabilityError || 'Não foi possível consultar a agenda agora.'}

@@ -15,7 +15,10 @@ import {
   SQL_CANONICAL_MAILBOX, canonicalMailbox, checkBookingEligibility, finalizeBookingReservation, reserveBookingSlot, type ReserveInput,
 } from './booking-reservation'
 import { type BookingSlot } from './booking-slots'
-import { DEFAULT_AVAILABILITY_RULES, listAvailableSlots } from './availability/engine'
+import { DEFAULT_AVAILABILITY_RULES, listAvailableSlots, type AvailabilityRules } from './availability/engine'
+
+/** Regras de teste explícitas (12 h / 30 dias): os testes antiabuso não dependem da data real nem da janela de 3 dias. */
+const TEST_RULES: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, settings: { ...DEFAULT_AVAILABILITY_RULES.settings, minNoticeMinutes: 720, windowDays: 30 } }
 import { saveLeadSubmission, type LeadSubmissionProtection } from './lead-intake'
 import { AVAILABILITY_LIMIT, INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from './request-limits'
 import { TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike } from './turnstile'
@@ -37,7 +40,7 @@ function bookableSlots(count: number): BookingSlot[] {
   const result: BookingSlot[] = []
   for (let d = 2; d < 30 && result.length < count; d++) {
     const day = new Date(Date.now() + d * DAY).toISOString().slice(0, 10)
-    result.push(...listAvailableSlots(day, [], DEFAULT_AVAILABILITY_RULES).slice(0, Math.max(0, count - result.length)))
+    result.push(...listAvailableSlots(day, [], TEST_RULES).slice(0, Math.max(0, count - result.length)))
   }
   return result
 }
@@ -246,7 +249,7 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
       return {
         pool, verifySession: token => (token && typeof token === 'object' ? token as BookingSession : null),
         getForm: getBookingForm, readBusy: g.readBusy, createEvent: g.createEvent,
-        calendarId: calendar(), allowedEmail, ...extra,
+        calendarId: calendar(), allowedEmail, loadRules: async () => TEST_RULES, ...extra,
       }
     }
     const session = (lead: Lead): BookingSession => ({ leadId: lead.leadId, submissionId: lead.submissionId, formSlug: 'odontologia' })
@@ -418,7 +421,7 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
         pool, verifySession: t => JSON.parse(String(t)), getForm: getBookingForm,
         readBusy: async () => { calls.readBusy++; return [] },
         createEvent: async i => { calls.createEvent++; return { id: 'evt' + i.requestId.replaceAll('-', ''), meetingUrl: null, htmlLink: null } },
-        calendarId: calendar(), allowedEmail: address,
+        calendarId: calendar(), allowedEmail: address, loadRules: async () => TEST_RULES,
       }, { bookingToken: good.body.bookingToken, startAt: slot.startAt, pageOrigin: 'https://crm.cassiellos.com.br' })
       assert.equal(r.status, 201)
       assert.deepEqual(calls, { readBusy: 2, createEvent: 1 })

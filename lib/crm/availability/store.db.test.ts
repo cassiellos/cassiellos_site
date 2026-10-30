@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { Pool } from 'pg'
 import { handleAvailabilityAction } from './admin'
-import { DEFAULT_AVAILABILITY_SETTINGS, listAvailableSlots } from './engine'
+import { DEFAULT_AVAILABILITY_SETTINGS, listAvailableSlots, type AvailabilityRules } from './engine'
 import { loadAvailabilityRules } from './store'
 import { confirmBookingRequest, type ConfirmDeps } from '../booking-confirmation'
 import { getBookingForm } from '../booking-forms'
@@ -23,6 +23,8 @@ const skip = !url ? 'CRM_INTEGRATION_DATABASE_URL não definida' : false
 const MIGRATION = readFileSync(join(process.cwd(), 'db/migrations/0008_availability.sql'), 'utf8')
 const ACTOR = 'crm_admin:teste0008'
 const DAY = 86_400_000
+/** Datas de teste além de 3 dias: fixa a configuração anterior (12 h / 30 dias) só na leitura do teste. */
+const legacy = (r: AvailabilityRules): AvailabilityRules => ({ ...r, settings: { ...r.settings, minNoticeMinutes: 720, windowDays: 30 } })
 
 function upcoming(weekday: number, minDays = 3): string {
   for (let d = minDays; d < minDays + 7; d++) {
@@ -41,7 +43,7 @@ describe('disponibilidade — migração 0008 e painel (PostgreSQL descartável)
     await pool.query("UPDATE crm.availability_blocks SET revoked_at = now(), revoked_by = 'teardown' WHERE revoked_at IS NULL")
     await pool.query("UPDATE crm.availability_exceptions SET revoked_at = now(), revoked_by = 'teardown' WHERE revoked_at IS NULL")
     await pool.query(`UPDATE crm.availability_settings SET working_days = '{1,2,3,4,5}', open_minute = 540, close_minute = 1080,
-      min_notice_minutes = 720, window_days = 30 WHERE id = 1`)
+      min_notice_minutes = 180, window_days = 3 WHERE id = 1`)
     await pool?.end()
   })
   const act = (data: Record<string, unknown>) => handleAvailabilityAction(pool, { ...data, confirmed: true }, ACTOR)
@@ -125,7 +127,7 @@ describe('disponibilidade — migração 0008 e painel (PostgreSQL descartável)
     const saturday = upcoming(6)
     const exception = await act({ action: 'add_exception', date: saturday, startTime: '09:00', endTime: '11:00', reason: 'Plantão' })
     assert.equal(block.status, 200); assert.equal(exception.status, 200)
-    const rules = await loadAvailabilityRules(pool)
+    const rules = legacy(await loadAvailabilityRules(pool))
     const wed = listAvailableSlots(day, [], rules).map(s => s.localTime)
     assert.ok(!wed.includes('12:00') && !wed.includes('13:30') && wed.includes('14:00'))
     assert.deepEqual(listAvailableSlots(saturday, [], rules).map(s => s.localTime), ['09:00', '09:30', '10:00', '10:30'])
@@ -162,7 +164,7 @@ describe('disponibilidade — migração 0008 e painel (PostgreSQL descartável)
       getForm: getBookingForm, calendarId: 'cal-' + randomUUID(), allowedEmail: 'x@exemplo.com',
       readBusy: async () => { calls.readBusy++; return [] },
       createEvent: async () => { calls.createEvent++; return { id: 'evt', meetingUrl: null, htmlLink: null } },
-      loadRules: () => loadAvailabilityRules(pool),
+      loadRules: () => loadAvailabilityRules(pool).then(legacy),
     }
     const r = await confirmBookingRequest(deps, { bookingToken: 't', startAt: day + 'T13:00:00.000Z', pageOrigin: 'https://crm.cassiellos.com.br' })
     assert.deepEqual(r, { status: 409, body: { error: 'SLOT_UNAVAILABLE' } })

@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS crm.availability_settings (
     open_minute        smallint NOT NULL DEFAULT 540,
     close_minute       smallint NOT NULL DEFAULT 1080,
     slot_minutes       smallint NOT NULL DEFAULT 30,
-    min_notice_minutes integer  NOT NULL DEFAULT 720,
-    window_days        smallint NOT NULL DEFAULT 30,
+    min_notice_minutes integer  NOT NULL DEFAULT 180,
+    window_days        smallint NOT NULL DEFAULT 3,
     updated_at         timestamptz NOT NULL DEFAULT now(),
     updated_by         text,
     CONSTRAINT availability_settings_singleton CHECK (id = 1),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS crm.availability_settings (
     CONSTRAINT availability_settings_window CHECK (window_days BETWEEN 1 AND 90)
 );
 
--- Configuração inicial (D3): seg–sex, 09h–18h, 30 min, 12 h de antecedência, 30 dias.
+-- Configuração inicial: seg–sex, 09h–18h, 30 min, 3 h de antecedência, 3 dias corridos (regras de 30/10/2026).
 INSERT INTO crm.availability_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS crm.availability_blocks (

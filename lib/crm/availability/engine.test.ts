@@ -7,7 +7,9 @@ import {
 
 // Sexta-feira, 30/10/2026, 10:30 em São Paulo.
 const NOW = new Date('2026-10-30T10:30:00-03:00')
-const R = DEFAULT_AVAILABILITY_RULES
+// Testes de lógica (feriados, bloqueios, exceções) com a configuração anterior fixada (12 h / 30 dias),
+// para não dependerem do padrão comercial vigente. O padrão novo (3 h / 3 dias) tem testes próprios abaixo.
+const R: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, settings: { ...DEFAULT_AVAILABILITY_RULES.settings, minNoticeMinutes: 720, windowDays: 30 } }
 const times = (date: string, rules: AvailabilityRules = R, now = NOW, busy: { start: string; end: string }[] = []) =>
   listAvailableSlots(date, busy, rules, now).map(s => s.localTime)
 const withRules = (patch: Partial<AvailabilityRules>): AvailabilityRules => ({ ...R, ...patch })
@@ -174,3 +176,78 @@ describe('motor de disponibilidade', () => {
     assert.equal(finados.candidates, 0)
   })
 })
+
+describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias (padrão)', () => {
+  const D = DEFAULT_AVAILABILITY_RULES
+  const at = (local: string) => new Date(local + '-03:00')
+  const t = (date: string, now: Date, rules: AvailabilityRules = D) => listAvailableSlots(date, [], rules, now).map(s => s.localTime)
+
+  it('padrão: 180 min de antecedência e 3 dias de janela', () => {
+    assert.equal(D.settings.minNoticeMinutes, 180)
+    assert.equal(D.settings.windowDays, 3)
+  })
+  it('1. exatamente 3 h depois: 09h00 → primeiro horário 12h00', () => {
+    assert.equal(t('2026-11-09', at('2026-11-09T09:00:00'))[0], '12:00')
+  })
+  it('2. menos de 3 h não é oferecido (11h30 com relógio às 09h00)', () => {
+    assert.ok(!t('2026-11-09', at('2026-11-09T09:00:00')).includes('11:30'))
+  })
+  it('3. arredondamento para o próximo slot: 09h10 → 12h30; 13h00 → 16h00', () => {
+    assert.equal(t('2026-11-09', at('2026-11-09T09:10:00'))[0], '12:30')
+    assert.equal(t('2026-11-09', at('2026-11-09T13:00:00'))[0], '16:00')
+  })
+  it('4. mesmo dia: 15h00 → nenhum horário (18h00 terminaria após o expediente)', () => {
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T15:00:00')), [])
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T14:30:00')), ['17:30'])
+  })
+  it('5 e 6. segunda: hoje + 3 (quinta) permitido; hoje + 4 (sexta) recusado', () => {
+    const now = at('2026-11-09T09:00:00')
+    assert.equal(t('2026-11-12', now).length, 18)
+    assert.deepEqual(t('2026-11-13', now), [])
+    assert.equal(isWithinWindow('2026-11-12', D, now), true)
+    assert.equal(isWithinWindow('2026-11-13', D, now), false)
+  })
+  it('7 e 8. sexta: sábado e domingo fechados; segunda disponível; terça fora da janela', () => {
+    const now = at('2026-11-06T10:00:00')
+    assert.deepEqual(t('2026-11-07', now), [])
+    assert.deepEqual(t('2026-11-08', now), [])
+    assert.equal(t('2026-11-09', now).length, 18)
+    assert.deepEqual(t('2026-11-10', now), [])
+  })
+  it('9. feriado e recesso dentro da janela; sem compensação de dias', () => {
+    const now = at('2026-10-30T10:00:00') // sexta antes de Finados (02/11)
+    assert.deepEqual(t('2026-11-02', now), [])
+    assert.deepEqual(t('2026-11-03', now), []) // hoje + 4: não compensa o feriado
+    const recess: AvailabilityRules = { ...D, blocks: [{ id: 'r', startsAt: at('2026-11-11T00:00:00').toISOString(), endsAt: at('2026-11-12T00:00:00').toISOString(), category: 'recess', reason: '' }] }
+    assert.deepEqual(t('2026-11-11', at('2026-11-09T09:00:00'), recess), [])
+  })
+  it('R-2: janela inteira sem horários (sexta 15h00 antes de segunda feriado)', () => {
+    const now = at('2026-10-30T15:00:00')
+    assert.deepEqual(closedDates(D, now), ['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'])
+  })
+  it('10. virada de data à meia-noite', () => {
+    assert.equal(isWithinWindow('2026-11-13', D, at('2026-11-09T23:59:00')), false)
+    assert.equal(isWithinWindow('2026-11-13', D, at('2026-11-10T00:00:00')), true)
+    assert.equal(t('2026-11-10', at('2026-11-09T23:00:00'))[0], '09:00')
+  })
+  it('11. fuso America/Sao_Paulo: 02h30 UTC ainda é o dia anterior em São Paulo', () => {
+    const now = new Date('2026-11-10T02:30:00Z') // 09/11 23h30 local
+    assert.equal(localDate(now), '2026-11-09')
+    assert.equal(isWithinWindow('2026-11-12', D, now), true)
+    assert.equal(isWithinWindow('2026-11-13', D, now), false)
+  })
+  it('exceção administrativa não ultrapassa janela nem antecedência', () => {
+    const ex: AvailabilityRules = { ...D, exceptions: [
+      { id: 'e1', startsAt: at('2026-11-14T09:00:00').toISOString(), endsAt: at('2026-11-14T12:00:00').toISOString(), reason: '' },
+      { id: 'e2', startsAt: at('2026-11-09T09:00:00').toISOString(), endsAt: at('2026-11-09T12:00:00').toISOString(), reason: '' },
+    ] }
+    assert.deepEqual(t('2026-11-14', at('2026-11-09T09:00:00'), ex), []) // hoje + 5
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T09:00:00'), ex), t('2026-11-09', at('2026-11-09T09:00:00')))
+  })
+  it('13. configuração administrativa dentro dos limites continua possível', () => {
+    assert.equal(validateSettings({ ...D.settings, minNoticeMinutes: 180, windowDays: 3 }).ok, true)
+    assert.equal(validateSettings({ ...D.settings, minNoticeMinutes: 0, windowDays: 1 }).ok, true)
+    assert.equal(validateSettings({ ...D.settings, windowDays: 91 }).ok, false)
+  })
+})
+
