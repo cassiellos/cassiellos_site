@@ -66,8 +66,8 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 | 15/08 | Assunção de Nossa Senhora | feriado municipal (BH) | dia inteiro |
 | 07/09 | Independência | feriado nacional | dia inteiro |
 | 12/10 | Nossa Senhora Aparecida | feriado nacional | dia inteiro |
-| 28/10 | Dia do Servidor Público (data original) | ponto facultativo federal **transferido para 30/10** (Portaria MGI 8.821/2026) | **sem bloqueio** |
-| 30/10 | Dia do Funcionário Público (MG) e ponto facultativo federal do Dia do Servidor (transferido) | expediente estadual + ponto facultativo federal | **sem bloqueio** (mantido disponível por política comercial) |
+| 28/10 | Dia do Servidor Público | **data comemorativa** (em 2026 o ponto facultativo foi transferido) | **sem bloqueio** |
+| 30/10 | Ponto facultativo federal do Dia do Servidor, **transferido pela Portaria MGI 8.821/2026**; Dia do Funcionário Público (MG) | ponto facultativo federal + expediente estadual | **sem bloqueio** (atendimento mantido por política comercial) |
 | 02/11 | Finados | feriado nacional | dia inteiro |
 | 15/11 | Proclamação da República | feriado nacional | dia inteiro |
 | 20/11 | Consciência Negra | feriado nacional (Lei 14.759/2023) e municipal (BH) | dia inteiro |
@@ -172,9 +172,9 @@ Reversão: as tabelas são independentes. Basta parar de usá-las (ou removê-la
 
 1. **2027 (D-E):** quando a portaria do MGI e o calendário estadual de 2027 forem publicados, conferir as datas,
    incluir 2027 em `OFFICIALLY_CONFIRMED_YEARS` e ajustar o catálogo se algo mudar.
-2. **Portaria MGI 8.821/2026:** transferência de 28/10 para 30/10 registrada; ler o texto oficial no DOU para fechar a
-   conferência. O catálogo no código (`servidor_publico`) ainda mostra 28/10 para todos os anos. Não há efeito funcional,
-   pois nenhum dos dois dias bloqueia; ajustar o rótulo de 2026 no código exige autorização (esta etapa foi só documental).
+2. **Portaria MGI 8.821/2026:** transferência de 28/10 para 30/10 registrada e **corrigida no catálogo (P5)**:
+   em 2026, `servidor_publico` (28/10) passou a ser data comemorativa e `servidor_publico_transferido` (30/10, somente 2026)
+   é o ponto facultativo federal. Nenhum dos dois bloqueia a agenda. Pendente apenas ler o texto oficial no DOU.
 3. **Lei 11.397/2022 de BH:** a consolidação foi lida por meio da Portaria TJMG. Ler o texto oficial no DOM/CMBH quando possível.
 4. **Migração 0008 (D-B)** e **publicação (D-C):** bloqueadas até a avaliação do teste das 09h40.
 5. **Revisão anual:** a cada ano, conferir mudanças em leis municipais (ex.: novo feriado em BH) e repetir esta validação.

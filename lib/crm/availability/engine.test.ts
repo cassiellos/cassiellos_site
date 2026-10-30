@@ -53,6 +53,12 @@ describe('motor de disponibilidade', () => {
     assert.deepEqual(times('2026-06-04', R, now), [])
   })
 
+  it('P5: 28/10/2026 e 30/10/2026 abertos (atendimento mantido por política comercial)', () => {
+    const now = new Date('2026-10-20T10:00:00-03:00')
+    assert.deepEqual(times('2026-10-28', R, now), GRID)
+    assert.deepEqual(times('2026-10-30', R, now), GRID)
+  })
+
   it('antecedência mínima de 12 h', () => {
     assert.deepEqual(times('2026-11-03', R, new Date('2026-11-02T20:00:00-03:00')), GRID)
     assert.deepEqual(times('2026-11-03', R, new Date('2026-11-03T00:00:00-03:00')), GRID.slice(6)) // a partir de 12:00

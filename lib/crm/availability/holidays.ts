@@ -40,6 +40,10 @@ export type HolidayDefinition = {
   defaultBlock: BlockRule
   source: string
   note?: string
+  /** Só gera a entrada nestes anos (ex.: transferência pontual por portaria). */
+  years?: readonly number[]
+  /** Ajustes de classificação em anos específicos (data, regra e bloqueio padrão não mudam). */
+  byYear?: Readonly<Record<number, { name?: string; kinds?: HolidayKind[]; source?: string; note?: string }>>
 }
 
 export const HOLIDAY_CATALOG: readonly HolidayDefinition[] = [
@@ -94,7 +98,16 @@ export const HOLIDAY_CATALOG: readonly HolidayDefinition[] = [
   // ── Sem bloqueio automático (informativo; o administrador pode bloquear) ─────
   { key: 'servidor_publico', name: 'Dia do Servidor Público (federal)', kinds: ['federal_optional'],
     rule: { fixed: '10-28' }, defaultBlock: { type: 'none' }, source: 'Ponto facultativo federal (Lei 8.112/1990, art. 236)',
-    note: 'Vale para a administração pública federal; não bloqueia a agenda comercial.' },
+    note: 'Vale para a administração pública federal; não bloqueia a agenda comercial.',
+    byYear: { 2026: {
+      name: 'Dia do Servidor Público (data comemorativa)', kinds: ['observance'],
+      source: 'Lei 8.112/1990, art. 236; Portaria MGI 8.821/2026',
+      note: 'Em 2026 o ponto facultativo federal foi transferido para 30/10 (Portaria MGI 8.821/2026).',
+    } } },
+  { key: 'servidor_publico_transferido', name: 'Ponto facultativo federal — Dia do Servidor (transferido)',
+    kinds: ['federal_optional'], rule: { fixed: '10-30' }, defaultBlock: { type: 'none' }, years: [2026],
+    source: 'Portaria MGI 8.821/2026 (transferência de 28/10 para 30/10)',
+    note: 'A Cassiellos mantém atendimento neste dia por política comercial.' },
   { key: 'funcionario_publico_mg', name: 'Dia do Funcionário Público (MG)', kinds: ['observance'],
     rule: { fixed: '10-30' }, defaultBlock: { type: 'none' }, source: 'Portaria Conjunta TJMG 1.798/2026, art. 1º, IX',
     note: 'Suspensão de expediente no serviço público estadual; não é feriado para empresas.' },
@@ -159,15 +172,18 @@ function resolveDate(rule: DateRule, year: number): string {
 export function holidaysForYear(year: number, overrides: readonly HolidayRuleOverride[] = []): HolidayOccurrence[] {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return []
   const confirmed = OFFICIALLY_CONFIRMED_YEARS.includes(year)
-  return HOLIDAY_CATALOG.map(def => {
+  return HOLIDAY_CATALOG.filter(def => !def.years || def.years.includes(year)).map(def => {
+    const adjusted = def.byYear?.[year]
     const specific = overrides.find(o => o.key === def.key && o.year === year)
     const general = overrides.find(o => o.key === def.key && o.year === null)
     const override = specific ?? general
-    const provisional = !confirmed && def.kinds.some(k => k === 'federal_optional' || k === 'observance')
+    const kinds = adjusted?.kinds ?? def.kinds
+    const note = adjusted?.note ?? def.note
+    const provisional = !confirmed && kinds.some(k => k === 'federal_optional' || k === 'observance')
     return {
-      key: def.key, date: resolveDate(def.rule, year), name: def.name, kinds: [...def.kinds],
+      key: def.key, date: resolveDate(def.rule, year), name: adjusted?.name ?? def.name, kinds: [...kinds],
       block: override ? override.block : def.defaultBlock, defaultBlock: def.defaultBlock,
-      source: def.source, ...(def.note ? { note: def.note } : {}), overridden: Boolean(override), provisional,
+      source: adjusted?.source ?? def.source, ...(note ? { note } : {}), overridden: Boolean(override), provisional,
       ...(provisional ? { provisionalNote: 'Provisório: aguarda a publicação oficial do calendário de ' + year +
         ' (portaria anual do MGI / calendário estadual). O bloqueio comercial padrão permanece válido.' } : {}),
     }
