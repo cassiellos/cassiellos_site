@@ -61,8 +61,9 @@ export const HOLIDAY_CATALOG: readonly HolidayDefinition[] = [
     defaultBlock: { type: 'full' }, source: 'Lei 662/1949' },
   { key: 'republica', name: 'Proclamação da República', kinds: ['national_holiday'], rule: { fixed: '11-15' },
     defaultBlock: { type: 'full' }, source: 'Lei 662/1949' },
-  { key: 'consciencia_negra', name: 'Dia Nacional de Zumbi e da Consciência Negra', kinds: ['national_holiday'],
-    rule: { fixed: '11-20' }, defaultBlock: { type: 'full' }, source: 'Lei 14.759/2023' },
+  { key: 'consciencia_negra', name: 'Dia Nacional de Zumbi e da Consciência Negra', kinds: ['national_holiday', 'municipal_holiday'],
+    rule: { fixed: '11-20' }, defaultBlock: { type: 'full' },
+    source: 'Lei 14.759/2023; Lei municipal BH 11.397/2022, Anexo V (cf. Portaria Conjunta TJMG 1.798/2026); Lei municipal BH 11.680/2024' },
   { key: 'natal', name: 'Natal', kinds: ['national_holiday'], rule: { fixed: '12-25' },
     defaultBlock: { type: 'full' }, source: 'Lei 662/1949' },
 
@@ -99,6 +100,14 @@ export const HOLIDAY_CATALOG: readonly HolidayDefinition[] = [
     note: 'Suspensão de expediente no serviço público estadual; não é feriado para empresas.' },
 ] as const
 
+/**
+ * Anos cujo calendário foi conferido com as publicações oficiais (portaria anual do MGI, calendário
+ * estadual e Portaria Conjunta do TJMG). Nos demais anos, feriados LEGAIS (lei + cálculo da Páscoa)
+ * valem normalmente; o que depende de publicação anual (pontos facultativos federais e expediente
+ * estadual) aparece como PROVISÓRIO até a conferência (decisão D-E).
+ */
+export const OFFICIALLY_CONFIRMED_YEARS: readonly number[] = [2026]
+
 export type HolidayOccurrence = {
   key: string
   date: string // YYYY-MM-DD (local, America/Sao_Paulo)
@@ -110,6 +119,9 @@ export type HolidayOccurrence = {
   note?: string
   /** true quando o administrador alterou o padrão (crm.holiday_rules). */
   overridden: boolean
+  /** true quando a classificação depende de publicação oficial ainda não conferida (ex.: portaria MGI 2027). */
+  provisional: boolean
+  provisionalNote?: string
 }
 
 /** Domingo de Páscoa (calendário gregoriano). */
@@ -146,14 +158,18 @@ function resolveDate(rule: DateRule, year: number): string {
 
 export function holidaysForYear(year: number, overrides: readonly HolidayRuleOverride[] = []): HolidayOccurrence[] {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return []
+  const confirmed = OFFICIALLY_CONFIRMED_YEARS.includes(year)
   return HOLIDAY_CATALOG.map(def => {
     const specific = overrides.find(o => o.key === def.key && o.year === year)
     const general = overrides.find(o => o.key === def.key && o.year === null)
     const override = specific ?? general
+    const provisional = !confirmed && def.kinds.some(k => k === 'federal_optional' || k === 'observance')
     return {
       key: def.key, date: resolveDate(def.rule, year), name: def.name, kinds: [...def.kinds],
       block: override ? override.block : def.defaultBlock, defaultBlock: def.defaultBlock,
-      source: def.source, ...(def.note ? { note: def.note } : {}), overridden: Boolean(override),
+      source: def.source, ...(def.note ? { note: def.note } : {}), overridden: Boolean(override), provisional,
+      ...(provisional ? { provisionalNote: 'Provisório: aguarda a publicação oficial do calendário de ' + year +
+        ' (portaria anual do MGI / calendário estadual). O bloqueio comercial padrão permanece válido.' } : {}),
     }
   }).sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.key.localeCompare(y.key)))
 }

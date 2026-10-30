@@ -354,6 +354,7 @@ export default function BookingExperience({
       const code = error instanceof Error ? error.message : ''
       const messages: Record<string, string> = {
         SLOT_UNAVAILABLE: 'Esse horário acabou de ficar indisponível. Escolha outro no calendário.',
+        INVALID_SLOT: 'Não foi possível validar o horário escolhido. Escolha novamente no calendário.',
         BOOKING_SESSION_EXPIRED: 'Sua sessão de agendamento expirou. Preencha novamente o formulário.',
         TEST_EMAIL_NOT_ALLOWED: 'Neste teste, só é possível agendar com o e-mail de teste autorizado.',
         BOOKING_ALREADY_PROCESSING: 'Já existe um agendamento em processamento. Não tente novamente: contate a equipe para conferir.',

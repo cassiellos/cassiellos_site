@@ -15,6 +15,7 @@ type Settings = { workingDays: number[]; openMinute: number; closeMinute: number
 type Holiday = {
   key: string; date: string; name: string; kinds: string[]; block: BlockRule; defaultBlock: BlockRule
   source: string; note?: string; overridden: boolean; effect: string; defaultEffect: string
+  provisional?: boolean; provisionalNote?: string
 }
 type Entry = { id: string; startsAt: string; endsAt: string; reason: string; category?: string }
 type ClosedDay = { date: string; workingDay: boolean; holidays: Holiday[]; blocks: Entry[]; exceptions: Entry[]; candidates: number }
@@ -210,7 +211,8 @@ export default function AvailabilityPanel() {
         <thead><tr><th>Data</th><th>Data comemorativa</th><th>Natureza</th><th>Efeito na agenda</th><th>Ajustar</th></tr></thead>
         <tbody>{holidays.map(h => <tr key={h.key + h.date}>
           <td>{fmtDate(h.date)}</td>
-          <td><strong>{h.name}</strong><small>{h.source}{h.note ? ' · ' + h.note : ''}</small></td>
+          <td><strong>{h.name}</strong>{h.provisional && <span className="crm-availability-provisional" title={h.provisionalNote}>PROVISÓRIO</span>}
+            <small>{h.source}{h.note ? ' · ' + h.note : ''}</small>{h.provisionalNote && <small>{h.provisionalNote}</small>}</td>
           <td>{h.kinds.map(k => KIND_LABEL[k] || k).join(' · ')}</td>
           <td>{h.effect}{h.overridden && <small>Ajustado (padrão: {h.defaultEffect})</small>}</td>
           <td><select disabled={locked} value={h.overridden ? ruleValue(h.block) : 'default'} aria-label={'Ajustar ' + h.name}

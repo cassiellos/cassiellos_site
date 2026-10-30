@@ -88,6 +88,26 @@ describe('feriados e políticas comerciais — catálogo', () => {
     assert.equal(holidaysForYear(2026).find(h => h.key === 'corpus_christi')!.overridden, false)
   })
 
+  it('20/11 é feriado nacional e também municipal em BH', () => {
+    const cn = holidaysForYear(2026).find(h => h.key === 'consciencia_negra')!
+    assert.deepEqual(cn.kinds, ['national_holiday', 'municipal_holiday'])
+    assert.match(cn.source, /11\.397\/2022/)
+  })
+
+  it('2026 conferido; em 2027 o que depende de publicação anual é PROVISÓRIO (bloqueio comercial mantido)', () => {
+    assert.equal(holidaysForYear(2026).some(h => h.provisional), false)
+    const y2027 = holidaysForYear(2027)
+    const provisional = y2027.filter(h => h.provisional).map(h => h.key).sort()
+    assert.deepEqual(provisional, ['carnaval_segunda', 'carnaval_terca', 'cinzas', 'corpus_christi', 'funcionario_publico_mg',
+      'servidor_publico', 'vespera_ano_novo', 'vespera_natal'])
+    for (const key of ['confraternizacao', 'paixao', 'tiradentes', 'finados', 'consciencia_negra', 'assuncao', 'imaculada_conceicao', 'natal']) {
+      assert.equal(y2027.find(h => h.key === key)!.provisional, false, key)
+    }
+    const carnaval = y2027.find(h => h.key === 'carnaval_segunda')!
+    assert.deepEqual(carnaval.block, { type: 'full' })
+    assert.match(carnaval.provisionalNote ?? '', /2027/)
+  })
+
   it('chaves conhecidas e anos inválidos', () => {
     assert.equal(isKnownHolidayKey('finados'), true)
     assert.equal(isKnownHolidayKey('ponte_inventada'), false)

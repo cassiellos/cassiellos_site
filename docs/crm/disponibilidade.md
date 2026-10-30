@@ -3,6 +3,16 @@
 Status: **implementado localmente** (branch `local/availability-prep`, base `dae52f7`). Nada foi publicado.
 Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco Neon.
 
+## 0. Decisões registradas (30/10/2026)
+
+| Decisão | Situação | Conteúdo |
+|---|---|---|
+| D-A | **Aprovada** (com validação) | Política comercial de atendimento, editável pelo administrador: Carnaval seg+ter bloqueados; Cinzas até 14h; Corpus Christi bloqueado; 24/12 e 31/12 a partir de 13h; 15/08 e 08/12 (feriados municipais de BH) bloqueados; 28/10 e 30/10 sem bloqueio; sem pontes automáticas. Ponto facultativo não é tratado como feriado obrigatório automaticamente. A política vale independentemente de o dia ser ponto facultativo para órgãos públicos. |
+| D-B | **Aguardando** | Migração 0008 no Neon Preview: NÃO executar. |
+| D-C | **Aguardando** | Push/deploy: NÃO realizar antes de concluir e avaliar o teste real do Google Calendar (30/10, 09h40). |
+| D-D | **Aprovada** | 409 `SLOT_UNAVAILABLE` para conflitos de disponibilidade; 400 `INVALID_SLOT` só para pedido estruturalmente inválido; mensagem clara ao visitante, sem detalhes técnicos (ver seção 3). |
+| D-E | **Aprovada** | Revisar as datas de 2027 quando o calendário federal oficial de 2027 for publicado (ver seção 6). |
+
 ## 1. Auditoria da lógica anterior (base `dae52f7`)
 
 | Item | Como funcionava | Onde |
@@ -27,6 +37,13 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 - **Portaria Conjunta TJMG nº 1.798/PR/2026**: calendário 2026 em BH. Cita a **Lei municipal 11.397/2022**
   (Paixão, Corpus Christi, 15/08 e 08/12) e o **art. 256 da Constituição de MG** (21/04, Data Magna).
 - Leis federais 662/1949, 6.802/1980 (12/10), 9.093/1995 (feriados religiosos municipais) e 14.759/2023 (20/11).
+- **Municipal (BH):** a Portaria Conjunta TJMG 1.798/2026 cita o Anexo V da Lei 11.397/2022: Paixão, Corpus Christi,
+  Assunção (15/08), Imaculada Conceição (08/12) e Consciência Negra (20/11). A Lei municipal 11.680/2024 (DOM 05/04/2024)
+  também tornou 20/11 feriado civil em BH. Como 20/11 já é feriado nacional, o efeito na agenda é o mesmo.
+- **Terça de Carnaval não é feriado municipal:** o PL 690/2026 foi vetado e a Câmara manteve o veto em 14/08/2026.
+  O bloqueio de Carnaval é, portanto, **política comercial** (D-A).
+- **Estadual (MG):** o calendário estadual de 2026 (Agência Minas, 02/12/2025) não traz feriado estadual próprio além de
+  21/04 (Data Magna, coincide com Tiradentes). Os pontos facultativos estaduais (ex.: 02/01, 30/10) não bloqueiam a agenda.
 - **Não confirmado:** a alteração "Portaria MGI 8.821/2026" não apareceu nas fontes lidas.
 - **2027:** a portaria do MGI ainda não foi publicada. As datas móveis vêm do cálculo da Páscoa (28/03/2027)
   e devem ser conferidas quando a portaria sair.
@@ -49,7 +66,7 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 | 30/10 | Dia do Funcionário Público (MG) | expediente estadual | **sem bloqueio** |
 | 02/11 | Finados | feriado nacional | dia inteiro |
 | 15/11 | Proclamação da República | feriado nacional | dia inteiro |
-| 20/11 | Consciência Negra | feriado nacional | dia inteiro |
+| 20/11 | Consciência Negra | feriado nacional e municipal (BH) | dia inteiro |
 | 08/12 | Imaculada Conceição | feriado municipal (BH) | dia inteiro |
 | 24/12 | Véspera de Natal | ponto facultativo após 13h + política | a partir de 13:00 |
 | 25/12 | Natal | feriado nacional | dia inteiro |
@@ -57,9 +74,14 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 
 Sem bloqueio automático: pontos facultativos sem política comercial (ex.: 20/04 e 05/06/2026) e pontes.
 
-### Calendário 2027 (previsão; fixos iguais a 2026)
+### Calendário 2027 (regras legais + cálculo da Páscoa; parte PROVISÓRIA)
 
-Datas móveis: Carnaval 08/02 e 09/02, Cinzas 10/02 (até 14h), Paixão 26/03, Corpus Christi 27/05.
+- Feriados legais (mesmas datas fixas de 2026) e Paixão em 26/03: **válidos**. Decorrem de lei e do cálculo da Páscoa (28/03/2027).
+- Datas móveis das políticas: Carnaval 08/02 e 09/02, Cinzas 10/02 (até 14h), Corpus Christi 27/05.
+- **Provisório** (o painel mostra a etiqueta PROVISÓRIO): a classificação de Carnaval, Cinzas, Corpus Christi (como ponto
+  facultativo federal), 24/12, 31/12, 28/10 e 30/10 depende da portaria anual do MGI e do calendário estadual de 2027.
+  O bloqueio comercial padrão (D-A) continua valendo.
+- Anos conferidos: `OFFICIALLY_CONFIRMED_YEARS = [2026]` em `lib/crm/availability/holidays.ts`.
 
 ## 3. Arquitetura
 
@@ -83,8 +105,15 @@ ao banco de reservas ou ao Google. Fora da janela: `400 INVALID_SLOT`.
 Se a leitura das regras falhar por qualquer motivo que não seja "tabela inexistente", nenhum horário é oferecido
 (503), ou seja, a falha é fechada.
 
-Mudança de comportamento: sábado ou horário fora do expediente passou de `400 INVALID_SLOT` para
-`409 SLOT_UNAVAILABLE` (o visitante vê "Esse horário acabou de ficar indisponível").
+### Códigos de resposta da confirmação (decisão D-D)
+
+| Situação | Resposta | Mensagem ao visitante |
+|---|---|---|
+| sábado, domingo, dia não atendido, feriado/política, bloqueio, fora do expediente, antecedência, data passada ou além da janela, ocupado no Google/CRM | `409 SLOT_UNAVAILABLE` | "Esse horário acabou de ficar indisponível. Escolha outro no calendário." |
+| texto que não é data ISO UTC, data ou hora inexistente, horário fora da grade de 30 min, segundos | `400 INVALID_SLOT` | "Não foi possível validar o horário escolhido. Escolha novamente no calendário." |
+
+Nenhum dos dois casos consulta o banco de reservas ou o Google. Antes do módulo, o fim de semana e a data
+fora da janela retornavam 400, e o horário fora da grade retornava 409.
 
 ### Rotas
 
@@ -134,3 +163,12 @@ Reversão: as tabelas são independentes. Basta parar de usá-las (ou removê-la
   confirmação direta à API com bloqueio do banco.
 - Interface local com APIs simuladas: painel (desktop e celular), payloads, confirmações, calendário público com dias
   fechados do servidor e retorno à regra local quando o calendário falha.
+
+## 6. Pendências de calendário
+
+1. **2027 (D-E):** quando a portaria do MGI e o calendário estadual de 2027 forem publicados, conferir as datas,
+   incluir 2027 em `OFFICIALLY_CONFIRMED_YEARS` e ajustar o catálogo se algo mudar.
+2. **Portaria MGI 8.821/2026:** a alteração não foi confirmada nas fontes lidas. Conferir se ela mudou algum ponto facultativo de 2026.
+3. **Lei 11.397/2022 de BH:** a consolidação foi lida por meio da Portaria TJMG. Ler o texto oficial no DOM/CMBH quando possível.
+4. **Migração 0008 (D-B)** e **publicação (D-C):** bloqueadas até a avaliação do teste das 09h40.
+5. **Revisão anual:** a cada ano, conferir mudanças em leis municipais (ex.: novo feriado em BH) e repetir esta validação.

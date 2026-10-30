@@ -145,23 +145,43 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
     assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
   })
 
-  it('sábado, fora do horário e minuto quebrado: recusados sem tocar no Google', async () => {
+  it('D-D: conflitos de disponibilidade = 409 SLOT_UNAVAILABLE, sem banco de reservas e sem Google', async () => {
     const saturday = upcoming(6)
     const wednesday = upcoming(3)
-    for (const startAt of [saturday + 'T13:00:00.000Z', wednesday + 'T22:00:00.000Z', wednesday + 'T13:10:00.000Z']) {
+    const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
+    for (const [label, startAt] of [
+      ['sábado', saturday + 'T13:00:00.000Z'],
+      ['domingo', upcoming(0) + 'T13:00:00.000Z'],
+      ['fora do expediente (19:00)', wednesday + 'T22:00:00.000Z'],
+      ['antes do expediente (08:00)', wednesday + 'T11:00:00.000Z'],
+      ['data passada', day(-3) + 'T13:00:00.000Z'],
+      ['além da janela de 30 dias', day(45) + 'T13:00:00.000Z'],
+      ['dentro da antecedência de 12 h', new Date(Math.ceil((Date.now() + 3_600_000) / 1_800_000) * 1_800_000).toISOString()],
+    ]) {
       const { calls, value } = deps(null)
       const r = await confirmBookingRequest(value, { bookingToken: 't', startAt, pageOrigin: ORIGIN })
-      assert.equal(r.status, 409, startAt)
-      assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
+      assert.deepEqual(r, { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }, label)
+      assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 }, label)
     }
   })
 
-  it('fora da janela de 30 dias: 400 INVALID_SLOT sem tocar no Google', async () => {
-    const far = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 10)
-    const { calls, value } = deps(null)
-    const r = await confirmBookingRequest(value, { bookingToken: 't', startAt: far + 'T13:00:00.000Z', pageOrigin: ORIGIN })
-    assert.deepEqual(r, { status: 400, body: { error: 'INVALID_SLOT' } })
-    assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
+  it('D-D: pedido estruturalmente inválido = 400 INVALID_SLOT, sem banco e sem Google', async () => {
+    const wednesday = upcoming(3)
+    for (const [label, startAt] of [
+      ['texto livre', 'amanhã às 10h'],
+      ['sem fuso Z', wednesday + 'T13:00:00'],
+      ['mês inexistente', '2026-13-10T13:00:00.000Z'],
+      ['dia inexistente', '2026-02-30T13:00:00.000Z'],
+      ['hora inexistente', wednesday + 'T25:00:00.000Z'],
+      ['fora da grade (13:10)', wednesday + 'T13:10:00.000Z'],
+      ['segundos (13:00:30)', wednesday + 'T13:00:30.000Z'],
+      ['número', 1_800_000_000_000],
+    ] as const) {
+      const { calls, value } = deps(null)
+      const r = await confirmBookingRequest(value, { bookingToken: 't', startAt, pageOrigin: ORIGIN })
+      assert.deepEqual(r, { status: 400, body: { error: 'INVALID_SLOT' } }, label)
+      assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 }, label)
+    }
   })
 
   it('falha ao ler as regras: nenhuma reserva e nenhum evento (falha fechada)', async () => {
