@@ -1,21 +1,37 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  CONSENT_COOKIE, consentCookieAttributes, hasAnalyticsConsent, parseConsent, readCookie, serializeConsent,
+  CONSENT_COOKIE, consentCookieAttributes, hasAnalyticsConsent, hasMarketingConsent, parseConsent, readCookie, serializeConsent,
 } from './consent'
 import { analyticsPermitted, requiresAnalyticsConsent, speedInsightsEventUrl, vercelEventUrl } from './analytics-policy'
 
 const at = new Date('2026-10-30T15:00:00Z')
 
 describe('consentimento de métricas — cookie', () => {
-  it('serializa e lê só a escolha (sem dado pessoal)', () => {
-    const raw = serializeConsent(true, at)
-    assert.deepEqual(parseConsent(raw), { v: 1, analytics: true, at: '2026-10-30T15:00:00.000Z' })
-    assert.deepEqual(Object.keys(JSON.parse(decodeURIComponent(raw))).sort(), ['analytics', 'at', 'v'])
-    assert.equal(parseConsent(serializeConsent(false, at))?.analytics, false)
+  it('serializa e lê só as escolhas (sem dado pessoal)', () => {
+    const raw = serializeConsent({ analytics: true, marketing: null }, at)
+    assert.deepEqual(parseConsent(raw), { v: 2, analytics: true, marketing: null, at: '2026-10-30T15:00:00.000Z' })
+    assert.deepEqual(Object.keys(JSON.parse(decodeURIComponent(raw))).sort(), ['analytics', 'at', 'marketing', 'v'])
+    assert.equal(parseConsent(serializeConsent({ analytics: false, marketing: null }, at))?.analytics, false)
+  })
+  it('escolha da Etapa 3 (v1) continua valendo para métricas, sem autorizar marketing', () => {
+    const v1 = encodeURIComponent('{"v":1,"analytics":true,"at":"2026-10-30T00:00:00Z"}')
+    assert.deepEqual(parseConsent(v1), { v: 2, analytics: true, marketing: null, at: '2026-10-30T00:00:00Z' })
+    assert.equal(hasAnalyticsConsent(CONSENT_COOKIE + '=' + v1), true)
+    assert.equal(hasMarketingConsent(CONSENT_COOKIE + '=' + v1), false)
+  })
+  it('categorias independentes: marketing não autoriza métricas, e vice-versa', () => {
+    const onlyMarketing = CONSENT_COOKIE + '=' + serializeConsent({ analytics: null, marketing: true }, at)
+    assert.equal(hasAnalyticsConsent(onlyMarketing), false)
+    assert.equal(hasMarketingConsent(onlyMarketing), true)
+    const onlyAnalytics = CONSENT_COOKIE + '=' + serializeConsent({ analytics: true, marketing: false }, at)
+    assert.equal(hasAnalyticsConsent(onlyAnalytics), true)
+    assert.equal(hasMarketingConsent(onlyAnalytics), false)
   })
   it('valor ausente, corrompido, de outra versão ou não booleano = sem consentimento', () => {
-    for (const raw of [null, '', 'x', '%7B', encodeURIComponent('{"v":2,"analytics":true,"at":"2026-10-30T00:00:00Z"}'),
+    for (const raw of [null, '', 'x', '%7B', encodeURIComponent('{"v":3,"analytics":true,"at":"2026-10-30T00:00:00Z"}'),
+      encodeURIComponent('{"v":2,"analytics":null,"marketing":null,"at":"2026-10-30T00:00:00Z"}'),
+      encodeURIComponent('{"v":2,"analytics":true,"marketing":"sim","at":"2026-10-30T00:00:00Z"}'),
       encodeURIComponent('{"v":1,"analytics":"yes","at":"2026-10-30T00:00:00Z"}'),
       encodeURIComponent('{"v":1,"analytics":true,"at":"nunca"}')]) {
       assert.equal(parseConsent(raw), null)
@@ -24,9 +40,9 @@ describe('consentimento de métricas — cookie', () => {
     assert.equal(hasAnalyticsConsent('outro=1'), false)
   })
   it('lê o cookie certo no cabeçalho (com outros cookies e atributos)', () => {
-    const header = 'a=1; ' + CONSENT_COOKIE + '=' + serializeConsent(true, at) + '; b=2'
+    const header = 'a=1; ' + CONSENT_COOKIE + '=' + serializeConsent({ analytics: true, marketing: null }, at) + '; b=2'
     assert.equal(hasAnalyticsConsent(header), true)
-    assert.equal(hasAnalyticsConsent(CONSENT_COOKIE + '=' + serializeConsent(false, at)), false)
+    assert.equal(hasAnalyticsConsent(CONSENT_COOKIE + '=' + serializeConsent({ analytics: false, marketing: null }, at)), false)
     assert.equal(readCookie('x_cassiellos_consent=1', CONSENT_COOKIE), null)
   })
   it('atributos: primário, 180 dias, Lax; Secure só em HTTPS', () => {

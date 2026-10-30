@@ -282,7 +282,7 @@ export type FinalizeInput = {
 /** Registra a NOVA reunião confirmada; registros anteriores não são tocados. */
 export async function finalizeBookingReservation(
   pool: ConnectablePool, input: FinalizeInput,
-): Promise<{ appointmentId: string }> {
+): Promise<{ appointmentId: string; isTest: boolean; scheduleEventId: string }> {
   const client = await pool.connect()
   let committed = false
   try {
@@ -318,19 +318,22 @@ export async function finalizeBookingReservation(
     // Internal event only; Meta CAPI dispatch is a separate, not-yet-enabled pipeline.
     // metadata.isTest is mandatory: only isTest === false may ever be sent to Meta
     // (see isMetaDispatchAllowed in lib/crm/booking-mode.ts).
+    // Meta mapping: Chronos_Scheduled -> "Schedule" (lib/marketing/meta.ts). The same
+    // event_id is returned to the browser Pixel (real leads only) for deduplication.
+    const scheduleEventId = 'chronos_scheduled_' + input.bookingId.replaceAll('-', '')
     await client.query(
       `INSERT INTO crm.tracking_events
          (lead_id, appointment_id, event_id, event_name,
           source_category, event_source_url, action_source, metadata)
          VALUES ($1, $2, $3, 'Chronos_Scheduled', 'server', $4, 'website', $5::jsonb)`,
       [input.leadId, appointmentId,
-        'chronos_scheduled_' + input.bookingId.replaceAll('-', ''),
+        scheduleEventId,
         input.pageOrigin + '/agendar/' + encodeURIComponent(input.formSlug),
         JSON.stringify({ formSlug: input.formSlug, environment: 'preview', isTest })],
     )
     await client.query('COMMIT')
     committed = true
-    return { appointmentId }
+    return { appointmentId, isTest, scheduleEventId }
   } finally {
     if (!committed) await client.query('ROLLBACK').catch(() => undefined)
     client.release(committed ? undefined : true)

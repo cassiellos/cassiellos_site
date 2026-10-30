@@ -203,6 +203,9 @@ export async function confirmBookingRequest(
         meetingTitle: form.meetingName,
         invitationSent: false,
         environment: 'preview',
+        // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.
+        ...(saved.isTest === false
+          ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } } : {}),
       },
     }
   } catch {

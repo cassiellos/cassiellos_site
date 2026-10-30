@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { describe, it } from 'node:test'
 import { getBookingForm } from './booking-forms'
 import { handleLeadIntake, type IntakeDeps } from './booking-intake-request'
-import type { LeadSubmissionInput } from './lead-intake'
+import { attributionForStorage, type LeadSubmissionInput } from './lead-intake'
+import { serializeConsent } from '../privacy/consent'
 import {
   TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike, type TurnstileConfig,
 } from './turnstile'
@@ -145,5 +146,76 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     const r = await handleLeadIntake(t.deps, { value: body(), remoteIp: null })
     assert.equal(r.status, 201)
     assert.equal('resubmitted' in r.body, false)
+  })
+
+  it('Lead no navegador: só para lead NOVO e REAL (event_id vindo do CRM)', async () => {
+    const cases = [
+      { result: { reused: false, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: true },
+      { result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: false },
+      { result: { reused: false, resubmitted: true, isTest: false, leadEventId: null }, expect: false },
+      { result: { reused: true, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: false },
+    ]
+    for (const c of cases) {
+      const t = setup()
+      t.deps.saveLead = async () => ({ leadId: randomUUID(), submissionId: randomUUID(), ...c.result })
+      const r = await handleLeadIntake(t.deps, { value: body(), remoteIp: null })
+      assert.equal('tracking' in r.body, c.expect, JSON.stringify(c.result))
+      if (c.expect) assert.deepEqual(r.body.tracking, { lead: { eventName: 'Lead', eventId: 'lead_abc123def456' } })
+    }
+  })
+
+  const ACCEPTED_COOKIE = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: true })
+  const REFUSED_COOKIE = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: false })
+
+  it('decisão C2: fbp/fbc NUNCA seguem para o CRM — só a escolha sim/não', async () => {
+    const t = setup()
+    await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false, decided: true, fbp: 'fb.1.1730000000000.1234567890' } }),
+      remoteIp: null, cookieHeader: REFUSED_COOKIE })
+    assert.deepEqual(t.saved[0].marketing, { consent: false, decided: true })
+    const t2 = setup()
+    await handleLeadIntake(t2.deps, { value: body({ marketing: {
+      consent: true, fbp: 'fb.1.1730000000000.1234567890', fbc: 'fb.1.1730000000000.IwAR0abcDEF_123', email: 'x@y.com',
+    } }), remoteIp: null, cookieHeader: ACCEPTED_COOKIE })
+    assert.deepEqual(t2.saved[0].marketing, { consent: true, decided: true })
+    assert.equal(JSON.stringify(t2.saved[0]).includes('fb.1.'), false, 'nenhum identificador fbp/fbc chega à gravação')
+    const t3 = setup()
+    await handleLeadIntake(t3.deps, { value: body(), remoteIp: null })
+    assert.deepEqual(t3.saved[0].marketing, { consent: false, decided: false }, 'sem escolha = sem consentimento')
+  })
+
+  it('decisão G2: fbclid só segue com consentimento VALIDADO no servidor (corpo + cookie)', async () => {
+    const attribution = { utm_source: 'meta', utm_campaign: 'odonto', fbclid: 'IwAR0testClickId_123' }
+    const cases: [string, Record<string, unknown>, string | null, boolean, { consent: boolean; decided: boolean }][] = [
+      ['aceite confirmado pelo cookie', { consent: true, decided: true }, ACCEPTED_COOKIE, true, { consent: true, decided: true }],
+      ['aceite sem cookie', { consent: true, decided: true }, null, false, { consent: false, decided: false }],
+      ['aceite no corpo, recusa no cookie', { consent: true, decided: true }, REFUSED_COOKIE, false, { consent: false, decided: false }],
+      ['recusa explícita', { consent: false, decided: true }, REFUSED_COOKIE, false, { consent: false, decided: true }],
+      ['sem escolha (cookie de aceite sozinho não basta)', {}, ACCEPTED_COOKIE, false, { consent: false, decided: false }],
+    ]
+    for (const [title, marketing, cookieHeader, keepsClickId, expected] of cases) {
+      const t = setup()
+      const r = await handleLeadIntake(t.deps, { value: body({ attribution, marketing }), remoteIp: null, cookieHeader })
+      assert.equal(r.status, 201, title)
+      assert.deepEqual(t.saved[0].marketing, expected, title)
+      assert.equal('fbclid' in t.saved[0].attribution, keepsClickId, title)
+      assert.deepEqual({ utm_source: t.saved[0].attribution.utm_source, utm_campaign: t.saved[0].attribution.utm_campaign },
+        { utm_source: 'meta', utm_campaign: 'odonto' }, 'utm_* preservados: ' + title)
+    }
+  })
+
+  it('camada de gravação também descarta fbclid sem consentimento (defesa em profundidade)', () => {
+    const a = { utm_source: 'meta', fbclid: 'IwAR0abc' }
+    assert.deepEqual(attributionForStorage(a, { consent: true, decided: true }), a)
+    for (const m of [{ consent: false, decided: true }, { consent: false, decided: false }, null, undefined]) {
+      assert.deepEqual(attributionForStorage(a, m), { utm_source: 'meta' })
+    }
+    assert.deepEqual(attributionForStorage({ utm_source: 'x' }, null), { utm_source: 'x' })
+  })
+
+  it('recusar marketing não impede o cadastro', async () => {
+    const t = setup()
+    const r = await handleLeadIntake(t.deps, { value: body({ marketing: { consent: false } }), remoteIp: null })
+    assert.equal(r.status, 201)
+    assert.equal(t.saved.length, 1)
   })
 })

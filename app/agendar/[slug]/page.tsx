@@ -4,6 +4,7 @@ import { getBookingForm } from '@/lib/crm/booking-forms'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
 import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
+import { getMetaPixelConfig } from '@/lib/marketing/meta'
 import BookingExperience from './booking-experience'
 import './booking.css'
 
@@ -39,6 +40,8 @@ export default async function NicheBookingPage({
     bookingMode: getCrmBookingMode(),
     allowlistActive: Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim()),
   })
+  // Meta Pixel: desligado salvo META_PIXEL_ENABLED=true + META_PIXEL_ID válido (o ID do Pixel é público).
+  const pixel = getMetaPixelConfig()
   return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey}
-    analyticsMode={analyticsMode} />
+    analyticsMode={analyticsMode} metaPixelId={pixel.enabled ? pixel.pixelId : null} />
 }

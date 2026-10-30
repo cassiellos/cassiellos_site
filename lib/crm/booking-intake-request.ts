@@ -1,5 +1,6 @@
 import type { BookingForm } from './booking-forms'
 import type { LeadSubmissionInput, LeadSubmissionResult } from './lead-intake'
+import { META_CLICK_ID_PARAM, resolveMarketingConsent } from '../marketing/meta'
 import {
   TURNSTILE_BOOKING_ACTION, publicTurnstileError,
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
@@ -57,6 +58,8 @@ export type IntakeDeps = {
   createGrant: (data: { leadId: string; submissionId: string; formSlug: string }) => string
   classifyNewLeadAsTest: (email: string) => boolean
   bookingMode: string
+  /** Origem pública do funil (ex.: https://crm.cassiellos.com.br) para o evento Lead. */
+  publicOrigin?: string
   /** Somente códigos e motivos — nunca token, IP, e-mail ou segredo. */
   log?: (event: string, details: { reason?: TurnstileFailure | string; codes?: string[] }) => void
 }
@@ -65,7 +68,11 @@ export type HandlerResponse = { status: number; body: Record<string, unknown> }
 
 export async function handleLeadIntake(
   deps: IntakeDeps,
-  input: { value: Record<string, unknown>; remoteIp: string | null },
+  input: {
+    value: Record<string, unknown>; remoteIp: string | null
+    /** Cabeçalho Cookie da requisição: valida a escolha de marketing (cassiellos_consent) no servidor. */
+    cookieHeader?: string | null
+  },
 ): Promise<HandlerResponse> {
   const value = input.value
   if (value.website) return { status: 400, body: { error: 'INVALID_REQUEST' } } // hidden bot trap
@@ -85,8 +92,13 @@ export async function handleLeadIntake(
   if (!answers) return { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } }
   if (value.privacyAccepted !== true) return { status: 400, body: { error: 'PRIVACY_NOT_ACCEPTED' } }
 
+  // Marketing choice validated on the server (body + consent cookie of this request).
+  // Only the yes/no choice reaches the CRM; fbp/fbc are discarded (decision C2).
+  const marketing = resolveMarketingConsent(value.marketing, input.cookieHeader)
   // Mesmas chaves de antes (utm_* + fbclid); UTM com aparência de e-mail é descartado (lib/crm/attribution).
   const attribution = sanitizeAttribution(value.attribution, clean)
+  // Decision G2: the Meta click id is kept ONLY with validated marketing consent.
+  if (!marketing.consent) delete attribution[META_CLICK_ID_PARAM]
 
   // Anti-abuse check happens on the server before ANY database write.
   if (deps.turnstileConfig.status !== 'ready') {
@@ -114,7 +126,12 @@ export async function handleLeadIntake(
       formVersion: form.version, niche: form.niche, answers, attribution,
       newLeadIsTest: deps.classifyNewLeadAsTest(email), bookingMode: deps.bookingMode,
       protection: { turnstile: 'verified', action: check.action, hostname: check.hostname, challengeTs: check.challengeTs },
+      marketing,
+      eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar/' + encodeURIComponent(form.slug) : null,
     })
+    // Browser Lead event only for a NEW, REAL lead (never tests, reuses or resubmissions).
+    const leadEvent = !result.reused && !result.resubmitted && result.isTest === false && result.leadEventId
+      ? { lead: { eventName: 'Lead', eventId: result.leadEventId } } : null
     return {
       status: result.reused ? 200 : 201,
       body: {
@@ -125,6 +142,7 @@ export async function handleLeadIntake(
           leadId: result.leadId, submissionId: result.submissionId, formSlug: form.slug,
         }),
         reused: result.reused, environment: 'preview',
+        ...(leadEvent ? { tracking: leadEvent } : {}),
       },
     }
   } catch {

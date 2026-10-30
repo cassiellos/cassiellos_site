@@ -1,4 +1,7 @@
 import type { PoolClient } from 'pg'
+import { CRM_POLICY_VERSION } from './policy-version'
+import { META_CLICK_ID_PARAM, leadTrackingEventId, type MarketingConsentInput } from '../marketing/meta'
+import { applyMarketingConsentChange } from './marketing-consent'
 
 /**
  * Gravação dos envios do formulário público de diagnóstico (Mini CRM Cassiellos).
@@ -17,7 +20,20 @@ import type { PoolClient } from 'pg'
  * Edições administrativas usam outras rotas e não passam por aqui.
  */
 
-export const LEAD_POLICY_VERSION = '2026-08-22'
+/** Versão das políticas gravada como evidência dos consentimentos (lib/crm/policy-version.ts). */
+export const LEAD_POLICY_VERSION = CRM_POLICY_VERSION
+export const MARKETING_POLICY_VERSION = CRM_POLICY_VERSION
+
+/** Decision G2: the Meta click id (fbclid) is stored only with marketing consent. */
+export function attributionForStorage(
+  attribution: Record<string, string>,
+  marketing: MarketingConsentInput | null | undefined,
+): Record<string, string> {
+  if (marketing?.consent === true || !(META_CLICK_ID_PARAM in attribution)) return attribution
+  const { [META_CLICK_ID_PARAM]: _dropped, ...rest } = attribution
+  void _dropped
+  return rest
+}
 
 export type MergeableLeadField = 'full_name' | 'whatsapp' | 'company' | 'segment'
 const MERGEABLE_FIELDS: readonly MergeableLeadField[] = ['full_name', 'whatsapp', 'company', 'segment']
@@ -80,6 +96,10 @@ export type LeadSubmissionInput = {
    * (Fase 3 / item 4). Só envios com turnstile 'verified' podem confirmar reunião.
    */
   protection?: LeadSubmissionProtection | null
+  /** Escolha de cookies de marketing (somente sim/não; fbp/fbc NÃO são gravados — decisão C2). */
+  marketing?: MarketingConsentInput | null
+  /** URL da página do formulário, sem parâmetros (origem do evento Lead). */
+  eventSourceUrl?: string | null
 }
 
 export type LeadSubmissionProtection = {
@@ -94,6 +114,10 @@ export type LeadSubmissionResult = {
   submissionId: string
   reused: boolean
   resubmitted: boolean
+  /** Classificação do lead (existente ou recém-criado). */
+  isTest?: boolean
+  /** Evento interno "Lead" criado AGORA (só para lead novo; reenvios não geram conversão). */
+  leadEventId?: string | null
 }
 
 type ConnectablePool = { connect(): Promise<PoolClient> }
@@ -171,8 +195,12 @@ export async function saveLeadSubmission(
         JSON.stringify({
           niche: input.niche, formSlug: input.formSlug,
           contact: { name: input.name, email, whatsapp: input.phone },
-          questions: input.answers, attribution: input.attribution,
+          questions: input.answers, attribution: attributionForStorage(input.attribution, input.marketing),
           ...(input.protection ? { protection: input.protection } : {}),
+          // Only the yes/no choice is stored; never browser identifiers (decision C2).
+          ...(input.marketing ? { marketing: {
+            consent: input.marketing.consent === true, decided: input.marketing.decided === true,
+          } } : {}),
         }), input.idempotencyKey],
     )
     const submissionId = submission.rows[0].id
@@ -183,6 +211,37 @@ export async function saveLeadSubmission(
        VALUES ($1,'diagnostic_contact','consent',true,$2)`,
       [leadId, LEAD_POLICY_VERSION],
     )
+    // Marketing consent (cookies): a grant is appended as evidence of this submission.
+    if (input.marketing?.consent === true) {
+      await client.query(
+        `INSERT INTO crm.consents
+         (lead_id, purpose, legal_basis, granted, policy_version)
+         VALUES ($1,'marketing_measurement','consent',true,$2)`,
+        [leadId, MARKETING_POLICY_VERSION],
+      )
+    } else if (input.marketing?.decided === true) {
+      // An explicit refusal on a new submission withdraws an earlier authorization of the
+      // same contact (auditable; no-op when there is none). Lead data is never changed.
+      await applyMarketingConsentChange(client, {
+        leadId, granted: false, source: 'form_submission', policyVersion: MARKETING_POLICY_VERSION,
+      })
+    }
+    // Internal "Lead" conversion: ONE per lead (first valid submission). Same event_id
+    // is used by the browser Pixel and, in the future, by the Conversions API.
+    let leadEventId: string | null = null
+    if (!plan) {
+      leadEventId = leadTrackingEventId(leadId)
+      await client.query(
+        `INSERT INTO crm.tracking_events
+           (lead_id, event_id, event_name, source_category, event_source_url, action_source, metadata)
+         VALUES ($1, $2, 'Lead', 'server', $3, 'website', $4::jsonb)
+         ON CONFLICT (event_id) DO NOTHING`,
+        [leadId, leadEventId, input.eventSourceUrl ?? null, JSON.stringify({
+          formSlug: input.formSlug, environment: 'preview', isTest,
+          marketingConsent: input.marketing?.consent === true,
+        })],
+      )
+    }
     const baseDetails = {
       submissionId, formSlug: input.formSlug, formVersion: input.formVersion,
       environment: 'preview', bookingMode: input.bookingMode, isTest,
@@ -198,7 +257,7 @@ export async function saveLeadSubmission(
     )
     await client.query('COMMIT')
     committed = true
-    return { leadId, submissionId, reused: false, resubmitted: Boolean(plan) }
+    return { leadId, submissionId, reused: false, resubmitted: Boolean(plan), isTest, leadEventId }
   } finally {
     if (!committed) await client.query('ROLLBACK').catch(() => undefined)
     client.release(committed ? undefined : true)

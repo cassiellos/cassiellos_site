@@ -193,3 +193,8 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 @media(max-width:760px){
   #cassiellos-booking .consent-notice{padding:14px 20px 16px}
 }
+/* Etapa 4 — aviso com duas categorias (só com o Meta Pixel habilitado): mesma aparência do aviso de métricas. */
+#cassiellos-booking .consent-category{margin-top:12px;padding-top:12px;border-top:1px solid rgba(206,223,249,.12)}
+#cassiellos-booking .consent-category h3{margin:0 0 4px;font-size:12px;font-weight:800;color:#e7f1fb}
+#cassiellos-booking .consent-current{margin-top:6px!important;color:#cfe3f5!important}
+#cassiellos-booking .consent-choice[aria-pressed=true]{border-color:#6cdeff;background:rgba(108,222,255,.12)}

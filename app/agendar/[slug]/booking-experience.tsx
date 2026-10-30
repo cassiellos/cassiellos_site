@@ -11,6 +11,8 @@ import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
 import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
+import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import MetaPixel from '@/components/marketing/meta-pixel'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 /** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
@@ -128,8 +130,10 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, turnstileSiteKey, analyticsMode,
-}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode }) {
+  form, bookingEnabled, turnstileSiteKey, analyticsMode, metaPixelId = null,
+}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null }) {
+  // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
+  const marketingEnabled = Boolean(metaPixelId)
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -157,6 +161,29 @@ export default function BookingExperience({
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
   const [turnstileReset, setTurnstileReset] = useState(0)
   const submissionKey = useRef<string | null>(null)
+  // Marketing choice last recorded in the CRM for this booking session (null = nothing saved yet).
+  const syncedMarketingConsent = useRef<boolean | null>(null)
+
+  // "Preferências de cookies" changed AFTER the form was sent, with this page still open:
+  // record the new choice (revocation or new authorization) in the CRM through the signed
+  // booking session. Best effort: the privacy channel remains available if it fails.
+  useEffect(() => {
+    if (!marketingEnabled || !bookingToken) return
+    function sync() {
+      const now = readMarketingConsent()
+      if (!now.decided || syncedMarketingConsent.current === now.consent) return
+      const previous = syncedMarketingConsent.current
+      syncedMarketingConsent.current = now.consent
+      fetch('/api/booking/consent', {
+        method: 'POST', cache: 'no-store', credentials: 'same-origin', keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingToken, marketing: now.consent }),
+      }).then(response => { if (!response.ok) syncedMarketingConsent.current = previous })
+        .catch(() => { syncedMarketingConsent.current = previous })
+    }
+    window.addEventListener(CONSENT_CHANGE_EVENT, sync)
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
+  }, [marketingEnabled, bookingToken])
 
   /** Marco do funil (lib/crm/funnel-events): só com consentimento, sem dados pessoais e sem duplicidade. */
   function funnel(name: FunnelEventName, extra: Record<string, unknown> = {}, ref?: string | null) {
@@ -264,6 +291,11 @@ export default function BookingExperience({
       placeholder: 'voce@clinica.com.br', autoComplete: 'email' },
   ], [form.fields])
   const question = questions[questionIndex]
+  // Same behaviour as autoFocus, but without scrolling the page: on small screens the jump
+  // used to push the page header and the cookie notice out of view before any choice.
+  const focusWithoutScroll = (input: HTMLInputElement | null) => {
+    if (input && document.activeElement !== input) input.focus({ preventScroll: true })
+  }
   const totalStages = questions.length + 3
   const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
@@ -331,9 +363,11 @@ export default function BookingExperience({
     setSaveError('')
     try {
       if (!submissionKey.current) submissionKey.current = window.crypto.randomUUID()
+      const marketingChoice = readMarketingConsent()
       funnel('booking_form_submit', {}, submissionKey.current)
       // Atribuição do cadastro (padrão UTM: docs/marketing/padrao-utm.md). UTM com aparência de e-mail é
-      // descartado; o servidor repete a higienização. fbclid segue como antes (sem uso atual; Etapa 4).
+      // descartado; o servidor repete a higienização. fbclid só com consentimento de marketing
+      // (decisão G2; o servidor confere de novo).
       const attribution: Record<string, string> = {}
       const params = new URLSearchParams(window.location.search)
       for (const key of UTM_KEYS) {
@@ -341,7 +375,7 @@ export default function BookingExperience({
         if (value) attribution[key] = value
       }
       const fbclid = params.get('fbclid')
-      if (fbclid) attribution.fbclid = fbclid.slice(0, 180)
+      if (fbclid && marketingChoice.consent) attribution.fbclid = fbclid.slice(0, 180)
       const answers: Record<string, string> = {}
       for (const field of form.fields) answers[field.name] = attendee[field.name]
       const response = await fetch('/api/booking/leads', {
@@ -353,6 +387,8 @@ export default function BookingExperience({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
           name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
           answers, attribution, privacyAccepted, turnstileToken,
+          // Only the yes/no cookie choice; fbp/fbc never reach the CRM (decision C2).
+          marketing: marketingChoice,
         }),
       })
       // Each Turnstile token is single-use: always request a fresh one afterwards.
@@ -368,7 +404,15 @@ export default function BookingExperience({
       }
       if (!('bookingToken' in result) || typeof result.bookingToken !== 'string' ||
         !result.bookingToken) throw new Error('INVALID_RESPONSE')
+      syncedMarketingConsent.current = marketingChoice.consent
       setBookingToken(result.bookingToken)
+      // Meta "Lead": só quando o backend registrou um lead NOVO e REAL (event_id do CRM); reenvio, reaproveitamento
+      // e teste não recebem `tracking`. Nunca no modo de teste.
+      if (analyticsMode === 'live' && 'tracking' in result && result.tracking && typeof result.tracking === 'object' &&
+        'lead' in result.tracking && result.tracking.lead && typeof result.tracking.lead === 'object' &&
+        'eventId' in result.tracking.lead) {
+        trackMetaConversion('Lead', result.tracking.lead.eventId, { content_name: form.slug })
+      }
       setLeadSaved(true)
       setStep(2)
       // Um lead por contato: a deduplicação usa o id do lead (resposta idempotente ou reenvio não contam de novo).
@@ -427,6 +471,12 @@ export default function BookingExperience({
         title: typeof value.meetingTitle === 'string' ? value.meetingTitle : form.meetingName,
         state: meetUrl ? 'confirmed' : 'link_pending',
       })
+      // Meta "Schedule": só quando o backend confirmou a reunião (evento válido no Google) de um lead REAL —
+      // o servidor só devolve `tracking` nesse caso; a repetição idempotente não devolve. Nunca no modo de teste.
+      const schedule = (value.tracking as { schedule?: { eventId?: unknown } } | undefined)?.schedule
+      if (analyticsMode === 'live' && value.alreadyConfirmed !== true && schedule) {
+        trackMetaConversion('Schedule', schedule.eventId, { content_name: form.slug })
+      }
       setStep(4)
       // Somente reunião confirmada pelo backend (id da reserva presente). A repetição idempotente
       // ("alreadyConfirmed") mostra a mesma reunião, mas não conta outra conversão.
@@ -466,6 +516,7 @@ export default function BookingExperience({
   }
 
   return <div id="cassiellos-booking">
+    <MetaPixel pixelId={metaPixelId}/>
     <header className="booking-header">
       <div className="booking-brand">
         <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" width="47" height="34"/>
@@ -493,7 +544,7 @@ export default function BookingExperience({
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
         <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
         {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
-        <ConsentNotice/>
+        <ConsentNotice marketingEnabled={marketingEnabled}/>
         <div className="booking-card-inside">
           <div className="booking-progress">
             <span className={step >= 1 ? 'is-current' : ''}>01 <span>Seus dados</span></span>
@@ -534,7 +585,8 @@ export default function BookingExperience({
                 <input id={'question-' + question.name} required
                   minLength={question.name === 'whatsapp' ? 10 : question.name === 'email' ? 5 : 2}
                   type={question.type} autoComplete={question.autoComplete}
-                  autoFocus maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
+                  ref={focusWithoutScroll}
+                  maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
                   placeholder={question.placeholder} value={attendee[question.name]}
                   onChange={event => update(question.name, event.target.value)}/>
               </label>}
