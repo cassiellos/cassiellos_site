@@ -45,6 +45,8 @@ export type ConfirmDeps = {
    * Sem esta dependência, valem as regras padrão do código (inclui feriados).
    */
   loadRules?: () => Promise<AvailabilityRules>
+  /** Homologação do Meta Pixel ativa nesta requisição (ver IntakeDeps.metaHomologation). */
+  metaHomologation?: boolean
 }
 
 /**
@@ -205,7 +207,9 @@ export async function confirmBookingRequest(
         environment: 'preview',
         // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.
         ...(saved.isTest === false
-          ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } } : {}),
+          ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } }
+          : deps.metaHomologation === true
+            ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId, homologation: true } } } : {}),
       },
     }
   } catch {

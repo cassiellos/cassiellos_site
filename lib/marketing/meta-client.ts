@@ -54,12 +54,16 @@ function markSent(eventId: string): void {
  * Não faz nada se o Pixel não estiver carregado (chave desligada, página fora do funil ou sem
  * consentimento de marketing), se o event_id for inválido ou se já tiver sido enviado nesta aba.
  */
-export function trackMetaConversion(eventName: MetaEventName, eventId: unknown, params: { content_name?: string } = {}): boolean {
+export function trackMetaConversion(
+  eventName: MetaEventName, eventId: unknown, params: { content_name?: string; homologation?: boolean } = {},
+): boolean {
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return false
   if (!marketingAllowed()) return false
   if (typeof eventId !== 'string' || !EVENT_ID.test(eventId) || sentIds().includes(eventId)) return false
-  const safe = typeof params.content_name === 'string' && /^[a-z0-9-]{1,64}$/.test(params.content_name)
+  const safe: Record<string, string> = typeof params.content_name === 'string' && /^[a-z0-9-]{1,64}$/.test(params.content_name)
     ? { content_name: params.content_name } : {}
+  // Marca fixa e não pessoal dos eventos de homologação (enviados só ao dataset de homologação).
+  if (params.homologation === true) safe.cassiellos_teste = 'homologacao'
   window.fbq('track', eventName, safe, { eventID: eventId })
   markSent(eventId)
   return true

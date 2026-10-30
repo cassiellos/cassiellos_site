@@ -60,6 +60,12 @@ export type IntakeDeps = {
   bookingMode: string
   /** Origem pública do funil (ex.: https://crm.cassiellos.com.br) para o evento Lead. */
   publicOrigin?: string
+  /**
+   * Homologação do Meta Pixel ativa NESTA requisição (lib/marketing/homologation.ts: Preview, dataset de
+   * homologação, liberação administrativa temporária). Só então um lead de TESTE recebe o event_id — e o
+   * navegador o envia ao dataset de homologação, nunca ao comercial.
+   */
+  metaHomologation?: boolean
   /** Somente códigos e motivos — nunca token, IP, e-mail ou segredo. */
   log?: (event: string, details: { reason?: TurnstileFailure | string; codes?: string[] }) => void
 }
@@ -130,8 +136,9 @@ export async function handleLeadIntake(
       eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar/' + encodeURIComponent(form.slug) : null,
     })
     // Browser Lead event only for a NEW, REAL lead (never tests, reuses or resubmissions).
-    const leadEvent = !result.reused && !result.resubmitted && result.isTest === false && result.leadEventId
-      ? { lead: { eventName: 'Lead', eventId: result.leadEventId } } : null
+    const homologation = deps.metaHomologation === true && result.isTest === true
+    const leadEvent = !result.reused && !result.resubmitted && result.leadEventId && (result.isTest === false || homologation)
+      ? { lead: { eventName: 'Lead', eventId: result.leadEventId, ...(homologation ? { homologation: true } : {}) } } : null
     return {
       status: result.reused ? 200 : 201,
       body: {

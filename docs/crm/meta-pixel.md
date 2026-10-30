@@ -89,3 +89,14 @@ Situação em 30/10/2026 (Etapa 4):
   encarregado ou enquadramento como pequeno porte confirmado, prazo de retenção dos consentimentos.
 - `CRM_POLICY_VERSION` (`lib/crm/policy-version.ts`) = data **efetiva** da publicação das políticas revisadas (nunca futura).
 - Revisão jurídica dos textos aprovada.
+
+## Homologação de Lead e Schedule (somente Preview)
+
+`lib/marketing/homologation.ts` + `POST/DELETE /api/crm/meta-homologation` + painel em CRM › Conversões.
+Exige `META_HOMOLOGATION_PIXEL_ID` (dataset de homologação **diferente** do comercial). O administrador libera o
+próprio navegador por até 30 min (cookie assinado `__Host-cassiellos_meta_homolog`, HttpOnly). Enquanto ativo, a
+página `/agendar` carrega o Pixel de **homologação no lugar do comercial**; o backend devolve o `event_id` de
+lead/reunião de **teste** e o navegador envia Lead/Schedule com a marca `cassiellos_teste=homologacao`, depois da
+resposta real do backend e com consentimento de marketing. Fora do Preview, sem o dataset ou sem a liberação, o
+comportamento é o de sempre (teste nunca vira conversão). Registro: log do servidor `meta_homologation` (referência
+não reversível da sessão e horário).

@@ -130,8 +130,12 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, turnstileSiteKey, analyticsMode, metaPixelId = null,
-}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null }) {
+  form, bookingEnabled, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
+}: {
+  form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
+  /** Homologação do Meta Pixel ativa (Pixel de homologação no lugar do comercial; ver lib/marketing/homologation.ts). */
+  metaHomologation?: { expiresAt: string } | null
+}) {
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
   const marketingEnabled = Boolean(metaPixelId)
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
@@ -408,10 +412,12 @@ export default function BookingExperience({
       setBookingToken(result.bookingToken)
       // Meta "Lead": só quando o backend registrou um lead NOVO e REAL (event_id do CRM); reenvio, reaproveitamento
       // e teste não recebem `tracking`. Nunca no modo de teste.
-      if (analyticsMode === 'live' && 'tracking' in result && result.tracking && typeof result.tracking === 'object' &&
+      // Na homologação, o lead de teste só recebe `tracking` do servidor com a liberação válida; o evento vai ao
+      // dataset de homologação (o Pixel carregado é o de homologação) e leva a marca `cassiellos_teste`.
+      if ((analyticsMode === 'live' || metaHomologation) && 'tracking' in result && result.tracking && typeof result.tracking === 'object' &&
         'lead' in result.tracking && result.tracking.lead && typeof result.tracking.lead === 'object' &&
         'eventId' in result.tracking.lead) {
-        trackMetaConversion('Lead', result.tracking.lead.eventId, { content_name: form.slug })
+        trackMetaConversion('Lead', result.tracking.lead.eventId, { content_name: form.slug, homologation: Boolean(metaHomologation) })
       }
       setLeadSaved(true)
       setStep(2)
@@ -474,8 +480,8 @@ export default function BookingExperience({
       // Meta "Schedule": só quando o backend confirmou a reunião (evento válido no Google) de um lead REAL —
       // o servidor só devolve `tracking` nesse caso; a repetição idempotente não devolve. Nunca no modo de teste.
       const schedule = (value.tracking as { schedule?: { eventId?: unknown } } | undefined)?.schedule
-      if (analyticsMode === 'live' && value.alreadyConfirmed !== true && schedule) {
-        trackMetaConversion('Schedule', schedule.eventId, { content_name: form.slug })
+      if ((analyticsMode === 'live' || metaHomologation) && value.alreadyConfirmed !== true && schedule) {
+        trackMetaConversion('Schedule', schedule.eventId, { content_name: form.slug, homologation: Boolean(metaHomologation) })
       }
       setStep(4)
       // Somente reunião confirmada pelo backend (id da reserva presente). A repetição idempotente
@@ -544,6 +550,10 @@ export default function BookingExperience({
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
         <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
         {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
+        {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status">
+          <strong>HOMOLOGAÇÃO DO META PIXEL</strong> · Eventos deste navegador vão só para o dataset de homologação,
+          até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}.
+          Use apenas o contato de teste.</div>}
         <ConsentNotice marketingEnabled={marketingEnabled}/>
         <div className="booking-card-inside">
           <div className="booking-progress">

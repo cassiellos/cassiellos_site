@@ -198,3 +198,4 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .consent-category h3{margin:0 0 4px;font-size:12px;font-weight:800;color:#e7f1fb}
 #cassiellos-booking .consent-current{margin-top:6px!important;color:#cfe3f5!important}
 #cassiellos-booking .consent-choice[aria-pressed=true]{border-color:#6cdeff;background:rgba(108,222,255,.12)}
+#cassiellos-booking .booking-homologation-banner{background:rgba(241,60,75,.14);border-color:rgba(241,60,75,.45)}

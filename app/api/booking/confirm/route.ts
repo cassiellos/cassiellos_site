@@ -7,6 +7,7 @@ import { getCrmPool } from '@/lib/crm/db'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { activeHomologation } from '@/lib/marketing/homologation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     createEvent: createGoogleBooking,
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
     allowedEmail: process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim() || '',
+    metaHomologation: activeHomologation(request.headers.get('cookie')) !== null,
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })

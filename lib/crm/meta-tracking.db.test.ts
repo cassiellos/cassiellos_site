@@ -140,13 +140,17 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     }
   })
 
-  async function confirmFor(session: BookingSession, leadEmail: string) {
+  async function confirmFor(session: BookingSession, leadEmail: string, extra: { metaHomologation?: boolean; failGoogle?: boolean } = {}) {
     // Regras ATUAIS (disponibilidade V2) com janela ampliada só no teste, como em booking-no-invite.db.test.ts.
     const slot = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => listAvailableSlots(new Date(Date.now() + d * DAY).toISOString().slice(0, 10), [], TEST_RULES)).find(x => x.length)![0]
     return confirmBookingRequest({
       pool, verifySession: () => session, getForm: getBookingForm,
-      readBusy: async () => [], createEvent: async i => ({ id: 'evt' + i.requestId.replaceAll('-', ''), meetingUrl: null, htmlLink: null }),
+      readBusy: async () => [], createEvent: async i => {
+        if (extra.failGoogle) throw new Error('CRM_GOOGLE_CALENDAR_UNAVAILABLE')
+        return { id: 'evt' + i.requestId.replaceAll('-', ''), meetingUrl: null, htmlLink: null }
+      },
       calendarId: 'cal-' + randomUUID(), allowedEmail: leadEmail, loadRules: async () => TEST_RULES,
+      metaHomologation: extra.metaHomologation,
     }, { bookingToken: 'x', startAt: slot.startAt, pageOrigin: ORIGIN })
   }
 
@@ -160,6 +164,23 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     const test = await confirmFor(await sessionFor(testEmail, GRANT, true), testEmail)
     assert.equal(test.status, 201)
     assert.equal('tracking' in test.body, false, 'reunião de teste nunca vira conversão')
+  })
+
+  it('homologação: Schedule de TESTE só com a liberação, após a reunião confirmada; falha no Google = nada', async () => {
+    const a = email('homolog.ok')
+    const ok = await confirmFor(await sessionFor(a, GRANT, true), a, { metaHomologation: true })
+    assert.equal(ok.status, 201)
+    const schedule = (ok.body.tracking as { schedule: { eventName: string; eventId: string; homologation?: boolean } }).schedule
+    assert.equal(schedule.eventName, 'Schedule')
+    assert.equal(schedule.homologation, true)
+    assert.match(schedule.eventId, /^chronos_scheduled_[0-9a-f]{32}$/)
+    const b = email('homolog.sem')
+    const again = await confirmFor(await sessionFor(b, GRANT, true), b)
+    assert.equal('tracking' in again.body, false, 'sem liberação: teste nunca vira conversão')
+    const f = email('homolog.falha')
+    const failed = await confirmFor(await sessionFor(f, GRANT, true), f, { metaHomologation: true, failGoogle: true })
+    assert.notEqual(failed.status, 201)
+    assert.equal('tracking' in failed.body, false, 'sem evento no Google, sem Schedule')
   })
 
   it('REVOGAÇÃO pela página aberta: auditável, sem tocar no cadastro, e bloqueia a futura CAPI', async () => {

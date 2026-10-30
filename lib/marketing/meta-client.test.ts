@@ -69,6 +69,16 @@ describe('Meta Pixel — conversões no navegador', () => {
     assert.match(decodeURIComponent(doc.cookie), /"analytics":true,"marketing":false/)
   })
 
+  it('homologação: mesma regra de consentimento e deduplicação, com marca fixa e não pessoal', () => {
+    setMarketingConsent(true)
+    const id = 'lead_' + 'c'.repeat(32)
+    assert.equal(trackMetaConversion('Lead', id, { content_name: 'odontologia', homologation: true }), true)
+    assert.deepEqual(fbqCalls.at(-1), ['track', 'Lead', { content_name: 'odontologia', cassiellos_teste: 'homologacao' }, { eventID: id }])
+    assert.equal(trackMetaConversion('Lead', id, { content_name: 'odontologia', homologation: true }), false)
+    setMarketingConsent(false)
+    assert.equal(trackMetaConversion('Schedule', 'chronos_scheduled_' + 'd'.repeat(32), { homologation: true }), false)
+  })
+
   it('sem Pixel carregado (chave desligada): nada acontece', () => {
     setMarketingConsent(true)
     const fbq = win.fbq

@@ -8,6 +8,7 @@ import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { CRM_CANONICAL_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
 import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
+import { activeHomologation } from '@/lib/marketing/homologation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
     classifyNewLeadAsTest: email => classifyNewLeadAsTest({ email }),
     bookingMode: getCrmBookingMode(),
     publicOrigin: CRM_CANONICAL_ORIGIN,
+    metaHomologation: activeHomologation(request.headers.get('cookie')) !== null,
     // Reason codes only: never the token, IP, e-mail or secret.
     log: (event, details) => console.warn('[booking-leads]', event, details.reason ?? '', (details.codes ?? []).join(',')),
   }, { value, remoteIp: forwardedFor, cookieHeader: request.headers.get('cookie') })

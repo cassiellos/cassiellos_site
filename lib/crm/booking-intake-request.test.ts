@@ -164,6 +164,23 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     }
   })
 
+  it('homologação do Meta Pixel: lead de TESTE recebe event_id marcado só com a liberação ativa', async () => {
+    const cases = [
+      { homologation: true, result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: { lead: { eventName: 'Lead', eventId: 'lead_abc123def456', homologation: true } } },
+      { homologation: false, result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: null },
+      { homologation: true, result: { reused: true, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: null },
+      { homologation: true, result: { reused: false, resubmitted: true, isTest: true, leadEventId: null }, expect: null },
+      { homologation: true, result: { reused: false, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: { lead: { eventName: 'Lead', eventId: 'lead_abc123def456' } } },
+    ]
+    for (const c of cases) {
+      const t = setup()
+      t.deps.metaHomologation = c.homologation
+      t.deps.saveLead = async () => ({ leadId: randomUUID(), submissionId: randomUUID(), ...c.result })
+      const r = await handleLeadIntake(t.deps, { value: body(), remoteIp: null })
+      assert.deepEqual(r.body.tracking ?? null, c.expect, JSON.stringify(c))
+    }
+  })
+
   const ACCEPTED_COOKIE = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: true })
   const REFUSED_COOKIE = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: false })
 
