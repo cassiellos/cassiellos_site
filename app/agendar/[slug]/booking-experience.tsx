@@ -8,7 +8,11 @@ import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 /** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
-type Confirmation = { bookingRequestId: string; startAt: string; endAt: string; meetUrl: string | null; title: string }
+type Confirmation = {
+  bookingRequestId: string; startAt: string; endAt: string; meetUrl: string | null; title: string
+  /** Estado real do backend: 'confirmed' = evento com link do Meet; 'link_pending' = horário reservado, link em preparação. */
+  state: 'confirmed' | 'link_pending'
+}
 
 const MEET_URL = /^https:\/\/meet\.google\.com\/[a-z0-9-]{3,64}(?:\?[^\s]*)?$/i
 const timeFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
@@ -337,13 +341,16 @@ export default function BookingExperience({
       }
       if (!('ok' in data) || data.ok !== true) throw new Error('BOOKING_UNAVAILABLE')
       const value = data as Record<string, unknown>
+      // Confirmação repetida sem reunião ativa registrada: não exibir sucesso nem horário presumido.
+      if (value.alreadyConfirmed === true && typeof value.startAt !== 'string') throw new Error('BOOKING_ALREADY_REGISTERED')
       const startAt = typeof value.startAt === 'string' ? value.startAt : chosen.startAt
       const endAt = typeof value.endAt === 'string' ? value.endAt : chosen.endAt
+      const meetUrl = typeof value.googleMeetUrl === 'string' && MEET_URL.test(value.googleMeetUrl) ? value.googleMeetUrl : null
       setConfirmation({
         bookingRequestId: typeof value.bookingRequestId === 'string' ? value.bookingRequestId : '',
-        startAt, endAt,
-        meetUrl: typeof value.googleMeetUrl === 'string' && MEET_URL.test(value.googleMeetUrl) ? value.googleMeetUrl : null,
+        startAt, endAt, meetUrl,
         title: typeof value.meetingTitle === 'string' ? value.meetingTitle : form.meetingName,
+        state: meetUrl ? 'confirmed' : 'link_pending',
       })
       setStep(4)
     } catch (error) {
@@ -357,6 +364,7 @@ export default function BookingExperience({
         BOOKING_LIMIT_REACHED: 'Não foi possível concluir o agendamento online para este contato. Fale com nossa equipe.',
         BOOKING_REQUIRES_REVIEW: 'O agendamento precisa de verificação manual. Não tente novamente para evitar duplicidade.',
         BOOKING_DISABLED: 'A confirmação ainda não foi habilitada neste ambiente.',
+        BOOKING_ALREADY_REGISTERED: 'Já existe um agendamento registrado para esta inscrição. Para conferir, fale com nossa equipe.',
       }
       setConfirmationError(messages[code] || 'Não foi possível confirmar agora. Contate a equipe antes de tentar novamente.')
     } finally {
@@ -600,13 +608,19 @@ export default function BookingExperience({
             </button>
           </div>}
 
-          {step === 4 && <div className="booking-review booking-confirmed" role="status">
-            <div className="booking-card-heading">
+          {step === 4 && <div className="booking-review booking-confirmed" role="status"
+            data-state={confirmation?.state ?? 'confirmed'}>
+            {confirmation?.state === 'link_pending' ? <div className="booking-card-heading">
+              <div className="booking-step-label">HORÁRIO RESERVADO · LINK EM PREPARAÇÃO</div>
+              <h2>Seu horário foi reservado!</h2>
+              <p>O link da reunião ainda está sendo preparado. Nossa equipe entrará em contato pelo WhatsApp informado
+                para enviar as instruções de acesso.</p>
+            </div> : <div className="booking-card-heading">
               <div className="booking-step-label">AGENDAMENTO CONFIRMADO</div>
               <h2>Reunião registrada com sucesso.</h2>
-              <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: use os botões para
-                salvar a reunião na sua agenda.</p>
-            </div>
+              <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: se quiser, use os
+                botões para salvar a reunião na sua agenda.</p>
+            </div>}
             <div className="booking-review-list">
               <div><small>DATA</small><strong>{confirmation ? dateFormat.format(new Date(confirmation.startAt)) : date && humanDate(date)}</strong></div>
               <div><small>HORÁRIO</small><strong>{confirmation ? timeFormat.format(new Date(confirmation.startAt)) : chosen?.localTime} · Brasília · {form.durationMinutes} minutos</strong></div>
@@ -628,8 +642,7 @@ export default function BookingExperience({
               </div>
               {copyState === 'failed' && <p className="booking-calendar-hint" role="alert">Não foi possível copiar automaticamente.
                 Selecione o link acima e copie manualmente.</p>}
-            </> : <p className="booking-demo-confirm">O Google Calendar confirmou o evento. O link do Meet ainda está sendo
-                gerado; nossa equipe enviará o link pelo contato informado.</p>}
+            </> : null}
             {confirmation && <div className="booking-confirmed-actions" aria-label="Adicionar à minha agenda">
               <a className="booking-secondary" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
                 href={googleCalendarTemplateUrl({ title: confirmation.title, startAt: confirmation.startAt,
