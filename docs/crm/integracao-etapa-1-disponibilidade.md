@@ -53,3 +53,23 @@ Não inclui o agendamento sem convite, a privacidade nem o Meta Pixel.
 - **Janela de 3 dias:** haverá dias sem horários (ex.: hoje, sexta após 14h30, com Finados na segunda). Aceito em R-2.
 - **Testes de navegador** usam APIs simuladas. O comportamento real com o Google será conferido após a publicação.
 - **Próximas etapas** (sem convite, privacidade do funil, Pixel) não foram iniciadas.
+
+## Registro de aplicação da 0008 no Neon Preview (autorização I-1, 30/10/2026)
+
+O projeto não tem tabela de controle de migrações (consulta: nenhuma tabela `*migrat*`). Este registro é o controle da 0008.
+
+| Item | Valor |
+|---|---|
+| Organização / projeto / branch / banco | Cassiellos CRM / `cassiellos-crm` / **preview** (`br-solitary-darkness-b67vm982`) / `cassiellos_crm` |
+| Confirmação técnica | Os dados batem com o CRM Preview: reunião de teste `eb80fd41` (criada pelo Preview às 09h46 de 30/10) presente e cancelada |
+| Role | `cassiellos_crm_owner` (mesmo dono de todas as tabelas `crm`) |
+| Arquivo | `db/migrations/0008_availability.sql`, conteúdo conferido no editor (79 linhas não vazias, SHA-256 idêntico ao arquivo) |
+| Execução | 10 comandos (BEGIN, 4 CREATE TABLE, INSERT 1, 3 CREATE INDEX, COMMIT), todos com sucesso, por volta das 10h05 |
+| Antes | tabelas 0008: nenhuma; leads 7; reuniões confirmed 3 / completed 1 / cancelled 1; reservas confirmed 2 / cancelled 1; processing 0 |
+| Depois | 4 tabelas criadas (dono `cassiellos_crm_owner`); configuração seg–sex, 540–1080, 30 min, **180 min**, **3 dias**; blocks/exceptions/holiday_rules vazias; 7 índices; 41 restrições validadas |
+| Assinaturas (antes = depois) | reuniões `33ded84c8b8863de9f7fcb1f1049a66b`; reservas `20ab5a074976db3e01899904d4b1bb0f`; leads `d27eaff0d8b7dcca0a812d78275db807` |
+| Teste controlado | reunião `eb80fd41` cancelled; reserva `b87ccd78` cancelled; nenhuma reserva presa |
+| CRM publicado (`dae52f7`) | agenda, reservas, painel, leads, disponibilidade administrativa e página pública respondem 200; o código atual ignora as tabelas novas |
+| Vercel | nenhum erro de execução nos 30 min seguintes |
+
+As novas regras (3 h, 3 dias, feriados) **só valem no CRM depois do deploy** desta etapa, que ainda não está autorizado.
