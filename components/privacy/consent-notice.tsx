@@ -12,7 +12,7 @@ import {
  * - Fica no fluxo da página (não cobre campos nem botões) e não bloqueia o formulário: sem escolha,
  *   nada opcional é ativado.
  * - "Recusar" e "Aceitar" têm o mesmo peso visual; nada é pré-selecionado. A revogação vale imediatamente.
- * - Métricas (Etapa 3): texto aprovado. Marketing (Etapa 4, Meta Pixel): só aparece com o Pixel habilitado
+ * - Métricas (Etapa 3) e marketing (Etapa 4, texto aprovado em 30/10/2026). Marketing só aparece com o Pixel habilitado
  *   (`marketingEnabled`); com o Pixel desligado o aviso é exatamente o da Etapa 3.
  * O texto jurídico das políticas continua dependendo de aprovação.
  */
@@ -87,19 +87,21 @@ export default function ConsentNotice({ marketingEnabled = false }: { marketingE
       {analytics !== null && <p className="consent-current">Escolha atual: {analytics ? 'métricas aceitas' : 'métricas recusadas'}.</p>}
       <div className="consent-notice-actions">
         <button type="button" className="consent-choice" aria-pressed={analytics === false}
-          onClick={() => setAnalyticsConsent(false)}>Recusar</button>
+          onClick={() => setAnalyticsConsent(false)}>Recusar métricas</button>
         <button type="button" className="consent-choice" aria-pressed={analytics === true}
           onClick={() => setAnalyticsConsent(true)}>Aceitar métricas</button>
       </div>
     </div>
     <div className="consent-category" role="group" aria-labelledby="consent-marketing-title">
       <h3 id="consent-marketing-title">Cookies de marketing</h3>
-      <p>Com a sua autorização, usaremos o Meta Pixel, da Meta, para medir e otimizar nossos anúncios; a Meta
-        receberá identificadores do seu navegador. O formulário e o agendamento funcionam com qualquer escolha.</p>
+      <p>Com sua autorização, utilizamos o Meta Pixel, tecnologia da Meta, para medir os resultados dos nossos anúncios
+        e melhorar nossas campanhas. Nesse caso, a Meta recebe identificadores do seu navegador e o registro das visitas,
+        cadastros e agendamentos feitos nestas páginas, sem seu nome, e-mail ou telefone. Você pode aceitar ou recusar
+        esse rastreamento sem prejudicar o uso do formulário.</p>
       {marketing !== null && <p className="consent-current">Escolha atual: {marketing ? 'marketing aceito' : 'marketing recusado'}.</p>}
       <div className="consent-notice-actions">
         <button type="button" className="consent-choice" aria-pressed={marketing === false}
-          onClick={() => setMarketingConsent(false)}>Recusar</button>
+          onClick={() => setMarketingConsent(false)}>Recusar marketing</button>
         <button type="button" className="consent-choice" aria-pressed={marketing === true}
           onClick={() => setMarketingConsent(true)}>Aceitar marketing</button>
       </div>

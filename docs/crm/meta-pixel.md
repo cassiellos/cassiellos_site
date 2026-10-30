@@ -12,6 +12,13 @@ Situação em 29/10/2026:
 - textos jurídicos v2 prontos **localmente** (decisões A–F de 29/10/2026), ainda **não publicados**:
   revisão das Políticas de Privacidade e de Cookies (pendente; páginas institucionais não alteradas nesta etapa).
 
+Situação em 30/10/2026 (Etapa 4):
+- Pixel ID confirmado no código-base do Gerenciador de Eventos: **28992534033707610** (igual ao ID do conjunto de dados);
+- Meta: "Incluir automaticamente informações mais detalhadas de páginas e produtos" **desativado** (autorizado, P4);
+  correspondência avançada, eventos automáticos e rastreamento sem código continuam desativados;
+- aviso de marketing com o texto aprovado (P1) e políticas v3 em `local/stage4-pixel-activation`, **pendentes de aprovação**
+  (ver `docs/legal/historico-politicas.md`); o Pixel continua desligado até a publicação das políticas.
+
 ## Arquitetura
 
 | Peça | Onde | Regra |
