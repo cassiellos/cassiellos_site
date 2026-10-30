@@ -53,9 +53,17 @@ function monthDays(month: string): (string | null)[] {
 }
 
 function workingDate(day: string, today: string): boolean {
-  if (day < today || day > plusDays(today, 30)) return false
+  if (day < today || day > plusDays(today, 3)) return false
   const weekDay = new Date(day + 'T12:00:00Z').getUTCDay()
   return weekDay !== 0 && weekDay !== 6
+}
+
+/** Dias fechados vindos do servidor (feriados, políticas, bloqueios). Sem eles, vale a regra local. */
+type ServerCalendar = { today: string; lastDate: string; closedDates: string[] }
+
+function selectableDate(day: string, today: string, calendar: ServerCalendar | null): boolean {
+  if (!calendar) return workingDate(day, today)
+  return day >= calendar.today && day <= calendar.lastDate && !calendar.closedDates.includes(day)
 }
 
 function humanDate(day: string): string {
@@ -111,6 +119,7 @@ export default function BookingExperience({
   const [confirmationError, setConfirmationError] = useState('')
   const [confirmedMeetUrl, setConfirmedMeetUrl] = useState<string | null>(null)
   const [availabilityError, setAvailabilityError] = useState('')
+  const [serverCalendar, setServerCalendar] = useState<ServerCalendar | null>(null)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
   const [turnstileReset, setTurnstileReset] = useState(0)
@@ -121,6 +130,26 @@ export default function BookingExperience({
     setToday(current)
     setMonth(current.slice(0, 7))
   }, [])
+
+  useEffect(() => {
+    if (step !== 2 || !bookingToken) return
+    const controller = new AbortController()
+    fetch('/api/booking/calendar?form=' + encodeURIComponent(form.slug), {
+      cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+      headers: { 'X-Booking-Session': bookingToken },
+    })
+      .then(response => response.ok ? response.json() : null)
+      .then((data: unknown) => {
+        if (!data || typeof data !== 'object') return
+        const value = data as Record<string, unknown>
+        const isDay = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)
+        if (!isDay(value.today) || !isDay(value.lastDate) || !Array.isArray(value.closedDates)) return
+        setServerCalendar({ today: value.today, lastDate: value.lastDate, closedDates: value.closedDates.filter(isDay) })
+      })
+      // Falha: mantém a regra local; o servidor continua recusando dias fechados.
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [step, form.slug, bookingToken])
 
   useEffect(() => {
     if (step !== 2 || !date) return
@@ -189,7 +218,14 @@ export default function BookingExperience({
   const totalStages = questions.length + 3
   const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
-  const maxMonth = today ? plusDays(today, 30).slice(0, 7) : ''
+  // Nenhuma data da janela tem horário (fim de semana, feriado, bloqueio ou antecedência): mensagem aprovada (R-2).
+  const windowClosed = Boolean(serverCalendar) && (() => {
+    for (let day = serverCalendar!.today; day <= serverCalendar!.lastDate; day = plusDays(day, 1)) {
+      if (!serverCalendar!.closedDates.includes(day)) return false
+    }
+    return true
+  })()
+  const maxMonth = serverCalendar ? serverCalendar.lastDate.slice(0, 7) : today ? plusDays(today, 3).slice(0, 7) : ''
   const firstMonth = today ? today.slice(0, 7) : ''
 
   function update(name: keyof Attendee, value: string) {
@@ -325,6 +361,7 @@ export default function BookingExperience({
       const code = error instanceof Error ? error.message : ''
       const messages: Record<string, string> = {
         SLOT_UNAVAILABLE: 'Esse horário acabou de ficar indisponível. Escolha outro no calendário.',
+        INVALID_SLOT: 'Não foi possível validar o horário escolhido. Escolha novamente no calendário.',
         BOOKING_SESSION_EXPIRED: 'Sua sessão de agendamento expirou. Preencha novamente o formulário.',
         TEST_EMAIL_NOT_ALLOWED: 'Neste teste, só é possível agendar com o e-mail de teste autorizado.',
         BOOKING_ALREADY_PROCESSING: 'Já existe um agendamento em processamento. Não tente novamente: contate a equipe para conferir.',
@@ -508,7 +545,7 @@ export default function BookingExperience({
               {days.map((day, index) => day ? (
                 <button type="button" className="booking-day" key={day}
                   data-active={date === day} data-today={day === today}
-                  disabled={!today || !workingDate(day, today)}
+                  disabled={!today || !selectableDate(day, today, serverCalendar)}
                   onClick={() => { setDate(day); setChosen(null) }}
                   aria-pressed={date === day}
                   aria-label={humanDate(day)}>
@@ -521,7 +558,8 @@ export default function BookingExperience({
                 <strong>{date ? humanDate(date) : 'Selecione um dia'}</strong>
                 <small>Horário de Brasília · 30 minutos</small>
               </div>
-              {!date && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
+              {windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
+              {!date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
               {loading && <p className="booking-calendar-hint">Consultando disponibilidade real…</p>}
               {failed && <div className="booking-availability-error" role="alert">
                 {availabilityError || 'Não foi possível consultar a agenda agora.'}

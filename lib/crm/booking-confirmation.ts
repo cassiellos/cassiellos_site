@@ -3,8 +3,14 @@ import {
   checkBookingEligibility, finalizeBookingReservation, releaseReservationBeforeGoogle, reserveBookingSlot,
   type ConnectablePool, type EligibilityInput, type EligibilityResult, type ReserveResult,
 } from './booking-reservation'
-import { isBookableDate, listBookingSlots, type BusyInterval } from './booking-slots'
+import { isValidBookingDate, type BusyInterval } from './booking-slots'
+import {
+  DEFAULT_AVAILABILITY_RULES, isWithinWindow, listAvailableSlots, type AvailabilityRules,
+} from './availability/engine'
 import type { HandlerResponse } from './booking-intake-request'
+
+/** Grade de horários: 30 min (decisão D3). Como o fuso é -03:00, a grade local coincide com a UTC. */
+const SLOT_GRID_MS = 30 * 60_000
 
 /**
  * Confirmação de reunião (POST /api/booking/confirm), sem dependências de framework.
@@ -33,6 +39,12 @@ export type ConfirmDeps = {
   calendarId: string
   allowedEmail: string
   limits?: EligibilityInput['limits']
+  /**
+   * Regras de disponibilidade (horário comercial, feriados, bloqueios, exceções). Lidas a cada
+   * confirmação: a mesma decisão da listagem pública vale para chamadas diretas à API.
+   * Sem esta dependência, valem as regras padrão do código (inclui feriados).
+   */
+  loadRules?: () => Promise<AvailabilityRules>
 }
 
 export function bookingDay(startAt: string): string {
@@ -72,11 +84,15 @@ export async function confirmBookingRequest(
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(startAt)) {
     return { status: 400, body: { error: 'INVALID_SLOT' } }
   }
+  // Decisão D-D: 400 somente para pedido estruturalmente inválido (formato, data inexistente,
+  // horário fora da grade de 30 min). Horário bem formado que não está disponível = 409.
   const ms = Date.parse(startAt)
   if (!Number.isFinite(ms)) return { status: 400, body: { error: 'INVALID_SLOT' } }
   const normalizedStart = new Date(ms).toISOString()
+  if (normalizedStart.slice(0, 19) !== startAt.slice(0, 19)) return { status: 400, body: { error: 'INVALID_SLOT' } }
+  if (ms % SLOT_GRID_MS !== 0) return { status: 400, body: { error: 'INVALID_SLOT' } }
   const day = bookingDay(normalizedStart)
-  if (!isBookableDate(day)) return { status: 400, body: { error: 'INVALID_SLOT' } }
+  if (!isValidBookingDate(day)) return { status: 400, body: { error: 'INVALID_SLOT' } }
   const finishAt = new Date(ms + form.durationMinutes * 60_000).toISOString()
   const base = {
     leadId: session.leadId, submissionId: session.submissionId, formSlug: form.slug,
@@ -84,6 +100,14 @@ export async function confirmBookingRequest(
   }
 
   try {
+    // Availability rules first (no Google). Decisão D-D: data passada ou além da janela, fim de
+    // semana, dia não atendido, feriado/política, bloqueio ou fora do expediente = 409, sem Google.
+    const rules = deps.loadRules ? await deps.loadRules() : DEFAULT_AVAILABILITY_RULES
+    if (!isWithinWindow(day, rules) ||
+      !listAvailableSlots(day, [], rules).some(item => item.startAt === normalizedStart && item.endAt === finishAt)) {
+      return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
+    }
+
     // Read-only gate: blocked contacts never trigger a Google request.
     const eligibility = await checkBookingEligibility(deps.pool, base)
     if (eligibility.status !== 'eligible') return blockedResponse(eligibility)!
@@ -91,7 +115,7 @@ export async function confirmBookingRequest(
     // Google external availability is checked first; internal races are guarded
     // with the per-mailbox lock and the unique active-slot index.
     const busy = await deps.readBusy(day)
-    const slot = listBookingSlots(day, busy).find(item =>
+    const slot = listAvailableSlots(day, busy, rules).find(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!slot) return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
 
@@ -110,7 +134,7 @@ export async function confirmBookingRequest(
     try {
       latestBusy = await deps.readBusy(day)
     } catch { return { status: 503, body: { error: 'BOOKING_REQUIRES_REVIEW' } } }
-    const stillFree = listBookingSlots(day, latestBusy).some(item =>
+    const stillFree = listAvailableSlots(day, latestBusy, rules).some(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!stillFree) {
       await releaseReservationBeforeGoogle(deps.pool, reservation.id, 'EXTERNAL_CALENDAR_CONFLICT')

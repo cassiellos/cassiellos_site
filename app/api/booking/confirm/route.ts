@@ -4,6 +4,7 @@ import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { confirmBookingRequest } from '@/lib/crm/booking-confirmation'
 import { parseLimitExemptMailboxes } from '@/lib/crm/booking-reservation'
 import { getCrmPool } from '@/lib/crm/db'
+import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
     allowedEmail: process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim() || '',
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
+    loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })
   return json(result.body, result.status)
 }

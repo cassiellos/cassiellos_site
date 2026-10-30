@@ -5,13 +5,9 @@ import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { checkAvailabilityAccess } from '@/lib/crm/booking-confirmation'
 import { parseLimitExemptMailboxes } from '@/lib/crm/booking-reservation'
 import { AVAILABILITY_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
-import {
-  CRM_BOOKING_TIME_ZONE,
-  DEFAULT_BOOKING_POLICY,
-  isBookableDate,
-  isValidBookingDate,
-  listBookingSlots,
-} from '@/lib/crm/booking-slots'
+import { CRM_BOOKING_TIME_ZONE, isValidBookingDate } from '@/lib/crm/booking-slots'
+import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/crm/availability/engine'
+import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 
 export const runtime = 'nodejs'
@@ -48,9 +44,16 @@ export async function GET(request: NextRequest) {
   // server-side Turnstile check) can trigger calendar lookups.
   const session = verifyBookingGrant(request.headers.get('x-booking-session'))
   if (!session || session.formSlug !== form) return json({ error: 'BOOKING_SESSION_EXPIRED' }, 401)
-  if (!isBookableDate(date)) {
-    return json({ date, slots: [], timeZone: CRM_BOOKING_TIME_ZONE,
-      slotMinutes: DEFAULT_BOOKING_POLICY.slotMinutes, provisionalPolicy: true }, 200)
+  // Business hours, holidays, policies, manual blocks and exceptions (no Google call).
+  let rules: AvailabilityRules
+  try {
+    rules = await loadAvailabilityRules(getCrmPool())
+  } catch {
+    return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
+  }
+  if (!isOpenDate(date, rules)) {
+    return json({ date, slots: [], closed: true, timeZone: CRM_BOOKING_TIME_ZONE,
+      slotMinutes: rules.settings.slotMinutes }, 200)
   }
 
   let allowed: boolean
@@ -88,10 +91,9 @@ export async function GET(request: NextRequest) {
     }))
     return json({
       date,
-      slots: listBookingSlots(date, [...busy, ...internalBusy]),
+      slots: listAvailableSlots(date, [...busy, ...internalBusy], rules),
       timeZone: CRM_BOOKING_TIME_ZONE,
-      slotMinutes: DEFAULT_BOOKING_POLICY.slotMinutes,
-      provisionalPolicy: true,
+      slotMinutes: rules.settings.slotMinutes,
     }, 200)
   } catch {
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
