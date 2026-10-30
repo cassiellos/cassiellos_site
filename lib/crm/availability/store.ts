@@ -1,14 +1,21 @@
 import type { PoolClient } from 'pg'
 import {
-  AVAILABILITY_LIMITS, DEFAULT_AVAILABILITY_RULES, localInstant, validateSettings,
+  AVAILABILITY_LIMITS, DEFAULT_AVAILABILITY_RULES, localDate, localInstant, validateSettings,
   type AvailabilityException, type AvailabilityRules, type ManualBlock, type ManualBlockCategory,
 } from './engine'
-import { isKnownHolidayKey, type BlockRule, type HolidayRuleOverride } from './holidays'
+import { addDays, isKnownHolidayKey, type BlockRule, type HolidayRuleOverride } from './holidays'
+import {
+  CAPACITY_LIMITS, DEFAULT_CAPACITY_SETTINGS, DISABLED_CAPACITY, capacityForDate, gridMinutes, validateCapacitySettings,
+  type CapacityOverride, type CapacityOverrideAction, type CapacityRules,
+} from './capacity'
 
 /**
- * Persistência da disponibilidade (tabelas da migração 0008).
- * - Sem a migração aplicada (tabela inexistente, 42P01): usa o padrão do código — inclusive feriados e
+ * Persistência da disponibilidade (tabelas das migrações 0008 e 0009).
+ * - Sem a 0008 aplicada (tabela inexistente, 42P01): usa o padrão do código — inclusive feriados e
  *   políticas comerciais — e as alterações administrativas respondem MIGRATION_PENDING.
+ * - Sem a 0009 (capacidade diária): a capacidade fica DESLIGADA (nenhuma reserva interna) e as ações
+ *   de capacidade respondem CAPACITY_MIGRATION_PENDING. A detecção usa to_regclass (sem erro SQL),
+ *   para não abortar transações de quem chama.
  * - Qualquer outro erro de banco é propagado (o chamador falha fechado: nenhum horário é oferecido).
  * - Bloqueios e exceções não são apagados: são revogados (histórico preservado).
  * - Nenhuma função aqui toca reuniões, reservas ou o Google Calendar.
@@ -56,6 +63,7 @@ export async function loadAvailabilityRules(db: Queryable, now: Date = new Date(
         WHERE revoked_at IS NULL AND ends_at > $1 ORDER BY starts_at`, [since])
     const holidayRules = await db.query<{ rule_key: string; year: number | null; block_type: string; block_minute: number | null }>(
       'SELECT rule_key, year, block_type, block_minute FROM crm.holiday_rules')
+    const capacity = await loadCapacityRules(db, now)
     return {
       settings,
       blocks: blocks.rows.map((b): ManualBlock => ({
@@ -68,11 +76,43 @@ export async function loadAvailabilityRules(db: Queryable, now: Date = new Date(
       holidayOverrides: holidayRules.rows.map((r): HolidayRuleOverride => ({
         key: r.rule_key, year: r.year === null ? null : Number(r.year), block: toBlockRule(r.block_type, r.block_minute === null ? null : Number(r.block_minute)),
       })),
+      capacity,
       source: 'database',
     }
   } catch (error) {
     if (isUndefinedTable(error)) return { ...DEFAULT_AVAILABILITY_RULES }
     throw error
+  }
+}
+
+/** Capacidade diária (0009). Tabela ausente = desligada; configuração inválida no banco = falha fechada. */
+export async function loadCapacityRules(db: Queryable, now: Date = new Date()): Promise<CapacityRules> {
+  const present = await db.query<{ settings: string | null; overrides: string | null }>(
+    `SELECT to_regclass('crm.availability_capacity')::text AS settings,
+            to_regclass('crm.availability_capacity_overrides')::text AS overrides`)
+  if (!present.rows[0]?.settings || !present.rows[0]?.overrides) return DISABLED_CAPACITY
+  const row = (await db.query<{
+    enabled: boolean; min_per_day: number; max_per_day: number; lunch_start_minute: number; lunch_end_minute: number; seed: number
+  }>(`SELECT enabled, min_per_day, max_per_day, lunch_start_minute, lunch_end_minute, seed
+        FROM crm.availability_capacity WHERE id = 1`)).rows[0]
+  let settings = { ...DEFAULT_CAPACITY_SETTINGS, enabled: false }
+  if (row) {
+    const checked = validateCapacitySettings({
+      enabled: row.enabled, minPerDay: Number(row.min_per_day), maxPerDay: Number(row.max_per_day),
+      lunchStartMinute: Number(row.lunch_start_minute), lunchEndMinute: Number(row.lunch_end_minute), seed: Number(row.seed),
+    })
+    if (!checked.ok) throw new Error('AVAILABILITY_SETTINGS_INVALID')
+    settings = checked.settings
+  }
+  const overrides = await db.query<{ id: string; day: string; action: CapacityOverrideAction; minute: number | null; reason: string }>(
+    `SELECT id, day::text AS day, action, minute, reason FROM crm.availability_capacity_overrides
+      WHERE revoked_at IS NULL AND day >= $1::date ORDER BY day, minute`, [addDays(localDate(now), -2)])
+  return {
+    settings,
+    overrides: overrides.rows.map((o): CapacityOverride => ({
+      id: o.id, date: o.day, action: o.action, minute: o.minute === null ? null : Number(o.minute), reason: o.reason,
+    })),
+    source: 'database',
   }
 }
 
@@ -124,6 +164,17 @@ const CATEGORIES: readonly ManualBlockCategory[] = ['day', 'partial', 'vacation'
 async function guard<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn() } catch (error) {
     if (isUndefinedTable(error)) throw new AvailabilityMigrationPendingError()
+    throw error
+  }
+}
+
+export class CapacityMigrationPendingError extends Error {
+  constructor() { super('CAPACITY_MIGRATION_PENDING') }
+}
+
+async function capacityGuard<T>(fn: () => Promise<T>): Promise<T> {
+  try { return await fn() } catch (error) {
+    if (isUndefinedTable(error)) throw new CapacityMigrationPendingError()
     throw error
   }
 }
@@ -222,5 +273,116 @@ export async function setHolidayRule(
          SET block_type = EXCLUDED.block_type, block_minute = EXCLUDED.block_minute, updated_at = now(), updated_by = EXCLUDED.updated_by`,
       [input.key, year, type, type === 'until' || type === 'after' ? minute : null, actor])
     return { ok: true as const }
+  })
+}
+
+// ── Capacidade diária (0009) ───────────────────────────────────────────────────────────────────
+
+/** Liga/desliga e ajusta quantidade e almoço. A semente não muda aqui (ver redistributeCapacity). */
+export async function saveCapacitySettings(db: Queryable, input: unknown, actor: string): Promise<AdminResult> {
+  const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+  const checked = validateCapacitySettings({ ...raw, seed: undefined })
+  if (!checked.ok) return { ok: false, error: 'INVALID_CAPACITY' }
+  const c = checked.settings
+  return capacityGuard(async () => {
+    await db.query(
+      `INSERT INTO crm.availability_capacity
+         (id, enabled, min_per_day, max_per_day, lunch_start_minute, lunch_end_minute, updated_at, updated_by)
+       VALUES (1, $1, $2, $3, $4, $5, now(), $6)
+       ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled, min_per_day = EXCLUDED.min_per_day,
+         max_per_day = EXCLUDED.max_per_day, lunch_start_minute = EXCLUDED.lunch_start_minute,
+         lunch_end_minute = EXCLUDED.lunch_end_minute, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [c.enabled, c.minPerDay, c.maxPerDay, c.lunchStartMinute, c.lunchEndMinute, actor])
+    return { ok: true as const }
+  })
+}
+
+/**
+ * Nova distribuição para TODAS as datas (incrementa a semente). Liberações feitas sobre a distribuição
+ * anterior deixam de fazer sentido e são revogadas (histórico mantido); reservas manuais e dias
+ * desligados continuam valendo.
+ */
+export async function redistributeCapacity(db: Queryable, actor: string, now: Date = new Date()): Promise<AdminResult<{ seed: number; releasesRevoked: number }>> {
+  return capacityGuard(async () => {
+    const updated = await db.query<{ seed: number }>(
+      `UPDATE crm.availability_capacity SET seed = CASE WHEN seed >= $2 THEN 1 ELSE seed + 1 END,
+              updated_at = now(), updated_by = $1 WHERE id = 1 RETURNING seed`, [actor, CAPACITY_LIMITS.maxSeed])
+    if (!updated.rowCount) return { ok: false as const, error: 'NOT_FOUND' }
+    const revoked = await db.query(
+      `UPDATE crm.availability_capacity_overrides SET revoked_at = now(), revoked_by = $1
+        WHERE revoked_at IS NULL AND action = 'release' AND day >= $2::date`, [actor, localDate(now)])
+    return { ok: true as const, seed: Number(updated.rows[0].seed), releasesRevoked: revoked.rowCount ?? 0 }
+  })
+}
+
+export type CapacityOverrideInput = { date?: unknown; time?: unknown; action?: unknown; reason?: unknown }
+export type ParsedCapacityOverride = { date: string; action: CapacityOverrideAction; minute: number | null; reason: string }
+const OVERRIDE_ACTIONS: readonly CapacityOverrideAction[] = ['release', 'hold', 'day_off']
+
+/** Validação estrutural (sem banco): ação, data local entre hoje e +1 ano, horário HH:MM e motivo. */
+export function parseCapacityOverride(input: CapacityOverrideInput, now: Date = new Date()): ParsedCapacityOverride | null {
+  const action = input.action as CapacityOverrideAction
+  const reason = cleanReason(input.reason)
+  if (!OVERRIDE_ACTIONS.includes(action) || reason === null) return null
+  if (typeof input.date !== 'string' || !DATE_RE.test(input.date)) return null
+  const date = input.date
+  const check = new Date(date + 'T12:00:00Z')
+  if (!Number.isFinite(check.getTime()) || check.toISOString().slice(0, 10) !== date) return null
+  const today = localDate(now)
+  if (date < today || date > addDays(today, CAPACITY_LIMITS.maxDaysAhead)) return null
+  if (action === 'day_off') return { date, action, minute: null, reason }
+  const minute = parseLocalTime(input.time)
+  if (minute === null || minute % 30 !== 0) return null
+  return { date, action, minute, reason }
+}
+
+/**
+ * Ajuste por data: liberar uma reserva automática, reservar um horário manualmente ou desligar as
+ * reservas automáticas do dia. Valida contra as regras ATUAIS (mesma função do servidor). Uma reserva
+ * manual sobre reunião confirmada NÃO altera a reunião: apenas devolve a contagem como aviso.
+ */
+export async function addCapacityOverride(
+  db: Queryable, input: ParsedCapacityOverride, actor: string, rules: AvailabilityRules,
+): Promise<AdminResult<{ id: string; overlappingMeetings: number }>> {
+  if (rules.capacity.source !== 'database') throw new CapacityMigrationPendingError()
+  const { date, action, minute, reason } = input
+  if (!rules.settings.workingDays.includes(new Date(date + 'T12:00:00Z').getUTCDay())) return { ok: false, error: 'INVALID_CAPACITY' }
+  if (minute !== null) {
+    if (!gridMinutes(rules.settings).includes(minute)) return { ok: false, error: 'INVALID_CAPACITY' }
+    const day = capacityForDate(date, rules.settings, rules.capacity)
+    if (action === 'release' && !day.generated.includes(minute)) return { ok: false, error: 'NOT_A_HOLD' }
+    if (action === 'hold' && day.effective.includes(minute)) return { ok: false, error: 'ALREADY_HELD' }
+  }
+  return capacityGuard(async () => {
+    let inserted
+    try {
+      inserted = await db.query<{ id: string }>(
+        `INSERT INTO crm.availability_capacity_overrides (day, action, minute, reason, created_by)
+         VALUES ($1::date, $2, $3, $4, $5) RETURNING id`, [date, action, minute, reason, actor])
+    } catch (error) {
+      if (error && typeof error === 'object' && (error as { code?: string }).code === '23505') return { ok: false as const, error: 'ALREADY_SET' }
+      throw error
+    }
+    let overlappingMeetings = 0
+    if (action === 'hold' && minute !== null) {
+      const start = new Date(localInstant(date, minute)).toISOString()
+      const end = new Date(localInstant(date, minute) + rules.settings.slotMinutes * 60_000).toISOString()
+      const meetings = await db.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM crm.booking_requests
+          WHERE status IN ('processing', 'confirmed') AND starts_at < $2 AND ends_at > $1`, [start, end])
+      overlappingMeetings = meetings.rows[0]?.n ?? 0
+    }
+    return { ok: true as const, id: inserted.rows[0].id, overlappingMeetings }
+  })
+}
+
+/** Desfaz um ajuste por data (revoga; o histórico é mantido). */
+export async function revokeCapacityOverride(db: Queryable, id: unknown, actor: string): Promise<AdminResult> {
+  if (typeof id !== 'string' || !UUID_RE.test(id)) return { ok: false, error: 'INVALID_ID' }
+  return capacityGuard(async () => {
+    const result = await db.query(
+      `UPDATE crm.availability_capacity_overrides SET revoked_at = now(), revoked_by = $2
+        WHERE id = $1 AND revoked_at IS NULL`, [id, actor])
+    return result.rowCount ? { ok: true as const } : { ok: false as const, error: 'NOT_FOUND' }
   })
 }

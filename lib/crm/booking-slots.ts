@@ -9,8 +9,10 @@ export type BusyInterval = { start: string; end: string }
 export type BookingSlot = { startAt: string; endAt: string; localTime: string }
 
 export type BookingPolicy = {
-  openHour: number
-  closeHour: number
+  /** Primeiro início do dia, em minutos desde 00:00 (09:00 = 540). */
+  openMinute: number
+  /** Último início do dia (18:00 = 1080). A reunião termina em lastStartMinute + slotMinutes. */
+  lastStartMinute: number
   slotMinutes: number
   minimumNoticeMinutes: number
   maximumDaysAhead: number
@@ -18,15 +20,16 @@ export type BookingPolicy = {
 }
 
 /**
- * Política comercial base (fonte única): seg–sex, 09h–18h, slots de 30 min, antecedência mínima de 3 h
- * e janela de 3 dias corridos (regras de 30/10/2026). O motor de disponibilidade
- * (lib/crm/availability/engine.ts) deriva os seus padrões daqui; o administrador ajusta no banco (0008).
+ * Política comercial base (fonte única): seg–sex, inícios das 09h00 às 18h00 (a última reunião termina
+ * às 18h30), slots de 30 min, antecedência mínima de 2 h e janela de 3 dias corridos (ajuste final de
+ * 30/10/2026). O motor de disponibilidade (lib/crm/availability/engine.ts) deriva os seus padrões daqui;
+ * o administrador ajusta no banco (0008/0009).
  */
 export const DEFAULT_BOOKING_POLICY: BookingPolicy = {
-  openHour: 9,
-  closeHour: 18,
+  openMinute: 9 * 60,
+  lastStartMinute: 18 * 60,
   slotMinutes: 30,
-  minimumNoticeMinutes: 3 * 60,
+  minimumNoticeMinutes: 2 * 60,
   maximumDaysAhead: 3,
   workingDays: [1, 2, 3, 4, 5],
 }
@@ -70,8 +73,8 @@ export function listBookingSlots(
   policy: BookingPolicy = DEFAULT_BOOKING_POLICY,
 ): BookingSlot[] {
   if (!isBookableDate(date, now, policy)) return []
-  if (policy.slotMinutes <= 0 || policy.slotMinutes > 240 || policy.openHour < 0 ||
-      policy.closeHour > 24 || policy.openHour >= policy.closeHour) return []
+  if (policy.slotMinutes <= 0 || policy.slotMinutes > 240 || policy.openMinute < 0 ||
+      policy.lastStartMinute + policy.slotMinutes > 24 * 60 || policy.openMinute > policy.lastStartMinute) return []
 
   const minStart = now.getTime() + policy.minimumNoticeMinutes * 60_000
   const intervals = busy.map(item => ({
@@ -80,9 +83,7 @@ export function listBookingSlots(
   })).filter(item => Number.isFinite(item.start) && Number.isFinite(item.end) && item.end > item.start)
 
   const slots: BookingSlot[] = []
-  for (let minute = policy.openHour * 60;
-    minute + policy.slotMinutes <= policy.closeHour * 60;
-    minute += policy.slotMinutes) {
+  for (let minute = policy.openMinute; minute <= policy.lastStartMinute; minute += policy.slotMinutes) {
     const hh = Math.floor(minute / 60)
     const mm = minute % 60
     const start = Date.parse(date + 'T' + two(hh) + ':' + two(mm) + ':00-03:00')

@@ -1,5 +1,6 @@
 import { CRM_BOOKING_TIME_ZONE, DEFAULT_BOOKING_POLICY, isValidBookingDate, type BookingSlot, type BusyInterval } from '../booking-slots'
 import { addDays, holidaysForYear, type BlockRule, type HolidayOccurrence, type HolidayRuleOverride } from './holidays'
+import { DISABLED_CAPACITY, capacityForDate, heldMinutes, type CapacityRules, type DayCapacity } from './capacity'
 
 /**
  * Motor de disponibilidade (sem Google e sem banco): decide quais horários podem ser oferecidos.
@@ -7,8 +8,9 @@ import { addDays, holidaysForYear, type BlockRule, type HolidayOccurrence, type 
  * Ordem de decisão para cada horário candidato:
  *   1. janela de agendamento (hoje … hoje + windowDays) e antecedência mínima;
  *   2. grade comercial (dias da semana + início/fim) OU uma exceção administrativa que libere o horário;
- *   3. feriados/políticas comerciais e bloqueios manuais removem o horário, salvo se ele estiver
- *      INTEIRAMENTE dentro de uma exceção administrativa;
+ *   3. feriados/políticas comerciais, bloqueios manuais e a capacidade diária reservada para atividades
+ *      internas (capacity.ts) removem o horário, salvo se ele estiver INTEIRAMENTE dentro de uma exceção
+ *      administrativa;
  *   4. ocupação real (Google Calendar + reservas no CRM) sempre remove — exceção nunca libera.
  * O servidor usa as MESMAS funções para listar e para validar a confirmação (chamada direta à API).
  * Nada aqui altera ou cancela reuniões já confirmadas.
@@ -16,18 +18,20 @@ import { addDays, holidaysForYear, type BlockRule, type HolidayOccurrence, type 
 
 export type AvailabilitySettings = {
   workingDays: number[] // 0 = domingo … 6 = sábado
-  openMinute: number // minutos desde 00:00 (09:00 = 540)
-  closeMinute: number // 18:00 = 1080
+  openMinute: number // primeiro início, em minutos desde 00:00 (09:00 = 540)
+  /** Término da última reunião (18:30 = 1110). Último início = closeMinute - slotMinutes (18:00). */
+  closeMinute: number
   slotMinutes: 30 // fixo (decisão D3)
   minNoticeMinutes: number
   windowDays: number
 }
 
-// Derivado da política comercial base (fonte única em booking-slots.ts): 3 h de antecedência e 3 dias corridos.
+// Derivado da política comercial base (fonte única em booking-slots.ts): 2 h de antecedência, inícios das
+// 09h00 às 18h00 (término 18h30) e 3 dias corridos.
 export const DEFAULT_AVAILABILITY_SETTINGS: AvailabilitySettings = {
   workingDays: [...DEFAULT_BOOKING_POLICY.workingDays],
-  openMinute: DEFAULT_BOOKING_POLICY.openHour * 60,
-  closeMinute: DEFAULT_BOOKING_POLICY.closeHour * 60,
+  openMinute: DEFAULT_BOOKING_POLICY.openMinute,
+  closeMinute: DEFAULT_BOOKING_POLICY.lastStartMinute + DEFAULT_BOOKING_POLICY.slotMinutes,
   slotMinutes: 30,
   minNoticeMinutes: DEFAULT_BOOKING_POLICY.minimumNoticeMinutes,
   windowDays: DEFAULT_BOOKING_POLICY.maximumDaysAhead,
@@ -49,12 +53,20 @@ export type AvailabilityRules = {
   blocks: ManualBlock[]
   exceptions: AvailabilityException[]
   holidayOverrides: HolidayRuleOverride[]
+  /** Capacidade diária reservada para atividades internas (0009). Sem a 0009: desligada. */
+  capacity: CapacityRules
   /** 'database' = regras do banco; 'defaults' = padrão do código (migração 0008 ainda não aplicada). */
   source: 'database' | 'defaults'
 }
 
 export const DEFAULT_AVAILABILITY_RULES: AvailabilityRules = {
-  settings: DEFAULT_AVAILABILITY_SETTINGS, blocks: [], exceptions: [], holidayOverrides: [], source: 'defaults',
+  settings: DEFAULT_AVAILABILITY_SETTINGS, blocks: [], exceptions: [], holidayOverrides: [], capacity: DISABLED_CAPACITY,
+  source: 'defaults',
+}
+
+/** Último início do dia (18:00 com o padrão): a reunião de 30 min termina em closeMinute. */
+export function lastStartMinute(settings: AvailabilitySettings): number {
+  return settings.closeMinute - settings.slotMinutes
 }
 
 // São Paulo não adota horário de verão desde 2019: deslocamento fixo de -03:00.
@@ -151,6 +163,9 @@ export function candidateSlots(date: string, rules: AvailabilityRules): Interval
   const closures = [
     ...holidaysOn(date, rules).map(h => blockInterval(date, h.block)),
     ...rules.blocks.map(toInterval),
+    // Capacidade diária: horários reservados para atividades internas (determinísticos por data).
+    ...heldMinutes(date, settings, rules.capacity ?? DISABLED_CAPACITY)
+      .map(m => ({ start: localInstant(date, m), end: localInstant(date, m) + step })),
   ].filter((i): i is Interval => Boolean(i))
   return [...starts].sort((a, b) => a - b)
     .map(start => ({ start, end: start + step }))
@@ -206,6 +221,12 @@ export function describeDate(date: string, rules: AvailabilityRules) {
     holidays: holidaysOn(date, rules),
     blocks: rules.blocks.filter(b => { const i = toInterval(b); return Boolean(i && overlaps(i, day)) }),
     exceptions: rules.exceptions.filter(e => { const i = toInterval(e); return Boolean(i && overlaps(i, day)) }),
+    capacity: capacityOf(date, rules),
     candidates: candidateSlots(date, rules).length,
   }
+}
+
+/** Reservas internas da data, para o painel (nunca exposto ao visitante). */
+export function capacityOf(date: string, rules: AvailabilityRules): DayCapacity {
+  return capacityForDate(date, rules.settings, rules.capacity ?? DISABLED_CAPACITY)
 }

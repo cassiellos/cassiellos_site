@@ -13,7 +13,19 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 | D-D | **Aprovada** | 409 `SLOT_UNAVAILABLE` para conflitos de disponibilidade; 400 `INVALID_SLOT` só para pedido estruturalmente inválido; mensagem clara ao visitante, sem detalhes técnicos (ver seção 3). |
 | D-E | **Aprovada** | Revisar as datas de 2027 quando o calendário federal oficial de 2027 for publicado (ver seção 6). |
 
-## 0.1 Regras comerciais de 30/10/2026 (R-1/R-2)
+## 0.0 Ajuste final de 30/10/2026 (vigente no código local; substitui 3 h e término 18h00)
+
+- **Antecedência mínima: 2 h**, com arredondamento para o próximo slot de 30 min. Exemplos: 13h00 → 15h00;
+  15h00 → 17h00; 09h10 → 11h30; 16h00 → só 18h00; 16h01 → nenhum no mesmo dia.
+- **Inícios das 09h00 às 18h00**, de 30 em 30 min. A última reunião começa às 18h00 e termina às 18h30. Início às
+  18h30 é recusado (409). No banco, `close_minute` continua sendo o término da última reunião (1110 = 18h30); o
+  painel mostra "Último início".
+- **Janela de 3 dias corridos**: sem mudança.
+- **Capacidade diária**: de 3 a 4 horários por dia útil reservados para atividades internas, com o almoço
+  priorizado. Detalhes em `docs/crm/ajuste-final-disponibilidade.md`.
+- Valem no Preview só depois da migração 0009 (preparada, **não aplicada**) ou de um ajuste salvo no painel.
+
+## 0.1 Regras comerciais de 30/10/2026 (R-1/R-2) — histórico, substituídas pelo item 0.0
 
 - **Antecedência mínima: 3 h** (antes 12 h). O primeiro horário é o próximo slot de 30 min a partir de agora + 3 h, e a
   reunião precisa terminar dentro do expediente. Exemplos: 09h00 → 12h00; 09h10 → 12h30; 13h00 → 16h00; 15h00 → nenhum
@@ -106,8 +118,9 @@ Sem bloqueio automático: pontos facultativos sem política comercial (ex.: 20/0
 
 ```
 holidays.ts  catálogo (lei/fonte, natureza, bloqueio padrão) + Páscoa → datas do ano
-engine.ts    regras puras: grade → exceções → feriados/bloqueios → janela/antecedência → ocupação
-store.ts     leitura/gravação das tabelas 0008 (fallback para o padrão do código se a 0008 não existir)
+engine.ts    regras puras: grade → exceções → feriados/bloqueios/capacidade → janela/antecedência → ocupação
+capacity.ts  capacidade diária: reservas internas determinísticas por data + ajustes do administrador
+store.ts     leitura/gravação das tabelas 0008/0009 (sem 0008: padrão do código; sem 0009: capacidade desligada)
 admin.ts     visão do painel + ações (confirmação obrigatória, autor registrado)
 ```
 
@@ -115,7 +128,8 @@ Ordem de decisão de cada horário:
 
 1. dentro da janela (hoje … hoje + N dias) e da antecedência mínima;
 2. na grade comercial **ou** dentro de uma exceção autorizada;
-3. feriado/política/bloqueio removem o horário, a menos que ele esteja **inteiramente** dentro de uma exceção;
+3. feriado/política/bloqueio e reserva interna (capacidade diária) removem o horário, a menos que ele esteja
+   **inteiramente** dentro de uma exceção;
 4. ocupação real (Google + reservas internas) **sempre** remove. Exceção nunca libera ocupação, antecedência ou janela.
 
 A mesma função (`listAvailableSlots`) é usada para listar horários e para validar a confirmação.
@@ -146,7 +160,10 @@ fora da janela retornavam 400, e o horário fora da grade retornava 409.
 
 ### Painel DISPONIBILIDADE (menu lateral do CRM)
 
-- horário comercial: dias, início/término (06:00–22:00), antecedência (0–168 h), janela (1–90 dias);
+- horário comercial: dias, primeiro e último início (06:00–21:30; a reunião termina 30 min depois), antecedência
+  (0–168 h), janela (1–90 dias);
+- capacidade diária: ligar/desligar, mínimo e máximo por dia (0–6), janela de almoço, redistribuir; por data:
+  liberar uma reserva, reservar um horário, desligar as reservas do dia e desfazer qualquer ajuste;
 - bloqueios de dia inteiro, de período do dia ou de intervalo de datas (férias, recesso, outro), até 366 dias;
 - exceções de um único dia com horário;
 - feriados e políticas de 2026/2027: natureza, fonte e efeito, com ajuste por ano ou para todos os anos;

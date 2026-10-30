@@ -17,3 +17,14 @@
 #cassiellos-crm .crm-availability-table select{background:#0d1a2b;border:1px solid var(--crm-border);color:#eef4ff;border-radius:8px;padding:6px 8px;font-size:11px;max-width:190px}
 @media(max-width:650px){#cassiellos-crm .crm-availability-form{padding:0 15px 16px}#cassiellos-crm .crm-availability-form label{min-width:100%}#cassiellos-crm .crm-availability-form .crm-availability-days label{min-width:0}}
 #cassiellos-crm .crm-availability-provisional{display:inline-block;margin-left:8px;padding:2px 6px;border-radius:6px;border:1px solid rgba(245,181,68,.45);background:rgba(245,181,68,.1);color:#f5c26b;font-size:9px;font-weight:700;letter-spacing:.06em;vertical-align:middle}
+#cassiellos-crm .crm-availability-form label small{font-size:10px;color:#8397b0;font-weight:400}
+#cassiellos-crm .crm-availability-form .crm-availability-check{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border:1px solid var(--crm-border);border-radius:8px;color:#dfe8f6;font-size:12px}
+#cassiellos-crm .crm-capacity-day .crm-real-agenda-content{gap:6px}
+#cassiellos-crm .crm-capacity-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+#cassiellos-crm .crm-capacity-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 9px;border-radius:999px;border:1px solid var(--crm-border);background:#0d1a2b;color:#dfe8f6;font-size:11px}
+#cassiellos-crm .crm-capacity-chip[data-kind="lunch"]{border-color:rgba(245,181,68,.45);background:rgba(245,181,68,.08)}
+#cassiellos-crm .crm-capacity-chip[data-kind="manual"]{border-color:rgba(98,169,255,.5);background:rgba(98,169,255,.08)}
+#cassiellos-crm .crm-capacity-chip[data-kind="released"]{opacity:.7;text-decoration:line-through;text-decoration-thickness:1px}
+#cassiellos-crm .crm-capacity-chip em{font-style:normal;color:#f5c26b}
+#cassiellos-crm .crm-capacity-chip button{background:transparent;border:1px solid var(--crm-border);color:#cfe0f5;border-radius:999px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:inherit;text-decoration:none}
+#cassiellos-crm .crm-capacity-chip button:disabled{opacity:.5;cursor:not-allowed}

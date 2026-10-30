@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { availabilityOverview, handleAvailabilityAction } from './admin'
-import { DEFAULT_AVAILABILITY_RULES } from './engine'
-import { buildRange, loadAvailabilityRules, parseLocalTime } from './store'
+import { DEFAULT_CAPACITY_SETTINGS, generatedHolds, gridMinutes, type CapacityRules } from './capacity'
+import { DEFAULT_AVAILABILITY_RULES, type AvailabilityRules } from './engine'
+import { buildRange, loadAvailabilityRules, parseCapacityOverride, parseLocalTime } from './store'
 import { confirmBookingRequest, type ConfirmDeps } from '../booking-confirmation'
 import { getBookingForm } from '../booking-forms'
 
@@ -75,11 +76,60 @@ describe('disponibilidade — leitura, entrada do painel e ações', () => {
       [{ action: 'set_holiday_rule', key: 'cinzas', block: { type: 'until', minute: 845 } }, 'INVALID_HOLIDAY'],
       [{ action: 'set_holiday_rule', key: 'cinzas', year: 1990, block: { type: 'full' } }, 'INVALID_HOLIDAY'],
       [{ action: 'revoke_block', id: "1' OR '1'='1" }, 'INVALID_ID'],
+      [{ action: 'save_capacity', capacity: { enabled: true, minPerDay: 5, maxPerDay: 4, lunchStartMinute: 720, lunchEndMinute: 810 } }, 'INVALID_CAPACITY'],
+      [{ action: 'save_capacity', capacity: { enabled: true, minPerDay: 3, maxPerDay: 9, lunchStartMinute: 720, lunchEndMinute: 810 } }, 'INVALID_CAPACITY'],
+      [{ action: 'capacity_release', date: 'amanhã', time: '12:00' }, 'INVALID_CAPACITY'],
+      [{ action: 'capacity_release', date: '2020-01-06', time: '12:00' }, 'INVALID_CAPACITY'], // data passada
+      [{ action: 'capacity_hold', date: '2099-01-05', time: '12:00' }, 'INVALID_CAPACITY'], // além de 1 ano
+      [{ action: 'capacity_hold', date: new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10), time: '12:15' }, 'INVALID_CAPACITY'],
+      [{ action: 'capacity_hold', date: new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10), time: '12:00', reason: 'x'.repeat(201) }, 'INVALID_CAPACITY'],
+      [{ action: 'revoke_capacity_override', id: 'drop' }, 'INVALID_ID'],
     ]
     for (const [data, error] of cases) {
       assert.deepEqual(await handleAvailabilityAction(db, { ...data, confirmed: true }, 'a'), { status: 400, body: { error } }, JSON.stringify(data))
     }
     assert.equal(db.calls.length, 0)
+  })
+
+  it('0009 pendente: capacidade desligada na leitura; ações de capacidade respondem 409 CAPACITY_MIGRATION_PENDING', async () => {
+    const without = fakeDb(sql => sql.includes('to_regclass') ? { rows: [{ settings: null, overrides: null }] } : { rows: [] })
+    const rules = await loadAvailabilityRules(without)
+    assert.equal(rules.capacity.source, 'defaults')
+    assert.equal(rules.capacity.settings.enabled, false)
+    const day = new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10)
+    const hold = await handleAvailabilityAction(without, { action: 'capacity_hold', date: day, time: '10:00', confirmed: true }, 'a')
+    assert.deepEqual(hold, { status: 409, body: { error: 'CAPACITY_MIGRATION_PENDING' } })
+    assert.ok(!without.calls.some(c => /INSERT|UPDATE/i.test(c.sql)))
+    const save = await handleAvailabilityAction(fakeDb(() => missingTable()), { action: 'save_capacity', confirmed: true,
+      capacity: { enabled: true, minPerDay: 3, maxPerDay: 4, lunchStartMinute: 720, lunchEndMinute: 810 } }, 'a')
+    assert.deepEqual(save, { status: 409, body: { error: 'CAPACITY_MIGRATION_PENDING' } })
+  })
+
+  it('capacidade no banco: configuração inválida = falha fechada; ajustes revogados não são lidos', async () => {
+    const bad = fakeDb(sql => sql.includes('to_regclass') ? { rows: [{ settings: 'x', overrides: 'y' }] }
+      : sql.includes('FROM crm.availability_capacity WHERE') ? { rows: [{ enabled: true, min_per_day: 5, max_per_day: 2, lunch_start_minute: 720, lunch_end_minute: 810, seed: 1 }] }
+      : { rows: [] })
+    await assert.rejects(loadAvailabilityRules(bad), /AVAILABILITY_SETTINGS_INVALID/)
+    const ok = fakeDb(sql => sql.includes('to_regclass') ? { rows: [{ settings: 'x', overrides: 'y' }] }
+      : sql.includes('FROM crm.availability_capacity WHERE') ? { rows: [{ enabled: true, min_per_day: 3, max_per_day: 4, lunch_start_minute: 720, lunch_end_minute: 810, seed: 7 }] }
+      : sql.includes('availability_capacity_overrides') ? { rows: [{ id: 'o1', day: '2031-03-05', action: 'release', minute: 720, reason: '' }] }
+      : { rows: [] })
+    const rules = await loadAvailabilityRules(ok)
+    assert.deepEqual(rules.capacity.settings, { ...DEFAULT_CAPACITY_SETTINGS, seed: 7 })
+    assert.deepEqual(rules.capacity.overrides, [{ id: 'o1', date: '2031-03-05', action: 'release', minute: 720, reason: '' }])
+    assert.ok(ok.calls.find(c => c.sql.includes('FROM crm.availability_capacity_overrides'))!.sql.includes('revoked_at IS NULL'))
+  })
+
+  it('ajuste por data: estrutura validada sem banco (data local, de hoje até 1 ano, HH:MM na grade de 30 min)', () => {
+    const now = new Date('2026-11-09T10:00:00-03:00')
+    assert.deepEqual(parseCapacityOverride({ action: 'hold', date: '2026-11-10', time: '18:00', reason: ' Revisão ' }, now),
+      { date: '2026-11-10', action: 'hold', minute: 1080, reason: 'Revisão' })
+    assert.deepEqual(parseCapacityOverride({ action: 'day_off', date: '2026-11-09' }, now), { date: '2026-11-09', action: 'day_off', minute: null, reason: '' })
+    for (const bad of [
+      { action: 'hold', date: '2026-11-08', time: '10:00' }, { action: 'hold', date: '2026-02-30', time: '10:00' },
+      { action: 'hold', date: '2026-11-10', time: '10:10' }, { action: 'cancel', date: '2026-11-10', time: '10:00' },
+      { action: 'release', date: '2026-11-10' },
+    ]) assert.equal(parseCapacityOverride(bad, now), null, JSON.stringify(bad))
   })
 
   it('migração pendente: ações respondem 409 MIGRATION_PENDING; falha de banco = 503 sem detalhes', async () => {
@@ -103,11 +153,29 @@ describe('disponibilidade — leitura, entrada do painel e ações', () => {
   it('visão do painel: ano atual e seguinte, dias fechados com motivo, migração pendente sinalizada', () => {
     const view = availabilityOverview(DEFAULT_AVAILABILITY_RULES, new Date('2026-10-30T10:30:00-03:00'))
     assert.equal(view.migrationPending, true)
+    assert.equal(view.lastStartMinute, 1080)
+    assert.equal(view.capacity.migrationPending, true)
+    assert.ok(view.capacity.days.every(d => d.effective.length === 0))
     assert.deepEqual([...new Set(view.holidays.map(h => h.date.slice(0, 4)))], ['2026', '2027'])
     const cinzas = view.holidays.find(h => h.key === 'cinzas' && h.date.startsWith('2027'))!
     assert.equal(cinzas.effect, 'Bloqueado até 14:00')
     const finados = view.window.closedDates.find(d => d.date === '2026-11-02')!
     assert.equal(finados.holidays[0].name, 'Finados')
+  })
+
+  it('painel: capacidade dos próximos 10 dias úteis; reserva que coincide com reunião confirmada é sinalizada (reunião mantida)', () => {
+    const cap: CapacityRules = { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' }
+    const rules: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, capacity: cap, source: 'database' }
+    const day = '2026-11-10'
+    const m = generatedHolds(day, rules.settings, cap.settings)[0]
+    const startsAt = new Date(Date.parse(day + 'T00:00:00-03:00') + m * 60_000).toISOString()
+    const endsAt = new Date(Date.parse(startsAt) + 30 * 60_000).toISOString()
+    const view = availabilityOverview(rules, new Date('2026-11-09T08:00:00-03:00'), [{ startsAt, endsAt }])
+    assert.equal(view.capacity.days.length, 10)
+    const target = view.capacity.days.find(d => d.date === day)!
+    assert.deepEqual(target.withMeeting, [m])
+    assert.equal(target.inWindow, true)
+    assert.ok(view.capacity.days.every(d => d.effective.length >= 3 && d.effective.length <= 4))
   })
 })
 
@@ -159,6 +227,7 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
       ['data passada', day(-3) + 'T13:00:00.000Z'],
       ['além da janela de 30 dias', day(45) + 'T13:00:00.000Z'],
       ['dentro da antecedência de 12 h', new Date(Math.ceil((Date.now() + 3_600_000) / 1_800_000) * 1_800_000).toISOString()],
+      ['início 18h30 (após o último início)', wednesday + 'T21:30:00.000Z'],
     ]) {
       const { calls, value } = deps(null)
       const r = await confirmBookingRequest(value, { bookingToken: 't', startAt, pageOrigin: ORIGIN })
@@ -195,7 +264,42 @@ describe('confirmação — validação no servidor (chamada direta à API)', ()
     assert.deepEqual(calls, { readBusy: 0, createEvent: 0, pool: 0 })
   })
 
-  it('12. padrão 3 h / 3 dias na API: hoje + 4 e menos de 3 h recusados (409) sem banco e sem Google', async () => {
+  it('último início 18h00 passa pela disponibilidade; 18h30 é recusado (409) sem banco e sem Google', async () => {
+    const wednesday = upcoming(3)
+    const ok = deps(null)
+    const r1 = await confirmBookingRequest(ok.value, { bookingToken: 't', startAt: wednesday + 'T21:00:00.000Z', pageOrigin: ORIGIN })
+    assert.notEqual(r1.status, 409, JSON.stringify(r1))
+    assert.ok(ok.calls.pool > 0, '18h00 chega à etapa seguinte (banco)')
+    assert.equal(ok.calls.createEvent, 0)
+    const late = deps(null)
+    const r2 = await confirmBookingRequest(late.value, { bookingToken: 't', startAt: wednesday + 'T21:30:00.000Z', pageOrigin: ORIGIN })
+    assert.deepEqual(r2, { status: 409, body: { error: 'SLOT_UNAVAILABLE' } })
+    assert.deepEqual(late.calls, { readBusy: 0, createEvent: 0, pool: 0 })
+  })
+
+  it('horário reservado para atividades internas: 409 sem banco e sem Google; horário liberado volta a passar', async () => {
+    const wednesday = upcoming(3)
+    const cap: CapacityRules = { settings: DEFAULT_CAPACITY_SETTINGS, overrides: [], source: 'database' }
+    const withCap: AvailabilityRules = { ...LEGACY, capacity: cap }
+    const holds = generatedHolds(wednesday, withCap.settings, cap.settings)
+    const iso = (m: number) => new Date(Date.parse(wednesday + 'T00:00:00-03:00') + m * 60_000).toISOString()
+    const held = deps(null)
+    held.value.loadRules = async () => withCap
+    const r1 = await confirmBookingRequest(held.value, { bookingToken: 't', startAt: iso(holds[0]), pageOrigin: ORIGIN })
+    assert.deepEqual(r1, { status: 409, body: { error: 'SLOT_UNAVAILABLE' } })
+    assert.deepEqual(held.calls, { readBusy: 0, createEvent: 0, pool: 0 })
+    const free = gridMinutes(withCap.settings).find(m => !holds.includes(m))!
+    const open = deps(null)
+    open.value.loadRules = async () => withCap
+    await confirmBookingRequest(open.value, { bookingToken: 't', startAt: iso(free), pageOrigin: ORIGIN })
+    assert.ok(open.calls.pool > 0)
+    const released = deps(null)
+    released.value.loadRules = async () => ({ ...withCap, capacity: { ...cap, overrides: [{ id: 'r', date: wednesday, action: 'release', minute: holds[0], reason: '' }] } })
+    await confirmBookingRequest(released.value, { bookingToken: 't', startAt: iso(holds[0]), pageOrigin: ORIGIN })
+    assert.ok(released.calls.pool > 0)
+  })
+
+  it('12. padrão 2 h / 3 dias na API: hoje + 4 e menos de 2 h recusados (409) sem banco e sem Google', async () => {
     const day4 = new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10)
     const soon = new Date(Math.ceil((Date.now() + 3_600_000) / 1_800_000) * 1_800_000).toISOString()
     for (const startAt of [day4 + 'T13:00:00.000Z', soon]) {

@@ -2,15 +2,16 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { DEFAULT_BOOKING_POLICY } from '../booking-slots'
 import {
-  DEFAULT_AVAILABILITY_RULES, closedDates, describeDate, isOpenDate, isWithinWindow, listAvailableSlots, localDate,
+  DEFAULT_AVAILABILITY_RULES, closedDates, describeDate, isOpenDate, isWithinWindow, lastStartMinute, listAvailableSlots, localDate,
   localInstant, validateSettings, type AvailabilityRules,
 } from './engine'
 
 // Sexta-feira, 30/10/2026, 10:30 em São Paulo.
 const NOW = new Date('2026-10-30T10:30:00-03:00')
-// Testes de lógica (feriados, bloqueios, exceções) com a configuração anterior fixada (12 h / 30 dias),
-// para não dependerem do padrão comercial vigente. O padrão novo (3 h / 3 dias) tem testes próprios abaixo.
-const R: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, settings: { ...DEFAULT_AVAILABILITY_RULES.settings, minNoticeMinutes: 720, windowDays: 30 } }
+// Testes de lógica (feriados, bloqueios, exceções) com uma configuração fixa (12 h / 30 dias, término 18h00,
+// sem capacidade diária), para não dependerem do padrão comercial vigente. O padrão atual
+// (2 h / último início 18h00 / 3 dias) e a capacidade diária têm testes próprios.
+const R: AvailabilityRules = { ...DEFAULT_AVAILABILITY_RULES, settings: { ...DEFAULT_AVAILABILITY_RULES.settings, closeMinute: 1080, minNoticeMinutes: 720, windowDays: 30 } }
 const times = (date: string, rules: AvailabilityRules = R, now = NOW, busy: { start: string; end: string }[] = []) =>
   listAvailableSlots(date, busy, rules, now).map(s => s.localTime)
 const withRules = (patch: Partial<AvailabilityRules>): AvailabilityRules => ({ ...R, ...patch })
@@ -178,44 +179,60 @@ describe('motor de disponibilidade', () => {
   })
 })
 
-describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias (padrão)', () => {
+describe('ajuste final 30/10/2026 — antecedência 2 h, último início 18h00 e janela de 3 dias (padrão)', () => {
   const D = DEFAULT_AVAILABILITY_RULES
   const at = (local: string) => new Date(local + '-03:00')
   const t = (date: string, now: Date, rules: AvailabilityRules = D) => listAvailableSlots(date, [], rules, now).map(s => s.localTime)
+  const FULL = [...GRID, '18:00'] // 09:00 … 18:00 = 19 inícios
 
-  it('padrão: 180 min de antecedência e 3 dias de janela, derivado da política base (sem divergência)', () => {
-    assert.equal(D.settings.minNoticeMinutes, 180)
+  it('padrão: 120 min de antecedência, inícios 09h00–18h00 (término 18h30) e 3 dias, derivado da política base', () => {
+    assert.equal(D.settings.minNoticeMinutes, 120)
     assert.equal(D.settings.windowDays, 3)
+    assert.equal(D.settings.openMinute, 540)
+    assert.equal(D.settings.closeMinute, 1110)
+    assert.equal(lastStartMinute(D.settings), 1080)
     assert.equal(D.settings.minNoticeMinutes, DEFAULT_BOOKING_POLICY.minimumNoticeMinutes)
     assert.equal(D.settings.windowDays, DEFAULT_BOOKING_POLICY.maximumDaysAhead)
-    assert.equal(D.settings.openMinute, DEFAULT_BOOKING_POLICY.openHour * 60)
-    assert.equal(D.settings.closeMinute, DEFAULT_BOOKING_POLICY.closeHour * 60)
+    assert.equal(D.settings.openMinute, DEFAULT_BOOKING_POLICY.openMinute)
+    assert.equal(lastStartMinute(D.settings), DEFAULT_BOOKING_POLICY.lastStartMinute)
     assert.deepEqual(D.settings.workingDays, [...DEFAULT_BOOKING_POLICY.workingDays])
+    assert.equal(D.capacity.settings.enabled, false, 'sem a 0009, nenhuma reserva interna')
   })
-  it('02/11/2026 (Finados) nunca é oferecido com o módulo publicado, mesmo dentro da janela', () => {
+  it('grade: primeiro início 09h00, último início 18h00, término 18h30; 18h30 nunca é oferecido', () => {
+    const slots = listAvailableSlots('2026-11-10', [], D, at('2026-11-09T09:00:00'))
+    assert.deepEqual(slots.map(s => s.localTime), FULL)
+    assert.deepEqual(slots[0], { startAt: '2026-11-10T12:00:00.000Z', endAt: '2026-11-10T12:30:00.000Z', localTime: '09:00' })
+    assert.deepEqual(slots.at(-1), { startAt: '2026-11-10T21:00:00.000Z', endAt: '2026-11-10T21:30:00.000Z', localTime: '18:00' })
+    assert.ok(!slots.some(s => s.localTime === '18:30' || s.localTime === '08:30'))
+  })
+  it('02/11/2026 (Finados) nunca é oferecido, mesmo dentro da janela', () => {
     const now = at('2026-10-30T09:00:00') // 02/11 = hoje + 3
     assert.equal(isWithinWindow('2026-11-02', D, now), true)
     assert.deepEqual(t('2026-11-02', now), [])
     assert.equal(isOpenDate('2026-11-02', D, now), false)
     assert.ok(closedDates(D, now).includes('2026-11-02'))
   })
-  it('1. exatamente 3 h depois: 09h00 → primeiro horário 12h00', () => {
-    assert.equal(t('2026-11-09', at('2026-11-09T09:00:00'))[0], '12:00')
+  it('1. exatamente 2 h depois: 09h00 → primeiro horário 11h00', () => {
+    assert.equal(t('2026-11-09', at('2026-11-09T09:00:00'))[0], '11:00')
   })
-  it('2. menos de 3 h não é oferecido (11h30 com relógio às 09h00)', () => {
-    assert.ok(!t('2026-11-09', at('2026-11-09T09:00:00')).includes('11:30'))
+  it('2. menos de 2 h não é oferecido (10h30 com relógio às 09h00)', () => {
+    assert.ok(!t('2026-11-09', at('2026-11-09T09:00:00')).includes('10:30'))
   })
-  it('3. arredondamento para o próximo slot: 09h10 → 12h30; 13h00 → 16h00', () => {
-    assert.equal(t('2026-11-09', at('2026-11-09T09:10:00'))[0], '12:30')
-    assert.equal(t('2026-11-09', at('2026-11-09T13:00:00'))[0], '16:00')
+  it('3. exemplos aprovados e arredondamento para o próximo slot de 30 min', () => {
+    assert.equal(t('2026-11-09', at('2026-11-09T13:00:00'))[0], '15:00') // 13h00 → 15h00
+    assert.equal(t('2026-11-09', at('2026-11-09T15:00:00'))[0], '17:00') // 15h00 → 17h00
+    assert.equal(t('2026-11-09', at('2026-11-09T09:10:00'))[0], '11:30') // 09h10 + 2 h = 11h10 → 11h30
+    assert.equal(t('2026-11-09', at('2026-11-09T13:01:00'))[0], '15:30')
+    assert.equal(t('2026-11-09', at('2026-11-09T12:59:59'))[0], '15:00')
   })
-  it('4. mesmo dia: 15h00 → nenhum horário (18h00 terminaria após o expediente)', () => {
-    assert.deepEqual(t('2026-11-09', at('2026-11-09T15:00:00')), [])
-    assert.deepEqual(t('2026-11-09', at('2026-11-09T14:30:00')), ['17:30'])
+  it('4. fim do dia: 16h00 → só 18h00; 16h01 → nenhum horário hoje', () => {
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T15:30:00')), ['17:30', '18:00'])
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T16:00:00')), ['18:00'])
+    assert.deepEqual(t('2026-11-09', at('2026-11-09T16:01:00')), [])
   })
   it('5 e 6. segunda: hoje + 3 (quinta) permitido; hoje + 4 (sexta) recusado', () => {
     const now = at('2026-11-09T09:00:00')
-    assert.equal(t('2026-11-12', now).length, 18)
+    assert.deepEqual(t('2026-11-12', now), FULL)
     assert.deepEqual(t('2026-11-13', now), [])
     assert.equal(isWithinWindow('2026-11-12', D, now), true)
     assert.equal(isWithinWindow('2026-11-13', D, now), false)
@@ -224,7 +241,7 @@ describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias 
     const now = at('2026-11-06T10:00:00')
     assert.deepEqual(t('2026-11-07', now), [])
     assert.deepEqual(t('2026-11-08', now), [])
-    assert.equal(t('2026-11-09', now).length, 18)
+    assert.deepEqual(t('2026-11-09', now), FULL)
     assert.deepEqual(t('2026-11-10', now), [])
   })
   it('9. feriado e recesso dentro da janela; sem compensação de dias', () => {
@@ -234,9 +251,9 @@ describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias 
     const recess: AvailabilityRules = { ...D, blocks: [{ id: 'r', startsAt: at('2026-11-11T00:00:00').toISOString(), endsAt: at('2026-11-12T00:00:00').toISOString(), category: 'recess', reason: '' }] }
     assert.deepEqual(t('2026-11-11', at('2026-11-09T09:00:00'), recess), [])
   })
-  it('R-2: janela inteira sem horários (sexta 15h00 antes de segunda feriado)', () => {
-    const now = at('2026-10-30T15:00:00')
-    assert.deepEqual(closedDates(D, now), ['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'])
+  it('R-2: janela inteira sem horários (sexta depois das 16h00, antes de segunda feriado)', () => {
+    assert.deepEqual(closedDates(D, at('2026-10-30T16:30:00')), ['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'])
+    assert.ok(!closedDates(D, at('2026-10-30T15:00:00')).includes('2026-10-30')) // 17h00, 17h30, 18h00
   })
   it('10. virada de data à meia-noite', () => {
     assert.equal(isWithinWindow('2026-11-13', D, at('2026-11-09T23:59:00')), false)
@@ -257,10 +274,12 @@ describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias 
     assert.deepEqual(t('2026-11-14', at('2026-11-09T09:00:00'), ex), []) // hoje + 5
     assert.deepEqual(t('2026-11-09', at('2026-11-09T09:00:00'), ex), t('2026-11-09', at('2026-11-09T09:00:00')))
   })
-  it('13. configuração administrativa dentro dos limites continua possível', () => {
-    assert.equal(validateSettings({ ...D.settings, minNoticeMinutes: 180, windowDays: 3 }).ok, true)
+  it('13. configuração administrativa: último início até 21h30 (término 22h00); 18h30 de término exige último início 18h00', () => {
+    assert.equal(validateSettings({ ...D.settings, minNoticeMinutes: 120, windowDays: 3 }).ok, true)
+    assert.equal(validateSettings({ ...D.settings, closeMinute: 1320 }).ok, true)
+    assert.equal(validateSettings({ ...D.settings, closeMinute: 1350 }).ok, false)
+    assert.equal(validateSettings({ ...D.settings, closeMinute: 1095 }).ok, false)
     assert.equal(validateSettings({ ...D.settings, minNoticeMinutes: 0, windowDays: 1 }).ok, true)
     assert.equal(validateSettings({ ...D.settings, windowDays: 91 }).ok, false)
   })
 })
-

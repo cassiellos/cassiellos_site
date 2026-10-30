@@ -25,9 +25,9 @@ test('allows weekdays within the booking horizon, excludes weekends', () => {
   assert.equal(isBookableDate('2026-11-03', now), false, 'hoje + 4 fora da janela de 3 dias')
 })
 
-test('política base = regras comerciais de 30/10/2026 (3 h, 3 dias, seg–sex 09h–18h, 30 min)', () => {
+test('política base = ajuste final de 30/10/2026 (2 h, 3 dias, seg–sex, inícios 09h00–18h00, 30 min)', () => {
   assert.deepEqual(DEFAULT_BOOKING_POLICY, {
-    openHour: 9, closeHour: 18, slotMinutes: 30, minimumNoticeMinutes: 180, maximumDaysAhead: 3, workingDays: [1, 2, 3, 4, 5],
+    openMinute: 540, lastStartMinute: 1080, slotMinutes: 30, minimumNoticeMinutes: 120, maximumDaysAhead: 3, workingDays: [1, 2, 3, 4, 5],
   })
 })
 
@@ -40,15 +40,15 @@ test('generates 30-minute slots excluding overlapping busy intervals', () => {
   assert.equal(slots.some(slot => slot.localTime === '10:00'), false)
   assert.equal(slots.some(slot => slot.localTime === '10:30'), false)
   assert.equal(slots.some(slot => slot.localTime === '11:00'), true)
-  assert.equal(slots.length, ((DEFAULT_BOOKING_POLICY.closeHour -
-    DEFAULT_BOOKING_POLICY.openHour) * 60 /
-    DEFAULT_BOOKING_POLICY.slotMinutes) - 2)
+  // 09:00 … 18:00 = 19 inícios, menos 2 ocupados.
+  assert.equal(slots.length, (DEFAULT_BOOKING_POLICY.lastStartMinute - DEFAULT_BOOKING_POLICY.openMinute) /
+    DEFAULT_BOOKING_POLICY.slotMinutes + 1 - 2)
 })
 
 test('enforces notice and rejects fully elapsed dates', () => {
-  // 14h10 + 3 h = 17h10 → só 17h30; 15h10 + 3 h passa do expediente → nenhum.
-  assert.deepEqual(listBookingSlots(monday, [], new Date('2026-11-02T17:10:00.000Z')).map(s => s.localTime), ['17:30'])
-  assert.equal(listBookingSlots(monday, [], new Date('2026-11-02T18:10:00.000Z')).length, 0)
+  // 15h10 + 2 h = 17h10 → 17h30 e 18h00; 16h10 + 2 h passa do último início → nenhum.
+  assert.deepEqual(listBookingSlots(monday, [], new Date('2026-11-02T18:10:00.000Z')).map(s => s.localTime), ['17:30', '18:00'])
+  assert.equal(listBookingSlots(monday, [], new Date('2026-11-02T19:10:00.000Z')).length, 0)
 })
 
 test('returns UTC timestamps for accurate calendar creation', () => {
@@ -83,7 +83,7 @@ test('busy interval given with -03:00 offset blocks the same instant as UTC', ()
   assert.equal(listBookingSlots(monday, local, now).some(slot => slot.localTime === '14:00'), false)
 })
 
-test('minimum notice boundary is exact (3 h)', () => {
+test('minimum notice boundary is exact (2 h)', () => {
   const firstStart = Date.parse('2026-11-02T12:00:00.000Z') // 09:00 local
   const exactly = new Date(firstStart - DEFAULT_BOOKING_POLICY.minimumNoticeMinutes * 60_000)
   assert.equal(listBookingSlots(monday, [], exactly)[0]?.localTime, '09:00')
@@ -91,11 +91,13 @@ test('minimum notice boundary is exact (3 h)', () => {
   assert.equal(listBookingSlots(monday, [], oneMsLater)[0]?.localTime, '09:30')
 })
 
-test('last slot ends exactly at closing time (17:30–18:00 local = 20:30–21:00 UTC)', () => {
+test('último início 18h00, termina 18h30 (21:00–21:30 UTC); 18h30 nunca é oferecido', () => {
   const slots = listBookingSlots(monday, [], now)
   assert.deepEqual(slots[slots.length - 1], {
-    startAt: '2026-11-02T20:30:00.000Z', endAt: '2026-11-02T21:00:00.000Z', localTime: '17:30',
+    startAt: '2026-11-02T21:00:00.000Z', endAt: '2026-11-02T21:30:00.000Z', localTime: '18:00',
   })
+  assert.equal(slots.some(slot => slot.localTime === '18:30'), false)
+  assert.equal(slots[0].localTime, '09:00')
 })
 
 test('booking horizon follows the São Paulo calendar day, not the UTC day', () => {
