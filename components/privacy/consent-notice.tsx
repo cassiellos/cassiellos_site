@@ -11,7 +11,7 @@ import {
  * - Fica no fluxo da página (não cobre campos nem botões) e não bloqueia o formulário: sem escolha,
  *   nada opcional é ativado.
  * - "Recusar" e "Aceitar métricas" têm o mesmo peso visual. A revogação vale imediatamente.
- * Texto factual sobre o funcionamento técnico; o texto jurídico das políticas depende de aprovação.
+ * Texto do aviso aprovado (etapa 3). O texto jurídico das políticas continua dependendo de aprovação.
  */
 export default function ConsentNotice() {
   const [open, setOpen] = useState(false)
@@ -52,10 +52,8 @@ export default function ConsentNotice() {
   return <section className="consent-notice" aria-labelledby="consent-notice-title" data-consent-ui="">
     <div>
       <h2 id="consent-notice-title" ref={heading} tabIndex={-1}>Métricas de uso desta página</h2>
-      <p>Com a sua permissão, ativamos métricas de uso (Vercel Web Analytics, Vercel Speed Insights e o sistema
-        de métricas da própria Cassiellos) para entender como o agendamento é utilizado. Essas métricas não
-        recebem nome, e-mail, telefone nem respostas do formulário. O agendamento funciona normalmente com
-        qualquer escolha, e você pode alterá-la a qualquer momento em “Preferências de cookies”, no rodapé.</p>
+      <p>Utilizamos métricas opcionais para entender como nosso formulário é utilizado e melhorar sua experiência.
+        Você pode aceitar ou recusar essas métricas sem impedir seu agendamento.</p>
       <p className="consent-notice-links">
         {current !== null && <span>Escolha atual: {current ? 'métricas aceitas' : 'métricas recusadas'}. </span>}
         <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Política de Cookies</a>

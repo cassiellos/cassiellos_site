@@ -70,7 +70,7 @@ Arquivos: `lib/privacy/consent.ts`, `consent-client.ts`, `analytics-policy.ts`, 
 2. Política de Privacidade: incluir as métricas do agendamento (finalidade e base legal a definir) e a ausência de convite
    por e-mail (proposta N5, não publicada).
 3. Identificação do controlador (razão social/CNPJ) e canal do encarregado: não constam; **não foram inventados**.
-4. Texto do aviso de métricas: factual, mas precisa de aprovação.
+4. Texto do aviso de métricas: aprovado ("Utilizamos métricas opcionais…").
 5. Site institucional: métricas continuam sem consentimento (fora desta etapa).
 
 **UX (registrada, não implementada):** botão "Cancelar reunião" também na seção **Agenda** do CRM (hoje só na ficha do lead → Reuniões).
