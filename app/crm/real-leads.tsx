@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './real-leads.css'
 import LeadManagement from './lead-management'
 import { attributionChannel, CHANNEL_LABELS } from '@/lib/crm/attribution'
+import { parseBrazilianWhatsapp, whatsappLink } from '@/lib/crm/whatsapp'
 
 type StoredLead = {
   id: string
@@ -43,7 +44,7 @@ function initials(value: string): string {
   return (value.trim().split(/\s+/).slice(0, 2).map(s => s.charAt(0)).join('') || '—').toUpperCase()
 }
 
-export default function RealLeadsPanel({ search }: { search: string }) {
+export default function RealLeadsPanel({ search, focusLeadId = null }: { search: string; focusLeadId?: string | null }) {
   const [entries, setEntries] = useState<StoredLead[]>([])
   const [total, setTotal] = useState<number | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error' | 'unauthorized'>('loading')
@@ -51,6 +52,18 @@ export default function RealLeadsPanel({ search }: { search: string }) {
   const [selected, setSelected] = useState<string | null>(null)
 
   const load = useCallback(() => setRefresh(v => v + 1), [])
+  const [focused, setFocused] = useState<string | null>(null)
+  // Abre uma única vez a ficha pedida pelo link direto, se o lead estiver na lista carregada.
+  useEffect(() => {
+    if (state !== 'ready' || !focusLeadId || focused === focusLeadId) return
+    setFocused(focusLeadId)
+    if (entries.some(lead => lead.id === focusLeadId)) {
+      setSelected(focusLeadId)
+      // No celular a ficha fica abaixo da lista: leva o administrador direto até ela.
+      setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+    }
+  }, [state, entries, focusLeadId, focused])
+  const detailRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const controller = new AbortController()
     setState('loading')
@@ -143,7 +156,7 @@ export default function RealLeadsPanel({ search }: { search: string }) {
     {state === 'ready' && total !== null && total > 100 ? <p className="crm-real-note">
       Exibindo os 100 cadastros mais recentes. Paginação será adicionada antes de operar com maior volume.
     </p> : null}
-    {state === 'ready' && active ? <div className="crm-real-detail">
+    {state === 'ready' && active ? <div className="crm-real-detail" ref={detailRef}>
       <div className="crm-real-detail-head">
         <div><strong>Respostas do formulário</strong><small>{active.formVersion || 'Formulário sem versão'} · {active.submittedAt ? dateLabel(active.submittedAt) : 'Registro manual'}</small></div>
         <button type="button" className="crm-btn" onClick={() => setSelected(null)}>Fechar</button>
@@ -151,6 +164,7 @@ export default function RealLeadsPanel({ search }: { search: string }) {
       <div className="crm-real-detail-grid">
         <div><span>Responsável</span><strong>{active.name}</strong></div>
         <div><span>Clínica / empresa</span><strong>{active.company || '—'}</strong></div>
+        <div><span>WhatsApp</span><strong>{parseBrazilianWhatsapp(active.whatsapp)?.display || active.whatsapp || '—'}</strong></div>
         <div><span>Faturamento informado</span><strong>{active.revenue || '—'}</strong></div>
         <div><span>Objetivo principal</span><strong>{active.objective || '—'}</strong></div>
         <div><span>Fonte da campanha</span><strong>{active.source || 'Não identificada'}</strong></div>
@@ -159,6 +173,13 @@ export default function RealLeadsPanel({ search }: { search: string }) {
         <div><span>Canal (padrão de UTMs)</span><strong>{CHANNEL_LABELS[attributionChannel(active.source, active.medium)]}</strong></div>
         <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
       </div>
+      {(() => {
+        // Contato manual: o link só abre a conversa no WhatsApp do administrador (nada é enviado sozinho).
+        const chat = whatsappLink(parseBrazilianWhatsapp(active.whatsapp))
+        return chat
+          ? <a className="crm-btn crm-btn-primary crm-real-whatsapp" href={chat} target="_blank" rel="noopener noreferrer">Conversar no WhatsApp</a>
+          : <p className="crm-real-note">WhatsApp inválido ou ausente: confira o cadastro.</p>
+      })()}
     </div> : null}
     {state === 'ready' && active && <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)} onChanged={load}/>}
   </section>

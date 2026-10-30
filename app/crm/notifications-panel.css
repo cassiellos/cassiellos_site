@@ -1,0 +1,31 @@
+/* NOTIFICAÇÕES (PWA + Web Push) — mesma identidade do Mini CRM, com alvos de toque grandes no celular. */
+#cassiellos-crm .crm-push-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+#cassiellos-crm .crm-push-grid>div{border:1px solid var(--crm-border);border-radius:10px;padding:11px 12px;background:#0b1727}
+#cassiellos-crm .crm-push-grid span{display:block;color:#8397b0;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+#cassiellos-crm .crm-push-grid strong{color:#eaf1fa;font-size:13px}
+#cassiellos-crm .crm-push-grid strong[data-on="true"]{color:#5ee0a0}
+#cassiellos-crm .crm-push-grid strong[data-on="false"]{color:#f13c4b}
+#cassiellos-crm .crm-push-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+#cassiellos-crm .crm-push-actions .crm-btn{min-height:44px}
+#cassiellos-crm .crm-push-actions .crm-btn:disabled{opacity:.45;cursor:not-allowed}
+#cassiellos-crm .crm-push-message{font-size:12px;margin:12px 0 0;color:#a8f0c9}
+#cassiellos-crm .crm-push-message[data-kind="error"]{color:#ffd4da}
+#cassiellos-crm .crm-push-sections{margin-top:18px}
+#cassiellos-crm .crm-push-ios{margin-top:12px}
+#cassiellos-crm .crm-push-field{display:block;color:#bfd0e1;font-size:11px;font-weight:700;margin:14px 0 4px}
+#cassiellos-crm .crm-push-field em{color:#f13c4b;font-style:normal;font-weight:600}
+#cassiellos-crm .crm-push-field input,#cassiellos-crm .crm-push-field textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;background:#0a1425;border:1px solid #36506d;border-radius:8px;color:#f2f6fc;padding:11px;font:inherit;font-size:13px;font-weight:400;line-height:1.5}
+#cassiellos-crm .crm-push-field textarea{resize:vertical}
+#cassiellos-crm .crm-push-field input:focus,#cassiellos-crm .crm-push-field textarea:focus{border-color:var(--crm-red);outline:0}
+#cassiellos-crm .crm-push-field small{display:block;color:#7f91a7;font-weight:400;margin-top:5px}
+#cassiellos-crm .crm-push-toggle{display:flex;gap:10px;align-items:center;color:#d6e1ee;font-size:13px;margin:12px 0}
+#cassiellos-crm .crm-push-toggle input{width:18px;height:18px;accent-color:#f13c4b}
+#cassiellos-crm .crm-push-preview{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;color:#eaf1fa;background:#0b1727;border:1px solid var(--crm-border);border-radius:12px;padding:12px;margin-top:14px}
+#cassiellos-crm .crm-push-vars{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+#cassiellos-crm .crm-push-vars code{font-size:11px;color:#bfd0e1;background:#0b1727;border:1px solid var(--crm-border);border-radius:6px;padding:3px 6px}
+#cassiellos-crm .crm-push-device{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--crm-border);padding:12px 0}
+#cassiellos-crm .crm-push-device small{display:block;color:#8397b0;font-size:11px;margin-top:3px}
+#cassiellos-crm .crm-push-log{margin-top:18px}
+#cassiellos-crm .crm-push-sub{display:block;color:#7f91a7;font-size:10px;margin-top:4px}
+@media(max-width:830px){#cassiellos-crm .crm-push-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){#cassiellos-crm .crm-push-grid{grid-template-columns:1fr}#cassiellos-crm .crm-push-actions .crm-btn{flex:1 1 100%;justify-content:center}}

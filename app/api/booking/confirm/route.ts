@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { confirmBookingRequest } from '@/lib/crm/booking-confirmation'
@@ -9,6 +9,10 @@ import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-c
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
+import { readPushEnv } from '@/lib/crm/push/config'
+import { confirmedMeetingFrom, queueThenDeliver } from '@/lib/crm/push/hooks'
+import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
+import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/store'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -76,5 +80,12 @@ export async function POST(request: NextRequest) {
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })
+  // Etapa 5 (Web Push): só reunião NOVA (201). Desligado por padrão (PWA_PUSH_ENABLED); nunca afeta a confirmação.
+  await queueThenDeliver(confirmedMeetingFrom(result), {
+    switchReady: () => readPushEnv().ready,
+    enqueue: meeting => enqueueMeetingNotifications(pushRuntimeDeps(), meeting).then(r => r.ids),
+    schedule: task => after(task),
+    deliver: ids => deliverAfterEvent(pushRuntimeDeps(), ids),
+  })
   return json(result.body, result.status)
 }

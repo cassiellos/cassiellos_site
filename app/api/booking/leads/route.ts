@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { createBookingGrant } from '@/lib/crm/booking-grant'
 import { handleLeadIntake } from '@/lib/crm/booking-intake-request'
+import { readPushEnv } from '@/lib/crm/push/config'
+import { newLeadFrom, queueThenDeliver } from '@/lib/crm/push/hooks'
+import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
+import { deliverAfterEvent, enqueueLeadNotification } from '@/lib/crm/push/store'
 import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { CRM_CANONICAL_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
@@ -89,5 +93,12 @@ export async function POST(request: NextRequest) {
     // Reason codes only: never the token, IP, e-mail or secret.
     log: (event, details) => console.warn('[booking-leads]', event, details.reason ?? '', (details.codes ?? []).join(',')),
   }, { value, remoteIp: forwardedFor, cookieHeader: request.headers.get('cookie') })
+  // Etapa 5 (Web Push): só lead NOVO (201, reused=false). Desligado por padrão; nunca afeta o cadastro.
+  await queueThenDeliver(newLeadFrom(result), {
+    switchReady: () => readPushEnv().ready,
+    enqueue: lead => enqueueLeadNotification(pushRuntimeDeps(), lead.leadId).then(r => r.ids),
+    schedule: task => after(task),
+    deliver: ids => deliverAfterEvent(pushRuntimeDeps(), ids),
+  })
   return response(result.body, result.status)
 }

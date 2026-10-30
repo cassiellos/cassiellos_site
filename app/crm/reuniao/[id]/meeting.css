@@ -1,0 +1,24 @@
+/* Ficha da reunião (PWA SHARK SCALE) — mesma identidade do Mini CRM, pensada para o celular. */
+#cassiellos-crm .crm-meeting-shell{max-width:640px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));display:grid;gap:16px}
+#cassiellos-crm .crm-meeting-card{padding:22px}
+#cassiellos-crm .crm-meeting-card h1{font-size:26px;letter-spacing:-.03em;margin:8px 0 4px}
+#cassiellos-crm .crm-meeting-card h2{font-size:20px;letter-spacing:-.02em;margin:8px 0 6px}
+#cassiellos-crm .crm-meeting-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+#cassiellos-crm .crm-meeting-back{color:#bfd0e1;text-decoration:none;font-size:13px;font-weight:600}
+#cassiellos-crm .crm-meeting-muted{color:#a8b8cb;font-size:13px;margin:0}
+#cassiellos-crm .crm-meeting-warn{color:#ffd4da;font-size:13px;margin:10px 0 0}
+#cassiellos-crm .crm-meeting-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 0}
+#cassiellos-crm .crm-meeting-grid>div{border:1px solid var(--crm-border);border-radius:10px;padding:10px 12px;background:#0b1727}
+#cassiellos-crm .crm-meeting-grid .crm-meeting-wide{grid-column:1/-1}
+#cassiellos-crm .crm-meeting-grid dt{color:#8397b0;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+#cassiellos-crm .crm-meeting-grid dd{margin:0;color:#eaf1fa;font-size:14px;font-weight:600}
+#cassiellos-crm .crm-meeting-grid dd[data-status="ok"]{color:#5ee0a0}
+#cassiellos-crm .crm-meeting-grid dd[data-status="off"]{color:#ffb3bb}
+#cassiellos-crm .crm-meeting-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+#cassiellos-crm .crm-meeting-actions .crm-btn{text-decoration:none}
+#cassiellos-crm .crm-meeting-send{min-height:48px;padding-left:20px;padding-right:20px}
+#cassiellos-crm .crm-meeting-send:disabled{opacity:.45;cursor:not-allowed}
+#cassiellos-crm .crm-meeting-field{display:block;color:#bfd0e1;font-size:11px;font-weight:700;margin-top:14px}
+#cassiellos-crm .crm-meeting-field textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;background:#0a1425;border:1px solid #36506d;border-radius:10px;color:#f2f6fc;padding:12px;font:inherit;font-size:15px;font-weight:400;line-height:1.5;resize:vertical}
+#cassiellos-crm .crm-meeting-field textarea:focus{border-color:var(--crm-red);outline:0}
+@media(max-width:420px){#cassiellos-crm .crm-meeting-grid{grid-template-columns:1fr}#cassiellos-crm .crm-meeting-card h1{font-size:22px}}

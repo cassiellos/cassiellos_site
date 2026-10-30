@@ -10,8 +10,9 @@ import RealFunnel from './real-funnel'
 import StuckReservations from './stuck-reservations'
 import AvailabilityPanel from './availability-panel'
 import MetaHomologationPanel from './meta-homologation-panel'
+import NotificationsPanel from './notifications-panel'
 
-type View = 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'relatorios' | 'configuracoes'
+type View = 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'notificacoes' | 'relatorios' | 'configuracoes'
 type Lead = { id: string; company: string; contact: string; origin: string; status: string; date: string; amount: string; initials: string }
 
 const initialLeads: Lead[] = [
@@ -29,6 +30,7 @@ const navigation: { id: View; label: string; icon: string; count?: string }[] = 
   { id: 'disponibilidade', label: 'Disponibilidade', icon: 'clock' },
   { id: 'funil', label: 'Funil comercial', icon: 'funnel' },
   { id: 'conversoes', label: 'Conversões Meta', icon: 'target' },
+  { id: 'notificacoes', label: 'Notificações', icon: 'bell' },
   { id: 'relatorios', label: 'Relatórios', icon: 'chart' },
   { id: 'configuracoes', label: 'Configurações', icon: 'settings' },
 ]
@@ -102,7 +104,7 @@ function LeadTable({ leads, limit }: { leads: Lead[]; limit?: number }) {
 }
 
 const sectionNames: Record<View, string> = {
-  dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', relatorios: 'Relatórios', configuracoes: 'Configurações',
+  dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações',
 }
 
 export default function MiniCrm() {
@@ -111,6 +113,18 @@ export default function MiniCrm() {
   const [search, setSearch] = useState('')
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [modal, setModal] = useState(false)
+  const [focusLead, setFocusLead] = useState<string | null>(null)
+  // Links diretos (avisos do PWA): /crm?lead=<id> abre a ficha do lead; /crm?view=notificacoes abre o painel.
+  // Também registra o service worker do PWA (sem pedir permissão) e reprocessa a fila de avisos pendentes.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('lead')
+    if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { setFocusLead(id); setView('leads') }
+    else if (params.get('view') === 'notificacoes') setView('notificacoes')
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/crm-sw.js', { scope: '/crm', updateViaCache: 'none' }).catch(() => undefined)
+    fetch('/api/crm/push', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'process_due' }) }).catch(() => undefined)
+  }, [])
   const modalRef = useRef<HTMLDivElement>(null)
   const newLeadButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -184,22 +198,23 @@ export default function MiniCrm() {
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do SHARK SCALE no celular: novos leads e reuniões confirmadas.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
             <div className="crm-controls">
               {view === 'dashboard' && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
             </div>
           </div>
 
-          {view !== 'leads' && view !== 'agenda' && view !== 'dashboard' && view !== 'funil' && view !== 'disponibilidade' && <div className="crm-demo-banner"><Icon name="shield" size={16}/><strong>MODO DEMONSTRAÇÃO</strong> Os dados desta tela são fictícios. A seção Leads consulta o Neon Preview separadamente; alterações desta visualização são temporárias.</div>}
+          {view !== 'leads' && view !== 'agenda' && view !== 'dashboard' && view !== 'funil' && view !== 'disponibilidade' && view !== 'notificacoes' && <div className="crm-demo-banner"><Icon name="shield" size={16}/><strong>MODO DEMONSTRAÇÃO</strong> Os dados desta tela são fictícios. A seção Leads consulta o Neon Preview separadamente; alterações desta visualização são temporárias.</div>}
 
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
-          {view === 'leads' && <RealLeadsPanel search={search}/>}
+          {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
 
           {view === 'agenda' && <><RealAgendaPanel/><StuckReservations/></>}
           {view === 'disponibilidade' && <AvailabilityPanel/>}
           {view === 'funil' && <RealFunnel/>}
           {view === 'conversoes' && <MetaHomologationPanel/>}
+          {view === 'notificacoes' && <NotificationsPanel/>}
           {view === 'conversoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Eventos da jornada</div><div className="crm-panel-subtitle">Plano de mensuração — nomes da estratégia Shark Scale</div></div><Icon name="target"/></div>{[
             ['ChronosView','Visualização do formulário'],
             ['ChronosFirstInteraction','Primeira interação'],
@@ -210,9 +225,9 @@ export default function MiniCrm() {
 
           {view === 'relatorios' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Relatório de captação</div><div className="crm-panel-subtitle">Gráfico ilustrativo de volume de leads</div><Chart period={period}/></section><section className="crm-card crm-panel"><div className="crm-panel-title">Indicadores comerciais</div><div className="crm-panel-subtitle">Resultados simulados, sem vínculo com campanhas</div>{[['Leads recebidos','124'],['Agendamentos confirmados','18'],['Reuniões realizadas','11'],['Contratos fechados','4']].map(([label,value]) => <div className="crm-appointment" key={label} style={{justifyContent:'space-between'}}><span>{label}</span><strong>{value}</strong></div>)}</section></div>}
 
-          {view === 'configuracoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Identidade e segurança</div><div className="crm-panel-subtitle">Prévia de interface, sem alterações em infraestrutura</div><div className="crm-appointment"><Icon name="shield"/><div><strong>Branding Cassiellos</strong><small>Marinho #07101F · Vermelho #F13C4B · Inter</small></div></div><div className="crm-appointment"><Icon name="settings"/><div><strong>Ambiente Preview</strong><small>Funcionalidades reais serão liberadas somente após autenticação adequada.</small></div></div></section><section className="crm-card crm-panel"><div className="crm-panel-title">Integrações previstas</div>{[['Neon PostgreSQL','Backend validado — interface ainda não conectada'],['Meta Conversions API','Pendente'],['Calendário e e-mail','Pendente'],['Telegram','Pendente']].map(([k,v]) => <div className="crm-appointment" key={k}><Icon name="pulse"/><div><strong>{k}</strong><small>{v}</small></div></div>)}</section></div>}
+          {view === 'configuracoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Identidade e segurança</div><div className="crm-panel-subtitle">Prévia de interface, sem alterações em infraestrutura</div><div className="crm-appointment"><Icon name="shield"/><div><strong>Branding Cassiellos</strong><small>Marinho #07101F · Vermelho #F13C4B · Inter</small></div></div><div className="crm-appointment"><Icon name="settings"/><div><strong>Ambiente Preview</strong><small>Funcionalidades reais serão liberadas somente após autenticação adequada.</small></div></div></section><section className="crm-card crm-panel"><div className="crm-panel-title">Integrações previstas</div>{[['Neon PostgreSQL','Backend validado — interface ainda não conectada'],['Meta Conversions API','Pendente'],['Calendário e e-mail','Pendente'],['Notificações no celular (PWA + Web Push)','Em homologação — aba Notificações']].map(([k,v]) => <div className="crm-appointment" key={k}><Icon name="pulse"/><div><strong>{k}</strong><small>{v}</small></div></div>)}</section></div>}
 
-          <div className="crm-footnote">Cassiellos Mini CRM · {view === 'leads' || view === 'agenda' || view === 'dashboard' || view === 'funil' || view === 'disponibilidade' ? 'Leitura real do Neon Preview · acesso administrativo' : 'Prévia visual demonstrativa'} · Produção preservada</div>
+          <div className="crm-footnote">Cassiellos Mini CRM · {view === 'leads' || view === 'agenda' || view === 'dashboard' || view === 'funil' || view === 'disponibilidade' || view === 'notificacoes' ? 'Leitura real do Neon Preview · acesso administrativo' : 'Prévia visual demonstrativa'} · Produção preservada</div>
         </div>
       </main>
     </div>
