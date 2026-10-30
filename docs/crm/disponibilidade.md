@@ -44,7 +44,11 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
   O bloqueio de Carnaval é, portanto, **política comercial** (D-A).
 - **Estadual (MG):** o calendário estadual de 2026 (Agência Minas, 02/12/2025) não traz feriado estadual próprio além de
   21/04 (Data Magna, coincide com Tiradentes). Os pontos facultativos estaduais (ex.: 02/01, 30/10) não bloqueiam a agenda.
-- **Não confirmado:** a alteração "Portaria MGI 8.821/2026" não apareceu nas fontes lidas.
+- **20/11:** feriado **nacional** pela **Lei 14.759/2023** (Dia Nacional de Zumbi e da Consciência Negra).
+- **Dia do Servidor Público 2026:** a **Portaria MGI 8.821/2026** transferiu para **30/10/2026** o ponto facultativo federal
+  originalmente previsto para **28/10/2026**. A informação foi dada pela Agência Cassiellos em 30/10/2026; o texto da portaria
+  no DOU não foi lido. Fontes secundárias confirmam a transferência para 30/10 em órgãos federais (MPF, Portaria PRR5
+  143/2026; UNIRIO). **Política comercial:** a Cassiellos mantém **30/10 disponível** para agendamento.
 - **2027:** a portaria do MGI ainda não foi publicada. As datas móveis vêm do cálculo da Páscoa (28/03/2027)
   e devem ser conferidas quando a portaria sair.
 
@@ -62,11 +66,11 @@ Migração `0008_availability.sql` **preparada e não aplicada** em nenhum banco
 | 15/08 | Assunção de Nossa Senhora | feriado municipal (BH) | dia inteiro |
 | 07/09 | Independência | feriado nacional | dia inteiro |
 | 12/10 | Nossa Senhora Aparecida | feriado nacional | dia inteiro |
-| 28/10 | Dia do Servidor Público | ponto facultativo federal | **sem bloqueio** |
-| 30/10 | Dia do Funcionário Público (MG) | expediente estadual | **sem bloqueio** |
+| 28/10 | Dia do Servidor Público (data original) | ponto facultativo federal **transferido para 30/10** (Portaria MGI 8.821/2026) | **sem bloqueio** |
+| 30/10 | Dia do Funcionário Público (MG) e ponto facultativo federal do Dia do Servidor (transferido) | expediente estadual + ponto facultativo federal | **sem bloqueio** (mantido disponível por política comercial) |
 | 02/11 | Finados | feriado nacional | dia inteiro |
 | 15/11 | Proclamação da República | feriado nacional | dia inteiro |
-| 20/11 | Consciência Negra | feriado nacional e municipal (BH) | dia inteiro |
+| 20/11 | Consciência Negra | feriado nacional (Lei 14.759/2023) e municipal (BH) | dia inteiro |
 | 08/12 | Imaculada Conceição | feriado municipal (BH) | dia inteiro |
 | 24/12 | Véspera de Natal | ponto facultativo após 13h + política | a partir de 13:00 |
 | 25/12 | Natal | feriado nacional | dia inteiro |
@@ -168,7 +172,9 @@ Reversão: as tabelas são independentes. Basta parar de usá-las (ou removê-la
 
 1. **2027 (D-E):** quando a portaria do MGI e o calendário estadual de 2027 forem publicados, conferir as datas,
    incluir 2027 em `OFFICIALLY_CONFIRMED_YEARS` e ajustar o catálogo se algo mudar.
-2. **Portaria MGI 8.821/2026:** a alteração não foi confirmada nas fontes lidas. Conferir se ela mudou algum ponto facultativo de 2026.
+2. **Portaria MGI 8.821/2026:** transferência de 28/10 para 30/10 registrada; ler o texto oficial no DOU para fechar a
+   conferência. O catálogo no código (`servidor_publico`) ainda mostra 28/10 para todos os anos. Não há efeito funcional,
+   pois nenhum dos dois dias bloqueia; ajustar o rótulo de 2026 no código exige autorização (esta etapa foi só documental).
 3. **Lei 11.397/2022 de BH:** a consolidação foi lida por meio da Portaria TJMG. Ler o texto oficial no DOM/CMBH quando possível.
 4. **Migração 0008 (D-B)** e **publicação (D-C):** bloqueadas até a avaliação do teste das 09h40.
 5. **Revisão anual:** a cada ano, conferir mudanças em leis municipais (ex.: novo feriado em BH) e repetir esta validação.
