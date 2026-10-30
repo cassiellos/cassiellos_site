@@ -59,7 +59,7 @@ export default function LeadManagement({leadId,onClose,onChanged}:{leadId:string
   }finally{setBusy(false)}
  }
  function cancelMeetingAction(meeting:Meeting){
-  const reason=window.prompt('Motivo do cancelamento (opcional). Esta ação cancela o convite no Google Calendar e o participante é avisado pelo Google:','')
+  const reason=window.prompt('Motivo do cancelamento (opcional). O cancelamento remove o evento do calendário da Cassiellos, mas não envia aviso automático ao participante:','')
   if(reason===null)return
   if(!window.confirm('Confirma o cancelamento da reunião de '+fmt.format(new Date(meeting.starts_at))+'? O horário só é liberado após a confirmação do Google.'))return
   action({action:'cancel_meeting',appointmentId:meeting.id,reason,confirmed:true})

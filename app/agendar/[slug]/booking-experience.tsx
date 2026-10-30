@@ -5,6 +5,12 @@ import type { FormEvent } from 'react'
 import type { BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
 import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
+import { daysAhead, type FunnelEventName, type FunnelMode } from '@/lib/crm/funnel-events'
+import { emitFunnel } from '@/lib/crm/funnel-client'
+import { isTestEmailDomain } from '@/lib/crm/booking-mode'
+import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
+import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
+import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 /** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
@@ -115,10 +121,15 @@ function Icon({ name }: { name: 'calendar' | 'clock' | 'video' | 'shield' | 'arr
 }
 
 const TURNSTILE_ACTION = 'booking_lead'
+/** Código de erro seguro para métricas: só os códigos do servidor/cliente (MAIÚSCULAS); o resto vira genérico. */
+function errorCode(error: unknown, fallback: string): string {
+  const code = error instanceof Error ? error.message : ''
+  return /^[A-Z][A-Z_]{1,47}$/.test(code) ? code : fallback
+}
 
 export default function BookingExperience({
-  form, bookingEnabled, turnstileSiteKey,
-}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null }) {
+  form, bookingEnabled, turnstileSiteKey, analyticsMode,
+}: { form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode }) {
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -147,11 +158,26 @@ export default function BookingExperience({
   const [turnstileReset, setTurnstileReset] = useState(0)
   const submissionKey = useRef<string | null>(null)
 
+  /** Marco do funil (lib/crm/funnel-events): só com consentimento, sem dados pessoais e sem duplicidade. */
+  function funnel(name: FunnelEventName, extra: Record<string, unknown> = {}, ref?: string | null) {
+    // Em modo real, um e-mail de domínio de teste nunca vira conversão (a marca final é do servidor: is_test).
+    const mode = analyticsMode === 'live' && attendee.email && isTestEmailDomain(attendee.email) ? 'test' : analyticsMode
+    emitFunnel(name, { form: form.slug, mode, ...extra }, ref)
+  }
+
   useEffect(() => {
     const current = localToday()
     setToday(current)
     setMonth(current.slice(0, 7))
   }, [])
+
+  // Visualização do formulário: ao carregar ou, se o consentimento vier depois, no momento do aceite.
+  useEffect(() => {
+    const view = () => emitFunnel('booking_form_view', { form: form.slug, mode: analyticsMode })
+    view()
+    window.addEventListener(CONSENT_CHANGE_EVENT, view)
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, view)
+  }, [form.slug, analyticsMode])
 
   useEffect(() => {
     if (step !== 2 || !bookingToken) return
@@ -215,6 +241,7 @@ export default function BookingExperience({
         }
         setAvailabilityError(messages[code] ?? '')
         setFailed(true)
+        funnel('booking_form_error', { stage: 'availability', code: errorCode(error, 'AVAILABILITY_FAILED') })
       })
       .finally(() => { if (active) setLoading(false) })
 
@@ -258,6 +285,7 @@ export default function BookingExperience({
     }
     setAttendee(current => ({ ...current, [name]: value }))
     setSaveError('')
+    if (value) funnel('booking_form_start')
   }
 
   function next(event: FormEvent<HTMLFormElement>) {
@@ -267,9 +295,11 @@ export default function BookingExperience({
       const digits = attendee.whatsapp.replace(/\D/g, '')
       if (digits.length < 10 || digits.length > 13) {
         setSaveError('Digite um telefone fictício com DDD e 10 a 13 dígitos para testar.')
+        funnel('booking_form_error', { stage: 'question', code: 'INVALID_WHATSAPP' })
         return
       }
     }
+    funnel('booking_step_completed', { step: question.name, step_index: questionIndex + 1 })
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(index => index + 1)
     } else {
@@ -301,12 +331,17 @@ export default function BookingExperience({
     setSaveError('')
     try {
       if (!submissionKey.current) submissionKey.current = window.crypto.randomUUID()
+      funnel('booking_form_submit', {}, submissionKey.current)
+      // Atribuição do cadastro (padrão UTM: docs/marketing/padrao-utm.md). UTM com aparência de e-mail é
+      // descartado; o servidor repete a higienização. fbclid segue como antes (sem uso atual; Etapa 4).
       const attribution: Record<string, string> = {}
       const params = new URLSearchParams(window.location.search)
-      for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']) {
-        const value = params.get(key)
-        if (value) attribution[key] = value.slice(0, 180)
+      for (const key of UTM_KEYS) {
+        const value = sanitizeUtmValue(params.get(key)).slice(0, 180)
+        if (value) attribution[key] = value
       }
+      const fbclid = params.get('fbclid')
+      if (fbclid) attribution.fbclid = fbclid.slice(0, 180)
       const answers: Record<string, string> = {}
       for (const field of form.fields) answers[field.name] = attendee[field.name]
       const response = await fetch('/api/booking/leads', {
@@ -336,7 +371,11 @@ export default function BookingExperience({
       setBookingToken(result.bookingToken)
       setLeadSaved(true)
       setStep(2)
+      // Um lead por contato: a deduplicação usa o id do lead (resposta idempotente ou reenvio não contam de novo).
+      const leadRef = 'leadId' in result && typeof result.leadId === 'string' ? result.leadId : null
+      funnel('booking_lead_registered', {}, leadRef)
     } catch (error) {
+      funnel('booking_form_error', { stage: 'lead', code: errorCode(error, 'SAVE') })
       const code = error instanceof Error ? error.message : ''
       const messages: Record<string, string> = {
         INVALID_NAME: 'Revise o nome informado.',
@@ -389,7 +428,13 @@ export default function BookingExperience({
         state: meetUrl ? 'confirmed' : 'link_pending',
       })
       setStep(4)
+      // Somente reunião confirmada pelo backend (id da reserva presente). A repetição idempotente
+      // ("alreadyConfirmed") mostra a mesma reunião, mas não conta outra conversão.
+      if (typeof value.bookingRequestId === 'string' && value.bookingRequestId && value.alreadyConfirmed !== true) {
+        funnel('booking_meeting_confirmed', { state: meetUrl ? 'confirmed' : 'link_pending' }, value.bookingRequestId)
+      }
     } catch (error) {
+      funnel('booking_form_error', { stage: 'confirm', code: errorCode(error, 'BOOKING_UNAVAILABLE') })
       const code = error instanceof Error ? error.message : ''
       const messages: Record<string, string> = {
         SLOT_UNAVAILABLE: 'Esse horário acabou de ficar indisponível. Escolha outro no calendário.',
@@ -447,6 +492,8 @@ export default function BookingExperience({
 
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
         <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
+        {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
+        <ConsentNotice/>
         <div className="booking-card-inside">
           <div className="booking-progress">
             <span className={step >= 1 ? 'is-current' : ''}>01 <span>Seus dados</span></span>
@@ -605,7 +652,11 @@ export default function BookingExperience({
                   {slots.map(slot => <button type="button" key={slot.startAt}
                     data-selected={chosen?.startAt === slot.startAt}
                     aria-pressed={chosen?.startAt === slot.startAt}
-                    onClick={() => setChosen(slot)}>{slot.localTime}</button>)}
+                    onClick={() => {
+                      setChosen(slot)
+                      const ahead = daysAhead(today, date)
+                      funnel('booking_slot_selected', ahead === null ? {} : { days_ahead: ahead }, slot.startAt)
+                    }}>{slot.localTime}</button>)}
                 </div>}
             </div>
             <div className="booking-actions">
@@ -621,7 +672,7 @@ export default function BookingExperience({
             <div className="booking-card-heading">
               <div className="booking-step-label">ETAPA 03 DE 03</div>
               <h2>Confira sua seleção.</h2>
-              <p>{bookingEnabled ? 'Confirme os dados antes de enviar o convite de teste pelo Google Calendar.' : 'Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.'}</p>
+              <p>{bookingEnabled ? 'Confirme os dados antes de concluir o agendamento de teste. O link do Google Meet é disponibilizado na confirmação do agendamento.' : 'Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.'}</p>
             </div>
             <div className="booking-review-list">
               <div><small>DIAGNÓSTICO</small><strong>{form.meetingName}</strong></div>
@@ -632,7 +683,7 @@ export default function BookingExperience({
             </div>
             <div className="booking-demo-confirm"><Icon name="shield"/>
               <span>{bookingEnabled
-                ? 'Teste controlado: a confirmação criará um evento real no Google Calendar e enviará convite ao endereço autorizado.'
+                ? 'Teste controlado: a confirmação cria a reunião na agenda da Cassiellos e não envia convite por e-mail.'
                 : 'Prévia de interface. A confirmação real permanece bloqueada até autorizarmos um teste controlado com e-mail real.'}</span>
             </div>
             <button type="button" className="booking-secondary booking-back-full"
@@ -697,6 +748,9 @@ export default function BookingExperience({
       </section>
     </main>
     <footer className="booking-footer"><span>© Cassiellos · Experiência em desenvolvimento</span>
+      <span className="booking-footer-links"><a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+        <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Cookies</a>
+        <ConsentPreferencesButton/></span>
       <span>Ambiente Preview · {form.niche}</span></footer>
   </div>
 }

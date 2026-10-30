@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './real-leads.css'
 import LeadManagement from './lead-management'
+import { attributionChannel, CHANNEL_LABELS } from '@/lib/crm/attribution'
 
 type StoredLead = {
   id: string
@@ -155,6 +156,7 @@ export default function RealLeadsPanel({ search }: { search: string }) {
         <div><span>Fonte da campanha</span><strong>{active.source || 'Não identificada'}</strong></div>
         <div><span>Campanha</span><strong>{active.campaign || 'Não identificada'}</strong></div>
         <div><span>Meio</span><strong>{active.medium || 'Não identificado'}</strong></div>
+        <div><span>Canal (padrão de UTMs)</span><strong>{CHANNEL_LABELS[attributionChannel(active.source, active.medium)]}</strong></div>
         <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
       </div>
     </div> : null}

@@ -177,3 +177,19 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .booking-confirmed-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 #cassiellos-booking .booking-confirmed-actions .booking-secondary{text-decoration:none;text-align:center}
 @media(max-width:560px){#cassiellos-booking .booking-confirmed-actions{grid-template-columns:1fr}}
+
+/* Etapa 3 — aviso de métricas: dentro do cartão, no fluxo (não cobre campos nem botões), e rodapé. */
+#cassiellos-booking .consent-notice{padding:16px 23px 18px;border-bottom:1px solid rgba(34,199,242,.16);background:rgba(7,16,31,.55)}
+#cassiellos-booking .consent-notice h2{margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.01em;color:#e7f1fb;outline:none}
+#cassiellos-booking .consent-notice p{margin:0;font-size:12px;line-height:1.6;color:#a9bdd3}
+#cassiellos-booking .consent-notice .consent-notice-links{margin-top:6px}
+#cassiellos-booking .consent-notice a,#cassiellos-booking .booking-footer-links a{color:#8fdcf6;text-decoration:underline;text-underline-offset:2px}
+#cassiellos-booking .consent-notice-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+#cassiellos-booking .consent-choice{min-height:44px;width:100%;padding:0 12px;border:1px solid rgba(206,223,249,.32);border-radius:9px;background:rgba(255,255,255,.06);color:#eef5ff;font-size:12px;font-weight:750}
+#cassiellos-booking .consent-choice:hover{background:rgba(255,255,255,.12)}
+#cassiellos-booking .consent-choice:focus-visible,#cassiellos-booking .consent-preferences-button:focus-visible{outline:2px solid #6cdeff;outline-offset:2px}
+#cassiellos-booking .booking-footer-links{display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+#cassiellos-booking .consent-preferences-button{padding:0;border:0;background:none;color:#8fdcf6;font-size:11px;text-decoration:underline;text-underline-offset:2px}
+@media(max-width:760px){
+  #cassiellos-booking .consent-notice{padding:14px 20px 16px}
+}

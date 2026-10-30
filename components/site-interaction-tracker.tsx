@@ -2,49 +2,13 @@
 
 import { useEffect } from 'react'
 import { track } from '@vercel/analytics'
+import { requiresAnalyticsConsent } from '@/lib/privacy/analytics-policy'
+import { CONSENT_CHANGE_EVENT, analyticsAllowed } from '@/lib/privacy/consent-client'
+import { trackAnalyticsFlow } from '@/lib/privacy/flow-client'
 
-const ANALYTICS_FLOW_ENDPOINT = '/api/analyticsflow/events'
-const ANALYTICS_FLOW_CLIENT = 'cassiellos-site'
-
-function safePageUrl() {
-  const url = new URL(window.location.href)
-  return `${url.origin}${url.pathname}`
-}
-
-function safeReferrer() {
-  if (!document.referrer) return null
-  try {
-    const url = new URL(document.referrer)
-    return `${url.origin}${url.pathname}`
-  } catch {
-    return null
-  }
-}
-
-function attribution() {
-  const params = new URLSearchParams(window.location.search)
-  return Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'gclid', 'fbclid']
-    .map((key) => [key, params.get(key) || null]))
-}
-
-function trackAnalyticsFlow(eventType: 'page_view' | 'cta_click' | 'whatsapp_click' | 'form_submit', contentId?: string) {
-  const payload = JSON.stringify({
-    event_id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
-    client_id: ANALYTICS_FLOW_CLIENT,
-    event_type: eventType,
-    url: safePageUrl(),
-    referrer: safeReferrer(),
-    content_id: contentId || null,
-    ...attribution(),
-  })
-  void fetch(ANALYTICS_FLOW_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    keepalive: true,
-    credentials: 'same-origin',
-  }).catch(() => undefined)
+/** Site institucional: sempre (comportamento atual). Escopo do CRM: só com consentimento de métricas. */
+function allowedHere() {
+  return !requiresAnalyticsConsent(window.location.pathname) || analyticsAllowed()
 }
 
 /*
@@ -73,11 +37,22 @@ function kindOfLink(anchor: HTMLAnchorElement) {
 
 export default function SiteInteractionTracker() {
   useEffect(() => {
-    trackAnalyticsFlow('page_view')
+    // page_view: uma vez por carregamento. No escopo do CRM, só depois do consentimento (inclusive se ele for
+    // dado nesta mesma página).
+    let pageViewSent = false
+    const sendPageView = () => {
+      if (pageViewSent || !allowedHere()) return
+      pageViewSent = true
+      trackAnalyticsFlow('page_view')
+    }
+    sendPageView()
 
     const onClick = (event: MouseEvent) => {
+      if (!allowedHere()) return
       const target = event.target
       if (!(target instanceof Element)) return
+      // Os controles de consentimento não são medidos (nem o clique que revoga).
+      if (target.closest('[data-consent-ui]')) return
 
       const anchor = target.closest('a')
       if (anchor instanceof HTMLAnchorElement) {
@@ -89,6 +64,8 @@ export default function SiteInteractionTracker() {
 
       const button = target.closest('button')
       if (!(button instanceof HTMLButtonElement) || button.disabled || button.closest('form')) return
+      // No /agendar o progresso é medido pelos eventos do funil; cliques de interface (calendário, horários) não.
+      if (window.location.pathname.startsWith('/agendar')) return
       track('site_button_click', {
         kind: button.classList.contains('btn') ? 'cta' : 'interface',
         page: window.location.pathname,
@@ -97,14 +74,19 @@ export default function SiteInteractionTracker() {
     }
 
     const onSubmit = (event: Event) => {
-      if (event.target instanceof HTMLFormElement) trackAnalyticsFlow('form_submit', 'form:site')
+      // O funil /agendar tem uma pergunta por <form>: o envio real é registrado pelos eventos do funil
+      // (lib/crm/funnel-events), não a cada pergunta respondida.
+      if (window.location.pathname.startsWith('/agendar')) return
+      if (event.target instanceof HTMLFormElement && allowedHere()) trackAnalyticsFlow('form_submit', 'form:site')
     }
 
     document.addEventListener('click', onClick, { capture: true })
     document.addEventListener('submit', onSubmit, { capture: true })
+    window.addEventListener(CONSENT_CHANGE_EVENT, sendPageView)
     return () => {
       document.removeEventListener('click', onClick, { capture: true })
       document.removeEventListener('submit', onSubmit, { capture: true })
+      window.removeEventListener(CONSENT_CHANGE_EVENT, sendPageView)
     }
   }, [])
 

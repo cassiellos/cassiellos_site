@@ -16,8 +16,7 @@ import SiteFooter from '@/components/site-footer'
 import { LeviProvider } from '@/components/levi-provider'
 import LeviWidget from '@/components/levi-widget'
 import SiteInteractionTracker from '@/components/site-interaction-tracker'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
+import AnalyticsPrivacy from '@/components/analytics-privacy'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
 const SHOW_LEVI_WIDGET = false
@@ -87,9 +86,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteFooter />
           {SHOW_LEVI_WIDGET && <LeviWidget />}
         </LeviProvider>
-        <Analytics />
+        <AnalyticsPrivacy />
         <SiteInteractionTracker />
-        <SpeedInsights />
       </body>
     </html>
   )

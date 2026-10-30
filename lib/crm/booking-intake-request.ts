@@ -4,6 +4,7 @@ import {
   TURNSTILE_BOOKING_ACTION, publicTurnstileError,
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
 } from './turnstile'
+import { sanitizeAttribution } from './attribution'
 
 /**
  * Cadastro do formulário público (POST /api/booking/leads), sem dependências de
@@ -13,8 +14,6 @@ import {
  *   3. limite por IP (preservado: 10 envios/hora);
  *   4. gravação protegida do lead (Fase 3 / item 2) + sessão de agendamento.
  */
-
-const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const
 
 export function clean(value: unknown, max: number): string | null {
   if (typeof value !== 'string') return null
@@ -86,14 +85,8 @@ export async function handleLeadIntake(
   if (!answers) return { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } }
   if (value.privacyAccepted !== true) return { status: 400, body: { error: 'PRIVACY_NOT_ACCEPTED' } }
 
-  const attribution: Record<string, string> = {}
-  const rawAttribution = value.attribution
-  if (rawAttribution && typeof rawAttribution === 'object' && !Array.isArray(rawAttribution)) {
-    for (const key of ATTRIBUTION_KEYS) {
-      const safe = clean((rawAttribution as Record<string, unknown>)[key], 180)
-      if (safe) attribution[key] = safe
-    }
-  }
+  // Mesmas chaves de antes (utm_* + fbclid); UTM com aparência de e-mail é descartado (lib/crm/attribution).
+  const attribution = sanitizeAttribution(value.attribution, clean)
 
   // Anti-abuse check happens on the server before ANY database write.
   if (deps.turnstileConfig.status !== 'ready') {

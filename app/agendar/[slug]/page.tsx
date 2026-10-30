@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
+import { getCrmBookingMode } from '@/lib/crm/booking-mode'
+import { funnelModeFor } from '@/lib/crm/funnel-events'
 import BookingExperience from './booking-experience'
 import './booking.css'
 
@@ -32,5 +34,11 @@ export default async function NicheBookingPage({
   // configuration is complete (otherwise the form stays blocked: fail closed).
   const turnstile = getTurnstileConfig()
   const turnstileSiteKey = turnstile.status === 'ready' ? turnstile.siteKey : null
-  return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey} />
+  // Métricas do funil: "test" no ambiente de testes (modo de teste ou allowlist ativa); só "live" conta como real.
+  const analyticsMode = funnelModeFor({
+    bookingMode: getCrmBookingMode(),
+    allowlistActive: Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim()),
+  })
+  return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey}
+    analyticsMode={analyticsMode} />
 }
