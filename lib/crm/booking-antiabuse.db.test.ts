@@ -14,7 +14,8 @@ import { handleLeadIntake } from './booking-intake-request'
 import {
   SQL_CANONICAL_MAILBOX, canonicalMailbox, checkBookingEligibility, finalizeBookingReservation, reserveBookingSlot, type ReserveInput,
 } from './booking-reservation'
-import { listBookingSlots, type BookingSlot } from './booking-slots'
+import { type BookingSlot } from './booking-slots'
+import { DEFAULT_AVAILABILITY_RULES, listAvailableSlots } from './availability/engine'
 import { saveLeadSubmission, type LeadSubmissionProtection } from './lead-intake'
 import { AVAILABILITY_LIMIT, INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from './request-limits'
 import { TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike } from './turnstile'
@@ -31,14 +32,22 @@ type Lead = { leadId: string; submissionId: string; email: string }
 function email(tag: string, domain = 'exemplo.com'): string { return tag + '.' + randomUUID().slice(0, 8) + '@' + domain }
 function slotAt(ms: number) { return { startAt: new Date(ms).toISOString(), endAt: new Date(ms + 30 * 60_000).toISOString() } }
 
-/** Horários realmente oferecidos pelo motor (dia útil, aviso de 12 h, 30 dias). */
+/** Horários realmente oferecidos pelo motor (dia útil, sem feriado/política, aviso de 12 h, 30 dias). */
 function bookableSlots(count: number): BookingSlot[] {
   const result: BookingSlot[] = []
   for (let d = 2; d < 30 && result.length < count; d++) {
     const day = new Date(Date.now() + d * DAY).toISOString().slice(0, 10)
-    result.push(...listBookingSlots(day, []).slice(0, Math.max(0, count - result.length)))
+    result.push(...listAvailableSlots(day, [], DEFAULT_AVAILABILITY_RULES).slice(0, Math.max(0, count - result.length)))
   }
   return result
+}
+
+function nextSaturday(): string {
+  for (let d = 2; d < 9; d++) {
+    const day = new Date(Date.now() + d * DAY).toISOString().slice(0, 10)
+    if (new Date(day + 'T12:00:00Z').getUTCDay() === 6) return day
+  }
+  throw new Error('unreachable')
 }
 
 describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, () => {
@@ -291,7 +300,8 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
         [session(unverified), slot.startAt, 'BOOKING_SESSION_EXPIRED'],
         [null, slot.startAt, 'BOOKING_SESSION_EXPIRED'],
         [session(unverified), '2026-13-40T99:00:00Z', 'INVALID_SLOT'],
-        [session(unverified), '2026-11-07T12:00:00.000Z', 'INVALID_SLOT'], // sábado
+        // Módulo de disponibilidade: dia fechado pelas regras (sábado) = SLOT_UNAVAILABLE (409), sem Google.
+        [session(unverified), nextSaturday() + 'T13:00:00.000Z', 'SLOT_UNAVAILABLE'],
       ] as const) {
         const g = google()
         const r = await confirmBookingRequest(deps(g, unverified.email), { bookingToken: token, startAt, pageOrigin: ORIGIN })

@@ -3,7 +3,10 @@ import {
   checkBookingEligibility, finalizeBookingReservation, releaseReservationBeforeGoogle, reserveBookingSlot,
   type ConnectablePool, type EligibilityInput, type EligibilityResult, type ReserveResult,
 } from './booking-reservation'
-import { isBookableDate, listBookingSlots, type BusyInterval } from './booking-slots'
+import { isValidBookingDate, type BusyInterval } from './booking-slots'
+import {
+  DEFAULT_AVAILABILITY_RULES, isWithinWindow, listAvailableSlots, type AvailabilityRules,
+} from './availability/engine'
 import type { HandlerResponse } from './booking-intake-request'
 
 /**
@@ -33,6 +36,12 @@ export type ConfirmDeps = {
   calendarId: string
   allowedEmail: string
   limits?: EligibilityInput['limits']
+  /**
+   * Regras de disponibilidade (horário comercial, feriados, bloqueios, exceções). Lidas a cada
+   * confirmação: a mesma decisão da listagem pública vale para chamadas diretas à API.
+   * Sem esta dependência, valem as regras padrão do código (inclui feriados).
+   */
+  loadRules?: () => Promise<AvailabilityRules>
 }
 
 export function bookingDay(startAt: string): string {
@@ -76,7 +85,7 @@ export async function confirmBookingRequest(
   if (!Number.isFinite(ms)) return { status: 400, body: { error: 'INVALID_SLOT' } }
   const normalizedStart = new Date(ms).toISOString()
   const day = bookingDay(normalizedStart)
-  if (!isBookableDate(day)) return { status: 400, body: { error: 'INVALID_SLOT' } }
+  if (!isValidBookingDate(day)) return { status: 400, body: { error: 'INVALID_SLOT' } }
   const finishAt = new Date(ms + form.durationMinutes * 60_000).toISOString()
   const base = {
     leadId: session.leadId, submissionId: session.submissionId, formSlug: form.slug,
@@ -84,6 +93,14 @@ export async function confirmBookingRequest(
   }
 
   try {
+    // Availability rules first (no Google): outside the window = invalid slot.
+    const rules = deps.loadRules ? await deps.loadRules() : DEFAULT_AVAILABILITY_RULES
+    if (!isWithinWindow(day, rules)) return { status: 400, body: { error: 'INVALID_SLOT' } }
+    // A slot closed by business hours, holiday, policy or manual block never reaches Google.
+    if (!listAvailableSlots(day, [], rules).some(item => item.startAt === normalizedStart && item.endAt === finishAt)) {
+      return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
+    }
+
     // Read-only gate: blocked contacts never trigger a Google request.
     const eligibility = await checkBookingEligibility(deps.pool, base)
     if (eligibility.status !== 'eligible') return blockedResponse(eligibility)!
@@ -91,7 +108,7 @@ export async function confirmBookingRequest(
     // Google external availability is checked first; internal races are guarded
     // with the per-mailbox lock and the unique active-slot index.
     const busy = await deps.readBusy(day)
-    const slot = listBookingSlots(day, busy).find(item =>
+    const slot = listAvailableSlots(day, busy, rules).find(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!slot) return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
 
@@ -110,7 +127,7 @@ export async function confirmBookingRequest(
     try {
       latestBusy = await deps.readBusy(day)
     } catch { return { status: 503, body: { error: 'BOOKING_REQUIRES_REVIEW' } } }
-    const stillFree = listBookingSlots(day, latestBusy).some(item =>
+    const stillFree = listAvailableSlots(day, latestBusy, rules).some(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!stillFree) {
       await releaseReservationBeforeGoogle(deps.pool, reservation.id, 'EXTERNAL_CALENDAR_CONFLICT')

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
-import {
-  CRM_BOOKING_TIME_ZONE,
-  DEFAULT_BOOKING_POLICY,
-  isBookableDate,
-  isValidBookingDate,
-  listBookingSlots,
-} from '@/lib/crm/booking-slots'
+import { CRM_BOOKING_TIME_ZONE, isValidBookingDate } from '@/lib/crm/booking-slots'
+import { getCrmPool } from '@/lib/crm/db'
+import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/crm/availability/engine'
+import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { isGoogleCalendarConfigured, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 
 export const runtime = 'nodejs'
@@ -40,17 +37,22 @@ export async function GET(request: NextRequest) {
     return json({ error: 'GOOGLE_CALENDAR_UNAVAILABLE' }, 502)
   }
 
-  const policy = DEFAULT_BOOKING_POLICY
+  let rules: AvailabilityRules
+  try {
+    rules = await loadAvailabilityRules(getCrmPool())
+  } catch {
+    return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
+  }
   const metadata = {
     date, timeZone: CRM_BOOKING_TIME_ZONE,
-    slotMinutes: policy.slotMinutes,
-    provisionalPolicy: true,
+    slotMinutes: rules.settings.slotMinutes,
+    rulesSource: rules.source,
   }
-  if (!isBookableDate(date)) return json({ ...metadata, slots: [] }, 200)
+  if (!isOpenDate(date, rules)) return json({ ...metadata, slots: [], closed: true }, 200)
 
   try {
     const busy = await readGoogleBusyIntervals(date)
-    return json({ ...metadata, slots: listBookingSlots(date, busy) }, 200)
+    return json({ ...metadata, slots: listAvailableSlots(date, busy, rules) }, 200)
   } catch {
     // Não revelar informações privadas, tokens ou detalhes de disponibilidade.
     return json({ error: 'GOOGLE_CALENDAR_UNAVAILABLE' }, 502)

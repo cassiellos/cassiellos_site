@@ -58,6 +58,14 @@ function workingDate(day: string, today: string): boolean {
   return weekDay !== 0 && weekDay !== 6
 }
 
+/** Dias fechados vindos do servidor (feriados, políticas, bloqueios). Sem eles, vale a regra local. */
+type ServerCalendar = { today: string; lastDate: string; closedDates: string[] }
+
+function selectableDate(day: string, today: string, calendar: ServerCalendar | null): boolean {
+  if (!calendar) return workingDate(day, today)
+  return day >= calendar.today && day <= calendar.lastDate && !calendar.closedDates.includes(day)
+}
+
 function humanDate(day: string): string {
   return new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
@@ -111,6 +119,7 @@ export default function BookingExperience({
   const [confirmationError, setConfirmationError] = useState('')
   const [confirmedMeetUrl, setConfirmedMeetUrl] = useState<string | null>(null)
   const [availabilityError, setAvailabilityError] = useState('')
+  const [serverCalendar, setServerCalendar] = useState<ServerCalendar | null>(null)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
   const [turnstileReset, setTurnstileReset] = useState(0)
@@ -121,6 +130,26 @@ export default function BookingExperience({
     setToday(current)
     setMonth(current.slice(0, 7))
   }, [])
+
+  useEffect(() => {
+    if (step !== 2 || !bookingToken) return
+    const controller = new AbortController()
+    fetch('/api/booking/calendar?form=' + encodeURIComponent(form.slug), {
+      cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+      headers: { 'X-Booking-Session': bookingToken },
+    })
+      .then(response => response.ok ? response.json() : null)
+      .then((data: unknown) => {
+        if (!data || typeof data !== 'object') return
+        const value = data as Record<string, unknown>
+        const isDay = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)
+        if (!isDay(value.today) || !isDay(value.lastDate) || !Array.isArray(value.closedDates)) return
+        setServerCalendar({ today: value.today, lastDate: value.lastDate, closedDates: value.closedDates.filter(isDay) })
+      })
+      // Falha: mantém a regra local; o servidor continua recusando dias fechados.
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [step, form.slug, bookingToken])
 
   useEffect(() => {
     if (step !== 2 || !date) return
@@ -189,7 +218,7 @@ export default function BookingExperience({
   const totalStages = questions.length + 3
   const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
   const days = useMemo(() => month ? monthDays(month) : [], [month])
-  const maxMonth = today ? plusDays(today, 30).slice(0, 7) : ''
+  const maxMonth = serverCalendar ? serverCalendar.lastDate.slice(0, 7) : today ? plusDays(today, 30).slice(0, 7) : ''
   const firstMonth = today ? today.slice(0, 7) : ''
 
   function update(name: keyof Attendee, value: string) {
@@ -508,7 +537,7 @@ export default function BookingExperience({
               {days.map((day, index) => day ? (
                 <button type="button" className="booking-day" key={day}
                   data-active={date === day} data-today={day === today}
-                  disabled={!today || !workingDate(day, today)}
+                  disabled={!today || !selectableDate(day, today, serverCalendar)}
                   onClick={() => { setDate(day); setChosen(null) }}
                   aria-pressed={date === day}
                   aria-label={humanDate(day)}>
