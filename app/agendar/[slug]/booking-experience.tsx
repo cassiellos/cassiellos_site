@@ -555,7 +555,7 @@ export default function BookingExperience({
             </div>
             <div className="booking-slots" aria-live="polite">
               <div className="booking-slots-heading">
-                <strong>{date ? humanDate(date) : 'Selecione um dia'}</strong>
+                <strong>{date ? humanDate(date) : windowClosed ? 'Sem horários disponíveis' : 'Selecione um dia'}</strong>
                 <small>Horário de Brasília · 30 minutos</small>
               </div>
               {windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}

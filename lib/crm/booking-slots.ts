@@ -17,12 +17,17 @@ export type BookingPolicy = {
   workingDays: readonly number[]
 }
 
+/**
+ * Política comercial base (fonte única): seg–sex, 09h–18h, slots de 30 min, antecedência mínima de 3 h
+ * e janela de 3 dias corridos (regras de 30/10/2026). O motor de disponibilidade
+ * (lib/crm/availability/engine.ts) deriva os seus padrões daqui; o administrador ajusta no banco (0008).
+ */
 export const DEFAULT_BOOKING_POLICY: BookingPolicy = {
   openHour: 9,
   closeHour: 18,
   slotMinutes: 30,
-  minimumNoticeMinutes: 12 * 60,
-  maximumDaysAhead: 30,
+  minimumNoticeMinutes: 3 * 60,
+  maximumDaysAhead: 3,
   workingDays: [1, 2, 3, 4, 5],
 }
 

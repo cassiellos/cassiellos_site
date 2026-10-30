@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { DEFAULT_BOOKING_POLICY } from '../booking-slots'
 import {
   DEFAULT_AVAILABILITY_RULES, closedDates, describeDate, isOpenDate, isWithinWindow, listAvailableSlots, localDate,
   localInstant, validateSettings, type AvailabilityRules,
@@ -182,9 +183,21 @@ describe('regras comerciais 30/10/2026 — antecedência 3 h e janela de 3 dias 
   const at = (local: string) => new Date(local + '-03:00')
   const t = (date: string, now: Date, rules: AvailabilityRules = D) => listAvailableSlots(date, [], rules, now).map(s => s.localTime)
 
-  it('padrão: 180 min de antecedência e 3 dias de janela', () => {
+  it('padrão: 180 min de antecedência e 3 dias de janela, derivado da política base (sem divergência)', () => {
     assert.equal(D.settings.minNoticeMinutes, 180)
     assert.equal(D.settings.windowDays, 3)
+    assert.equal(D.settings.minNoticeMinutes, DEFAULT_BOOKING_POLICY.minimumNoticeMinutes)
+    assert.equal(D.settings.windowDays, DEFAULT_BOOKING_POLICY.maximumDaysAhead)
+    assert.equal(D.settings.openMinute, DEFAULT_BOOKING_POLICY.openHour * 60)
+    assert.equal(D.settings.closeMinute, DEFAULT_BOOKING_POLICY.closeHour * 60)
+    assert.deepEqual(D.settings.workingDays, [...DEFAULT_BOOKING_POLICY.workingDays])
+  })
+  it('02/11/2026 (Finados) nunca é oferecido com o módulo publicado, mesmo dentro da janela', () => {
+    const now = at('2026-10-30T09:00:00') // 02/11 = hoje + 3
+    assert.equal(isWithinWindow('2026-11-02', D, now), true)
+    assert.deepEqual(t('2026-11-02', now), [])
+    assert.equal(isOpenDate('2026-11-02', D, now), false)
+    assert.ok(closedDates(D, now).includes('2026-11-02'))
   })
   it('1. exatamente 3 h depois: 09h00 → primeiro horário 12h00', () => {
     assert.equal(t('2026-11-09', at('2026-11-09T09:00:00'))[0], '12:00')

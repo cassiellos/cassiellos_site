@@ -8,7 +8,9 @@ import {
 } from './booking-slots'
 
 const monday = '2026-11-02'
-const now = new Date('2026-10-28T12:00:00.000Z')
+// Sexta, 30/10/2026, 09:00 em São Paulo: segunda 02/11 = hoje + 3 (último dia da janela).
+// Esta é a grade base, sem feriados; o feriado de 02/11 é aplicado pelo motor de disponibilidade.
+const now = new Date('2026-10-30T12:00:00.000Z')
 
 test('rejects non-existing and malformed calendar dates', () => {
   assert.equal(isValidBookingDate('2026-02-30'), false)
@@ -20,6 +22,13 @@ test('allows weekdays within the booking horizon, excludes weekends', () => {
   assert.equal(isBookableDate(monday, now), true)
   assert.equal(isBookableDate('2026-11-01', now), false)
   assert.equal(isBookableDate('2026-12-30', now), false)
+  assert.equal(isBookableDate('2026-11-03', now), false, 'hoje + 4 fora da janela de 3 dias')
+})
+
+test('política base = regras comerciais de 30/10/2026 (3 h, 3 dias, seg–sex 09h–18h, 30 min)', () => {
+  assert.deepEqual(DEFAULT_BOOKING_POLICY, {
+    openHour: 9, closeHour: 18, slotMinutes: 30, minimumNoticeMinutes: 180, maximumDaysAhead: 3, workingDays: [1, 2, 3, 4, 5],
+  })
 })
 
 test('generates 30-minute slots excluding overlapping busy intervals', () => {
@@ -37,9 +46,9 @@ test('generates 30-minute slots excluding overlapping busy intervals', () => {
 })
 
 test('enforces notice and rejects fully elapsed dates', () => {
-  const upcoming = new Date('2026-11-02T17:10:00.000Z')
-  const slots = listBookingSlots(monday, [], upcoming)
-  assert.equal(slots.length, 0)
+  // 14h10 + 3 h = 17h10 → só 17h30; 15h10 + 3 h passa do expediente → nenhum.
+  assert.deepEqual(listBookingSlots(monday, [], new Date('2026-11-02T17:10:00.000Z')).map(s => s.localTime), ['17:30'])
+  assert.equal(listBookingSlots(monday, [], new Date('2026-11-02T18:10:00.000Z')).length, 0)
 })
 
 test('returns UTC timestamps for accurate calendar creation', () => {
@@ -74,7 +83,7 @@ test('busy interval given with -03:00 offset blocks the same instant as UTC', ()
   assert.equal(listBookingSlots(monday, local, now).some(slot => slot.localTime === '14:00'), false)
 })
 
-test('minimum notice boundary is exact (12 h)', () => {
+test('minimum notice boundary is exact (3 h)', () => {
   const firstStart = Date.parse('2026-11-02T12:00:00.000Z') // 09:00 local
   const exactly = new Date(firstStart - DEFAULT_BOOKING_POLICY.minimumNoticeMinutes * 60_000)
   assert.equal(listBookingSlots(monday, [], exactly)[0]?.localTime, '09:00')
@@ -93,8 +102,8 @@ test('booking horizon follows the São Paulo calendar day, not the UTC day', () 
   // 2026-10-26 23:59:59.999 em Brasília já é 2026-10-27 em UTC.
   const beforeLocalMidnight = new Date('2026-10-27T02:59:59.999Z')
   const atLocalMidnight = new Date('2026-10-27T03:00:00.000Z')
-  assert.equal(isBookableDate('2026-11-26', beforeLocalMidnight), false, 'hoje+31 ainda fora do limite')
-  assert.equal(isBookableDate('2026-11-26', atLocalMidnight), true, 'vira hoje+30 à meia-noite local')
+  assert.equal(isBookableDate('2026-10-30', beforeLocalMidnight), false, 'hoje+4 ainda fora do limite')
+  assert.equal(isBookableDate('2026-10-30', atLocalMidnight), true, 'vira hoje+3 à meia-noite local')
   assert.equal(isBookableDate('2026-10-26', beforeLocalMidnight), true, 'ainda é o dia local de hoje')
   assert.equal(isBookableDate('2026-10-26', atLocalMidnight), false, 'dia local já passou')
 })

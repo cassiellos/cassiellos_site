@@ -1,4 +1,4 @@
-import { CRM_BOOKING_TIME_ZONE, isValidBookingDate, type BookingSlot, type BusyInterval } from '../booking-slots'
+import { CRM_BOOKING_TIME_ZONE, DEFAULT_BOOKING_POLICY, isValidBookingDate, type BookingSlot, type BusyInterval } from '../booking-slots'
 import { addDays, holidaysForYear, type BlockRule, type HolidayOccurrence, type HolidayRuleOverride } from './holidays'
 
 /**
@@ -23,10 +23,14 @@ export type AvailabilitySettings = {
   windowDays: number
 }
 
+// Derivado da política comercial base (fonte única em booking-slots.ts): 3 h de antecedência e 3 dias corridos.
 export const DEFAULT_AVAILABILITY_SETTINGS: AvailabilitySettings = {
-  workingDays: [1, 2, 3, 4, 5], openMinute: 9 * 60, closeMinute: 18 * 60, slotMinutes: 30,
-  // Regras comerciais de 30/10/2026: antecedência mínima de 3 h; janela de 3 dias corridos (datas em São Paulo).
-  minNoticeMinutes: 3 * 60, windowDays: 3,
+  workingDays: [...DEFAULT_BOOKING_POLICY.workingDays],
+  openMinute: DEFAULT_BOOKING_POLICY.openHour * 60,
+  closeMinute: DEFAULT_BOOKING_POLICY.closeHour * 60,
+  slotMinutes: 30,
+  minNoticeMinutes: DEFAULT_BOOKING_POLICY.minimumNoticeMinutes,
+  windowDays: DEFAULT_BOOKING_POLICY.maximumDaysAhead,
 }
 
 /** Limites seguros para o que o administrador pode configurar. */
