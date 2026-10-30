@@ -16,8 +16,10 @@ Situação em 30/10/2026 (Etapa 4):
 - Pixel ID confirmado no código-base do Gerenciador de Eventos: **28992534033707610** (igual ao ID do conjunto de dados);
 - Meta: "Incluir automaticamente informações mais detalhadas de páginas e produtos" **desativado** (autorizado, P4);
   correspondência avançada, eventos automáticos e rastreamento sem código continuam desativados;
-- aviso de marketing com o texto aprovado (P1) e políticas v3 em `local/stage4-pixel-activation`, **pendentes de aprovação**
-  (ver `docs/legal/historico-politicas.md`); o Pixel continua desligado até a publicação das políticas.
+- aviso de marketing com o texto aprovado (P1) e políticas v3 aprovadas (D5) e publicadas no Preview com data efetiva
+  30/10/2026 (`docs/legal/historico-politicas.md`); só depois disso o Pixel é ligado no Preview (`META_PIXEL_*`).
+- Lead e Schedule comerciais reais: **homologação pendente**, antes da abertura pública. A allowlist mantém o modo de
+  teste, que nunca envia Lead/Schedule; no Preview só o PageView (com consentimento de marketing) é validado.
 
 ## Arquitetura
 

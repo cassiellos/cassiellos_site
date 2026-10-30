@@ -11,7 +11,7 @@ Fonte única da versão: `LEGAL_POLICY_VERSION` em `lib/legal/policy.ts`. A mesm
 |---|---|---|---|
 | Cookies 22/08/2026 | main e Preview | Política de Cookies original (contato antigo `contato@agenciacassiellos.com.br`) | Publicada |
 | Privacidade 29/10/2026 | main e Preview (com a seção Turnstile) | Seções 1–11 | Publicada |
-| v3 (Etapa 4) | branch local `local/stage4-pixel-activation` | Ver a lista abaixo | **Pendente de aprovação** |
+| **v3 — 30/10/2026** (`LEGAL_POLICY_VERSION = 2026-10-30`) | Preview (`feature/mini-crm-shark-scale`) | Ver a lista abaixo; aprovada pelo responsável em 30/10/2026 (D5, rev. 3) | Publicada no Preview com este commit. A main não foi alterada |
 
 O que muda na v3:
 - controlador (razão social e CNPJ);
@@ -19,7 +19,8 @@ O que muda na v3:
 - métricas com consentimento (Etapa 3);
 - seção 11, Meta Pixel;
 - retenção dos registros de consentimento;
-- aviso de marketing aprovado.
+- aviso de marketing aprovado;
+- direitos dos titulares (art. 18) e Google Calendar sem convite (seção 9).
 
 ## Controlador (conferido em 30/10/2026)
 
