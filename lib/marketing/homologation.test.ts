@@ -8,18 +8,19 @@ import {
 const SECRET = 'ab'.repeat(32)
 const ENV = {
   VERCEL_ENV: 'preview', NODE_ENV: 'production', CRM_SESSION_SECRET: SECRET,
-  META_PIXEL_ID: '28992534033707610', META_HOMOLOGATION_PIXEL_ID: '1234567890123456',
+  META_PIXEL_ENABLED: 'true', META_PIXEL_ID: '28992534033707610', META_HOMOLOGATION_ENABLED: 'true',
 }
 const now = new Date('2026-10-30T18:00:00Z')
 const ACTOR = '0123456789abcdef'
 
 describe('homologação do Meta Pixel — configuração', () => {
-  it('só existe no Preview, com dataset de homologação válido e DIFERENTE do comercial', () => {
-    assert.deepEqual(getHomologationConfig(ENV), { pixelId: '1234567890123456' })
+  it('só existe no Preview, com a chave explícita e o Pixel COMERCIAL ligado (sem dataset separado)', () => {
+    assert.deepEqual(getHomologationConfig(ENV), { pixelId: '28992534033707610' })
     for (const env of [
       { ...ENV, VERCEL_ENV: 'production' }, { ...ENV, VERCEL_ENV: undefined }, { ...ENV, VERCEL_ENV: 'development' },
-      { ...ENV, META_HOMOLOGATION_PIXEL_ID: undefined }, { ...ENV, META_HOMOLOGATION_PIXEL_ID: 'abc' },
-      { ...ENV, META_HOMOLOGATION_PIXEL_ID: ENV.META_PIXEL_ID }, { ...ENV, META_HOMOLOGATION_PIXEL_ID: ' 28992534033707610 ' },
+      { ...ENV, META_HOMOLOGATION_ENABLED: undefined }, { ...ENV, META_HOMOLOGATION_ENABLED: '1' },
+      { ...ENV, META_HOMOLOGATION_ENABLED: 'false' }, { ...ENV, META_PIXEL_ENABLED: undefined },
+      { ...ENV, META_PIXEL_ID: 'abc' },
     ]) assert.equal(getHomologationConfig(env), null, JSON.stringify(env))
   })
   it('cookie com prefixo __Host- em produção', () => {
@@ -52,9 +53,11 @@ describe('homologação do Meta Pixel — liberação temporária', () => {
   it('modo ativo só com Preview + dataset + cookie válido; o token não contém dado pessoal', () => {
     const { token } = issueHomologationGrant(SECRET, { minutes: 30, actorRef: ACTOR, now })
     const header = 'a=1; ' + homologationCookieName(ENV) + '=' + token
-    assert.equal(activeHomologation(header, ENV, now)?.pixelId, '1234567890123456')
+    const active = activeHomologation(header, ENV, now)
+    assert.equal(active?.pixelId, '28992534033707610')
+    assert.match(active?.nonce ?? '', /^[a-f0-9]{16}$/)
     assert.equal(activeHomologation(header, { ...ENV, VERCEL_ENV: 'production' }, now), null)
-    assert.equal(activeHomologation(header, { ...ENV, META_HOMOLOGATION_PIXEL_ID: undefined }, now), null)
+    assert.equal(activeHomologation(header, { ...ENV, META_HOMOLOGATION_ENABLED: undefined }, now), null, 'chave desligada = modo inexistente')
     assert.equal(activeHomologation('cassiellos_meta_homolog=' + token, ENV, now), null, 'nome do cookie errado')
     assert.equal(activeHomologation(null, ENV, now), null)
     assert.deepEqual(Object.keys(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString())).sort(), ['exp', 'iat', 'kind', 'n', 'ref', 'v'])

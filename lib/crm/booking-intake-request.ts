@@ -61,11 +61,11 @@ export type IntakeDeps = {
   /** Origem pública do funil (ex.: https://crm.cassiellos.com.br) para o evento Lead. */
   publicOrigin?: string
   /**
-   * Homologação do Meta Pixel ativa NESTA requisição (lib/marketing/homologation.ts: Preview, dataset de
-   * homologação, liberação administrativa temporária). Só então um lead de TESTE recebe o event_id — e o
-   * navegador o envia ao dataset de homologação, nunca ao comercial.
+   * Homologação do Meta Pixel ativa NESTA requisição (lib/marketing/homologation.ts: Preview, chave ligada, liberação
+   * administrativa temporária). Só então um lead de TESTE novo recebe o event_id — e só se `claim` reservar o único
+   * Lead desta liberação (lib/crm/meta-homologation-claims.ts). O navegador envia ao Pixel comercial, marcado.
    */
-  metaHomologation?: boolean
+  metaHomologation?: { claim: (input: { event: 'Lead'; leadId: string; eventId: string }) => Promise<boolean> } | null
   /** Somente códigos e motivos — nunca token, IP, e-mail ou segredo. */
   log?: (event: string, details: { reason?: TurnstileFailure | string; codes?: string[] }) => void
 }
@@ -136,9 +136,15 @@ export async function handleLeadIntake(
       eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar/' + encodeURIComponent(form.slug) : null,
     })
     // Browser Lead event only for a NEW, REAL lead (never tests, reuses or resubmissions).
-    const homologation = deps.metaHomologation === true && result.isTest === true
-    const leadEvent = !result.reused && !result.resubmitted && result.leadEventId && (result.isTest === false || homologation)
-      ? { lead: { eventName: 'Lead', eventId: result.leadEventId, ...(homologation ? { homologation: true } : {}) } } : null
+    const isNew = !result.reused && !result.resubmitted && Boolean(result.leadEventId)
+    let leadEvent: { lead: { eventName: 'Lead'; eventId: string; homologation?: true } } | null =
+      isNew && result.isTest === false ? { lead: { eventName: 'Lead', eventId: result.leadEventId! } } : null
+    // Homologação: lead de TESTE novo, uma única vez por liberação; qualquer falha da reserva = sem evento.
+    if (isNew && result.isTest === true && deps.metaHomologation) {
+      const claimed = await deps.metaHomologation.claim({ event: 'Lead', leadId: result.leadId, eventId: result.leadEventId! })
+        .catch(() => false)
+      if (claimed) leadEvent = { lead: { eventName: 'Lead', eventId: result.leadEventId!, homologation: true } }
+    }
     return {
       status: result.reused ? 200 : 201,
       body: {

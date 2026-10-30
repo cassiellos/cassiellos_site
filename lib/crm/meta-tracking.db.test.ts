@@ -15,6 +15,7 @@ import { DEFAULT_AVAILABILITY_RULES, listAvailableSlots, type AvailabilityRules 
 import { MARKETING_POLICY_VERSION, saveLeadSubmission } from './lead-intake'
 import { changeMarketingConsent, readMarketingConsentState } from './marketing-consent'
 import { buildMetaServerEvent } from './meta-events'
+import { HOMOLOGATION_ACTIVITY, claimHomologationEvent } from './meta-homologation-claims'
 import { TURNSTILE_BOOKING_ACTION, TURNSTILE_TEST_KEYS as K, verifyTurnstileToken, type FetchLike } from './turnstile'
 import { leadTrackingEventId } from '../marketing/meta'
 import { serializeConsent } from '../privacy/consent'
@@ -51,7 +52,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     })
 
   /** Pipeline real navegador → handler → banco (Siteverify simulado com as chaves oficiais de teste). */
-  function intakeDeps(opts: { isTest?: boolean } = {}): IntakeDeps {
+  function intakeDeps(opts: { isTest?: boolean; homologationNonce?: string } = {}): IntakeDeps {
     const siteverify: FetchLike = async () => ({ ok: true, status: 200, json: async () => ({
       success: true, hostname: HOST, action: TURNSTILE_BOOKING_ACTION, challenge_ts: new Date().toISOString() }) })
     return {
@@ -66,9 +67,16 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
       classifyNewLeadAsTest: () => opts.isTest === true,
       bookingMode: 'live',
       publicOrigin: ORIGIN,
+      metaHomologation: opts.homologationNonce ? homologationFor(opts.homologationNonce) : null,
       log: () => undefined,
     }
   }
+  /** Mesma ligação da rota: reserva real no banco, por liberação (nonce). */
+  const homologationFor = (nonce: string) => ({
+    claim: (input: { event: 'Lead' | 'Schedule'; leadId: string; eventId: string }) =>
+      claimHomologationEvent(pool, { ...input, nonce, actorRef: 'abcdef0123456789' }),
+  })
+  const newNonce = () => randomUUID().replaceAll('-', '').slice(0, 16)
 
   async function sessionFor(leadEmail: string, marketing: Choice, isTest = false): Promise<BookingSession & { leadEventId: string | null }> {
     const s = await submit(leadEmail, { marketing, isTest })
@@ -140,7 +148,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     }
   })
 
-  async function confirmFor(session: BookingSession, leadEmail: string, extra: { metaHomologation?: boolean; failGoogle?: boolean } = {}) {
+  async function confirmFor(session: BookingSession, leadEmail: string, extra: { homologationNonce?: string; failGoogle?: boolean } = {}) {
     // Regras ATUAIS (disponibilidade V2) com janela ampliada só no teste, como em booking-no-invite.db.test.ts.
     const slot = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => listAvailableSlots(new Date(Date.now() + d * DAY).toISOString().slice(0, 10), [], TEST_RULES)).find(x => x.length)![0]
     return confirmBookingRequest({
@@ -150,7 +158,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
         return { id: 'evt' + i.requestId.replaceAll('-', ''), meetingUrl: null, htmlLink: null }
       },
       calendarId: 'cal-' + randomUUID(), allowedEmail: leadEmail, loadRules: async () => TEST_RULES,
-      metaHomologation: extra.metaHomologation,
+      metaHomologation: extra.homologationNonce ? homologationFor(extra.homologationNonce) : null,
     }, { bookingToken: 'x', startAt: slot.startAt, pageOrigin: ORIGIN })
   }
 
@@ -168,7 +176,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
 
   it('homologação: Schedule de TESTE só com a liberação, após a reunião confirmada; falha no Google = nada', async () => {
     const a = email('homolog.ok')
-    const ok = await confirmFor(await sessionFor(a, GRANT, true), a, { metaHomologation: true })
+    const ok = await confirmFor(await sessionFor(a, GRANT, true), a, { homologationNonce: newNonce() })
     assert.equal(ok.status, 201)
     const schedule = (ok.body.tracking as { schedule: { eventName: string; eventId: string; homologation?: boolean } }).schedule
     assert.equal(schedule.eventName, 'Schedule')
@@ -178,9 +186,50 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     const again = await confirmFor(await sessionFor(b, GRANT, true), b)
     assert.equal('tracking' in again.body, false, 'sem liberação: teste nunca vira conversão')
     const f = email('homolog.falha')
-    const failed = await confirmFor(await sessionFor(f, GRANT, true), f, { metaHomologation: true, failGoogle: true })
+    const failed = await confirmFor(await sessionFor(f, GRANT, true), f, { homologationNonce: newNonce(), failGoogle: true })
     assert.notEqual(failed.status, 201)
     assert.equal('tracking' in failed.body, false, 'sem evento no Google, sem Schedule')
+  })
+
+  it('homologação no Pixel comercial: 1 Lead e 1 Schedule por liberação; teste continua teste; nada pessoal', async () => {
+    const nonce = newNonce()
+    const leadBody = (address: string) => ({
+      formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead Homologação', email: address,
+      whatsapp: '(31) 90000-0072', answers: { clinic: 'Clínica H', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
+      attribution: {}, privacyAccepted: true, turnstileToken: K.dummyToken, marketing: GRANT,
+    })
+    const cookieHeader = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: true })
+    const a = email('homolog.lead.a')
+    const first = await handleLeadIntake(intakeDeps({ isTest: true, homologationNonce: nonce }), { remoteIp: null, cookieHeader, value: leadBody(a) })
+    const leadA = (first.body.tracking as { lead: { eventId: string; homologation?: boolean } }).lead
+    assert.equal(leadA.homologation, true)
+    const second = await handleLeadIntake(intakeDeps({ isTest: true, homologationNonce: nonce }), { remoteIp: null, cookieHeader, value: leadBody(email('homolog.lead.b')) })
+    assert.equal(second.status, 201)
+    assert.equal('tracking' in second.body, false, 'segundo Lead na mesma liberação: bloqueado')
+    const other = await handleLeadIntake(intakeDeps({ isTest: true, homologationNonce: newNonce() }), { remoteIp: null, cookieHeader, value: leadBody(email('homolog.lead.c')) })
+    assert.equal((other.body.tracking as { lead: { homologation?: boolean } }).lead.homologation, true, 'nova liberação: novo Lead')
+
+    const s1 = email('homolog.sched.1')
+    const one = await confirmFor(await sessionFor(s1, GRANT, true), s1, { homologationNonce: nonce })
+    assert.equal((one.body.tracking as { schedule: { homologation?: boolean } }).schedule.homologation, true)
+    const s2 = email('homolog.sched.2')
+    const two = await confirmFor(await sessionFor(s2, GRANT, true), s2, { homologationNonce: nonce })
+    assert.equal(two.status, 201)
+    assert.equal('tracking' in two.body, false, 'segundo Schedule na mesma liberação: bloqueado')
+
+    // Lead REAL nunca é usado pela homologação (a reserva recusa).
+    const real = await submit(email('homolog.real'), { marketing: GRANT })
+    assert.equal(await claimHomologationEvent(pool, { nonce: newNonce(), actorRef: 'abcdef0123456789', event: 'Lead', leadId: real.leadId, eventId: real.leadEventId! }), false)
+
+    const rows = await q<{ is_test: boolean; details: Record<string, unknown>; email: string }>(
+      `SELECT l.is_test, a.details, l.email FROM crm.lead_activities a JOIN crm.leads l ON l.id = a.lead_id
+        WHERE a.activity_kind = $1 AND a.details->>'grant' = $2 ORDER BY a.created_at`, [HOMOLOGATION_ACTIVITY, nonce])
+    assert.deepEqual(rows.map(r => r.details.event), ['Lead', 'Schedule'])
+    for (const r of rows) {
+      assert.equal(r.is_test, true, 'classificação de teste preservada')
+      assert.deepEqual(Object.keys(r.details).sort(), ['event', 'eventId', 'grant', 'isTest', 'pixel', 'sessionRef'])
+      assert.equal(JSON.stringify(r.details).includes(r.email), false)
+    }
   })
 
   it('REVOGAÇÃO pela página aberta: auditável, sem tocar no cadastro, e bloqueia a futura CAPI', async () => {

@@ -1,18 +1,20 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { getMetaPixelConfig } from './meta'
 
 /**
- * Homologação do Meta Pixel (Lead/Schedule) — SOMENTE no Preview, isolada do dataset comercial.
+ * Homologação do Meta Pixel (Lead/Schedule) no Pixel COMERCIAL — SOMENTE no Preview.
  *
- * - Exige um dataset de HOMOLOGAÇÃO próprio (META_HOMOLOGATION_PIXEL_ID), diferente do comercial
- *   (META_PIXEL_ID). Sem ele, ou fora do Preview, o modo não existe.
- * - Liberação administrativa explícita (sessão do CRM) e temporária (no máximo 30 min), num cookie
- *   assinado e HttpOnly do navegador do administrador. Ninguém mais é afetado.
- * - Com o modo ativo, o navegador do administrador carrega o Pixel de HOMOLOGAÇÃO no lugar do comercial:
- *   PageView, Lead e Schedule vão só para o dataset de homologação. O comercial não recebe nada.
- * - Lead/Schedule continuam dependendo da resposta real do backend (lead registrado; reunião confirmada
- *   com evento criado no Google) e do consentimento de marketing; o mesmo event_id do CRM é usado.
- * - Nenhuma regra comercial muda: leads de teste continuam de teste, a allowlist continua ativa e, sem o
- *   modo, nada de teste é enviado à Meta.
+ * - Não há dataset separado: os eventos vão ao Pixel comercial (META_PIXEL_ID), marcados com
+ *   `cassiellos_teste=homologacao`, e PODEM aparecer nas métricas agregadas do conjunto de dados.
+ * - O modo só existe com META_HOMOLOGATION_ENABLED=true no Preview e o Pixel comercial ligado. Desligar a chave
+ *   (e publicar) elimina o modo por completo.
+ * - Liberação administrativa explícita (sessão do CRM) e temporária (no máximo 30 min), num cookie assinado e
+ *   HttpOnly do navegador do administrador. Ninguém mais é afetado.
+ * - Cada liberação permite no máximo UM Lead e UM Schedule (reserva no banco por liberação:
+ *   lib/crm/meta-homologation-claims.ts), sempre depois da resposta real do backend (lead novo registrado; reunião
+ *   confirmada com evento criado no Google) e com consentimento de marketing; o mesmo event_id do CRM é usado.
+ * - Nenhuma regra comercial muda: leads de teste continuam de teste (is_test), a allowlist continua ativa e, sem a
+ *   liberação, nada de teste é enviado à Meta.
  */
 
 export const HOMOLOGATION_MAX_MINUTES = 30
@@ -26,13 +28,13 @@ export function homologationCookieName(env: Record<string, string | undefined> =
 
 export type HomologationConfig = { pixelId: string }
 
-/** Disponível só no Preview, com um dataset de homologação válido e DIFERENTE do comercial. */
+/** Disponível só no Preview, com a chave explícita e o Pixel COMERCIAL ligado (é nele que os eventos chegam). */
 export function getHomologationConfig(env: Record<string, string | undefined> = process.env): HomologationConfig | null {
   if (env.VERCEL_ENV?.trim() !== 'preview') return null
-  const pixelId = env.META_HOMOLOGATION_PIXEL_ID?.trim() || ''
-  if (!PIXEL_ID.test(pixelId)) return null
-  if (pixelId === (env.META_PIXEL_ID?.trim() || '')) return null
-  return { pixelId }
+  if (env.META_HOMOLOGATION_ENABLED?.trim() !== 'true') return null
+  const pixel = getMetaPixelConfig(env)
+  if (!pixel.enabled || !PIXEL_ID.test(pixel.pixelId)) return null
+  return { pixelId: pixel.pixelId }
 }
 
 function signingKey(secretHex: string | undefined): Buffer | null {
@@ -42,7 +44,8 @@ function signingKey(secretHex: string | undefined): Buffer | null {
 }
 
 type GrantPayload = { v: 1; kind: 'meta_homologation'; iat: number; exp: number; ref: string; n: string }
-export type HomologationGrant = { actorRef: string; expiresAt: string }
+/** `nonce`: identificador aleatório da liberação (não pessoal), usado para limitar 1 Lead e 1 Schedule por liberação. */
+export type HomologationGrant = { actorRef: string; expiresAt: string; nonce: string }
 
 export function issueHomologationGrant(
   secretHex: string | undefined,
@@ -56,7 +59,10 @@ export function issueHomologationGrant(
   const payload: GrantPayload = { v: 1, kind: 'meta_homologation', iat, exp: iat + minutes * 60, ref: input.actorRef, n: randomBytes(8).toString('hex') }
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const token = encoded + '.' + createHmac('sha256', key).update(encoded).digest('base64url')
-  return { token, maxAgeSeconds: minutes * 60, grant: { actorRef: input.actorRef, expiresAt: new Date(payload.exp * 1000).toISOString() } }
+  return {
+    token, maxAgeSeconds: minutes * 60,
+    grant: { actorRef: input.actorRef, expiresAt: new Date(payload.exp * 1000).toISOString(), nonce: payload.n },
+  }
 }
 
 export function verifyHomologationGrant(token: string | null | undefined, secretHex: string | undefined, now: Date = new Date()): HomologationGrant | null {
@@ -72,7 +78,8 @@ export function verifyHomologationGrant(token: string | null | undefined, secret
     const t = Math.floor(now.getTime() / 1000)
     if (data.v !== 1 || data.kind !== 'meta_homologation' || typeof data.iat !== 'number' || typeof data.exp !== 'number') return null
     if (typeof data.ref !== 'string' || data.exp <= t || data.iat > t + 30 || data.exp - data.iat > HOMOLOGATION_MAX_MINUTES * 60) return null
-    return { actorRef: data.ref, expiresAt: new Date(data.exp * 1000).toISOString() }
+    if (typeof data.n !== 'string' || !/^[a-f0-9]{16}$/.test(data.n)) return null
+    return { actorRef: data.ref, expiresAt: new Date(data.exp * 1000).toISOString(), nonce: data.n }
   } catch {
     return null
   }
@@ -88,7 +95,7 @@ function readCookie(cookieHeader: string, name: string): string | null {
 
 export type ActiveHomologation = HomologationConfig & HomologationGrant
 
-/** Modo ativo para ESTA requisição: Preview + dataset de homologação + liberação válida e não expirada. */
+/** Modo ativo para ESTA requisição: Preview + chave ligada + Pixel comercial ligado + liberação válida e não expirada. */
 export function activeHomologation(
   cookieHeader: string | null | undefined,
   env: Record<string, string | undefined> = process.env,

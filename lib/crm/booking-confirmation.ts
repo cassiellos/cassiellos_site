@@ -45,8 +45,8 @@ export type ConfirmDeps = {
    * Sem esta dependência, valem as regras padrão do código (inclui feriados).
    */
   loadRules?: () => Promise<AvailabilityRules>
-  /** Homologação do Meta Pixel ativa nesta requisição (ver IntakeDeps.metaHomologation). */
-  metaHomologation?: boolean
+  /** Homologação do Meta Pixel ativa nesta requisição (ver IntakeDeps.metaHomologation): 1 Schedule por liberação. */
+  metaHomologation?: { claim: (input: { event: 'Schedule'; leadId: string; eventId: string }) => Promise<boolean> } | null
 }
 
 /**
@@ -194,6 +194,11 @@ export async function confirmBookingRequest(
       startAt: normalizedStart, endAt: finishAt, calendarId: deps.calendarId, formSlug: form.slug,
       pageOrigin: input.pageOrigin,
     })
+    // Homologação: reunião de TESTE confirmada (evento criado no Google), uma única vez por liberação.
+    const homologationSchedule = saved.isTest === true && deps.metaHomologation
+      ? await deps.metaHomologation.claim({ event: 'Schedule', leadId: session.leadId, eventId: saved.scheduleEventId })
+        .catch(() => false)
+      : false
     return {
       status: 201,
       body: {
@@ -208,7 +213,7 @@ export async function confirmBookingRequest(
         // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.
         ...(saved.isTest === false
           ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } }
-          : deps.metaHomologation === true
+          : homologationSchedule
             ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId, homologation: true } } } : {}),
       },
     }

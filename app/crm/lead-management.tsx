@@ -12,7 +12,7 @@ const descriptions:Record<string,string>={
  contract_won:'Contrato fechado',note_added:'Nota adicionada',
  meeting_cancelled:'Reunião cancelada',meeting_cancel_sync_failed:'Cancelamento não confirmado pelo Google',
  meeting_no_show:'Não compareceu',classification_changed:'Classificação alterada',booking_reconciled:'Reserva reconciliada',
- marketing_consent_granted:'Consentimento de marketing concedido',marketing_consent_revoked:'Consentimento de marketing revogado',
+ meta_homologation_event:'Homologação do Meta Pixel (evento de teste liberado)',marketing_consent_granted:'Consentimento de marketing concedido',marketing_consent_revoked:'Consentimento de marketing revogado',
  marketing_identifiers_removed:'Identificador de clique de anúncio apagado',
 }
 const consentSources:Record<string,string>={form_submission:'pelo visitante no envio do formulário',visitor_preferences:'pelo visitante em Preferências de cookies',privacy_request:'por pedido do titular (registrado pelo administrador)'}

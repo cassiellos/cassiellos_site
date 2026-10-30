@@ -8,6 +8,17 @@ import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { activeHomologation } from '@/lib/marketing/homologation'
+import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
+
+/** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
+function homologationClaims(cookieHeader: string | null) {
+  const active = activeHomologation(cookieHeader)
+  if (!active) return null
+  return {
+    claim: (input: { event: 'Schedule'; leadId: string; eventId: string }) =>
+      claimHomologationEvent(getCrmPool(), { ...input, nonce: active.nonce, actorRef: active.actorRef }),
+  }
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,7 +72,7 @@ export async function POST(request: NextRequest) {
     createEvent: createGoogleBooking,
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
     allowedEmail: process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim() || '',
-    metaHomologation: activeHomologation(request.headers.get('cookie')) !== null,
+    metaHomologation: homologationClaims(request.headers.get('cookie')),
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })

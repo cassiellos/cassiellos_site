@@ -133,7 +133,7 @@ export default function BookingExperience({
   form, bookingEnabled, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
 }: {
   form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
-  /** Homologação do Meta Pixel ativa (Pixel de homologação no lugar do comercial; ver lib/marketing/homologation.ts). */
+  /** Homologação do Meta Pixel ativa no Pixel comercial (1 Lead e 1 Schedule de teste; lib/marketing/homologation.ts). */
   metaHomologation?: { expiresAt: string } | null
 }) {
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
@@ -412,8 +412,8 @@ export default function BookingExperience({
       setBookingToken(result.bookingToken)
       // Meta "Lead": só quando o backend registrou um lead NOVO e REAL (event_id do CRM); reenvio, reaproveitamento
       // e teste não recebem `tracking`. Nunca no modo de teste.
-      // Na homologação, o lead de teste só recebe `tracking` do servidor com a liberação válida; o evento vai ao
-      // dataset de homologação (o Pixel carregado é o de homologação) e leva a marca `cassiellos_teste`.
+      // Na homologação, o lead de teste só recebe `tracking` do servidor com a liberação válida (uma vez por liberação);
+      // o evento vai ao Pixel comercial com a marca `cassiellos_teste`.
       if ((analyticsMode === 'live' || metaHomologation) && 'tracking' in result && result.tracking && typeof result.tracking === 'object' &&
         'lead' in result.tracking && result.tracking.lead && typeof result.tracking.lead === 'object' &&
         'eventId' in result.tracking.lead) {
@@ -551,8 +551,9 @@ export default function BookingExperience({
         <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
         {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
         {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status">
-          <strong>HOMOLOGAÇÃO DO META PIXEL</strong> · Eventos deste navegador vão só para o dataset de homologação,
-          até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}.
+          <strong>HOMOLOGAÇÃO DO META PIXEL</strong> · Até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })},
+          este navegador pode enviar ao Pixel comercial um único Lead e um único Schedule de teste, marcados como
+          homologação (com consentimento de marketing). Eles podem aparecer nas métricas do conjunto de dados.
           Use apenas o contato de teste.</div>}
         <ConsentNotice marketingEnabled={marketingEnabled}/>
         <div className="booking-card-inside">

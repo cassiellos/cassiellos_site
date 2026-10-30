@@ -90,13 +90,19 @@ Situação em 30/10/2026 (Etapa 4):
 - `CRM_POLICY_VERSION` (`lib/crm/policy-version.ts`) = data **efetiva** da publicação das políticas revisadas (nunca futura).
 - Revisão jurídica dos textos aprovada.
 
-## Homologação de Lead e Schedule (somente Preview)
+## Homologação de Lead e Schedule no Pixel comercial (somente Preview)
 
-`lib/marketing/homologation.ts` + `POST/DELETE /api/crm/meta-homologation` + painel em CRM › Conversões.
-Exige `META_HOMOLOGATION_PIXEL_ID` (dataset de homologação **diferente** do comercial). O administrador libera o
-próprio navegador por até 30 min (cookie assinado `__Host-cassiellos_meta_homolog`, HttpOnly). Enquanto ativo, a
-página `/agendar` carrega o Pixel de **homologação no lugar do comercial**; o backend devolve o `event_id` de
-lead/reunião de **teste** e o navegador envia Lead/Schedule com a marca `cassiellos_teste=homologacao`, depois da
-resposta real do backend e com consentimento de marketing. Fora do Preview, sem o dataset ou sem a liberação, o
-comportamento é o de sempre (teste nunca vira conversão). Registro: log do servidor `meta_homologation` (referência
-não reversível da sessão e horário).
+`lib/marketing/homologation.ts` + `lib/crm/meta-homologation-claims.ts` + `POST/DELETE /api/crm/meta-homologation` +
+painel em CRM › Conversões. **Sem dataset separado:** os eventos vão ao Pixel comercial `28992534033707610`.
+
+- O modo só existe com `META_HOMOLOGATION_ENABLED=true` (Preview da feature) **e** o Pixel comercial ligado. Desligar a
+  chave e publicar elimina o modo.
+- O administrador libera o próprio navegador por até 30 min (cookie assinado `__Host-cassiellos_meta_homolog`,
+  HttpOnly). Expira sozinho; "Encerrar homologação" apaga na hora.
+- Cada liberação permite **no máximo 1 Lead e 1 Schedule**, reservados no banco na linha do tempo do lead de teste
+  (`lead_activities.activity_kind = 'meta_homologation_event'`; detalhes sem dados pessoais).
+- Lead: só para lead de **teste novo**, depois do registro real. Schedule: só depois da reunião confirmada com evento
+  criado no Google. Mesmo `event_id` do CRM; consentimento de marketing obrigatório; marca `cassiellos_teste=homologacao`.
+- A classificação `is_test` nunca muda; a allowlist continua exata (só o e-mail autorizado confirma reunião).
+- **Os eventos podem aparecer nas métricas agregadas do conjunto de dados comercial.** Não há isolamento.
+- Registro: log do servidor `meta_homologation` (referência não reversível da sessão e horário) + atividade no lead.

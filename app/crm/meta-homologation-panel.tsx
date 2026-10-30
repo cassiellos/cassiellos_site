@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /**
- * Homologação do Meta Pixel (somente Preview). Libera ESTE navegador por até 30 minutos: o formulário passa a
- * usar o Pixel do dataset de HOMOLOGAÇÃO (nunca o comercial) e Lead/Schedule de contatos de teste são enviados
- * a ele, depois da confirmação real do backend. Nada muda para outros visitantes.
+ * Homologação do Meta Pixel no Pixel COMERCIAL (somente Preview). Libera ESTE navegador por até 30 minutos para no
+ * máximo 1 Lead e 1 Schedule de contatos de teste, marcados como homologação, depois da confirmação real do backend.
+ * Os eventos podem aparecer nas métricas agregadas do conjunto de dados. Nada muda para outros visitantes.
  */
 type Status = { available: boolean; active: boolean; expiresAt: string | null; maxMinutes: number }
 const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' })
 const errors: Record<string, string> = {
-  HOMOLOGATION_UNAVAILABLE: 'Homologação indisponível: falta configurar o dataset de homologação no Preview.',
+  HOMOLOGATION_UNAVAILABLE: 'Homologação indisponível: a chave META_HOMOLOGATION_ENABLED ou o Pixel comercial não estão ligados no Preview.',
   UNAUTHORIZED: 'Sua sessão administrativa expirou. Entre novamente.',
 }
 
@@ -29,7 +29,8 @@ export default function MetaHomologationPanel() {
 
   async function change(method: 'POST' | 'DELETE') {
     if (method === 'POST' && !window.confirm('Ativar a homologação do Meta Pixel NESTE navegador por 30 minutos? '
-      + 'Os eventos irão só para o dataset de homologação. Use apenas o contato de teste.')) return
+      + 'No máximo 1 Lead e 1 Schedule de teste irão ao Pixel COMERCIAL (28992534033707610), marcados como homologação, '
+      + 'e podem aparecer nas métricas do conjunto de dados. Use apenas o contato de teste.')) return
     setBusy(true); setError('')
     try {
       const r = await fetch('/api/crm/meta-homologation', {
@@ -44,12 +45,12 @@ export default function MetaHomologationPanel() {
 
   return <section className="crm-card crm-panel" aria-labelledby="meta-homologation-title">
     <div className="crm-panel-title" id="meta-homologation-title">Homologação do Meta Pixel</div>
-    <div className="crm-panel-subtitle">Somente Preview · dataset de homologação · até 30 minutos neste navegador</div>
-    {status && !status.available && <div className="crm-info-box">Indisponível: o dataset de homologação não está configurado.</div>}
+    <div className="crm-panel-subtitle">Somente Preview · Pixel comercial · 1 Lead e 1 Schedule de teste · até 30 minutos neste navegador</div>
+    {status && !status.available && <div className="crm-info-box">Indisponível: a homologação não está ligada neste Preview.</div>}
     {status?.available && <>
       <p style={{ color: '#a8b8cb', fontSize: 12 }}>
         {status.active && status.expiresAt
-          ? <>Ativa até <strong>{fmt.format(new Date(status.expiresAt))}</strong>. Abra o formulário nesta mesma janela.</>
+          ? <>Ativa até <strong>{fmt.format(new Date(status.expiresAt))}</strong>. Abra o formulário pela aba "Testar eventos" da Meta, neste mesmo navegador.</>
           : 'Inativa. O formulário usa o Pixel comercial e nenhum evento de teste é enviado à Meta.'}
       </p>
       {status.active

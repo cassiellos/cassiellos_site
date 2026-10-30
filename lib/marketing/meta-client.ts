@@ -62,7 +62,7 @@ export function trackMetaConversion(
   if (typeof eventId !== 'string' || !EVENT_ID.test(eventId) || sentIds().includes(eventId)) return false
   const safe: Record<string, string> = typeof params.content_name === 'string' && /^[a-z0-9-]{1,64}$/.test(params.content_name)
     ? { content_name: params.content_name } : {}
-  // Marca fixa e não pessoal dos eventos de homologação (enviados só ao dataset de homologação).
+  // Marca fixa e não pessoal dos eventos de homologação (Pixel comercial; 1 Lead e 1 Schedule por liberação).
   if (params.homologation === true) safe.cassiellos_teste = 'homologacao'
   window.fbq('track', eventName, safe, { eventID: eventId })
   markSent(eventId)

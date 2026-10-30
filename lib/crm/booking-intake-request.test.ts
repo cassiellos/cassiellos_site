@@ -164,20 +164,35 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     }
   })
 
-  it('homologação do Meta Pixel: lead de TESTE recebe event_id marcado só com a liberação ativa', async () => {
+  it('homologação no Pixel comercial: lead de TESTE novo recebe event_id marcado só com a liberação E a reserva única', async () => {
+    const NEW_TEST = { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }
+    const MARKED = { lead: { eventName: 'Lead', eventId: 'lead_abc123def456', homologation: true } }
     const cases = [
-      { homologation: true, result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: { lead: { eventName: 'Lead', eventId: 'lead_abc123def456', homologation: true } } },
-      { homologation: false, result: { reused: false, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: null },
-      { homologation: true, result: { reused: true, resubmitted: false, isTest: true, leadEventId: 'lead_abc123def456' }, expect: null },
-      { homologation: true, result: { reused: false, resubmitted: true, isTest: true, leadEventId: null }, expect: null },
-      { homologation: true, result: { reused: false, resubmitted: false, isTest: false, leadEventId: 'lead_abc123def456' }, expect: { lead: { eventName: 'Lead', eventId: 'lead_abc123def456' } } },
+      { homologation: true, claim: true, result: NEW_TEST, expect: MARKED, claims: 1 },
+      { homologation: true, claim: false, result: NEW_TEST, expect: null, claims: 1 },
+      { homologation: true, claim: 'throw', result: NEW_TEST, expect: null, claims: 1 },
+      { homologation: false, claim: true, result: NEW_TEST, expect: null, claims: 0 },
+      { homologation: true, claim: true, result: { ...NEW_TEST, reused: true }, expect: null, claims: 0 },
+      { homologation: true, claim: true, result: { ...NEW_TEST, resubmitted: true, leadEventId: null }, expect: null, claims: 0 },
+      { homologation: true, claim: true, result: { ...NEW_TEST, isTest: false }, expect: { lead: { eventName: 'Lead', eventId: 'lead_abc123def456' } }, claims: 0 },
     ]
     for (const c of cases) {
       const t = setup()
-      t.deps.metaHomologation = c.homologation
+      let claims = 0
+      t.deps.metaHomologation = c.homologation ? {
+        claim: async input => {
+          claims++
+          assert.equal(input.event, 'Lead')
+          assert.equal(input.eventId, 'lead_abc123def456')
+          if (c.claim === 'throw') throw new Error('db')
+          return c.claim === true
+        },
+      } : null
       t.deps.saveLead = async () => ({ leadId: randomUUID(), submissionId: randomUUID(), ...c.result })
       const r = await handleLeadIntake(t.deps, { value: body(), remoteIp: null })
+      assert.equal(r.status, c.result.reused ? 200 : 201, 'a falha da reserva nunca impede o cadastro')
       assert.deepEqual(r.body.tracking ?? null, c.expect, JSON.stringify(c))
+      assert.equal(claims, c.claims, JSON.stringify(c))
     }
   })
 

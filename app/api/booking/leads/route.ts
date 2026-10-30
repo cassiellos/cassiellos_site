@@ -9,6 +9,17 @@ import { CRM_CANONICAL_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-orig
 import { INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
 import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
 import { activeHomologation } from '@/lib/marketing/homologation'
+import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
+
+/** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Lead da liberação no banco. */
+function homologationClaims(cookieHeader: string | null) {
+  const active = activeHomologation(cookieHeader)
+  if (!active) return null
+  return {
+    claim: (input: { event: 'Lead'; leadId: string; eventId: string }) =>
+      claimHomologationEvent(getCrmPool(), { ...input, nonce: active.nonce, actorRef: active.actorRef }),
+  }
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -74,7 +85,7 @@ export async function POST(request: NextRequest) {
     classifyNewLeadAsTest: email => classifyNewLeadAsTest({ email }),
     bookingMode: getCrmBookingMode(),
     publicOrigin: CRM_CANONICAL_ORIGIN,
-    metaHomologation: activeHomologation(request.headers.get('cookie')) !== null,
+    metaHomologation: homologationClaims(request.headers.get('cookie')),
     // Reason codes only: never the token, IP, e-mail or secret.
     log: (event, details) => console.warn('[booking-leads]', event, details.reason ?? '', (details.codes ?? []).join(',')),
   }, { value, remoteIp: forwardedFor, cookieHeader: request.headers.get('cookie') })

@@ -44,8 +44,8 @@ export default async function NicheBookingPage({
   })
   // Meta Pixel: desligado salvo META_PIXEL_ENABLED=true + META_PIXEL_ID válido (o ID do Pixel é público).
   const pixel = getMetaPixelConfig()
-  // Homologação (só Preview, liberada pelo administrador NESTE navegador): o Pixel de HOMOLOGAÇÃO substitui o
-  // comercial — nada desta sessão chega ao dataset comercial.
+  // Homologação (só Preview, liberada pelo administrador NESTE navegador): mesmo Pixel COMERCIAL; o backend libera
+  // no máximo 1 Lead e 1 Schedule de teste, marcados (lib/marketing/homologation.ts).
   const homologation = activeHomologation((await cookies()).toString())
   const metaPixelId = homologation ? homologation.pixelId : pixel.enabled ? pixel.pixelId : null
   return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey}
