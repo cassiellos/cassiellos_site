@@ -2,11 +2,11 @@ import type { HandlerResponse } from '../booking-intake-request'
 import { isCategoryOf, isValidDate, isValidMonth, parseMoneyToCents, todayInBrazil } from './model'
 import {
   FinanceMigrationPendingError, FinanceRuleError, cancelEntry, createClient, createSource, exportFinanceCsv, loadFinanceOverview,
-  recordSettlement, reverseSettlement, setClientArchived, setInvoice, setSourceAdminStatus, setSourceStatus, updateClient, updateEntry, updateSource,
+  createProjectSource, recordSettlement, reverseSettlement, setClientArchived, setInvoice, setSourceAdminStatus, setSourceStatus, updateClient, updateEntry, updateSource,
   type FinancePool,
 } from './store'
 import {
-  isUuid, parseFilters, text, validateAdminStatus, validateClient, validateInvoice, validateSettlement, validateSource, validateSourceStatus,
+  isUuid, parseFilters, text, validateAdminStatus, validateClient, validateInvoice, validateProjectInput, validateSettlement, validateSource, validateSourceStatus,
 } from './validation'
 
 /**
@@ -99,6 +99,13 @@ export async function handleFinanceAdmin(deps: FinanceAdminDeps, req: FinanceAdm
         const r = await createSource(deps.pool, v.value, actor, today)
         log('source_created', { id: r.id, direction: v.value.direction, generated: r.generated })
         return { status: 200, body: { ok: true, ...r } }
+      }
+      case 'source_create_project': {
+        const v = validateProjectInput(d, today)
+        if (!v.ok) return bad(v.error, 400, { field: v.field })
+        const result = await createProjectSource(deps.pool, v.value, actor)
+        log('project_created', { id: result.id, installmentCount: result.generated })
+        return { status: 200, body: { ok: true, ...result } }
       }
       case 'source_update': {
         if (!isUuid(d.id) || (d.direction !== 'in' && d.direction !== 'out')) return bad('INVALID_REQUEST')
