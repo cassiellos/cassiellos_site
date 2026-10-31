@@ -629,15 +629,46 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
     generateFrom: '', invoiceRequired: s?.invoiceRequired ?? false, clientAdBudget: s?.clientAdBudget ?? false, notes: s?.notes ?? '', applyToOpenFuture: false,
     serviceStatus: s?.serviceStatus ?? 'unknown', formalizationStatus: s?.formalizationStatus ?? 'unknown',
   })
+  const [customPlan, setCustomPlan] = useState(false)
+  const [deliveryDueDate, setDeliveryDueDate] = useState(s?.deliveryDueDate ?? '')
+  const [installments, setInstallments] = useState<{ amount: string; dueDate: string }[]>([
+    { amount: '', dueDate: today }, { amount: '', dueDate: today },
+  ])
+  const contractCents = parseMoneyToCents(f.amount) ?? 0
+  const allocatedCents = installments.reduce((sum, row) => sum + (parseMoneyToCents(row.amount) ?? 0), 0)
+  const validPlan = contractCents > 0 && allocatedCents === contractCents &&
+    installments.length >= 1 && installments.length <= 5 &&
+    installments.every((row, i) => !!row.dueDate && parseMoneyToCents(row.amount) !== null &&
+      (i === 0 || row.dueDate >= installments[i - 1].dueDate))
+  const isCustomProject = !s && dir === 'in' && f.periodicity === 'one_time' && customPlan
+
+  /** Reparte o valor total em centavos. Entrada configurável; o último item absorve arredondamentos. */
+  const applyDistribution = (percent: number, count = installments.length) => {
+    if (!contractCents) return
+    const first = count === 1 ? contractCents : Math.round(contractCents * percent / 100)
+    const rest = contractCents - first
+    const newRows = Array.from({ length: count }, (_, i) => {
+      const amountCents = i === 0 ? first :
+        i === count - 1 ? rest - Math.floor(rest / (count - 1)) * (count - 2) : Math.floor(rest / (count - 1))
+      return { amount: centsToInput(amountCents),
+        dueDate: installments[i]?.dueDate ?? (deliveryDueDate || installments[installments.length - 1]?.dueDate || today) }
+    })
+    setInstallments(newRows)
+  }
   const initial = useRef(f)
   const set = (patch: Partial<typeof f>) => setF({ ...f, ...patch })
   const past = f.startDate.slice(0, 7) < today.slice(0, 7)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!s) {
-      const body = { action: 'source_create', direction: dir, ...f, clientId: dir === 'in' || f.clientAdBudget ? f.clientId : '',
+      if (isCustomProject && !validPlan) return
+      const body = { action: isCustomProject ? 'source_create_project' : 'source_create',
+        direction: dir, ...f, clientId: dir === 'in' || f.clientAdBudget ? f.clientId : '',
+        ...(isCustomProject ? { installments, deliveryDueDate } : {}),
         ...(dir === 'in' && adminAvailable ? {} : { serviceStatus: 'unknown', formalizationStatus: 'unknown' }) }
-      if (await post(body, 'Cadastrado. Previsões geradas sem duplicidade.')) onClose()
+      if (await post(body, isCustomProject
+        ? 'Projeto e parcelas cadastrados. Para marcar uma parcela paga, registre o recebimento no mês correspondente.'
+        : 'Cadastrado. Previsões geradas sem duplicidade.')) onClose()
       return
     }
     // Situação do serviço/contrato vai por uma ação própria, que não toca em valores nem em lançamentos.
@@ -660,7 +691,9 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
         <option value="">Selecione…</option>{Object.entries(cats).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>
       <Field label="Descrição" wide><input required minLength={2} maxLength={200} value={f.description} onChange={e => set({ description: e.target.value })}/></Field>
       {dir === 'out' && <Field label="Fornecedor (opcional)" wide><input maxLength={160} value={f.supplier} onChange={e => set({ supplier: e.target.value })}/></Field>}
-      <Field label={dir === 'in' ? 'Valor contratado (R$)' : 'Valor (R$)'}><MoneyInput name="amount" value={f.amount} onChange={amount => set({ amount })}/></Field>
+      <Field label={dir === 'in' ? 'Valor contratado (R$)' : 'Valor (R$)'}>{s?.installmentPlan
+        ? <input value={f.amount} readOnly aria-label="Valor total contratado, fixo após criação" title="A soma das parcelas está vinculada a este total"/>
+        : <MoneyInput name="amount" value={f.amount} onChange={amount => set({ amount })}/>}</Field>
       {!s && <Field label="Periodicidade"><select value={f.periodicity} onChange={e => set({ periodicity: e.target.value as Source['periodicity'] })}>
         {Object.entries(PERIODICITIES).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>}
       {dir === 'out' && <Field label="Tipo de despesa"><select value={f.costKind ?? 'fixed'} onChange={e => set({ costKind: e.target.value as 'fixed' | 'variable' })}>
@@ -669,8 +702,8 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
         <input type="date" required value={f.startDate} onChange={e => set({ startDate: e.target.value })}/></Field>}
       {!s && <Field label={dir === 'in' ? 'Data de início' : 'Data da primeira ocorrência'}><input type="date" required value={f.startDate}
         onChange={e => set({ startDate: e.target.value, dueDay: dir === 'out' && e.target.value ? String(Number(e.target.value.slice(8, 10))) : f.dueDay })}/></Field>}
-      <Field label="Dia de vencimento" hint="Em meses mais curtos, vence no último dia."><input inputMode="numeric" pattern="[0-9]*" required value={f.dueDay}
-        onChange={e => set({ dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) })}/></Field>
+      {!isCustomProject && !s?.installmentPlan && <Field label="Dia de vencimento" hint="Em meses mais curtos, vence no último dia."><input inputMode="numeric" pattern="[0-9]*" required value={f.dueDay}
+        onChange={e => set({ dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) })}/></Field>}
       {f.periodicity !== 'one_time' && <Field label="Data de término (opcional)"><input type="date" value={f.endDate} onChange={e => set({ endDate: e.target.value })}/></Field>}
       {!s && past && f.periodicity !== 'one_time' && <Field label="Gerar cobranças a partir de" hint="Padrão: mês atual. Escolha um mês anterior só se quiser lançar meses passados.">
         <input type="month" value={f.generateFrom || today.slice(0, 7)} min={f.startDate.slice(0, 7)} onChange={e => set({ generateFrom: e.target.value })}/></Field>}
