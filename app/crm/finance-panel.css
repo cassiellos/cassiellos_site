@@ -127,3 +127,15 @@
 #cassiellos-crm .crm-fin-admin-fields:disabled{opacity:.6}
 #cassiellos-crm .crm-fin-admin-hint{grid-column:1/-1;color:#8397b0;font-size:11px}
 @media(max-width:540px){#cassiellos-crm .crm-fin-admin-fields{grid-template-columns:1fr}#cassiellos-crm .crm-fin-awaiting .crm-btn{flex:1 1 100%}}
+
+/* Contratos são serviços únicos; cobranças e quitações ficam em uma área histórica recolhida. */
+#cassiellos-crm .crm-fin-month-status{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#cassiellos-crm .crm-fin-month-status small{font-size:11px;color:#a6b9ce}
+#cassiellos-crm .crm-fin-client-history{margin-top:12px;border-top:1px solid var(--crm-border);padding-top:10px}
+#cassiellos-crm .crm-fin-client-history>summary{cursor:pointer;list-style-position:inside;font-size:12px;font-weight:700;color:#a9d7f0;padding:11px 8px;border-radius:8px}
+#cassiellos-crm .crm-fin-client-history>summary:hover{background:rgba(120,160,204,.08)}
+#cassiellos-crm .crm-fin-client-history[open]>summary{margin-bottom:8px}
+#cassiellos-crm .crm-fin-older-debts{border-color:rgba(241,60,75,.22)}
+#cassiellos-crm .crm-fin-older-total{color:#aabdd2;font-size:12px;padding:8px 0}
+#cassiellos-crm .crm-fin-older-total strong{color:#ff919c;font-variant-numeric:tabular-nums}
+#cassiellos-crm .crm-fin-row-cell small{font-size:10px;color:#8198b2;line-height:1.45}
