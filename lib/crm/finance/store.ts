@@ -195,7 +195,7 @@ export async function setSourceAdminStatus(pool: FinancePool, id: string, input:
 }
 
 export type SourceUpdate = {
-  description: string; category: string; supplier: string | null; amountCents: number; dueDay: number; endDate: string | null
+  startDate: string | null; description: string; category: string; supplier: string | null; amountCents: number; dueDay: number; endDate: string | null
   costKind: 'fixed' | 'variable' | null; invoiceRequired: boolean; notes: string; applyToOpenFuture: boolean
 }
 /**
@@ -205,15 +205,17 @@ export type SourceUpdate = {
  */
 export async function updateSource(pool: FinancePool, id: string, u: SourceUpdate, actor: string, today: string): Promise<{ adjusted: number }> {
   return tx(pool, async c => {
-    const cur = await c.query('SELECT direction, start_date::text AS start_date, generate_from::text AS generate_from FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
+    const cur = await c.query('SELECT direction, periodicity, start_date::text AS start_date, generate_from::text AS generate_from FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
     if (!cur.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
     const s = cur.rows[0]
-    if (u.endDate && (u.endDate < s.start_date || monthDiff(monthOf(s.generate_from), monthOf(u.endDate)) < 0)) throw new FinanceRuleError('INVALID_END_DATE', 400)
+    const nextStart = u.startDate && s.direction === 'in' && s.periodicity === 'monthly' ? u.startDate : s.start_date
+    if (monthDiff(monthOf(nextStart), monthOf(s.generate_from)) < 0) throw new FinanceRuleError('INVALID_START_DATE', 400)
+    if (u.endDate && (u.endDate < nextStart || monthDiff(monthOf(s.generate_from), monthOf(u.endDate)) < 0)) throw new FinanceRuleError('INVALID_END_DATE', 400)
     await c.query(
       `UPDATE crm.finance_sources SET description = $2, category = $3, supplier = $4, amount_cents = $5, due_day = $6, end_date = $7,
-              cost_kind = $8, invoice_required = $9, notes = $10, updated_at = now() WHERE id = $1`,
+              cost_kind = $8, invoice_required = $9, notes = $10, start_date = $11, updated_at = now() WHERE id = $1`,
       [id, u.description, u.category, s.direction === 'out' ? u.supplier : null, u.amountCents, u.dueDay, u.endDate,
-        s.direction === 'out' ? u.costKind : null, s.direction === 'in' && u.invoiceRequired, u.notes])
+        s.direction === 'out' ? u.costKind : null, s.direction === 'in' && u.invoiceRequired, u.notes, nextStart])
     let adjusted = 0
     const nextMonth = firstDay(addMonths(monthOf(today), 1))
     if (u.applyToOpenFuture) {
@@ -227,7 +229,7 @@ export async function updateSource(pool: FinancePool, id: string, u: SourceUpdat
     }
     // Novo término: previsões depois dele (sem movimento) deixam de valer — canceladas com motivo, não apagadas.
     if (u.endDate) adjusted += await cancelForecastsAfter(c, id, monthOf(u.endDate), 'Término do contrato alterado', actor)
-    await audit(c, 'source', id, 'updated', actor, { amountCents: u.amountCents, applyToOpenFuture: u.applyToOpenFuture, adjusted })
+    await audit(c, 'source', id, 'updated', actor, { amountCents: u.amountCents, startDateBefore: s.start_date, startDateAfter: nextStart, applyToOpenFuture: u.applyToOpenFuture, adjusted })
     return { adjusted }
   })
 }
@@ -545,6 +547,7 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
     // Lançamentos relevantes para o mês: competência do mês, tudo com saldo em aberto até o horizonte, movimentos de
     // caixa no mês e recebidos com nota pendente.
     const entries = await loadEntries(c, f, today, `e.competence_month = $4::date
+        OR (e.competence_month BETWEEN DATE '2026-10-01' AND $4::date)
         OR (e.status = 'open' AND e.competence_month <= $5::date AND COALESCE(st.total, 0) < e.amount_cents)
         OR EXISTS (SELECT 1 FROM crm.finance_settlements s2 WHERE s2.entry_id = e.id AND s2.settled_on BETWEEN $4::date AND $6::date)
         OR (e.direction = 'in' AND e.status = 'open' AND COALESCE(st.total, 0) > 0 AND COALESCE(i.status, CASE WHEN e.invoice_required THEN 'pending' ELSE 'not_applicable' END) = 'pending')`,
