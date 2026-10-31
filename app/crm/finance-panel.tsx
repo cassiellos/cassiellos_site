@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   EXPENSE_CATEGORIES, FORMALIZATION_STATUS, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SERVICE_STATUS, SOURCE_STATUS, addMonths, centsToInput, formatCents,
   formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, todayInBrazil,
@@ -168,34 +169,74 @@ function MoneyInput({ value, onChange, name, required = true }: { value: string;
     onChange={e => onChange(e.target.value.replace(/[^\d.,R$\s]/g, ''))}/>{invalid && <em className="crm-fin-inline-error">Use o formato 1.234,56</em>}</>
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+function Modal({ title, onClose, children, longForm = false }: { title: string; onClose: () => void; children: ReactNode; longForm?: boolean }) {
+  const overlayRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null
+    const previousFocus = document.activeElement as HTMLElement | null
     const oldBodyOverflow = document.body.style.overflow
     const oldHtmlOverflow = document.documentElement.style.overflow
-    // Trava o documento inteiro, inclusive quando a rolagem usa o elemento html.
+    const overlay = overlayRef.current
+    const scroller = scrollerRef.current
     document.body.style.overflow = 'hidden'
     document.documentElement.style.overflow = 'hidden'
     ref.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
-    document.addEventListener('keydown', key)
-    // Executa apenas na montagem: mudanças nas parcelas não devem refocar o primeiro campo nem zerar o scroll.
+
+    // Escuta diretamente, sem listener passivo. Roda o CONTEÚDO do modal, nunca
+    // o documento por trás, inclusive se o cursor estiver sobre o cabeçalho.
+    const onWheel = (event: WheelEvent) => {
+      if (!scroller || event.ctrlKey) return // preserva gesto de zoom
+      event.preventDefault()
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientHeight : 1
+      scroller.scrollTop += event.deltaY * unit
+      scroller.scrollLeft += event.deltaX * unit
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (scroller && !scroller.contains(event.target as Node)) event.preventDefault()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+      }
+      if (!scroller || event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) return
+      const step = scroller.clientHeight * 0.85
+      if (event.key === 'PageDown') { event.preventDefault(); scroller.scrollTop += step }
+      if (event.key === 'PageUp') { event.preventDefault(); scroller.scrollTop -= step }
+    }
+    overlay?.addEventListener('wheel', onWheel, { passive: false, capture: true })
+    overlay?.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+    document.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('keydown', key)
+      overlay?.removeEventListener('wheel', onWheel, true)
+      overlay?.removeEventListener('touchmove', onTouchMove, true)
+      document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = oldBodyOverflow
       document.documentElement.style.overflow = oldHtmlOverflow
-      prev?.focus?.()
+      previousFocus?.focus?.()
     }
   }, [])
-  return <div className="crm-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-    <div ref={ref} className="crm-modal crm-fin-modal" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="crm-fin-modal-head"><h2>{title}</h2><button type="button" className="crm-icon-btn" aria-label="Fechar" onClick={onClose}>✕</button></div>
-      <div className="crm-fin-modal-body">{children}</div>
+
+  const modal = <div ref={overlayRef} className="crm-modal-backdrop crm-fin-modal-overlay"
+    onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <div ref={ref} className="crm-modal crm-fin-modal" data-long-form={longForm || undefined}
+      role="dialog" aria-modal="true" aria-label={title}>
+      <div className="crm-fin-modal-head"><h2>{title}</h2>
+        <button type="button" className="crm-icon-btn" aria-label="Fechar" onClick={onClose}>✕</button></div>
+      <div ref={scrollerRef} className="crm-fin-modal-body" tabIndex={0} aria-label="Conteúdo rolável do formulário">
+        {children}
+      </div>
     </div>
   </div>
+  // O overlay fica na raiz visual do CRM, fora do fluxo dos cards e filtros.
+  // Preserva estilos encapsulados em #cassiellos-crm, sem ancestrais que absorvam o scroll.
+  const root = typeof document !== 'undefined' ? document.getElementById('cassiellos-crm') : null
+  return root ? createPortal(modal, root) : modal
 }
 
 // ───────────────────────── painel ─────────────────────────
@@ -704,7 +745,7 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
       coreChanged ? 'Alterações e situação do contrato salvas. Cobranças não foram alteradas.' : 'Situação atualizada. Nenhuma cobrança foi gerada ou cancelada.')) return
     onClose()
   }
-  return <Modal title={(s ? 'Editar ' : 'Nova ') + (dir === 'in' ? 'receita / contrato' : 'despesa')} onClose={onClose}>
+  return <Modal title={(s ? 'Editar ' : 'Nova ') + (dir === 'in' ? 'receita / contrato' : 'despesa')} onClose={onClose} longForm={isCustomProject}>
     <form className="crm-fin-form" onSubmit={submit}>
       {dir === 'in' && !s && <Field label="Cliente" wide><select required value={f.clientId} onChange={e => set({ clientId: e.target.value })}>
         <option value="">Selecione…</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}{c.company ? ' — ' + c.company : ''}</option>)}</select></Field>}
