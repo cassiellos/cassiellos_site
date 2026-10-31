@@ -193,3 +193,44 @@
 #cassiellos-crm .crm-fin-valid{color:#55e4b1}
 #cassiellos-crm .crm-fin-invalid{color:#ff9aa5}
 @media(max-width:540px){#cassiellos-crm .crm-fin-project-details,#cassiellos-crm .crm-fin-project-installment{grid-template-columns:1fr}}
+
+/* 0016 - Rolagem confiável do popup de contrato/parcelas, sem scroll da página de fundo.
+   Regras finais propositalmente mais específicas que crm.css, pois o modal está em um portal. */
+#cassiellos-crm .crm-modal-backdrop.crm-fin-modal-overlay{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:none;
+  z-index:10000;
+}
+#cassiellos-crm .crm-modal.crm-fin-modal{
+  max-height:calc(100vh - 24px);
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  overflow:hidden;
+}
+#cassiellos-crm .crm-modal.crm-fin-modal[data-long-form="true"]{
+  /* Altura explícita: o painel passa a ter área de scroll real mesmo em formulários longos. */
+  height:min(810px,calc(100vh - 24px));
+  height:min(810px,calc(100dvh - 24px));
+}
+#cassiellos-crm .crm-fin-modal-body{
+  display:block;
+  min-height:0;
+  min-width:0;
+  flex:1 1 auto;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+  touch-action:pan-y;
+}
+@media(max-width:540px){
+  #cassiellos-crm .crm-modal.crm-fin-modal[data-long-form="true"]{
+    height:calc(100vh - 12px);
+    height:calc(100dvh - 12px);
+  }
+}
