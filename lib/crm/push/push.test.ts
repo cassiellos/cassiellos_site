@@ -283,12 +283,21 @@ describe('PWA — manifesto e ícones', () => {
     const m = await res.json() as Record<string, unknown> & { icons: Array<{ src: string; sizes: string; purpose: string }> }
     assert.deepEqual([m.name, m.short_name, m.start_url, m.scope, m.display, m.theme_color, m.background_color, m.lang],
       ['CRM | Cassiellos', 'CRM | Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
-    const { readFileSync } = await import('node:fs')
-    for (const icon of [...m.icons, { src: '/crm-icons/apple-touch-icon.png', sizes: '180x180' }, { src: '/crm-icons/badge-96.png', sizes: '96x96' }]) {
-      const png = readFileSync('public' + icon.src)
-      assert.equal(png.subarray(1, 4).toString(), 'PNG', icon.src)
-      assert.equal(png.readUInt32BE(16) + 'x' + png.readUInt32BE(20), icon.sizes, icon.src)
+    const { GET: getIcon } = await import('../../../app/crm/icon/[variant]/route')
+    for (const [variant, sizes] of [
+      ['192.png', '192x192'], ['512.png', '512x512'],
+      ['maskable.png', '512x512'], ['apple.png', '180x180'], ['badge.png', '96x96'],
+    ]) {
+      const response = await getIcon(
+        new Request('https://crm.cassiellos.com.br/crm/icon/' + variant),
+        { params: Promise.resolve({ variant }) },
+      )
+      assert.equal(response.headers.get('content-type'), 'image/png', variant)
+      const png = Buffer.from(await response.arrayBuffer())
+      assert.equal(png.subarray(1, 4).toString(), 'PNG', variant)
+      assert.equal(png.readUInt32BE(16) + 'x' + png.readUInt32BE(20), sizes, variant)
     }
+    assert.ok(m.icons.every(i => i.src.startsWith('/crm/icon/') && i.src.includes('v=3')))
     assert.ok(m.icons.some(i => i.purpose === 'maskable'))
   })
 })
