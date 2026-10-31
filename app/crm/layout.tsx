@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   manifest: '/crm/manifest.webmanifest',
   applicationName: 'CRM | Cassiellos',
   appleWebApp: { capable: true, title: 'CRM | Cassiellos', statusBarStyle: 'black-translucent' },
-  icons: { icon: [{ url: '/crm-icons/icon-192.png', sizes: '192x192', type: 'image/png' }, { url: '/crm-icons/icon-512.png', sizes: '512x512', type: 'image/png' }], shortcut: [{ url: '/crm-icons/icon-192.png', type: 'image/png' }], apple: [{ url: '/crm-icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }] },
+  icons: { icon: [{ url: '/crm/icon/192.png?v=3', sizes: '192x192', type: 'image/png' }, { url: '/crm/icon/512.png?v=3', sizes: '512x512', type: 'image/png' }], shortcut: [{ url: '/crm/icon/192.png?v=3', type: 'image/png' }], apple: [{ url: '/crm/icon/apple.png?v=3', sizes: '180x180', type: 'image/png' }] },
   formatDetection: { telephone: false },
 }
 
