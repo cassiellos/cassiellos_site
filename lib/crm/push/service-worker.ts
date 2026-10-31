@@ -9,7 +9,7 @@
  *   que exige a sessão administrativa (sem sessão → login → volta para a ficha).
  * - Sem botões de ação na notificação (nem todo navegador suporta).
  */
-export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-2'
+export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-3'
 
 export const SERVICE_WORKER_SOURCE = `'use strict';
 const VERSION = '${SERVICE_WORKER_VERSION}';
@@ -39,8 +39,8 @@ self.addEventListener('push', event => {
     body: text(data && data.b, 'Você tem um novo aviso. Toque para abrir o CRM.', 200),
     tag: typeof (data && data.g) === 'string' ? data.g.slice(0, 64) : undefined,
     renotify: false,
-    icon: '/crm-icons/icon-192.png',
-    badge: '/crm-icons/badge-96.png',
+    icon: '/crm/icon/192.png?v=3',
+    badge: '/crm/icon/badge.png?v=3',
     lang: 'pt-BR',
     data: { url: safeUrl(data && data.u), d: data && data.d, r: data && data.r },
   };
