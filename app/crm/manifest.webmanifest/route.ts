@@ -21,9 +21,9 @@ export function GET() {
     background_color: '#07101F',
     theme_color: '#07101F',
     icons: [
-      { src: '/crm-icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/crm-icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/crm-icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/crm/icon/192.png?v=3', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/crm/icon/512.png?v=3', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/crm/icon/maskable.png?v=3', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
-  }, { headers: { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Robots-Tag': 'noindex' } })
+  }, { headers: { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'no-cache, max-age=0', 'X-Robots-Tag': 'noindex' } })
 }
