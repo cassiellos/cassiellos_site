@@ -70,6 +70,7 @@ const ERRORS: Record<string, string> = {
   INVALID_PROJECT_KIND: 'O parcelamento personalizado é exclusivo de receitas avulsas.',
   INVALID_DELIVERY_DATE: 'O prazo de entrega não pode ser anterior ao início do projeto.',
   PROJECT_INSTALLMENT_AMOUNT_LOCKED: 'O valor de cada parcela faz parte do total contratado. Para alterar a distribuição, ajuste o plano completo.',
+  PROJECT_INSTALLMENT_CANNOT_CANCEL: 'Não é possível cancelar apenas uma parcela sem revisar o total do contrato.',
   INVALID_SERVICE_STATUS: 'Situação do serviço inválida.', INVALID_FORMALIZATION_STATUS: 'Situação do contrato inválida.',
   ADMIN_STATUS_MIGRATION_PENDING: 'Situação do serviço e do contrato ainda indisponível: aguardando a migração 0012 no banco.',
   ADMIN_STATUS_ONLY_FOR_CONTRACTS: 'Situação do serviço/contrato só se aplica a receitas.',
@@ -398,7 +399,7 @@ function EntryRow({ e, setDialog }: { e: Entry; setDialog: (d: Dialog) => void }
     <div className="crm-fin-row-actions">
       {open && <button type="button" className="crm-btn crm-btn-primary" onClick={() => setDialog({ kind: 'settle', entry: e, key: newKey() })}>{e.direction === 'in' ? 'Registrar recebimento' : 'Registrar pagamento'}</button>}
       <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'history', entry: e })}>Histórico ({e.settlements.length})</button>
-      {e.state !== 'cancelled' && e.settledCents === 0 && <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'entry', entry: e })}>Ajustar / cancelar</button>}
+      {e.state !== 'cancelled' && e.settledCents === 0 && <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'entry', entry: e })}>{e.installmentNumber !== null ? 'Ajustar vencimento' : 'Ajustar / cancelar'}</button>}
       {e.invoice && e.state !== 'cancelled' && <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'invoice', entry: e })}>Nota fiscal</button>}
     </div>
   </div>
@@ -812,16 +813,20 @@ function SettleDialog({ dialog, today, onClose, post, busy }: { dialog: { entry:
 function EntryDialog({ entry: e, onClose, post, busy }: { entry: Entry; onClose: () => void; post: PostFn; busy: boolean }) {
   const [f, setF] = useState({ amount: centsToInput(e.amountCents), dueDate: e.dueDate, reason: '' })
   return <Modal title="Ajustar ou cancelar lançamento" onClose={onClose}>
-    <p className="crm-fin-modal-sub">{e.description} · competência {monthLabel(e.competenceMonth)}. Só é possível sem movimentos registrados; tudo fica na auditoria.</p>
+    <p className="crm-fin-modal-sub">{e.description} · competência {monthLabel(e.competenceMonth)}.
+      {e.installmentNumber !== null ? ' O valor da parcela permanece vinculado ao total do contrato; altere a data prevista caso a entrega mude.'
+        : ' Só é possível ajustar sem movimentos registrados; tudo fica na auditoria.'}</p>
     <form className="crm-fin-form" onSubmit={async ev => { ev.preventDefault(); if (await post({ action: 'entry_update', id: e.id, amount: f.amount, dueDate: f.dueDate }, 'Lançamento ajustado.')) onClose() }}>
-      <Field label="Valor (R$)"><MoneyInput name="amount" value={f.amount} onChange={amount => setF({ ...f, amount })}/></Field>
+      <Field label="Valor (R$)">{e.installmentNumber !== null
+        ? <input readOnly value={f.amount} aria-label="Valor fixo da parcela"/>
+        : <MoneyInput name="amount" value={f.amount} onChange={amount => setF({ ...f, amount })}/>}</Field>
       <Field label="Vencimento"><input type="date" required value={f.dueDate} onChange={ev => setF({ ...f, dueDate: ev.target.value })}/></Field>
       <div className="crm-modal-actions"><button className="crm-btn crm-btn-primary" disabled={busy}>Salvar ajuste</button></div>
     </form>
-    <form className="crm-fin-form crm-fin-danger" onSubmit={async ev => { ev.preventDefault(); if (await post({ action: 'entry_cancel', id: e.id, reason: f.reason }, 'Lançamento cancelado (permanece no histórico).')) onClose() }}>
+    {e.installmentNumber === null && <form className="crm-fin-form crm-fin-danger" onSubmit={async ev => { ev.preventDefault(); if (await post({ action: 'entry_cancel', id: e.id, reason: f.reason }, 'Lançamento cancelado (permanece no histórico).')) onClose() }}>
       <Field label="Motivo do cancelamento" wide><input required minLength={3} maxLength={300} value={f.reason} onChange={ev => setF({ ...f, reason: ev.target.value })}/></Field>
       <div className="crm-modal-actions"><button type="button" className="crm-btn" onClick={onClose}>Fechar</button><button className="crm-btn" disabled={busy}>Cancelar lançamento</button></div>
-    </form>
+    </form>}
   </Modal>
 }
 
