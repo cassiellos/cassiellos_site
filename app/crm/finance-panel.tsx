@@ -498,14 +498,52 @@ function EntryList({ title, subtitle, list, setDialog, empty, totals }: { title:
   </section>
 }
 
-function MonthlyPending({ data, month, direction, setDialog }: { data: Overview; month: string; direction: Dir; setDialog: (d: Dialog) => void }) {
+function CashActivity({ data, month, direction, setDialog, onBack }: {
+  data: Overview; month: string; direction: Dir; setDialog: (d: Dialog) => void; onBack: () => void
+}) {
+  const movements = data.entries.flatMap(entry => entry.direction === direction && entry.state !== 'cancelled'
+    ? entry.settlements.filter(s => !s.reversedAt && s.settledOn.slice(0, 7) === month).map(settlement => ({ entry, settlement }))
+    : []).sort((a, b) => b.settlement.settledOn.localeCompare(a.settlement.settledOn))
+  const sum = movements.reduce((total, item) => total + item.settlement.amountCents, 0)
+  const received = direction === 'in'
+  return <section className="crm-card crm-panel">
+    <div className="crm-panel-head">
+      <div><div className="crm-panel-title">{received ? 'Recebimentos efetivos' : 'Pagamentos efetuados'} — {monthLabel(month)}</div>
+        <div className="crm-panel-subtitle">Movimentos financeiros pela data real do caixa, inclusive antecipações de outras competências.</div></div>
+      <button type="button" className="crm-btn" onClick={onBack}>{received ? 'Ver receitas previstas' : 'Ver contas a pagar'}</button>
+    </div>
+    <div className="crm-fin-totals"><div><span>{received ? 'Total recebido no mês' : 'Total pago no mês'}</span>
+      <strong>{formatCents(sum)}</strong></div></div>
+    {movements.length ? movements.map(({ entry, settlement }) => <div key={settlement.id} className="crm-fin-cash-row">
+      <div className="crm-fin-cash-row-main"><strong>{received ? entry.clientName || entry.description : entry.description}</strong>
+        <small>{[received ? entry.description : entry.categoryLabel, 'Competência ' + monthLabel(entry.competenceMonth)].filter(Boolean).join(' · ')}</small></div>
+      <div className="crm-fin-cash-detail"><span>Data do movimento</span><strong>{formatDate(settlement.settledOn)}</strong></div>
+      <div className="crm-fin-cash-detail"><span>{received ? 'Valor recebido' : 'Valor pago'}</span><strong>{formatCents(settlement.amountCents)}</strong></div>
+      <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'history', entry })}>Ver histórico</button>
+    </div>) : <p className="crm-fin-empty">Nenhum {received ? 'recebimento' : 'pagamento'} confirmado em {monthLabel(month)}.</p>}
+  </section>
+}
+
+function MonthlyPending({ data, month, direction, setDialog, onlyOverdue = false, onReset }: {
+  data: Overview; month: string; direction: Dir; setDialog: (d: Dialog) => void; onlyOverdue?: boolean; onReset?: () => void
+}) {
   const [showOverdue, setShowOverdue] = useState(false)
   const allOpen = data.entries.filter(e => e.direction === direction && e.state !== 'cancelled' && e.remainingCents > 0)
   const current = allOpen.filter(e => e.competenceMonth === month)
   const previousOverdue = allOpen.filter(e => e.competenceMonth < month && e.overdue)
+  const allOverdue = allOpen.filter(e => e.overdue)
+  const overdueTotal = allOverdue.reduce((sum, e) => sum + e.remainingCents, 0)
   const olderTotal = previousOverdue.reduce((sum, e) => sum + e.remainingCents, 0)
   const currentTotal = current.reduce((sum, e) => sum + e.remainingCents, 0)
   const noun = direction === 'in' ? 'receber' : 'pagar'
+  if (onlyOverdue) return <>
+    <div className="crm-fin-view-switch"><span><strong>Filtro:</strong> cobranças vencidas e ainda não quitadas</span>
+      <button type="button" className="crm-btn" onClick={onReset}>Voltar às contas do mês</button></div>
+    <EntryList title={'Contas a ' + noun + ' em atraso — hoje'}
+      subtitle="Pendências vencidas até hoje, incluindo meses anteriores. Não inclui valores já quitados."
+      list={allOverdue} setDialog={setDialog} empty="Não há contas vencidas em aberto."
+      totals={[[direction === 'in' ? 'Total vencido a receber' : 'Total vencido a pagar', overdueTotal]]}/>
+  </>
   return <>
     <EntryList title={'Contas a ' + noun + ' — ' + monthLabel(month)}
       subtitle="Somente cobranças em aberto da competência selecionada. Ao registrar a quitação, a cobrança sai desta lista e permanece no histórico."
