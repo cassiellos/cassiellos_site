@@ -108,7 +108,9 @@ export async function handleFinanceAdmin(deps: FinanceAdminDeps, req: FinanceAdm
           periodicity: 'monthly', startDate: '2000-01-01', generateFrom: '2000-01' }, today)
         if (!v.ok) return bad(v.error, 400, { field: v.field })
         if (!isCategoryOf(d.direction, d.category)) return bad('INVALID_CATEGORY', 400, { field: 'category' })
+        if (d.startDate !== undefined && d.startDate !== null && d.startDate !== '' && !isValidDate(d.startDate)) return bad('INVALID_START_DATE', 400, { field: 'startDate' })
         const r = await updateSource(deps.pool, d.id, {
+          startDate: d.direction === 'in' && isValidDate(d.startDate) ? d.startDate : null,
           description: v.value.description, category: v.value.category, supplier: v.value.supplier, amountCents: v.value.amountCents,
           dueDay: v.value.dueDay, endDate: v.value.endDate, costKind: v.value.costKind, invoiceRequired: v.value.invoiceRequired,
           notes: v.value.notes, applyToOpenFuture: d.applyToOpenFuture === true,
