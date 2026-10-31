@@ -378,9 +378,11 @@ function Badge({ e }: { e: Entry }) { return <span className="crm-fin-badge" dat
 
 function EntryRow({ e, setDialog }: { e: Entry; setDialog: (d: Dialog) => void }) {
   const open = e.state !== 'cancelled' && e.remainingCents > 0
+  // Nas receitas, o cliente é a informação principal; o serviço e a competência ficam logo abaixo.
+  const clientFirst = e.direction === 'in' && Boolean(e.clientName)
   return <div className="crm-fin-row" data-overdue={e.overdue || undefined}>
-    <div className="crm-fin-row-main"><strong>{e.description}</strong>
-      <small>{[e.clientName, e.categoryLabel, 'Competência ' + monthLabel(e.competenceMonth)].filter(Boolean).join(' · ')}{e.clientAdBudget ? ' · verba de cliente (fora do caixa)' : ''}</small></div>
+    <div className="crm-fin-row-main"><strong>{clientFirst ? e.clientName : e.description}</strong>
+      <small>{[clientFirst ? e.description : e.clientName, e.categoryLabel, 'Competência ' + monthLabel(e.competenceMonth)].filter(Boolean).join(' · ')}{e.clientAdBudget ? ' · verba de cliente (fora do caixa)' : ''}</small></div>
     <div className="crm-fin-row-cell"><span>Vencimento</span>{formatDate(e.dueDate)}</div>
     <div className="crm-fin-row-cell"><span>Valor</span>{formatCents(e.amountCents)}</div>
     <div className="crm-fin-row-cell"><span>{e.direction === 'in' ? 'Recebido' : 'Pago'}</span>{formatCents(e.settledCents)}</div>
