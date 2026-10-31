@@ -112,9 +112,9 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     assert.deepEqual([p.t, p.b], [NOTIFICATION_TEXT.meeting_whatsapp_ready.title, NOTIFICATION_TEXT.meeting_whatsapp_ready.body])
     assert.equal(NOTIFICATION_TEXT.lead_created.title, 'Novo lead | CRM | Cassiellos')
     assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Um novo contato chegou pelo formulário. Toque para visualizar e atender no CRM.')
-    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, '🦈 NOVA REUNIÃO CONFIRMADA!')
+    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, 'Reunião confirmada | CRM | Cassiellos')
     assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi agendada. Toque para visualizar os detalhes no CRM.')
-    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, '✅ CONFIRMAÇÃO PRONTA!')
+    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, 'Confirmação pronta | CRM | Cassiellos')
     assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'A mensagem de confirmação para o cliente já está preparada. Toque para revisar e abrir o WhatsApp.')
     assert.ok(JSON.stringify(p).length < 600)
   })
@@ -283,6 +283,9 @@ describe('PWA — manifesto e ícones', () => {
     const m = await res.json() as Record<string, unknown> & { icons: Array<{ src: string; sizes: string; purpose: string }> }
     assert.deepEqual([m.name, m.short_name, m.start_url, m.scope, m.display, m.theme_color, m.background_color, m.lang],
       ['CRM | Cassiellos', 'CRM | Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
+    // tsconfig usa "jsx": "preserve" (o Next compila com o runtime automático); o tsx dos testes compila o JSX da rota
+    // no modo clássico (React.createElement), então o React precisa existir no escopo global só aqui, no teste.
+    ;(globalThis as { React?: unknown }).React ??= (await import('react')).default
     const { GET: getIcon } = await import('../../../app/crm/icon/[variant]/route')
     for (const [variant, sizes] of [
       ['192.png', '192x192'], ['512.png', '512x512'],
