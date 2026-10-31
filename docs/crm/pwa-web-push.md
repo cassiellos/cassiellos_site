@@ -11,7 +11,7 @@ Não usa Telegram nem serviço pago de notificações.
 | Parte | Onde | Observação |
 |---|---|---|
 | Manifesto | `app/crm/manifest.webmanifest/route.ts` | Só as rotas `/crm` o referenciam (`app/crm/layout.tsx`). Páginas públicas não viram app |
-| Ícones | `public/crm-icons/` | Símbolo oficial sobre o marinho `#07101F`: 192, 512, *maskable* 512, Apple 180, *badge* 96 |
+| Ícones | `lib/crm/cassiellos-icon.ts` + `/crm/icon/{variant}.png` | Logo oficial Cassiellos vetorizado a partir da imagem fornecida, com texto CRM; 192, 512, *maskable* 512, Apple 180, *badge* 96; URLs versionadas para impedir cache |
 | Service worker | `app/crm-sw.js/route.ts` + `lib/crm/push/service-worker.ts` | Escopo `/crm`. **Sem cache e sem evento `fetch`**: não guarda nenhuma resposta autenticada |
 | Protocolo | `lib/crm/push/web-push.ts` | Implementação nativa (node:crypto) da RFC 8291 (aes128gcm) e da RFC 8292 (VAPID). Validada contra o vetor oficial da RFC |
 | Fila | `lib/crm/push/store.ts` + migração `0010_admin_web_push.sql` | Persistente, com deduplicação, ordem, tentativas e vencimento |
