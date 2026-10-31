@@ -297,3 +297,164 @@
   #cassiellos-crm dialog.crm-fin-native-dialog .crm-fin-modal-head{padding:16px 16px 10px}
   #cassiellos-crm dialog.crm-fin-native-dialog .crm-fin-modal-body{padding:4px 16px 20px}
 }
+
+/* Dashboard financeiro: KPIs funcionam como atalhos reais para as listagens. */
+#cassiellos-crm .crm-fin-kpi-link{
+  position:relative;
+  width:100%;
+  appearance:none;
+  -webkit-appearance:none;
+  color:inherit;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+  transition:border-color .16s ease,background-color .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+#cassiellos-crm .crm-fin-kpi-link:hover{
+  border-color:rgba(241,60,75,.54);
+  background:linear-gradient(153deg,#15253a,#0e1a2c 74%);
+  transform:translateY(-1px);
+  box-shadow:0 10px 24px rgba(0,0,0,.15);
+}
+#cassiellos-crm .crm-fin-kpi-link:focus-visible{
+  outline:2px solid var(--crm-cyan);
+  outline-offset:3px;
+  border-color:var(--crm-cyan);
+}
+#cassiellos-crm .crm-fin-kpi-link:active{transform:translateY(0)}
+#cassiellos-crm .crm-fin-kpi .crm-fin-kpi-open{
+  margin-top:auto;
+  padding-top:9px;
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  color:#9ab9d4;
+  font-weight:650;
+  font-size:11px;
+  line-height:1.2;
+  letter-spacing:0;
+  text-transform:none;
+}
+#cassiellos-crm .crm-fin-kpi .crm-fin-kpi-open span{
+  color:var(--crm-red);
+  font-size:15px;
+  font-weight:750;
+  line-height:1;
+  letter-spacing:0;
+}
+#cassiellos-crm .crm-fin-kpi-link:hover .crm-fin-kpi-open{color:#f4f7ff}
+#cassiellos-crm .crm-fin-tabs{scroll-margin-top:18px}
+
+/* Recebimentos/despesas efetivos: movimentos de caixa por data real (não por competência). */
+#cassiellos-crm .crm-fin-cash-row{
+  display:grid;
+  grid-template-columns:minmax(180px,2.2fr) minmax(112px,.8fr) minmax(118px,.8fr) auto;
+  gap:12px;
+  align-items:center;
+  border-bottom:1px solid var(--crm-border);
+  padding:15px 0;
+}
+#cassiellos-crm .crm-fin-cash-row:last-child{border-bottom:0}
+#cassiellos-crm .crm-fin-cash-row-main{min-width:0;display:flex;flex-direction:column;gap:3px}
+#cassiellos-crm .crm-fin-cash-row-main strong{font-size:13px;color:#f4f7ff;overflow-wrap:anywhere}
+#cassiellos-crm .crm-fin-cash-row-main small{font-size:11px;color:#899eb7;overflow-wrap:anywhere}
+#cassiellos-crm .crm-fin-cash-detail{display:flex;flex-direction:column;gap:4px}
+#cassiellos-crm .crm-fin-cash-detail span{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#8397b0}
+#cassiellos-crm .crm-fin-cash-detail strong{font-size:12px;font-variant-numeric:tabular-nums;color:#e9f2ff}
+#cassiellos-crm .crm-fin-view-switch{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;color:#b4c5d8;font-size:12px}
+
+/* Filtros da gestão: mesma altura, alinhamento e distância dos ícones em desktop. */
+#cassiellos-crm .crm-fin-filters{
+  display:grid;
+  grid-template-columns:minmax(245px,1.22fr) minmax(124px,.65fr) minmax(165px,.92fr) minmax(165px,.92fr) minmax(210px,1.12fr);
+  gap:12px;
+  align-items:end;
+  width:100%;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-field,
+#cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{
+  width:100%;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  flex:initial;
+  gap:7px;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-field>span{
+  min-height:16px;
+  line-height:16px;
+}
+#cassiellos-crm .crm-fin-filters :is(input[type="month"],select){
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  height:46px;
+  min-height:46px;
+  margin:0;
+  line-height:normal;
+  font-size:14px;
+  padding:0 36px 0 14px;
+  border-radius:9px;
+  text-align:left;
+  text-align-last:left;
+}
+#cassiellos-crm .crm-fin-filters select{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,#c4d3e4 50%),linear-gradient(135deg,#c4d3e4 50%,transparent 50%);
+  background-size:5px 5px,5px 5px;
+  background-position:calc(100% - 21px) 21px,calc(100% - 16px) 21px;
+  background-repeat:no-repeat;
+  cursor:pointer;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-month{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  gap:8px;
+  align-items:stretch;
+  width:100%;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-month input[type="month"]{
+  min-width:0;
+  height:46px;
+  padding-right:16px;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-month input[type="month"]::-webkit-calendar-picker-indicator{
+  width:16px;
+  height:16px;
+  margin-right:5px;
+  cursor:pointer;
+}
+#cassiellos-crm .crm-fin-filters .crm-fin-month .crm-btn{
+  height:46px;
+  width:44px;
+  min-height:46px;
+  min-width:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-size:22px;
+  line-height:1;
+}
+@media(max-width:1199px){
+  #cassiellos-crm .crm-fin-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{grid-column:span 2}
+}
+@media(max-width:830px){
+  #cassiellos-crm .crm-fin-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{grid-column:span 2}
+  #cassiellos-crm .crm-fin-cash-row{grid-template-columns:minmax(0,1.5fr) minmax(90px,1fr)}
+}
+@media(max-width:540px){
+  #cassiellos-crm .crm-fin-filters{grid-template-columns:minmax(0,1fr)}
+  #cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{grid-column:auto}
+  #cassiellos-crm .crm-fin-cash-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #cassiellos-crm .crm-fin-cash-row-main{grid-column:1/-1}
+  #cassiellos-crm .crm-fin-cash-row>.crm-btn{grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){
+  #cassiellos-crm .crm-fin-kpi-link{transition:none}
+  #cassiellos-crm .crm-fin-kpi-link:hover{transform:none}
+}
