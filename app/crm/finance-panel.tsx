@@ -44,6 +44,7 @@ type Overview = {
   audit: { entity: string; entityId: string; action: string; actorRef: string; createdAt: string | null }[]
 }
 type Tab = 'geral' | 'contratos' | 'receitas' | 'despesas' | 'receber' | 'pagar' | 'notas' | 'relatorios'
+type DrilldownMode = 'month' | 'cash' | 'overdue'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'geral', label: 'Visão Geral' }, { id: 'contratos', label: 'Clientes e Contratos' }, { id: 'receitas', label: 'Receitas' },
   { id: 'despesas', label: 'Despesas' }, { id: 'receber', label: 'Contas a Receber' }, { id: 'pagar', label: 'Contas a Pagar' },
@@ -252,6 +253,14 @@ type Dialog =
 
 export default function FinancePanel() {
   const [tab, setTab] = useState<Tab>('geral')
+  const [drilldown, setDrilldown] = useState<DrilldownMode>('month')
+  const tabsRef = useRef<HTMLElement>(null)
+  const navigateTo = (destination: Tab, mode: DrilldownMode = 'month') => {
+    setTab(destination)
+    setDrilldown(mode)
+    // O usuário permanece no mesmo Financeiro; posiciona a aba escolhida no início da tela.
+    requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   const [month, setMonth] = useState(() => todayInBrazil().slice(0, 7))
   const [filters, setFilters] = useState({ client: '', category: '', source: '' })
   // Cada resposta fica ligada à consulta (filtros) que a produziu. Os números só aparecem quando essa chave é a dos
@@ -330,8 +339,8 @@ export default function FinancePanel() {
   </section>
 
   return <div className="crm-fin">
-    <nav className="crm-fin-tabs" aria-label="Seções do Financeiro">
-      {TABS.map(t => <button key={t.id} type="button" data-active={tab === t.id} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>{t.label}</button>)}
+    <nav ref={tabsRef} className="crm-fin-tabs" aria-label="Seções do Financeiro">
+      {TABS.map(t => <button key={t.id} type="button" data-active={tab === t.id} aria-current={tab === t.id ? 'page' : undefined} onClick={() => navigateTo(t.id)}>{t.label}</button>)}
     </nav>
 
     <section className="crm-fin-filters" aria-label="Filtros">
@@ -362,13 +371,19 @@ export default function FinancePanel() {
       <button type="button" className="crm-btn" onClick={load}>Tentar de novo</button></section>}
     {data && loading && <p className="crm-fin-refresh" role="status">Atualizando…</p>}
 
-    {data && tab === 'geral' && <Overview data={data} v={v}/>}
+    {data && tab === 'geral' && <Overview data={data} v={v} onNavigate={navigateTo}/>}
     {data && tab === 'contratos' && <Contracts data={data} month={month} setDialog={setDialog} post={post} busy={busy}/>}
-    {data && tab === 'receitas' && <EntryList title={'Receitas de ' + monthLabel(month)} subtitle="Competência do mês selecionado. Previsão não é receita: só vira caixa com recebimento confirmado."
-      list={byDir('in').filter(e => e.competenceMonth === month)} setDialog={setDialog} empty="Nenhuma receita com competência neste mês. Cadastre contratos em Clientes e Contratos."/>}
+    {data && tab === 'receitas' && (drilldown === 'cash'
+      ? <CashActivity data={data} direction="in" month={month} setDialog={setDialog} onBack={() => setDrilldown('month')}/>
+      : <EntryList title={'Receitas de ' + monthLabel(month)} subtitle="Competência do mês selecionado. Previsão não é receita: só vira caixa com recebimento confirmado."
+          list={byDir('in').filter(e => e.competenceMonth === month)} setDialog={setDialog} empty="Nenhuma receita com competência neste mês. Cadastre contratos em Clientes e Contratos."/>)}
     {data && tab === 'despesas' && <Expenses data={data} month={month} setDialog={setDialog} post={post} busy={busy}/>}
-    {data && tab === 'receber' && <MonthlyPending data={data} month={month} direction="in" setDialog={setDialog}/>}
-    {data && tab === 'pagar' && <MonthlyPending data={data} month={month} direction="out" setDialog={setDialog}/>}
+    {data && tab === 'receber' && <MonthlyPending data={data} month={month} direction="in" setDialog={setDialog}
+      onlyOverdue={drilldown === 'overdue'} onReset={() => setDrilldown('month')}/>}
+    {data && tab === 'pagar' && (drilldown === 'cash'
+      ? <CashActivity data={data} direction="out" month={month} setDialog={setDialog} onBack={() => setDrilldown('month')}/>
+      : <MonthlyPending data={data} month={month} direction="out" setDialog={setDialog}
+          onlyOverdue={drilldown === 'overdue'} onReset={() => setDrilldown('month')}/>)}
     {data && tab === 'notas' && <Invoices data={data} month={month} setDialog={setDialog}/>}
     {data && tab === 'relatorios' && <Reports data={data}/>}
 
@@ -382,32 +397,51 @@ export default function FinancePanel() {
   </div>
 }
 
-function Kpis({ v }: { v: (key: string) => number }) {
-  const cards: [string, number, string, string?][] = [
-    ['Receita prevista do mês', v('revenueForecastCents'), 'Competência · cobranças do mês'],
-    ['Receita recebida', v('revenueReceivedCashCents'), 'Caixa · entrou no mês', 'Da competência do mês: ' + formatCents(v('revenueReceivedOfCompetenceCents'))],
-    ['Despesas previstas', v('expensesForecastCents'), 'Competência · contas do mês'],
-    ['Despesas pagas', v('expensesPaidCashCents'), 'Caixa · saiu no mês'],
-    ['Resultado do mês (caixa)', v('resultCashCents'), 'Recebido − pago no mês', 'Por competência: ' + formatCents(v('resultCompetenceCents'))],
-    ['Contas a receber', v('receivableMonthCents'), 'Saldo das cobranças do mês', 'Em aberto até o mês: ' + formatCents(v('receivableOpenTotalCents'))],
-    ['Contas a pagar', v('payableMonthCents'), 'Saldo das contas do mês', 'Em aberto até o mês: ' + formatCents(v('payableOpenTotalCents'))],
-    ['Em atraso (hoje)', v('overdueReceivableCents'), v('overdueReceivableCount') + ' a receber vencida(s)', 'A pagar vencido: ' + formatCents(v('overduePayableCents'))],
+function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void }) {
+  // Cada cartão abre a lista que explica o número. Indicadores de caixa usam a data real
+  // do movimento; indicadores de competência usam o mês de vencimento.
+  const cards: { label: string; cents: number; sub: string; extra?: string; tab: Tab; mode?: DrilldownMode }[] = [
+    { label: 'Receita prevista do mês', cents: v('revenueForecastCents'), sub: 'Competência · cobranças do mês', tab: 'receitas' },
+    { label: 'Receita recebida', cents: v('revenueReceivedCashCents'), sub: 'Caixa · entrou no mês', extra: 'Da competência do mês: ' + formatCents(v('revenueReceivedOfCompetenceCents')), tab: 'receitas', mode: 'cash' },
+    { label: 'Despesas previstas', cents: v('expensesForecastCents'), sub: 'Competência · contas do mês', tab: 'despesas' },
+    { label: 'Despesas pagas', cents: v('expensesPaidCashCents'), sub: 'Caixa · saiu no mês', tab: 'pagar', mode: 'cash' },
+    { label: 'Resultado do mês (caixa)', cents: v('resultCashCents'), sub: 'Recebido − pago no mês', extra: 'Por competência: ' + formatCents(v('resultCompetenceCents')), tab: 'relatorios' },
+    { label: 'Contas a receber', cents: v('receivableMonthCents'), sub: 'Saldo das cobranças do mês', extra: 'Em aberto até o mês: ' + formatCents(v('receivableOpenTotalCents')), tab: 'receber' },
+    { label: 'Contas a pagar', cents: v('payableMonthCents'), sub: 'Saldo das contas do mês', extra: 'Em aberto até o mês: ' + formatCents(v('payableOpenTotalCents')), tab: 'pagar' },
+    { label: 'Em atraso (hoje)', cents: v('overdueReceivableCents'), sub: v('overdueReceivableCount') + ' a receber vencida(s)', extra: 'A pagar vencido: ' + formatCents(v('overduePayableCents')), tab: v('overdueReceivableCents') > 0 || v('overduePayableCents') === 0 ? 'receber' : 'pagar', mode: 'overdue' },
   ]
   return <div className="crm-fin-kpis">
-    {cards.map(([label, cents, sub, extra]) => <div key={label} className="crm-card crm-fin-kpi" data-negative={cents < 0 || undefined}>
-      <span>{label}</span><strong>{formatCents(cents)}</strong><small>{sub}</small>{extra && <small className="crm-fin-kpi-extra">{extra}</small>}</div>)}
-    <div className="crm-card crm-fin-kpi"><span>Contratos recorrentes ativos</span><strong>{v('activeRecurringContracts')}</strong>
-      <small>Equivalente mensal: {formatCents(v('recurringMonthlyCents'))}</small></div>
+    {cards.map(card => {
+      const body = <>
+        <span>{card.label}</span><strong>{formatCents(card.cents)}</strong><small>{card.sub}</small>
+        {card.extra && <small className="crm-fin-kpi-extra">{card.extra}</small>}
+        {onNavigate && <span className="crm-fin-kpi-open" aria-hidden="true">Ver detalhes <span>↗</span></span>}
+      </>
+      return onNavigate
+        ? <button key={card.label} type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link"
+            data-negative={card.cents < 0 || undefined} onClick={() => onNavigate(card.tab, card.mode)}
+            aria-label={card.label + ': ' + formatCents(card.cents) + '. Abrir detalhes.'}>{body}</button>
+        : <div key={card.label} className="crm-card crm-fin-kpi" data-negative={card.cents < 0 || undefined}>{body}</div>
+    })}
+    {onNavigate
+      ? <button type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link" onClick={() => onNavigate('contratos')}
+          aria-label={'Contratos recorrentes ativos: ' + v('activeRecurringContracts') + '. Abrir clientes e contratos.'}>
+          <span>Contratos recorrentes ativos</span><strong>{v('activeRecurringContracts')}</strong>
+          <small>Equivalente mensal: {formatCents(v('recurringMonthlyCents'))}</small>
+          <span className="crm-fin-kpi-open" aria-hidden="true">Ver clientes e contratos <span>↗</span></span>
+        </button>
+      : <div className="crm-card crm-fin-kpi"><span>Contratos recorrentes ativos</span><strong>{v('activeRecurringContracts')}</strong>
+          <small>Equivalente mensal: {formatCents(v('recurringMonthlyCents'))}</small></div>}
   </div>
 }
 
-function Overview({ data, v }: { data: Overview; v: (key: string) => number }) {
+function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) => number; onNavigate: (tab: Tab, mode?: DrilldownMode) => void }) {
   const c = data.charts
   const noData = !data.sources.length
   return <>
     {noData && <div className="crm-info-box"><strong>Ainda não há contratos nem despesas cadastrados.</strong> Os indicadores mostram R$ 0,00 até que
       você cadastre clientes, contratos e despesas reais. Nenhum valor é estimado ou inventado.</div>}
-    <Kpis v={v}/>
+    <Kpis v={v} onNavigate={onNavigate}/>
     {v('clientAdBudgetCents') > 0 && <p className="crm-fin-note">Verbas de anúncio de clientes neste mês (fora do caixa da agência, não entram nos totais): {formatCents(v('clientAdBudgetCents'))}</p>}
     <div className="crm-fin-grid">
       <section className="crm-card crm-panel"><div className="crm-panel-title">Entradas × saídas por mês — {c.year}</div>
