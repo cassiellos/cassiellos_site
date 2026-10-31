@@ -110,7 +110,7 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     assert.deepEqual(Object.keys(p).sort(), ['b', 'd', 'g', 'k', 'r', 't', 'u', 'v'])
     assert.equal(p.u, '/crm/notificacoes/abrir/' + UUID_A); assert.equal(p.g, UUID_A)
     assert.deepEqual([p.t, p.b], [NOTIFICATION_TEXT.meeting_whatsapp_ready.title, NOTIFICATION_TEXT.meeting_whatsapp_ready.body])
-    assert.equal(NOTIFICATION_TEXT.lead_created.title, '🦈 NOVO LEAD — SHARK SCALE')
+    assert.equal(NOTIFICATION_TEXT.lead_created.title, 'Novo lead | CRM | Cassiellos')
     assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Um novo contato chegou pelo formulário. Toque para visualizar e atender no CRM.')
     assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, '🦈 NOVA REUNIÃO CONFIRMADA!')
     assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi agendada. Toque para visualizar os detalhes no CRM.')
@@ -243,7 +243,7 @@ describe('Service worker do PWA', () => {
     const sw = load()
     await fire(sw.handlers.push, { data: { json: () => ({ t: 123, u: 'https://evil.example', g: 'x' }) } })
     await fire(sw.handlers.push, { data: { json: () => { throw new Error('bad') } } })
-    assert.equal(sw.shown[0].title, 'SHARK SCALE')
+    assert.equal(sw.shown[0].title, 'CRM | Cassiellos')
     assert.equal((sw.shown[0].options.data as { url: string }).url, '/crm')
     await fire(sw.handlers.notificationclick, { notification: { close: () => undefined, data: { url: '//evil.example' } } })
     assert.deepEqual(sw.opened, ['https://crm.cassiellos.com.br/crm'])
@@ -282,7 +282,7 @@ describe('PWA — manifesto e ícones', () => {
     assert.equal(res.headers.get('content-type'), 'application/manifest+json; charset=utf-8')
     const m = await res.json() as Record<string, unknown> & { icons: Array<{ src: string; sizes: string; purpose: string }> }
     assert.deepEqual([m.name, m.short_name, m.start_url, m.scope, m.display, m.theme_color, m.background_color, m.lang],
-      ['SHARK SCALE', 'SHARK SCALE', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
+      ['CRM | Cassiellos', 'CRM | Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
     const { readFileSync } = await import('node:fs')
     for (const icon of [...m.icons, { src: '/crm-icons/apple-touch-icon.png', sizes: '180x180' }, { src: '/crm-icons/badge-96.png', sizes: '96x96' }]) {
       const png = readFileSync('public' + icon.src)
