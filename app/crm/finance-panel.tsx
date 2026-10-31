@@ -704,6 +704,55 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
         onChange={e => set({ startDate: e.target.value, dueDay: dir === 'out' && e.target.value ? String(Number(e.target.value.slice(8, 10))) : f.dueDay })}/></Field>}
       {!isCustomProject && !s?.installmentPlan && <Field label="Dia de vencimento" hint="Em meses mais curtos, vence no último dia."><input inputMode="numeric" pattern="[0-9]*" required value={f.dueDay}
         onChange={e => set({ dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) })}/></Field>}
+      {!s && dir === 'in' && f.periodicity === 'one_time' && <section className="crm-fin-project-panel" data-wide>
+        <label className="crm-fin-check"><input type="checkbox" checked={customPlan} onChange={e => {
+          setCustomPlan(e.target.checked)
+          if (e.target.checked) applyDistribution(50)
+        }}/>
+          <span><strong>Projeto avulso com cronograma de pagamento</strong>
+            <small>Até 5 parcelas com valores e datas livres. Não cria mensalidades automáticas.</small></span>
+        </label>
+        {customPlan && <div className="crm-fin-project-details">
+          <Field label="Prazo previsto de entrega (opcional)" hint="É a data para concluir o trabalho; não gera recebimento automaticamente.">
+            <input type="date" min={f.startDate} value={deliveryDueDate} onChange={e => setDeliveryDueDate(e.target.value)}/></Field>
+          <Field label="Quantidade de parcelas">
+            <select value={installments.length} onChange={e => applyDistribution(50, Number(e.target.value))}>
+              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n === 1 ? 'parcela' : 'parcelas'}</option>)}
+            </select>
+          </Field>
+          <div className="crm-fin-project-presets">
+            <span>Distribuição sugerida:</span>
+            <button className="crm-btn" type="button" onClick={() => applyDistribution(40)}>Entrada 40%</button>
+            <button className="crm-btn" type="button" onClick={() => applyDistribution(50)}>Entrada 50%</button>
+          </div>
+          <p className="crm-fin-note">Ajuste cada parcela livremente. Podem existir meses sem cobranças ou várias parcelas no mesmo mês. O vencimento de cada uma define em qual mês ela entra na previsão.</p>
+          {installments.map((row, idx) => <div className="crm-fin-project-installment" key={idx}>
+            <strong>Parcela {idx + 1} de {installments.length}</strong>
+            <Field label="Valor da parcela (R$)">
+              <MoneyInput name={'installment-amount-'+idx} value={row.amount} onChange={amount =>
+                setInstallments(current => current.map((x, i) => i === idx ? { ...x, amount } : x))}/></Field>
+            <Field label="Vencimento previsto">
+              <input type="date" required value={row.dueDate} onChange={ev =>
+                setInstallments(current => current.map((x, i) => i === idx ? { ...x, dueDate: ev.target.value } : x))}/></Field>
+            <small>{contractCents && parseMoneyToCents(row.amount) !== null
+              ? ((parseMoneyToCents(row.amount)! / contractCents) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '% do contrato'
+              : 'Informe um valor válido'}</small>
+          </div>)}
+          <div className="crm-fin-project-summary" aria-live="polite">
+            <span>Somatório das parcelas: <strong>{formatCents(allocatedCents)}</strong></span>
+            <span>Valor do contrato: <strong>{formatCents(contractCents)}</strong></span>
+            {allocatedCents === contractCents && contractCents > 0
+              ? <strong className="crm-fin-valid">Valores conferidos</strong>
+              : <strong className="crm-fin-invalid">A soma deve ser exatamente igual ao contrato</strong>}
+          </div>
+        </div>}
+      </section>}
+      {s?.installmentPlan && <div className="crm-fin-project-panel" data-wide>
+        <strong>Projeto avulso com {s.installmentCount} parcela(s) programada(s).</strong>
+        <p className="crm-fin-note">As datas e os recebimentos são administrados em Contas a Receber. O total contratado não muda ao editar um vencimento.</p>
+        <Field label="Prazo previsto de entrega" hint="Não altera automaticamente o vencimento das parcelas.">
+          <input type="date" min={f.startDate} value={deliveryDueDate} onChange={e => setDeliveryDueDate(e.target.value)}/></Field>
+      </div>}
       {f.periodicity !== 'one_time' && <Field label="Data de término (opcional)"><input type="date" value={f.endDate} onChange={e => set({ endDate: e.target.value })}/></Field>}
       {!s && past && f.periodicity !== 'one_time' && <Field label="Gerar cobranças a partir de" hint="Padrão: mês atual. Escolha um mês anterior só se quiser lançar meses passados.">
         <input type="month" value={f.generateFrom || today.slice(0, 7)} min={f.startDate.slice(0, 7)} onChange={e => set({ generateFrom: e.target.value })}/></Field>}
@@ -722,7 +771,8 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
       {s && <label className="crm-fin-check" data-wide><input type="checkbox" checked={f.applyToOpenFuture} onChange={e => set({ applyToOpenFuture: e.target.checked })}/>
         Aplicar o novo valor/vencimento aos lançamentos futuros já gerados e sem movimento (o mês atual e os pagos não mudam)</label>}
       <Field label="Observações" wide><textarea rows={2} maxLength={2000} value={f.notes} onChange={e => set({ notes: e.target.value })}/></Field>
-      <div className="crm-modal-actions"><button type="button" className="crm-btn" onClick={onClose}>Cancelar</button><button className="crm-btn crm-btn-primary" disabled={busy}>Salvar</button></div>
+      <div className="crm-modal-actions"><button type="button" className="crm-btn" onClick={onClose}>Cancelar</button>
+        <button className="crm-btn crm-btn-primary" disabled={busy || (isCustomProject && (!validPlan || (!!deliveryDueDate && deliveryDueDate < f.startDate)))}>Salvar</button></div>
     </form>
   </Modal>
 }
