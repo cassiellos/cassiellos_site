@@ -11,20 +11,20 @@ export type NotificationKind = 'lead_created' | 'meeting_confirmed' | 'meeting_w
 
 export const NOTIFICATION_TEXT: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
   lead_created: {
-    title: '🦈 NOVO LEAD — SHARK SCALE',
+    title: 'Novo lead | CRM | Cassiellos',
     body: 'Um novo contato chegou pelo formulário. Toque para visualizar e atender no CRM.',
   },
   meeting_confirmed: {
-    title: '🦈 NOVA REUNIÃO CONFIRMADA!',
+    title: 'Reunião confirmada | CRM | Cassiellos',
     body: 'Uma reunião foi agendada. Toque para visualizar os detalhes no CRM.',
   },
   meeting_whatsapp_ready: {
-    title: '✅ CONFIRMAÇÃO PRONTA!',
+    title: 'Confirmação pronta | CRM | Cassiellos',
     body: 'A mensagem de confirmação para o cliente já está preparada. Toque para revisar e abrir o WhatsApp.',
   },
   test: {
-    title: '🦈 TESTE — SHARK SCALE',
-    body: 'Notificação de teste. Toque para abrir o CRM.',
+    title: 'CRM | Cassiellos',
+    body: 'Notificações funcionando. Toque para abrir o CRM.',
   },
 }
 
