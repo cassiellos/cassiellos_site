@@ -139,3 +139,21 @@
 #cassiellos-crm .crm-fin-older-total{color:#aabdd2;font-size:12px;padding:8px 0}
 #cassiellos-crm .crm-fin-older-total strong{color:#ff919c;font-variant-numeric:tabular-nums}
 #cassiellos-crm .crm-fin-row-cell small{font-size:10px;color:#8198b2;line-height:1.45}
+
+/* Projeto de pagamento único com plano de recebimento opcional, 1–5 parcelas independentes. */
+#cassiellos-crm .crm-fin-project-panel{grid-column:1/-1;border:1px solid rgba(85,165,206,.33);border-radius:12px;padding:14px;background:rgba(21,55,80,.26);display:flex;flex-direction:column;gap:12px;min-width:0}
+#cassiellos-crm .crm-fin-project-panel>.crm-fin-check span{display:flex;flex-direction:column;gap:4px}
+#cassiellos-crm .crm-fin-project-panel>.crm-fin-check strong{font-size:13px;color:#e3f3ff}
+#cassiellos-crm .crm-fin-project-panel>.crm-fin-check small{font-size:11px;color:#a1b7ca}
+#cassiellos-crm .crm-fin-project-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+#cassiellos-crm .crm-fin-project-presets{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#cassiellos-crm .crm-fin-project-presets>span{font-size:11px;color:#abbdd1}
+#cassiellos-crm .crm-fin-project-details>.crm-fin-note{grid-column:1/-1}
+#cassiellos-crm .crm-fin-project-installment{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:12px;border:1px solid var(--crm-border);border-radius:9px;background:#0a1728}
+#cassiellos-crm .crm-fin-project-installment>strong,#cassiellos-crm .crm-fin-project-installment>small{grid-column:1/-1}
+#cassiellos-crm .crm-fin-project-installment>strong{color:#e1efff;font-size:12px}
+#cassiellos-crm .crm-fin-project-installment>small{font-size:11px;color:#aabfd5}
+#cassiellos-crm .crm-fin-project-summary{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;font-size:12px;color:#b7c8da;padding:10px 12px;border:1px solid var(--crm-border);border-radius:9px}
+#cassiellos-crm .crm-fin-valid{color:#55e4b1}
+#cassiellos-crm .crm-fin-invalid{color:#ff9aa5}
+@media(max-width:540px){#cassiellos-crm .crm-fin-project-details,#cassiellos-crm .crm-fin-project-installment{grid-template-columns:1fr}}
