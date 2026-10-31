@@ -204,7 +204,7 @@
   height:100dvh;
   overflow:hidden;
   overscroll-behavior:none;
-  touch-action:none;
+  touch-action:auto;
   z-index:10000;
 }
 #cassiellos-crm .crm-modal.crm-fin-modal{
