@@ -123,6 +123,33 @@ export function validateSource(d: Record<string, unknown>, today: string): Valid
   }
 }
 
+
+/** Projeto único com cronograma financeiro próprio — não equivale a recorrência mensal. */
+export type ProjectInstallment = { dueDate: string; amountCents: number }
+export type ProjectInput = { source: SourceInput; deliveryDueDate: string | null; installments: ProjectInstallment[] }
+
+export function validateProjectInput(d: Record<string, unknown>, today: string): Valid<ProjectInput> {
+  if (d.direction !== 'in' || d.periodicity !== 'one_time') return fail('INVALID_PROJECT_KIND')
+  if (!Array.isArray(d.installments) || d.installments.length < 1 || d.installments.length > 5) return fail('INVALID_INSTALLMENT_COUNT')
+  const installments: ProjectInstallment[] = []
+  for (const item of d.installments) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return fail('INVALID_INSTALLMENT')
+    const entry = item as Record<string, unknown>
+    if (!isValidDate(entry.dueDate)) return fail('INVALID_DUE_DATE', 'installments')
+    const amountCents = parseMoneyToCents(entry.amount)
+    if (amountCents === null) return fail('INVALID_INSTALLMENT_AMOUNT', 'installments')
+    installments.push({ dueDate: entry.dueDate, amountCents })
+  }
+  if (installments.some((p, i) => i > 0 && p.dueDate < installments[i - 1].dueDate)) return fail('INSTALLMENT_DATES_OUT_OF_ORDER')
+  const firstDay = installments[0].dueDate.slice(8, 10)
+  const v = validateSource({ ...d, dueDay: firstDay, generateFrom: d.startDate?.toString().slice(0, 7) }, today)
+  if (!v.ok) return v
+  if (installments.reduce((total, item) => total + item.amountCents, 0) !== v.value.amountCents) return fail('INSTALLMENTS_TOTAL_MISMATCH')
+  const deadline = d.deliveryDueDate === undefined || d.deliveryDueDate === null || d.deliveryDueDate === '' ? null : d.deliveryDueDate
+  if (deadline !== null && (!isValidDate(deadline) || deadline < v.value.startDate)) return fail('INVALID_DELIVERY_DATE')
+  return { ok: true, value: { source: v.value, deliveryDueDate: deadline, installments } }
+}
+
 export type SettlementInput = { entryId: string; amountCents: number; settledOn: string; method: string; notes: string; idempotencyKey: string }
 /** Recebimento/pagamento REAL: valor e data efetivos; nunca no futuro; chave de idempotência obrigatória. */
 export function validateSettlement(d: Record<string, unknown>, today: string): Valid<SettlementInput> {
