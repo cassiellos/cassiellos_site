@@ -512,8 +512,16 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
             <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'client', client: c })}>Editar cliente</button>
             <button type="button" className="crm-btn" disabled={busy} onClick={() => post({ action: 'client_archive', id: c.id, archived: !c.archived }, c.archived ? 'Cliente reativado.' : 'Cliente arquivado (histórico preservado).')}>{c.archived ? 'Reativar' : 'Arquivar'}</button>
           </div></div>
-        {services.map(s => <SourceRow key={s.id} s={s} setDialog={setDialog} post={post} busy={busy} referenceMonth={month}
-          monthEntries={data.entries.filter(e => e.sourceId === s.id && e.competenceMonth === month && e.state !== 'cancelled')}/>)}
+        {services.map(s => <div key={s.id} className="crm-fin-service">
+          <SourceRow s={s} setDialog={setDialog} post={post} busy={busy} referenceMonth={month}
+            monthEntries={data.entries.filter(e => e.sourceId === s.id && e.competenceMonth === month && e.state !== 'cancelled')}/>
+          {s.installmentPlan && <details className="crm-fin-client-history crm-fin-project-history">
+            <summary>Cronograma das parcelas ({s.installmentCount}) · total {formatCents(s.amountCents)}</summary>
+            {data.entries.filter(e => e.sourceId === s.id && e.installmentNumber !== null)
+              .sort((a,b) => (a.installmentNumber ?? 0) - (b.installmentNumber ?? 0))
+              .map(e => <EntryRow key={e.id} e={e} setDialog={setDialog}/>)}
+          </details>}
+        </div>)}
         {!services.length && <p className="crm-fin-empty">Nenhum serviço ativo cadastrado para este cliente.</p>}
         <details className="crm-fin-client-history">
           <summary>Histórico de faturamento e pagamentos até {monthLabel(month)} ({history.length})</summary>
@@ -675,9 +683,10 @@ function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, b
     const i = initial.current
     const statusChanged = f.serviceStatus !== i.serviceStatus || f.formalizationStatus !== i.formalizationStatus
     const coreKeys = ['category', 'description', 'supplier', 'amount', 'startDate', 'dueDay', 'endDate', 'costKind', 'invoiceRequired', 'notes', 'applyToOpenFuture'] as const
-    const coreChanged = coreKeys.some(k => f[k] !== i[k])
+    const coreChanged = coreKeys.some(k => f[k] !== i[k]) || (Boolean(s.installmentPlan) && deliveryDueDate !== (s.deliveryDueDate ?? ''))
     if (coreChanged && !await post({ action: 'source_update', id: s.id, direction: dir, category: f.category, description: f.description, supplier: f.supplier,
-      amount: f.amount, startDate: dir === 'in' && s.periodicity === 'monthly' ? f.startDate : undefined, dueDay: f.dueDay, endDate: f.endDate, costKind: f.costKind, invoiceRequired: f.invoiceRequired, notes: f.notes,
+      amount: f.amount, startDate: dir === 'in' && s.periodicity === 'monthly' ? f.startDate : undefined,
+       deliveryDueDate: s.installmentPlan ? deliveryDueDate : undefined, dueDay: f.dueDay, endDate: f.endDate, costKind: f.costKind, invoiceRequired: f.invoiceRequired, notes: f.notes,
       applyToOpenFuture: f.applyToOpenFuture }, 'Alterações salvas. Movimentos já registrados não foram alterados.')) return
     if (statusChanged && !await post({ action: 'source_admin_status', id: s.id, serviceStatus: f.serviceStatus, formalizationStatus: f.formalizationStatus },
       coreChanged ? 'Alterações e situação do contrato salvas. Cobranças não foram alteradas.' : 'Situação atualizada. Nenhuma cobrança foi gerada ou cancelada.')) return
