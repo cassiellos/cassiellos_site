@@ -257,9 +257,10 @@ export type SourceUpdate = {
  */
 export async function updateSource(pool: FinancePool, id: string, u: SourceUpdate, actor: string, today: string): Promise<{ adjusted: number }> {
   return tx(pool, async c => {
-    const cur = await c.query('SELECT direction, periodicity, start_date::text AS start_date, generate_from::text AS generate_from FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
+    const cur = await c.query('SELECT direction, periodicity, installment_plan, amount_cents, start_date::text AS start_date, generate_from::text AS generate_from FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
     if (!cur.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
     const s = cur.rows[0]
+    if (s.installment_plan && u.amountCents !== num(s.amount_cents)) throw new FinanceRuleError('PROJECT_INSTALLMENT_AMOUNT_LOCKED')
     const nextStart = u.startDate && s.direction === 'in' && s.periodicity === 'monthly' ? u.startDate : s.start_date
     if (monthDiff(monthOf(nextStart), monthOf(s.generate_from)) < 0) throw new FinanceRuleError('INVALID_START_DATE', 400)
     if (u.endDate && (u.endDate < nextStart || monthDiff(monthOf(s.generate_from), monthOf(u.endDate)) < 0)) throw new FinanceRuleError('INVALID_END_DATE', 400)
@@ -594,13 +595,14 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
     const sources = (await c.query(
       `SELECT ${adminCols}, s.id, s.direction, s.client_id, cl.name AS client_name, s.category, s.description, s.supplier, s.amount_cents, s.periodicity,
               s.cost_kind, s.start_date::text AS start_date, s.end_date::text AS end_date, s.due_day, to_char(s.generate_from, 'YYYY-MM') AS generate_from,
-              s.status, s.invoice_required, s.client_ad_budget, s.notes, s.updated_at, s.installment_plan, s.delivery_due_date::text AS delivery_due_date
+              s.status, s.invoice_required, s.client_ad_budget, s.notes, s.updated_at, s.installment_plan, s.delivery_due_date::text AS delivery_due_date,
+               (SELECT COUNT(*)::int FROM crm.finance_entries ei WHERE ei.project_source_id=s.id AND ei.status='open') AS installment_count
          FROM crm.finance_sources s LEFT JOIN crm.finance_clients cl ON cl.id = s.client_id
         ORDER BY s.direction, CASE s.status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END, lower(s.description) LIMIT 3000`)).rows.map(r => ({
       id: r.id, direction: r.direction as Direction, clientId: r.client_id, clientName: r.client_name, category: r.category, categoryLabel: categoryLabel(r.category),
       description: r.description, supplier: r.supplier, amountCents: num(r.amount_cents), periodicity: r.periodicity as Periodicity, costKind: r.cost_kind,
       startDate: r.start_date, endDate: r.end_date, dueDay: r.due_day, generateFrom: r.generate_from, status: r.status as SourceStatus,
-       installmentPlan: Boolean(r.installment_plan), deliveryDueDate: r.delivery_due_date,
+       installmentPlan: Boolean(r.installment_plan), deliveryDueDate: r.delivery_due_date, installmentCount: num(r.installment_count),
       invoiceRequired: r.invoice_required, clientAdBudget: r.client_ad_budget, notes: r.notes, updatedAt: iso(r.updated_at),
       monthlyEquivalentCents: monthlyEquivalentCents(num(r.amount_cents), r.periodicity),
       serviceStatus: r.service_status as ServiceStatus, formalizationStatus: r.formalization_status as FormalizationStatus,
