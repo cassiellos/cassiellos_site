@@ -4,7 +4,7 @@ import {
   firstDay, lastDay, monthDiff, monthOf, monthlyEquivalentCents, type Direction, type EntryState, type FormalizationStatus, type InvoiceStatus,
   type Periodicity, type ServiceStatus, type SourceStatus,
 } from './model'
-import type { AdminStatusInput, ClientInput, Filters, InvoiceInput, SettlementInput, SourceInput } from './validation'
+import type { AdminStatusInput, ClientInput, Filters, InvoiceInput, ProjectInput, SettlementInput, SourceInput } from './validation'
 
 /**
  * Persistência do Financeiro (migração 0011). Consultas sempre parametrizadas; toda alteração em transação, com
@@ -76,7 +76,7 @@ export async function syncRecurring(c: PoolClient, today: string, horizonMonth?:
   const { rows } = await c.query(
     `SELECT id, direction, client_id, category, description, amount_cents, periodicity, start_date::text AS start_date,
             end_date::text AS end_date, generate_from::text AS generate_from, status, due_day, invoice_required, client_ad_budget
-       FROM crm.finance_sources WHERE status = 'active' AND ($1::uuid IS NULL OR id = $1)`, [sourceId ?? null])
+       FROM crm.finance_sources WHERE status = 'active' AND NOT installment_plan AND ($1::uuid IS NULL OR id = $1)`, [sourceId ?? null])
   let created = 0
   for (const s of rows) {
     const months = competenceMonths({
@@ -173,6 +173,58 @@ export async function createSource(pool: FinancePool, input: SourceInput, actor:
 }
 
 /**
+ * Um único projeto avulso com 1–5 parcelas independentes, em datas livres.
+ * Cada parcela pertence à fonte do contrato via project_source_id; source_id fica
+ * nulo deliberadamente para não conflitar com a unicidade de cobranças mensais
+ * dos contratos recorrentes (inclusive quando duas parcelas caem no mesmo mês).
+ */
+export async function createProjectSource(pool: FinancePool, input: ProjectInput, actor: string): Promise<{ id: string; generated: number }> {
+  return tx(pool, async c => {
+    const migration = await c.query(`SELECT count(*)::int AS n FROM information_schema.columns
+      WHERE table_schema='crm' AND (table_name='finance_sources' AND column_name IN ('installment_plan','delivery_due_date')
+         OR table_name='finance_entries' AND column_name IN ('project_source_id','installment_number'))`)
+    if (Number(migration.rows[0]?.n) !== 4) throw new FinanceRuleError('PROJECT_MIGRATION_PENDING', 503)
+    const v = input.source
+    if (!v.clientId || v.direction !== 'in' || v.periodicity !== 'one_time') throw new FinanceRuleError('INVALID_PROJECT_KIND', 400)
+    const client = await c.query('SELECT archived_at FROM crm.finance_clients WHERE id=$1', [v.clientId])
+    if (!client.rowCount) throw new FinanceRuleError('CLIENT_NOT_FOUND', 404)
+    if (client.rows[0].archived_at) throw new FinanceRuleError('CLIENT_ARCHIVED')
+    const adminAvailable = await hasAdminStatusColumns(c)
+    const informed = v.serviceStatus !== 'unknown' || v.formalizationStatus !== 'unknown'
+    if (!adminAvailable && informed) throw new FinanceRuleError('ADMIN_STATUS_MIGRATION_PENDING')
+    const props = [v.clientId,v.category,v.description,v.amountCents,v.startDate,v.dueDay,v.generateFrom,
+      v.invoiceRequired,v.notes,input.deliveryDueDate]
+    const source = adminAvailable
+      ? await c.query(`INSERT INTO crm.finance_sources
+          (direction,client_id,category,description,amount_cents,periodicity,cost_kind,start_date,end_date,
+           due_day,generate_from,invoice_required,notes,installment_plan,delivery_due_date,
+           service_status,formalization_status,admin_status_updated_at)
+          VALUES ('in',$1,$2,$3,$4,'one_time',NULL,$5,NULL,$6,$7,$8,$9,true,$10,
+                  $11,$12,CASE WHEN $13 THEN now() END) RETURNING id`,
+          [...props,v.serviceStatus,v.formalizationStatus,informed])
+      : await c.query(`INSERT INTO crm.finance_sources
+          (direction,client_id,category,description,amount_cents,periodicity,cost_kind,start_date,end_date,
+           due_day,generate_from,invoice_required,notes,installment_plan,delivery_due_date)
+          VALUES ('in',$1,$2,$3,$4,'one_time',NULL,$5,NULL,$6,$7,$8,$9,true,$10) RETURNING id`,props)
+    const id = source.rows[0].id as string
+    for (const [i,installment] of input.installments.entries()) {
+      const number = i+1
+      const entry = await c.query(`INSERT INTO crm.finance_entries
+       (direction,source_id,project_source_id,installment_number,client_id,category,description,
+        competence_month,due_date,amount_cents,invoice_required,client_ad_budget)
+       VALUES ('in',NULL,$1,$2,$3,$4,$5,date_trunc('month',$6::date)::date,$6,$7,$8,false)
+       RETURNING id`,[id,number,v.clientId,v.category,v.description+' — parcela '+number+'/'+input.installments.length,
+         installment.dueDate,installment.amountCents,v.invoiceRequired])
+      await audit(c,'entry',entry.rows[0].id,'created',actor,{projectSourceId:id,number,amountCents:installment.amountCents,
+        dueDate:installment.dueDate})
+    }
+    await audit(c,'source',id,'created',actor,{amountCents:v.amountCents,periodicity:'one_time',
+      installmentPlan:true,deliveryDueDate:input.deliveryDueDate,installments:input.installments.length})
+    return {id,generated:input.installments.length}
+  })
+}
+
+/**
  * Atualiza SOMENTE a situação do serviço e a da formalização de um contrato. Não toca em valor, vigência, status
  * financeiro nem lançamentos: nenhuma cobrança é gerada ou cancelada. Fica na auditoria (antes/depois).
  */
@@ -251,10 +303,17 @@ async function cancelForecastsAfter(c: PoolClient, sourceId: string, afterMonth:
  */
 export async function setSourceStatus(pool: FinancePool, id: string, status: SourceStatus, actor: string, today: string, endDate?: string | null) {
   return tx(pool, async c => {
-    const cur = await c.query('SELECT status, start_date::text AS start_date, end_date::text AS end_date, periodicity FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
+    const cur = await c.query('SELECT status, start_date::text AS start_date, end_date::text AS end_date, periodicity, installment_plan FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
     if (!cur.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
     const s = cur.rows[0]
     if (s.status === status) return { cancelled: 0, generated: 0 }
+    // Encerrar um projeto não quita nem anula automaticamente parcelas contratadas.
+    if (s.installment_plan) {
+      if (s.status === 'ended' && status !== 'ended') throw new FinanceRuleError('SOURCE_ENDED')
+      await c.query('UPDATE crm.finance_sources SET status=$2,updated_at=now() WHERE id=$1',[id,status])
+      await audit(c,'source',id,'status_'+status,actor,{from:s.status,installmentPlan:true,installmentsPreserved:true})
+      return {cancelled:0,generated:0}
+    }
     if (s.status === 'ended' && status !== 'ended') throw new FinanceRuleError('SOURCE_ENDED')
     let cancelled = 0
     let generated = 0
@@ -300,11 +359,16 @@ export async function cancelEntry(pool: FinancePool, entryId: string, reason: st
 /** Ajuste de valor/vencimento de UMA cobrança/conta: somente sem movimento ativo; fica na auditoria (antes/depois). */
 export async function updateEntry(pool: FinancePool, entryId: string, amountCents: number, dueDate: string, actor: string): Promise<void> {
   await tx(pool, async c => {
-    const e = await c.query('SELECT status, amount_cents, due_date::text AS due_date FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [entryId])
+    const e = await c.query('SELECT status, amount_cents, due_date::text AS due_date, project_source_id FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [entryId])
     if (!e.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
     if (e.rows[0].status === 'cancelled') throw new FinanceRuleError('ENTRY_CANCELLED')
     if (await activeSettled(c, entryId) > 0) throw new FinanceRuleError('ENTRY_HAS_SETTLEMENTS')
-    await c.query('UPDATE crm.finance_entries SET amount_cents = $2, due_date = $3, updated_at = now() WHERE id = $1', [entryId, amountCents, dueDate])
+    // O total de um projeto não pode ser adulterado pela edição isolada de uma parcela.
+    if (e.rows[0].project_source_id && amountCents !== num(e.rows[0].amount_cents))
+      throw new FinanceRuleError('PROJECT_INSTALLMENT_AMOUNT_LOCKED')
+    await c.query(`UPDATE crm.finance_entries SET amount_cents = $2, due_date = $3,
+      competence_month = CASE WHEN project_source_id IS NOT NULL THEN date_trunc('month',$3::date)::date ELSE competence_month END,
+      updated_at = now() WHERE id = $1`, [entryId, amountCents, dueDate])
     await audit(c, 'entry', entryId, 'adjusted', actor, { before: { amountCents: num(e.rows[0].amount_cents), dueDate: e.rows[0].due_date }, after: { amountCents, dueDate } })
   })
 }
@@ -376,7 +440,7 @@ export async function setInvoice(pool: FinancePool, input: InvoiceInput, actor: 
 
 export type MonthTotals = { month: string; competenceIn: number; competenceOut: number; cashIn: number; cashOut: number }
 export type EntryView = {
-  id: string; direction: Direction; sourceId: string | null; clientId: string | null; clientName: string | null; company: string | null
+  id: string; direction: Direction; sourceId: string | null; installmentNumber: number | null; clientId: string | null; clientName: string | null; company: string | null
   category: string; categoryLabel: string; description: string; periodicity: Periodicity | null; competenceMonth: string; dueDate: string
   amountCents: number; settledCents: number; remainingCents: number; lastSettledOn: string | null; state: EntryState; stateLabel: string
   overdue: boolean; clientAdBudget: boolean; cancelReason: string | null
@@ -384,7 +448,7 @@ export type EntryView = {
   settlements: { id: string; amountCents: number; settledOn: string; method: string; notes: string; createdAt: string | null; reversedAt: string | null; reversalReason: string | null }[]
 }
 
-const FILTER_SQL = `($1::uuid IS NULL OR e.client_id = $1) AND ($2::text IS NULL OR e.category = $2) AND ($3::uuid IS NULL OR e.source_id = $3)`
+const FILTER_SQL = `($1::uuid IS NULL OR e.client_id = $1) AND ($2::text IS NULL OR e.category = $2) AND ($3::uuid IS NULL OR COALESCE(e.source_id,e.project_source_id) = $3)`
 const filterParams = (f: Filters) => [f.clientId, f.category, f.sourceId]
 
 /** Totais mensais por COMPETÊNCIA e por CAIXA (verbas de anúncio de clientes ficam de fora: não passam pelo caixa). */
@@ -436,13 +500,13 @@ function invoiceView(direction: Direction, invoiceRequired: boolean, r: Record<s
 
 async function loadEntries(c: PoolClient, f: Filters, today: string, where: string, extra: unknown[] = [], limit = 1500): Promise<EntryView[]> {
   const { rows } = await c.query(
-    `SELECT e.id, e.direction, e.source_id, e.client_id, cl.name AS client_name, cl.company, e.category, e.description, so.periodicity,
+    `SELECT e.id, e.direction, COALESCE(e.source_id,e.project_source_id) AS source_id, e.installment_number, e.client_id, cl.name AS client_name, cl.company, e.category, e.description, so.periodicity,
             to_char(e.competence_month, 'YYYY-MM') AS competence_month, e.due_date::text AS due_date, e.amount_cents, e.status,
             e.cancel_reason, e.invoice_required, e.client_ad_budget, COALESCE(st.total, 0) AS settled, st.last_on::text AS last_on,
             i.status AS inv_status, i.number AS inv_number, i.issued_on::text AS inv_issued_on, i.external_ref AS inv_external_ref, i.notes AS inv_notes
        FROM crm.finance_entries e
        LEFT JOIN crm.finance_clients cl ON cl.id = e.client_id
-       LEFT JOIN crm.finance_sources so ON so.id = e.source_id
+       LEFT JOIN crm.finance_sources so ON so.id = COALESCE(e.source_id,e.project_source_id)
        LEFT JOIN LATERAL (SELECT sum(s.amount_cents) AS total, max(s.settled_on) AS last_on FROM crm.finance_settlements s
                            WHERE s.entry_id = e.id AND s.reversed_at IS NULL) st ON true
        LEFT JOIN crm.finance_invoices i ON i.entry_id = e.id
@@ -457,7 +521,7 @@ async function loadEntries(c: PoolClient, f: Filters, today: string, where: stri
     const settledCents = num(r.settled)
     const state = entryState({ status: r.status, amountCents, settledCents, dueDate: r.due_date, competenceMonth: r.competence_month }, today)
     return {
-      id: r.id, direction: r.direction, sourceId: r.source_id, clientId: r.client_id, clientName: r.client_name, company: r.company,
+      id: r.id, direction: r.direction, sourceId: r.source_id, installmentNumber: r.installment_number ?? null, clientId: r.client_id, clientName: r.client_name, company: r.company,
       category: r.category, categoryLabel: categoryLabel(r.category), description: r.description, periodicity: r.periodicity ?? null,
       competenceMonth: r.competence_month, dueDate: r.due_date, amountCents, settledCents,
       remainingCents: r.status === 'cancelled' ? 0 : Math.max(0, amountCents - settledCents), lastSettledOn: r.last_on ?? null,
@@ -530,12 +594,13 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
     const sources = (await c.query(
       `SELECT ${adminCols}, s.id, s.direction, s.client_id, cl.name AS client_name, s.category, s.description, s.supplier, s.amount_cents, s.periodicity,
               s.cost_kind, s.start_date::text AS start_date, s.end_date::text AS end_date, s.due_day, to_char(s.generate_from, 'YYYY-MM') AS generate_from,
-              s.status, s.invoice_required, s.client_ad_budget, s.notes, s.updated_at
+              s.status, s.invoice_required, s.client_ad_budget, s.notes, s.updated_at, s.installment_plan, s.delivery_due_date::text AS delivery_due_date
          FROM crm.finance_sources s LEFT JOIN crm.finance_clients cl ON cl.id = s.client_id
         ORDER BY s.direction, CASE s.status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END, lower(s.description) LIMIT 3000`)).rows.map(r => ({
       id: r.id, direction: r.direction as Direction, clientId: r.client_id, clientName: r.client_name, category: r.category, categoryLabel: categoryLabel(r.category),
       description: r.description, supplier: r.supplier, amountCents: num(r.amount_cents), periodicity: r.periodicity as Periodicity, costKind: r.cost_kind,
       startDate: r.start_date, endDate: r.end_date, dueDay: r.due_day, generateFrom: r.generate_from, status: r.status as SourceStatus,
+       installmentPlan: Boolean(r.installment_plan), deliveryDueDate: r.delivery_due_date,
       invoiceRequired: r.invoice_required, clientAdBudget: r.client_ad_budget, notes: r.notes, updatedAt: iso(r.updated_at),
       monthlyEquivalentCents: monthlyEquivalentCents(num(r.amount_cents), r.periodicity),
       serviceStatus: r.service_status as ServiceStatus, formalizationStatus: r.formalization_status as FormalizationStatus,
