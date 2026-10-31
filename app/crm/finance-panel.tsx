@@ -170,19 +170,30 @@ function MoneyInput({ value, onChange, name, required = true }: { value: string;
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
-    const old = document.body.style.overflow
+    const oldBodyOverflow = document.body.style.overflow
+    const oldHtmlOverflow = document.documentElement.style.overflow
+    // Trava o documento inteiro, inclusive quando a rolagem usa o elemento html.
     document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
     ref.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
     document.addEventListener('keydown', key)
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = old; prev?.focus?.() }
-  }, [onClose])
+    // Executa apenas na montagem: mudanças nas parcelas não devem refocar o primeiro campo nem zerar o scroll.
+    return () => {
+      document.removeEventListener('keydown', key)
+      document.body.style.overflow = oldBodyOverflow
+      document.documentElement.style.overflow = oldHtmlOverflow
+      prev?.focus?.()
+    }
+  }, [])
   return <div className="crm-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
     <div ref={ref} className="crm-modal crm-fin-modal" role="dialog" aria-modal="true" aria-label={title}>
       <div className="crm-fin-modal-head"><h2>{title}</h2><button type="button" className="crm-icon-btn" aria-label="Fechar" onClick={onClose}>✕</button></div>
-      {children}
+      <div className="crm-fin-modal-body">{children}</div>
     </div>
   </div>
 }
