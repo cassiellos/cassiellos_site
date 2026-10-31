@@ -170,71 +170,70 @@ function MoneyInput({ value, onChange, name, required = true }: { value: string;
 }
 
 function Modal({ title, onClose, children, longForm = false }: { title: string; onClose: () => void; children: ReactNode; longForm?: boolean }) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const ref = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
   useEffect(() => {
-    const previousFocus = document.activeElement as HTMLElement | null
-    const oldBodyOverflow = document.body.style.overflow
-    const oldHtmlOverflow = document.documentElement.style.overflow
-    const overlay = overlayRef.current
+    const dialog = dialogRef.current
     const scroller = scrollerRef.current
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
-    ref.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
+    if (!dialog || !scroller) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalBodyOverflow = document.body.style.overflow
 
-    // Escuta diretamente, sem listener passivo. Roda o CONTEÚDO do modal, nunca
-    // o documento por trás, inclusive se o cursor estiver sobre o cabeçalho.
-    const onWheel = (event: WheelEvent) => {
-      if (!scroller || event.ctrlKey) return // preserva gesto de zoom
+    // showModal coloca o formulário na top layer nativa do navegador:
+    // fica acima de qualquer card ou container rolável do CRM.
+    if (!dialog.open) dialog.showModal()
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+
+    // Listener não-passivo em DOCUMENTO, não no backdrop, para capturar
+    // trackpad/mouse mesmo quando o navegador tenta rolar outro elemento.
+    const wheelToDialog = (event: WheelEvent) => {
+      if (!dialog.open || event.ctrlKey) return // preserva gesto de zoom
       event.preventDefault()
-      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientHeight : 1
-      scroller.scrollTop += event.deltaY * unit
-      scroller.scrollLeft += event.deltaX * unit
+      const factor = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientHeight : 1
+      scroller.scrollTop += event.deltaY * factor
+      scroller.scrollLeft += event.deltaX * factor
     }
-    const onTouchMove = (event: TouchEvent) => {
-      if (scroller && !scroller.contains(event.target as Node)) event.preventDefault()
+    const stopBackgroundTouch = (event: TouchEvent) => {
+      if (dialog.open && !scroller.contains(event.target as Node)) event.preventDefault()
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onCloseRef.current()
-      }
-      if (!scroller || event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) return
-      const step = scroller.clientHeight * 0.85
-      if (event.key === 'PageDown') { event.preventDefault(); scroller.scrollTop += step }
-      if (event.key === 'PageUp') { event.preventDefault(); scroller.scrollTop -= step }
-    }
-    overlay?.addEventListener('wheel', onWheel, { passive: false, capture: true })
-    overlay?.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
-    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('wheel', wheelToDialog, { passive: false, capture: true })
+    document.addEventListener('touchmove', stopBackgroundTouch, { passive: false, capture: true })
+
     return () => {
-      overlay?.removeEventListener('wheel', onWheel, true)
-      overlay?.removeEventListener('touchmove', onTouchMove, true)
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = oldBodyOverflow
-      document.documentElement.style.overflow = oldHtmlOverflow
+      document.removeEventListener('wheel', wheelToDialog, true)
+      document.removeEventListener('touchmove', stopBackgroundTouch, true)
+      if (dialog.open) dialog.close()
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.body.style.overflow = originalBodyOverflow
       previousFocus?.focus?.()
     }
   }, [])
 
-  const modal = <div ref={overlayRef} className="crm-modal-backdrop crm-fin-modal-overlay"
-    onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
-    <div ref={ref} className="crm-modal crm-fin-modal" data-long-form={longForm || undefined}
-      role="dialog" aria-modal="true" aria-label={title}>
-      <div className="crm-fin-modal-head"><h2>{title}</h2>
-        <button type="button" className="crm-icon-btn" aria-label="Fechar" onClick={onClose}>✕</button></div>
-      <div ref={scrollerRef} className="crm-fin-modal-body" tabIndex={0} aria-label="Conteúdo rolável do formulário">
-        {children}
-      </div>
+  const modal = <dialog ref={dialogRef} className="crm-modal crm-fin-modal crm-fin-native-dialog"
+    data-long-form={longForm || undefined} aria-label={title}
+    onCancel={event => { event.preventDefault(); onCloseRef.current() }}
+    onMouseDown={event => {
+      const rect = event.currentTarget.getBoundingClientRect()
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+          event.clientY < rect.top || event.clientY > rect.bottom) onCloseRef.current()
+    }}>
+    <div className="crm-fin-modal-head">
+      <h2>{title}</h2>
+      <button type="button" className="crm-icon-btn" aria-label="Fechar" onClick={() => onCloseRef.current()}>✕</button>
     </div>
-  </div>
-  // O overlay fica na raiz visual do CRM, fora do fluxo dos cards e filtros.
-  // Preserva estilos encapsulados em #cassiellos-crm, sem ancestrais que absorvam o scroll.
+    <div ref={scrollerRef} className="crm-fin-modal-body" tabIndex={0} aria-label="Conteúdo rolável do formulário">
+      {children}
+    </div>
+  </dialog>
+
+  // Mantemos o portal dentro do CRM para herdar a identidade visual.
+  // O <dialog>.showModal() é renderizado na top layer, fora de quaisquer
+  // contextos de empilhamento ou scroll de ancestrais.
   const root = typeof document !== 'undefined' ? document.getElementById('cassiellos-crm') : null
   return root ? createPortal(modal, root) : modal
 }
