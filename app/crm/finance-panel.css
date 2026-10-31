@@ -76,7 +76,43 @@
 #cassiellos-crm .crm-fin-table td[data-trend=up]{color:#55e4b1}
 #cassiellos-crm .crm-fin-table td[data-trend=down]{color:#ff919c}
 #cassiellos-crm .crm-fin-table td[data-trend=na]{color:#8397b0;font-style:italic}
-#cassiellos-crm .crm-fin-modal{width:min(620px,100%)}
+/* A janela permanece dentro da viewport; somente o conteúdo extenso rola. */
+#cassiellos-crm .crm-modal-backdrop{overscroll-behavior:contain}
+#cassiellos-crm .crm-modal.crm-fin-modal{
+  width:min(620px,100%);
+  max-height:calc(100vh - 32px);
+  max-height:calc(100dvh - 32px);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+  padding:0;
+  overscroll-behavior:contain;
+}
+#cassiellos-crm .crm-fin-modal-head{
+  flex:0 0 auto;
+  margin:0;
+  padding:22px 24px 12px;
+}
+#cassiellos-crm .crm-fin-modal-body{
+  min-height:0;
+  flex:1 1 auto;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  padding:6px 24px 24px;
+  scrollbar-width:thin;
+  scrollbar-color:#64748b #122036;
+}
+#cassiellos-crm .crm-fin-modal-body::-webkit-scrollbar{width:9px}
+#cassiellos-crm .crm-fin-modal-body::-webkit-scrollbar-thumb{background:#64748b;border-radius:12px;border:2px solid #122036}
+@media(max-width:540px){
+  #cassiellos-crm .crm-modal.crm-fin-modal{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+  #cassiellos-crm .crm-fin-modal-head{padding:16px 16px 10px}
+  #cassiellos-crm .crm-fin-modal-body{padding:4px 16px 20px}
+}
 #cassiellos-crm .crm-fin-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
 #cassiellos-crm .crm-fin-modal-head h2{margin:0}
 #cassiellos-crm .crm-fin-modal-sub{color:var(--crm-muted);font-size:12px;margin:0 0 14px}
