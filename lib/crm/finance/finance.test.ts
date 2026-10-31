@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  addMonths, competenceMonths, csvCell, dueDateFor, entryState, formatCents, formatChange, monthlyEquivalentCents, parseMoneyToCents,
+  FORMALIZATION_STATUS, SERVICE_STATUS, addMonths, competenceMonths, csvCell, dueDateFor, entryState, formatCents, formatChange, monthlyEquivalentCents, parseMoneyToCents,
   percentChange, todayInBrazil, type GenerationSource,
 } from './model'
-import { parseFilters, validateClient, validateInvoice, validateSettlement, validateSource } from './validation'
+import { parseFilters, validateAdminStatus, validateClient, validateInvoice, validateSettlement, validateSource } from './validation'
 import { handleFinanceAdmin, handleFinanceExport, type FinanceAdminRequest } from './admin-request'
 
 // Somente dados fictícios.
@@ -213,5 +213,42 @@ describe('API do Financeiro — segurança (sem banco)', () => {
       { ...base, method: 'POST', rawBody: JSON.stringify({ action: 'client_create', name: 'Nome Secreto Fictício', notes: 'R$ 9.999' }) })
     assert.equal(logs.length, 1)
     assert.ok(!logs[0].includes('Secreto') && !logs[0].includes('9.999'))
+  })
+})
+
+describe('0012 — situação do serviço e do contrato (somente controle administrativo)', () => {
+  const contract = { direction: 'in', clientId: CLIENT, category: 'hosting', description: 'Hospedagem fictícia', amount: '150,00', periodicity: 'monthly', startDate: '2026-10-01', dueDay: 10 }
+  it('padrão é "Não informado" (nunca "Assinado" automaticamente)', () => {
+    const v = validateSource(contract, TODAY)
+    assert.ok(v.ok)
+    assert.deepEqual(v.ok && [v.value.serviceStatus, v.value.formalizationStatus], ['unknown', 'unknown'])
+    assert.deepEqual(validateAdminStatus({}), { ok: true, value: { serviceStatus: 'unknown', formalizationStatus: 'unknown' } })
+  })
+  it('aceita todos os estados definidos e recusa valores desconhecidos', () => {
+    for (const s of Object.keys(SERVICE_STATUS)) assert.ok(validateAdminStatus({ serviceStatus: s }).ok, s)
+    for (const s of Object.keys(FORMALIZATION_STATUS)) assert.ok(validateAdminStatus({ formalizationStatus: s }).ok, s)
+    assert.equal(validateAdminStatus({ serviceStatus: 'done' }).ok, false)
+    assert.equal(validateAdminStatus({ formalizationStatus: 'assinado' }).ok, false)
+    assert.equal(validateSource({ ...contract, formalizationStatus: 'x' }, TODAY).ok, false)
+    assert.equal(Object.keys(SERVICE_STATUS).length, 5)
+    assert.equal(Object.keys(FORMALIZATION_STATUS).length, 6)
+  })
+  it('contrato sem assinatura é cadastrável; despesa ignora os campos', () => {
+    assert.ok(validateSource({ ...contract, formalizationStatus: 'not_sent', serviceStatus: 'in_progress' }, TODAY).ok)
+    const exp = validateSource({ direction: 'out', category: 'software', description: 'Assinatura fictícia', amount: '10', periodicity: 'monthly', startDate: TODAY, dueDay: 5,
+      costKind: 'fixed', formalizationStatus: 'signed' }, TODAY)
+    assert.equal(exp.ok && exp.value.formalizationStatus, 'unknown')
+  })
+  it('API: mesma proteção (Preview, sessão, origem, JSON) e validação antes do banco', async () => {
+    const noPool = { connect: async () => { throw new Error('não deveria acessar o banco') } }
+    const deps = { pool: noPool, log: () => undefined, now: () => new Date('2026-10-31T15:00:00Z') }
+    const req: FinanceAdminRequest = { method: 'POST', vercelEnv: 'preview', sessionValid: true, originAllowed: true, contentType: 'application/json', actorRef: 'ref',
+      rawBody: JSON.stringify({ action: 'source_admin_status', id: ENTRY, formalizationStatus: 'signed' }) }
+    assert.equal((await handleFinanceAdmin(deps, { ...req, sessionValid: false })).status, 401)
+    assert.equal((await handleFinanceAdmin(deps, { ...req, originAllowed: false })).status, 403)
+    assert.equal((await handleFinanceAdmin(deps, { ...req, vercelEnv: 'production' })).status, 404)
+    assert.deepEqual(await handleFinanceAdmin(deps, { ...req, rawBody: JSON.stringify({ action: 'source_admin_status', id: ENTRY, serviceStatus: 'x' }) }),
+      { status: 400, body: { error: 'INVALID_SERVICE_STATUS', field: 'serviceStatus' } })
+    assert.equal((await handleFinanceAdmin(deps, { ...req, rawBody: JSON.stringify({ action: 'source_admin_status', id: 'x' }) })).status, 400)
   })
 })

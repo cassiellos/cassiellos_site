@@ -1,5 +1,5 @@
 import {
-  INVOICE_STATUS, PERIODICITIES, SOURCE_STATUS, isCategoryOf, isValidDate, isValidMonth, monthDiff, monthOf, parseMoneyToCents,
+  INVOICE_STATUS, PERIODICITIES, SOURCE_STATUS, isCategoryOf, isFormalizationStatus, isServiceStatus, type FormalizationStatus, type ServiceStatus, isValidDate, isValidMonth, monthDiff, monthOf, parseMoneyToCents,
   type Direction, type InvoiceStatus, type Periodicity, type SourceStatus,
 } from './model'
 
@@ -46,6 +46,19 @@ export type SourceInput = {
   invoiceRequired: boolean
   clientAdBudget: boolean
   notes: string
+  /** 0012 — somente contratos (direction 'in'); despesas ficam sempre "Não informado". */
+  serviceStatus: ServiceStatus
+  formalizationStatus: FormalizationStatus
+}
+
+export type AdminStatusInput = { serviceStatus: ServiceStatus; formalizationStatus: FormalizationStatus }
+/** Ausente → "Não informado". Valor desconhecido → recusado (nunca vira "Assinado" por engano). */
+export function validateAdminStatus(d: Record<string, unknown>): Valid<AdminStatusInput> {
+  const service = d.serviceStatus === undefined || d.serviceStatus === null || d.serviceStatus === '' ? 'unknown' : d.serviceStatus
+  const formal = d.formalizationStatus === undefined || d.formalizationStatus === null || d.formalizationStatus === '' ? 'unknown' : d.formalizationStatus
+  if (!isServiceStatus(service)) return fail('INVALID_SERVICE_STATUS', 'serviceStatus')
+  if (!isFormalizationStatus(formal)) return fail('INVALID_FORMALIZATION_STATUS', 'formalizationStatus')
+  return { ok: true, value: { serviceStatus: service, formalizationStatus: formal } }
 }
 
 /**
@@ -97,9 +110,12 @@ export function validateSource(d: Record<string, unknown>, today: string): Valid
   if (endDate && monthDiff(generateFrom, monthOf(endDate)) < 0) return fail('INVALID_GENERATE_FROM', 'generateFrom')
   const notes = text(d.notes, 2000)
   if (notes === undefined) return fail('INVALID_NOTES', 'notes')
+  const admin = direction === 'in' ? validateAdminStatus(d) : { ok: true as const, value: { serviceStatus: 'unknown' as const, formalizationStatus: 'unknown' as const } }
+  if (!admin.ok) return admin
   return {
     ok: true,
     value: {
+      ...admin.value,
       direction, clientId, category: d.category as string, description, supplier, amountCents, periodicity, costKind,
       startDate, endDate, dueDay, generateFrom: generateFrom + '-01', invoiceRequired: direction === 'in' && d.invoiceRequired === true,
       clientAdBudget, notes: notes ?? '',

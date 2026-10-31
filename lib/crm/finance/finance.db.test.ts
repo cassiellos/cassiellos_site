@@ -288,6 +288,68 @@ describe('Financeiro — banco real descartável', { skip }, () => {
     assert.equal((await handleFinanceExport(deps, { ...base, sessionValid: false, searchParams: new URLSearchParams('year=2026') })).status, 401)
   })
 
+  it('0012: contrato novo sem assinatura; padrão "Não informado"; recebimento independe da assinatura', async () => {
+    const c = await client('Formal')
+    const s = await contract(c, { category: 'marketing_monthly', description: 'Contrato sem assinatura', amount: '1.000', periodicity: 'monthly', startDate: '2026-10-01', dueDay: 31 })
+    let v = await view({ month: '2026-10', client: c })
+    assert.equal(v.adminStatusAvailable, true)
+    let src = (v.sources as Body[]).find(x => x.id === s)!
+    assert.deepEqual([src.serviceStatus, src.formalizationStatus, src.adminStatusUpdatedAt], ['unknown', 'unknown', null])
+    const e = entriesOf(v, s)[0]
+    await settle(e.id, '1.000', '2026-10-15') // nenhuma assinatura exigida
+    const s2 = await contract(c, { category: 'hosting', description: 'Hospedagem aguardando', amount: '80', periodicity: 'monthly', startDate: '2026-10-01',
+      serviceStatus: 'not_started', formalizationStatus: 'awaiting_signature' })
+    v = await view({ month: '2026-10', client: c })
+    src = (v.sources as Body[]).find(x => x.id === s2)!
+    assert.deepEqual([src.serviceStatus, src.formalizationStatus], ['not_started', 'awaiting_signature'])
+    assert.ok(src.adminStatusUpdatedAt)
+    assert.equal(entriesOf(v, s2).length, 3, 'aguardando assinatura não impede a geração das cobranças')
+  })
+
+  it('0012: mudar só os dois estados não gera, não cancela e não altera nenhum valor financeiro', async () => {
+    const c = await client('Estados')
+    const s = await contract(c, { category: 'creative_minds', description: 'CM estados', amount: '497', periodicity: 'monthly', startDate: '2026-10-01', dueDay: 31 })
+    const e = entriesOf(await view({ month: '2026-10', client: c }), s)[0]
+    await settle(e.id, '200', '2026-10-20')
+    const snap = async () => ({
+      entries: (await pool.query("SELECT id, competence_month::text AS m, amount_cents::int AS a, status, due_date::text AS d FROM crm.finance_entries WHERE source_id = $1 ORDER BY 2", [s])).rows,
+      settlements: (await pool.query('SELECT id, amount_cents::int AS a, reversed_at FROM crm.finance_settlements WHERE entry_id = $1', [e.id])).rows,
+      source: (await pool.query('SELECT amount_cents::int AS a, status, end_date, generate_from::text AS g, updated_at FROM crm.finance_sources WHERE id = $1', [s])).rows[0],
+    })
+    const before = await snap()
+    for (const [serviceStatus, formalizationStatus] of [['in_progress', 'sent'], ['paused', 'awaiting_signature'], ['ended', 'signed'], ['unknown', 'no_formal_contract']]) {
+      const r = await post('source_admin_status', { id: s, serviceStatus, formalizationStatus })
+      assert.equal(r.changed, true)
+      await view({ month: '2026-12', client: c })
+      assert.deepEqual(await snap(), before, serviceStatus + '/' + formalizationStatus)
+    }
+    assert.equal((await post('source_admin_status', { id: s, serviceStatus: 'unknown', formalizationStatus: 'no_formal_contract' })).changed, false)
+    // "Encerrado"/"Pausado" do SERVIÇO não muda o status financeiro do contrato
+    const v = await view({ month: '2026-10', client: c })
+    const src = (v.sources as Body[]).find(x => x.id === s)!
+    assert.deepEqual([src.status, src.serviceStatus, src.formalizationStatus], ['active', 'unknown', 'no_formal_contract'])
+    // ainda é possível receber o restante
+    await settle(e.id, '297', '2026-10-25')
+    const a = await pool.query("SELECT action, details FROM crm.finance_audit_log WHERE entity = 'source' AND entity_id = $1 AND action = 'admin_status' ORDER BY id", [s])
+    assert.equal(a.rows.length, 4)
+    assert.deepEqual(a.rows[0].details.before, { serviceStatus: 'unknown', formalizationStatus: 'unknown' })
+    assert.deepEqual(a.rows[3].details.after, { serviceStatus: 'unknown', formalizationStatus: 'no_formal_contract' })
+  })
+
+  it('0012: valores inválidos recusados; despesas não têm esses estados; edição comum não mexe neles', async () => {
+    const c = await client('Invalido')
+    const s = await contract(c, { category: 'hosting', description: 'Hosp inválido', amount: '50', periodicity: 'monthly', startDate: '2026-10-01', formalizationStatus: 'sent' })
+    assert.equal((await post('source_admin_status', { id: s, formalizationStatus: 'assinado' }, 400)).error, 'INVALID_FORMALIZATION_STATUS')
+    assert.equal((await post('source_admin_status', { id: randomUUID(), serviceStatus: 'in_progress' }, 404)).error, 'NOT_FOUND')
+    const exp = await expense({ category: 'software', description: 'Software estados', amount: '10', periodicity: 'monthly', startDate: '2026-10-01', formalizationStatus: 'signed' })
+    assert.equal((await post('source_admin_status', { id: exp, serviceStatus: 'in_progress' }, 400)).error, 'ADMIN_STATUS_ONLY_FOR_CONTRACTS')
+    const ex = (await pool.query('SELECT formalization_status FROM crm.finance_sources WHERE id = $1', [exp])).rows[0]
+    assert.equal(ex.formalization_status, 'unknown')
+    await post('source_update', { id: s, direction: 'in', category: 'hosting', description: 'Hosp inválido editado', amount: '50', dueDay: 10 })
+    const row = (await pool.query('SELECT service_status, formalization_status FROM crm.finance_sources WHERE id = $1', [s])).rows[0]
+    assert.deepEqual(row, { service_status: 'unknown', formalization_status: 'sent' })
+  })
+
   it('logs só com tipo de evento e ids (sem valores nem nomes); tabelas existentes do CRM intactas', async () => {
     assert.ok(logs.length > 10)
     assert.ok(logs.every(l => !/Fictício|R\$|2\.000|amountCents/.test(l)), logs.find(l => /Fictício|R\$|amountCents/.test(l)))

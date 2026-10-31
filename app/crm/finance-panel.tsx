@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
-  EXPENSE_CATEGORIES, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SOURCE_STATUS, addMonths, centsToInput, formatCents,
+  EXPENSE_CATEGORIES, FORMALIZATION_STATUS, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SERVICE_STATUS, SOURCE_STATUS, addMonths, centsToInput, formatCents,
   formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, todayInBrazil,
 } from '@/lib/crm/finance/model'
 import './finance-panel.css'
@@ -30,6 +30,7 @@ type Source = {
   supplier: string | null; amountCents: number; periodicity: keyof typeof PERIODICITIES; costKind: 'fixed' | 'variable' | null; startDate: string
   endDate: string | null; dueDay: number; generateFrom: string; status: keyof typeof SOURCE_STATUS; invoiceRequired: boolean; clientAdBudget: boolean
   notes: string; monthlyEquivalentCents: number
+  serviceStatus: keyof typeof SERVICE_STATUS; formalizationStatus: keyof typeof FORMALIZATION_STATUS; adminStatusUpdatedAt: string | null
 }
 type Comparison = { label: string; currentLabel: string; previousLabel: string; rows: { key: string; label: string; current: number; previous: number }[] }
 type Overview = {
@@ -38,7 +39,7 @@ type Overview = {
   charts: { year: number; yearMonths: MonthTotals[]; previousYearMonths: MonthTotals[]; last12: MonthTotals[]
     categories: Record<Dir, { category: string; label: string; competenceCents: number; cashCents: number }[]> }
   reports: Record<'monthVsPrevious' | 'monthVsSameMonthLastYear' | 'ytdVsPreviousYtd' | 'yearVsPreviousYear', Comparison>
-  clients: Client[]; sources: Source[]; entries: Entry[]
+  adminStatusAvailable: boolean; clients: Client[]; sources: Source[]; entries: Entry[]
   audit: { entity: string; entityId: string; action: string; actorRef: string; createdAt: string | null }[]
 }
 type Tab = 'geral' | 'contratos' | 'receitas' | 'despesas' | 'receber' | 'pagar' | 'notas' | 'relatorios'
@@ -62,9 +63,14 @@ const ERRORS: Record<string, string> = {
   ENTRY_CANCELLED: 'Lançamento cancelado.', ENTRY_HAS_SETTLEMENTS: 'Há movimentos registrados: estorne-os antes.', IDEMPOTENCY_KEY_REUSED: 'Movimento já registrado com outros dados. Abra o formulário de novo.',
   REASON_REQUIRED: 'Informe o motivo (mínimo 3 caracteres).', SOURCE_ENDED: 'Contrato encerrado não pode ser reativado.', INVALID_DUE_DATE: 'Vencimento inválido.',
   INVALID_INVOICE_STATUS: 'Situação da nota inválida.', INVOICE_NUMBER_AND_DATE_REQUIRED: 'Nota emitida exige número e data de emissão.', INVALID_ISSUED_ON: 'Data de emissão inválida.',
+  INVALID_SERVICE_STATUS: 'Situação do serviço inválida.', INVALID_FORMALIZATION_STATUS: 'Situação do contrato inválida.',
+  ADMIN_STATUS_MIGRATION_PENDING: 'Situação do serviço e do contrato ainda indisponível: aguardando a migração 0012 no banco.',
+  ADMIN_STATUS_ONLY_FOR_CONTRACTS: 'Situação do serviço/contrato só se aplica a receitas.',
   INVALID_INVOICE_NUMBER: 'Número muito longo.', INVALID_EXTERNAL_REF: 'Referência muito longa.', INVOICE_ONLY_FOR_RECEIVABLES: 'Nota fiscal só para receitas.',
 }
 const explain = (code: unknown) => (typeof code === 'string' && ERRORS[code]) || 'Não foi possível concluir. Tente de novo.'
+const SERVICE_TONE: Record<string, string> = { unknown: 'muted', not_started: 'info', in_progress: 'ok', paused: 'warn', ended: 'muted' }
+const FORMAL_TONE: Record<string, string> = { unknown: 'muted', not_sent: 'info', sent: 'info', awaiting_signature: 'sign', signed: 'ok', no_formal_contract: 'muted' }
 const STATE_TONE: Record<string, string> = { settled: 'ok', partial: 'warn', overdue: 'bad', forecast: 'muted', open: 'info', cancelled: 'muted' }
 const newKey = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID()
   : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
@@ -312,7 +318,7 @@ export default function FinancePanel() {
     {data && tab === 'relatorios' && <Reports data={data}/>}
 
     {dialog?.kind === 'client' && <ClientDialog dialog={dialog} onClose={() => setDialog(null)} post={post} busy={busy}/>}
-    {dialog?.kind === 'source' && <SourceDialog dialog={dialog} clients={activeClients} today={today} onClose={() => setDialog(null)} post={post} busy={busy}/>}
+    {dialog?.kind === 'source' && <SourceDialog dialog={dialog} clients={activeClients} today={today} adminAvailable={data?.adminStatusAvailable === true} onClose={() => setDialog(null)} post={post} busy={busy}/>}
     {dialog?.kind === 'settle' && <SettleDialog dialog={dialog} today={today} onClose={() => setDialog(null)} post={post} busy={busy}/>}
     {dialog?.kind === 'entry' && <EntryDialog entry={dialog.entry} onClose={() => setDialog(null)} post={post} busy={busy}/>}
     {dialog?.kind === 'invoice' && <InvoiceDialog entry={dialog.entry} today={today} onClose={() => setDialog(null)} post={post} busy={busy}/>}
@@ -410,6 +416,10 @@ function SourceRow({ s, setDialog, post, busy }: { s: Source; setDialog: (d: Dia
     <div className="crm-fin-row-cell"><span>Vencimento</span>dia {s.dueDay}</div>
     <div className="crm-fin-row-cell"><span>Vigência</span>{formatDate(s.startDate)} → {s.endDate ? formatDate(s.endDate) : 'sem término'}</div>
     <div className="crm-fin-row-cell"><span className="crm-fin-badge" data-tone={s.status === 'active' ? 'ok' : s.status === 'paused' ? 'warn' : 'muted'}>{SOURCE_STATUS[s.status]}</span></div>
+    {s.direction === 'in' && <div className="crm-fin-admin" aria-label="Situação administrativa (não altera cobranças)">
+      <span className="crm-fin-badge" data-tone={SERVICE_TONE[s.serviceStatus]}>Serviço: {SERVICE_STATUS[s.serviceStatus]}</span>
+      <span className="crm-fin-badge" data-tone={FORMAL_TONE[s.formalizationStatus]}>{s.formalizationStatus === 'awaiting_signature' ? '✍ ' : ''}Contrato: {FORMALIZATION_STATUS[s.formalizationStatus]}</span>
+    </div>}
     <div className="crm-fin-row-actions">
       {s.status !== 'ended' && <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'source', direction: s.direction, source: s })}>Editar</button>}
       {s.status === 'active' && s.periodicity !== 'one_time' && <button type="button" className="crm-btn" disabled={busy}
@@ -422,14 +432,21 @@ function SourceRow({ s, setDialog, post, busy }: { s: Source; setDialog: (d: Dia
 }
 
 function Contracts({ data, setDialog, post, busy }: { data: Overview; setDialog: (d: Dialog) => void; post: (b: Record<string, unknown>, ok: string) => Promise<boolean>; busy: boolean }) {
-  const contracts = data.sources.filter(s => s.direction === 'in')
+  const [onlyAwaiting, setOnlyAwaiting] = useState(false)
+  const all = data.sources.filter(s => s.direction === 'in')
+  const awaiting = all.filter(s => s.formalizationStatus === 'awaiting_signature' && s.status !== 'ended')
+  const contracts = onlyAwaiting ? awaiting : all
+  const clients = onlyAwaiting ? data.clients.filter(c => awaiting.some(s => s.clientId === c.id)) : data.clients
   return <>
+    {!data.adminStatusAvailable && <p className="crm-fin-note">Situação do serviço e do contrato: disponível após a aplicação da migração 0012 (todos aparecem como "Não informado").</p>}
+    {awaiting.length > 0 && <div className="crm-fin-awaiting" role="status"><span>✍ <strong>{awaiting.length}</strong> contrato(s) aguardando assinatura</span>
+      <button type="button" className="crm-btn" aria-pressed={onlyAwaiting} onClick={() => setOnlyAwaiting(!onlyAwaiting)}>{onlyAwaiting ? 'Mostrar todos' : 'Ver somente estes'}</button></div>}
     <div className="crm-fin-actions">
       <button type="button" className="crm-btn crm-btn-primary" onClick={() => setDialog({ kind: 'client' })}>+ Novo cliente</button>
       <button type="button" className="crm-btn" disabled={!data.clients.some(c => !c.archived)} onClick={() => setDialog({ kind: 'source', direction: 'in' })}>+ Novo contrato / receita</button>
     </div>
     {!data.clients.length && <p className="crm-fin-empty">Nenhum cliente financeiro cadastrado. Os clientes do Financeiro são cadastrados manualmente — nada é importado nem criado automaticamente.</p>}
-    {data.clients.map(c => <section key={c.id} className="crm-card crm-panel crm-fin-client" data-archived={c.archived || undefined}>
+    {clients.map(c => <section key={c.id} className="crm-card crm-panel crm-fin-client" data-archived={c.archived || undefined}>
       <div className="crm-panel-head"><div><div className="crm-panel-title">{c.name}{c.archived && <span className="crm-fin-badge" data-tone="muted">Arquivado</span>}</div>
         <div className="crm-panel-subtitle">{[c.company, c.activeContracts + ' contrato(s) ativo(s) de ' + c.contracts].filter(Boolean).join(' · ')}{c.notes ? ' · ' + c.notes : ''}</div></div>
         <div className="crm-fin-row-actions">
@@ -487,7 +504,7 @@ function InvoiceRow({ e, setDialog }: { e: Entry; setDialog: (d: Dialog) => void
 function Reports({ data }: { data: Overview }) {
   const year = data.month.slice(0, 4)
   const ACTIONS: Record<string, string> = { created: 'Cadastro', updated: 'Alteração', archived: 'Arquivado', unarchived: 'Reativado', recorded: 'Movimento registrado',
-    reversed: 'Estorno', cancelled: 'Cancelamento', adjusted: 'Ajuste', status_paused: 'Pausa', status_active: 'Reativação', status_ended: 'Encerramento' }
+    reversed: 'Estorno', cancelled: 'Cancelamento', adjusted: 'Ajuste', status_paused: 'Pausa', status_active: 'Reativação', status_ended: 'Encerramento', admin_status: 'Situação do serviço/contrato' }
   const ENTITY: Record<string, string> = { client: 'Cliente', source: 'Contrato/despesa', entry: 'Lançamento', settlement: 'Recebimento/pagamento', invoice: 'Nota fiscal' }
   return <>
     <div className="crm-fin-actions">
@@ -536,7 +553,7 @@ function ClientDialog({ dialog, onClose, post, busy }: { dialog: { client?: Clie
   </Modal>
 }
 
-function SourceDialog({ dialog, clients, today, onClose, post, busy }: { dialog: { direction: Dir; source?: Source; clientId?: string }; clients: Client[]; today: string; onClose: () => void; post: PostFn; busy: boolean }) {
+function SourceDialog({ dialog, clients, today, adminAvailable, onClose, post, busy }: { dialog: { direction: Dir; source?: Source; clientId?: string }; clients: Client[]; today: string; adminAvailable: boolean; onClose: () => void; post: PostFn; busy: boolean }) {
   const s = dialog.source
   const dir = dialog.direction
   const cats = dir === 'in' ? REVENUE_CATEGORIES : EXPENSE_CATEGORIES
@@ -545,16 +562,30 @@ function SourceDialog({ dialog, clients, today, onClose, post, busy }: { dialog:
     amount: s ? centsToInput(s.amountCents) : '', periodicity: s?.periodicity ?? 'monthly', costKind: s?.costKind ?? 'fixed',
     startDate: s?.startDate ?? today, endDate: s?.endDate ?? '', dueDay: String(s?.dueDay ?? (dir === 'out' ? Number(today.slice(8, 10)) : 10)),
     generateFrom: '', invoiceRequired: s?.invoiceRequired ?? false, clientAdBudget: s?.clientAdBudget ?? false, notes: s?.notes ?? '', applyToOpenFuture: false,
+    serviceStatus: s?.serviceStatus ?? 'unknown', formalizationStatus: s?.formalizationStatus ?? 'unknown',
   })
+  const initial = useRef(f)
   const set = (patch: Partial<typeof f>) => setF({ ...f, ...patch })
   const past = f.startDate.slice(0, 7) < today.slice(0, 7)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const body = s
-      ? { action: 'source_update', id: s.id, direction: dir, category: f.category, description: f.description, supplier: f.supplier, amount: f.amount,
-          dueDay: f.dueDay, endDate: f.endDate, costKind: f.costKind, invoiceRequired: f.invoiceRequired, notes: f.notes, applyToOpenFuture: f.applyToOpenFuture }
-      : { action: 'source_create', direction: dir, ...f, clientId: dir === 'in' || f.clientAdBudget ? f.clientId : '' }
-    if (await post(body, s ? 'Alterações salvas. Movimentos já registrados não foram alterados.' : 'Cadastrado. Previsões geradas sem duplicidade.')) onClose()
+    if (!s) {
+      const body = { action: 'source_create', direction: dir, ...f, clientId: dir === 'in' || f.clientAdBudget ? f.clientId : '',
+        ...(dir === 'in' && adminAvailable ? {} : { serviceStatus: 'unknown', formalizationStatus: 'unknown' }) }
+      if (await post(body, 'Cadastrado. Previsões geradas sem duplicidade.')) onClose()
+      return
+    }
+    // Situação do serviço/contrato vai por uma ação própria, que não toca em valores nem em lançamentos.
+    const i = initial.current
+    const statusChanged = f.serviceStatus !== i.serviceStatus || f.formalizationStatus !== i.formalizationStatus
+    const coreKeys = ['category', 'description', 'supplier', 'amount', 'dueDay', 'endDate', 'costKind', 'invoiceRequired', 'notes', 'applyToOpenFuture'] as const
+    const coreChanged = coreKeys.some(k => f[k] !== i[k])
+    if (coreChanged && !await post({ action: 'source_update', id: s.id, direction: dir, category: f.category, description: f.description, supplier: f.supplier,
+      amount: f.amount, dueDay: f.dueDay, endDate: f.endDate, costKind: f.costKind, invoiceRequired: f.invoiceRequired, notes: f.notes,
+      applyToOpenFuture: f.applyToOpenFuture }, 'Alterações salvas. Movimentos já registrados não foram alterados.')) return
+    if (statusChanged && !await post({ action: 'source_admin_status', id: s.id, serviceStatus: f.serviceStatus, formalizationStatus: f.formalizationStatus },
+      coreChanged ? 'Alterações e situação do contrato salvas. Cobranças não foram alteradas.' : 'Situação atualizada. Nenhuma cobrança foi gerada ou cancelada.')) return
+    onClose()
   }
   return <Modal title={(s ? 'Editar ' : 'Nova ') + (dir === 'in' ? 'receita / contrato' : 'despesa')} onClose={onClose}>
     <form className="crm-fin-form" onSubmit={submit}>
@@ -576,6 +607,14 @@ function SourceDialog({ dialog, clients, today, onClose, post, busy }: { dialog:
       {f.periodicity !== 'one_time' && <Field label="Data de término (opcional)"><input type="date" value={f.endDate} onChange={e => set({ endDate: e.target.value })}/></Field>}
       {!s && past && f.periodicity !== 'one_time' && <Field label="Gerar cobranças a partir de" hint="Padrão: mês atual. Escolha um mês anterior só se quiser lançar meses passados.">
         <input type="month" value={f.generateFrom || today.slice(0, 7)} min={f.startDate.slice(0, 7)} onChange={e => set({ generateFrom: e.target.value })}/></Field>}
+      {dir === 'in' && <fieldset className="crm-fin-admin-fields" data-wide disabled={!adminAvailable}>
+        <legend>Controle administrativo <small>(não bloqueia cobranças nem recebimentos)</small></legend>
+        <Field label="Situação do serviço"><select value={f.serviceStatus} onChange={e => set({ serviceStatus: e.target.value as Source['serviceStatus'] })}>
+          {Object.entries(SERVICE_STATUS).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>
+        <Field label="Situação do contrato / formalização"><select value={f.formalizationStatus} onChange={e => set({ formalizationStatus: e.target.value as Source['formalizationStatus'] })}>
+          {Object.entries(FORMALIZATION_STATUS).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>
+        {!adminAvailable && <small className="crm-fin-admin-hint">Disponível após a migração 0012. Até lá, fica "Não informado".</small>}
+      </fieldset>}
       {dir === 'in' && <label className="crm-fin-check" data-wide><input type="checkbox" checked={f.invoiceRequired} onChange={e => set({ invoiceRequired: e.target.checked })}/>Emitir nota fiscal (controle manual)</label>}
       {dir === 'out' && !s && <label className="crm-fin-check" data-wide><input type="checkbox" checked={f.clientAdBudget} onChange={e => set({ clientAdBudget: e.target.checked })}/>Verba de anúncio de cliente (não passa pelo caixa da agência)</label>}
       {dir === 'out' && f.clientAdBudget && !s && <Field label="Cliente da verba (opcional)" wide><select value={f.clientId} onChange={e => set({ clientId: e.target.value })}>

@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg'
 import {
   INVOICE_STATUS, STATE_LABEL, addMonths, categoryLabel, competenceMonths, csvCell, csvMoney, dueDateFor, entryState,
-  firstDay, lastDay, monthDiff, monthOf, monthlyEquivalentCents, type Direction, type EntryState, type InvoiceStatus, type Periodicity,
-  type SourceStatus,
+  firstDay, lastDay, monthDiff, monthOf, monthlyEquivalentCents, type Direction, type EntryState, type FormalizationStatus, type InvoiceStatus,
+  type Periodicity, type ServiceStatus, type SourceStatus,
 } from './model'
-import type { ClientInput, Filters, InvoiceInput, SettlementInput, SourceInput } from './validation'
+import type { AdminStatusInput, ClientInput, Filters, InvoiceInput, SettlementInput, SourceInput } from './validation'
 
 /**
  * Persistência do Financeiro (migração 0011). Consultas sempre parametrizadas; toda alteração em transação, com
@@ -126,6 +126,22 @@ export async function setClientArchived(pool: FinancePool, id: string, archived:
 
 // ───────────────────────── contratos e despesas (origens) ─────────────────────────
 
+/**
+ * A 0012 (situação do serviço/formalização) pode ainda não estar aplicada no banco: o Financeiro continua
+ * funcionando normalmente e só esses dois controles ficam indisponíveis. Depois de aplicada, o resultado
+ * positivo fica em cache (a coluna não volta a sumir).
+ */
+let adminStatusColumnsKnown = false
+export async function hasAdminStatusColumns(c: PoolClient): Promise<boolean> {
+  if (adminStatusColumnsKnown) return true
+  const r = await c.query(`SELECT count(*)::int AS n FROM information_schema.columns
+    WHERE table_schema = 'crm' AND table_name = 'finance_sources' AND column_name IN ('service_status', 'formalization_status')`)
+  adminStatusColumnsKnown = r.rows[0].n === 2
+  return adminStatusColumnsKnown
+}
+/** Somente para testes: esquece o cache (simula banco sem a 0012). */
+export function resetAdminStatusCache() { adminStatusColumnsKnown = false }
+
 export async function createSource(pool: FinancePool, input: SourceInput, actor: string, today: string): Promise<{ id: string; generated: number }> {
   return tx(pool, async c => {
     if (input.clientId) {
@@ -133,16 +149,48 @@ export async function createSource(pool: FinancePool, input: SourceInput, actor:
       if (!cl.rowCount) throw new FinanceRuleError('CLIENT_NOT_FOUND', 404)
       if (cl.rows[0].archived_at) throw new FinanceRuleError('CLIENT_ARCHIVED')
     }
-    const { rows } = await c.query(
-      `INSERT INTO crm.finance_sources (direction, client_id, category, description, supplier, amount_cents, periodicity, cost_kind,
-                                        start_date, end_date, due_day, generate_from, invoice_required, client_ad_budget, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-      [input.direction, input.clientId, input.category, input.description, input.supplier, input.amountCents, input.periodicity,
-        input.costKind, input.startDate, input.endDate, input.dueDay, input.generateFrom, input.invoiceRequired, input.clientAdBudget, input.notes])
+    const withAdmin = await hasAdminStatusColumns(c)
+    const informed = input.serviceStatus !== 'unknown' || input.formalizationStatus !== 'unknown'
+    if (!withAdmin && informed) throw new FinanceRuleError('ADMIN_STATUS_MIGRATION_PENDING')
+    const base = [input.direction, input.clientId, input.category, input.description, input.supplier, input.amountCents, input.periodicity,
+      input.costKind, input.startDate, input.endDate, input.dueDay, input.generateFrom, input.invoiceRequired, input.clientAdBudget, input.notes]
+    const { rows } = withAdmin
+      ? await c.query(
+        `INSERT INTO crm.finance_sources (direction, client_id, category, description, supplier, amount_cents, periodicity, cost_kind,
+                                          start_date, end_date, due_day, generate_from, invoice_required, client_ad_budget, notes,
+                                          service_status, formalization_status, admin_status_updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CASE WHEN $18 THEN now() END) RETURNING id`,
+        [...base, input.serviceStatus, input.formalizationStatus, informed])
+      : await c.query(
+        `INSERT INTO crm.finance_sources (direction, client_id, category, description, supplier, amount_cents, periodicity, cost_kind,
+                                          start_date, end_date, due_day, generate_from, invoice_required, client_ad_budget, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`, base)
     const id = rows[0].id as string
     const generated = await syncRecurring(c, today, undefined, id)
     await audit(c, 'source', id, 'created', actor, { amountCents: input.amountCents, periodicity: input.periodicity, generated })
     return { id, generated }
+  })
+}
+
+/**
+ * Atualiza SOMENTE a situação do serviço e a da formalização de um contrato. Não toca em valor, vigência, status
+ * financeiro nem lançamentos: nenhuma cobrança é gerada ou cancelada. Fica na auditoria (antes/depois).
+ */
+export async function setSourceAdminStatus(pool: FinancePool, id: string, input: AdminStatusInput, actor: string): Promise<{ changed: boolean }> {
+  return tx(pool, async c => {
+    if (!await hasAdminStatusColumns(c)) throw new FinanceRuleError('ADMIN_STATUS_MIGRATION_PENDING')
+    const cur = await c.query('SELECT direction, service_status, formalization_status FROM crm.finance_sources WHERE id = $1 FOR UPDATE', [id])
+    if (!cur.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
+    const s = cur.rows[0]
+    if (s.direction !== 'in') throw new FinanceRuleError('ADMIN_STATUS_ONLY_FOR_CONTRACTS', 400)
+    if (s.service_status === input.serviceStatus && s.formalization_status === input.formalizationStatus) return { changed: false }
+    await c.query('UPDATE crm.finance_sources SET service_status = $2, formalization_status = $3, admin_status_updated_at = now() WHERE id = $1',
+      [id, input.serviceStatus, input.formalizationStatus])
+    await audit(c, 'source', id, 'admin_status', actor, {
+      before: { serviceStatus: s.service_status, formalizationStatus: s.formalization_status },
+      after: { serviceStatus: input.serviceStatus, formalizationStatus: input.formalizationStatus },
+    })
+    return { changed: true }
   })
 }
 
@@ -473,8 +521,12 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
       id: r.id, name: r.name, company: r.company, notes: r.notes, archived: !!r.archived_at, createdAt: iso(r.created_at),
       contracts: num(r.contracts), activeContracts: num(r.active_contracts),
     }))
+    const adminStatusAvailable = await hasAdminStatusColumns(c)
+    const adminCols = adminStatusAvailable
+      ? 's.service_status, s.formalization_status, s.admin_status_updated_at'
+      : "'unknown' AS service_status, 'unknown' AS formalization_status, NULL::timestamptz AS admin_status_updated_at"
     const sources = (await c.query(
-      `SELECT s.id, s.direction, s.client_id, cl.name AS client_name, s.category, s.description, s.supplier, s.amount_cents, s.periodicity,
+      `SELECT ${adminCols}, s.id, s.direction, s.client_id, cl.name AS client_name, s.category, s.description, s.supplier, s.amount_cents, s.periodicity,
               s.cost_kind, s.start_date::text AS start_date, s.end_date::text AS end_date, s.due_day, to_char(s.generate_from, 'YYYY-MM') AS generate_from,
               s.status, s.invoice_required, s.client_ad_budget, s.notes, s.updated_at
          FROM crm.finance_sources s LEFT JOIN crm.finance_clients cl ON cl.id = s.client_id
@@ -484,6 +536,8 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
       startDate: r.start_date, endDate: r.end_date, dueDay: r.due_day, generateFrom: r.generate_from, status: r.status as SourceStatus,
       invoiceRequired: r.invoice_required, clientAdBudget: r.client_ad_budget, notes: r.notes, updatedAt: iso(r.updated_at),
       monthlyEquivalentCents: monthlyEquivalentCents(num(r.amount_cents), r.periodicity),
+      serviceStatus: r.service_status as ServiceStatus, formalizationStatus: r.formalization_status as FormalizationStatus,
+      adminStatusUpdatedAt: iso(r.admin_status_updated_at),
     }))
     const recurring = sources.filter(s => s.direction === 'in' && s.status === 'active' && s.periodicity !== 'one_time'
       && (!f.clientId || s.clientId === f.clientId) && (!f.category || s.category === f.category) && (!f.sourceId || s.id === f.sourceId))
@@ -554,7 +608,7 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
         yearVsPreviousYear: { label: 'Ano × ano anterior (anos completos)', currentLabel: String(Y), previousLabel: String(Y - 1),
           rows: cmp(sumRange(months(Y + '-01', 12)), sumRange(months((Y - 1) + '-01', 12))) },
       } satisfies Record<string, Comparison>,
-      clients, sources, entries, audit: auditRows,
+      adminStatusAvailable, clients, sources, entries, audit: auditRows,
     }
   })
 }

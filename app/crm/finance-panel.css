@@ -115,3 +115,15 @@
 #cassiellos-crm .crm-fin-spinner{width:26px;height:26px;flex:0 0 26px;border-radius:50%;border:3px solid #24344b;border-top-color:var(--crm-red);animation:crm-fin-spin .8s linear infinite}
 @keyframes crm-fin-spin{to{transform:rotate(360deg)}}
 #cassiellos-crm .crm-fin-refresh{margin:0;color:#8397b0;font-size:11px}
+/* Situação do serviço e do contrato (0012) — informação administrativa, separada do status financeiro. */
+#cassiellos-crm .crm-fin-admin{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+#cassiellos-crm .crm-fin-badge[data-tone=info]{background:rgba(34,199,242,.10);color:#71d6f5}
+#cassiellos-crm .crm-fin-badge[data-tone=sign]{background:rgba(255,184,77,.14);color:#ffc46b;border:1px solid rgba(255,184,77,.35)}
+#cassiellos-crm .crm-fin-awaiting{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border:1px solid rgba(255,184,77,.35);background:rgba(255,184,77,.07);border-radius:12px;color:#ffd9a0;font-size:13px}
+#cassiellos-crm .crm-fin-awaiting .crm-btn{min-height:40px}
+#cassiellos-crm .crm-fin-admin-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;border:1px solid var(--crm-border);border-radius:12px;padding:12px 14px 14px;margin:0;min-width:0}
+#cassiellos-crm .crm-fin-admin-fields legend{color:#bfd0e1;font-size:11px;font-weight:700;padding:0 6px}
+#cassiellos-crm .crm-fin-admin-fields legend small{color:#7f91a7;font-weight:400}
+#cassiellos-crm .crm-fin-admin-fields:disabled{opacity:.6}
+#cassiellos-crm .crm-fin-admin-hint{grid-column:1/-1;color:#8397b0;font-size:11px}
+@media(max-width:540px){#cassiellos-crm .crm-fin-admin-fields{grid-template-columns:1fr}#cassiellos-crm .crm-fin-awaiting .crm-btn{flex:1 1 100%}}

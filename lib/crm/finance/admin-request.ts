@@ -2,11 +2,11 @@ import type { HandlerResponse } from '../booking-intake-request'
 import { isCategoryOf, isValidDate, isValidMonth, parseMoneyToCents, todayInBrazil } from './model'
 import {
   FinanceMigrationPendingError, FinanceRuleError, cancelEntry, createClient, createSource, exportFinanceCsv, loadFinanceOverview,
-  recordSettlement, reverseSettlement, setClientArchived, setInvoice, setSourceStatus, updateClient, updateEntry, updateSource,
+  recordSettlement, reverseSettlement, setClientArchived, setInvoice, setSourceAdminStatus, setSourceStatus, updateClient, updateEntry, updateSource,
   type FinancePool,
 } from './store'
 import {
-  isUuid, parseFilters, text, validateClient, validateInvoice, validateSettlement, validateSource, validateSourceStatus,
+  isUuid, parseFilters, text, validateAdminStatus, validateClient, validateInvoice, validateSettlement, validateSource, validateSourceStatus,
 } from './validation'
 
 /**
@@ -114,6 +114,15 @@ export async function handleFinanceAdmin(deps: FinanceAdminDeps, req: FinanceAdm
           notes: v.value.notes, applyToOpenFuture: d.applyToOpenFuture === true,
         }, actor, today)
         log('source_updated', { id: d.id, adjusted: r.adjusted })
+        return { status: 200, body: { ok: true, ...r } }
+      }
+      case 'source_admin_status': {
+        // Somente situação do serviço e da formalização: não mexe em valores nem em lançamentos.
+        if (!isUuid(d.id)) return bad('INVALID_REQUEST')
+        const v = validateAdminStatus(d)
+        if (!v.ok) return bad(v.error, 400, { field: v.field })
+        const r = await setSourceAdminStatus(deps.pool, d.id, v.value, actor)
+        log('source_admin_status', { id: d.id, changed: r.changed })
         return { status: 200, body: { ok: true, ...r } }
       }
       case 'source_status': {

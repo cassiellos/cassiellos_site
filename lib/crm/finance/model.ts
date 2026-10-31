@@ -41,6 +41,23 @@ export type SourceStatus = keyof typeof SOURCE_STATUS
 export const INVOICE_STATUS = { pending: 'Nota pendente', issued: 'Emitida', not_applicable: 'Não aplicável', cancelled: 'Cancelada' } as const
 export type InvoiceStatus = keyof typeof INVOICE_STATUS
 
+/**
+ * Controles ADMINISTRATIVOS dos contratos/serviços (migração 0012) — independentes do status financeiro
+ * (SOURCE_STATUS): não bloqueiam cadastro, cobrança nem recebimento e nunca geram/cancelam lançamentos.
+ * Padrão sempre "Não informado"; nada é considerado "Assinado" automaticamente.
+ */
+export const SERVICE_STATUS = {
+  unknown: 'Não informado', not_started: 'Não iniciado', in_progress: 'Em andamento', paused: 'Pausado', ended: 'Encerrado',
+} as const
+export type ServiceStatus = keyof typeof SERVICE_STATUS
+export const FORMALIZATION_STATUS = {
+  unknown: 'Não informado', not_sent: 'Não enviado', sent: 'Enviado', awaiting_signature: 'Aguardando assinatura', signed: 'Assinado',
+  no_formal_contract: 'Sem contrato formal',
+} as const
+export type FormalizationStatus = keyof typeof FORMALIZATION_STATUS
+export const isServiceStatus = (v: unknown): v is ServiceStatus => typeof v === 'string' && Object.prototype.hasOwnProperty.call(SERVICE_STATUS, v)
+export const isFormalizationStatus = (v: unknown): v is FormalizationStatus => typeof v === 'string' && Object.prototype.hasOwnProperty.call(FORMALIZATION_STATUS, v)
+
 export function categoryLabel(category: string): string {
   return (REVENUE_CATEGORIES as Record<string, string>)[category] ?? (EXPENSE_CATEGORIES as Record<string, string>)[category] ?? category
 }
