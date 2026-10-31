@@ -13,6 +13,7 @@ import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
 import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 import MetaPixel from '@/components/marketing/meta-pixel'
+import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 /** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
@@ -153,6 +154,8 @@ export default function BookingExperience({
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [savingLead, setSavingLead] = useState(false)
   const [saveError, setSaveError] = useState('')
+  // Erro de formato de um campo (telefone ou e-mail), exibido junto ao próprio campo.
+  const [fieldError, setFieldError] = useState<{ name: keyof Attendee; message: string } | null>(null)
   const [leadSaved, setLeadSaved] = useState(false)
   const [bookingToken, setBookingToken] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -319,21 +322,42 @@ export default function BookingExperience({
       setBookingToken(null)
       submissionKey.current = null
     }
-    setAttendee(current => ({ ...current, [name]: value }))
+    setAttendee(current => ({ ...current, [name]: name === 'whatsapp' ? nextPhoneInput(current.whatsapp, value) : value }))
     setSaveError('')
+    setFieldError(current => current?.name === name ? null : current)
     if (value) funnel('booking_form_start')
+  }
+
+  /**
+   * Mesmas regras do servidor (lib/crm/contact-validation.ts e o mínimo de 2 caracteres das respostas). O formulário
+   * usa noValidate: a mensagem aparece junto ao campo, sem o balão nativo do navegador.
+   */
+  function contactError(name: keyof Attendee): string | null {
+    if (name === 'whatsapp') { const r = validateBrazilianPhone(attendee.whatsapp); return r.ok ? null : r.message }
+    if (name === 'email') { const r = validateEmailAddress(attendee.email); return r.ok ? null : r.message }
+    const question = questions.find(item => item.name === name)
+    if (question && question.type !== 'select' && attendee[name].trim().length < 2) {
+      return name === 'name' ? 'Revise o nome informado.' : 'Revise a resposta informada.'
+    }
+    return null
+  }
+
+  /** Volta à pergunta do campo inválido (o campo recebe o foco ao abrir) com a mensagem junto a ele. */
+  function showFieldError(name: keyof Attendee, message: string) {
+    const index = questions.findIndex(item => item.name === name)
+    if (index >= 0) setQuestionIndex(index)
+    setFieldError({ name, message })
   }
 
   function next(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!question || !attendee[question.name].trim()) return
-    if (question.name === 'whatsapp') {
-      const digits = attendee.whatsapp.replace(/\D/g, '')
-      if (digits.length < 10 || digits.length > 13) {
-        setSaveError('Digite um telefone fictício com DDD e 10 a 13 dígitos para testar.')
-        funnel('booking_form_error', { stage: 'question', code: 'INVALID_WHATSAPP' })
-        return
-      }
+    const invalid = contactError(question.name)
+    if (invalid) {
+      setFieldError({ name: question.name, message: invalid })
+      funnel('booking_form_error', { stage: 'question', code: question.name === 'email' ? 'INVALID_EMAIL' : question.name === 'whatsapp' ? 'INVALID_WHATSAPP' : 'INVALID_ANSWER' })
+      document.getElementById('question-' + question.name)?.focus({ preventScroll: true })
+      return
     }
     funnel('booking_step_completed', { step: question.name, step_index: questionIndex + 1 })
     if (questionIndex < questions.length - 1) {
@@ -361,6 +385,8 @@ export default function BookingExperience({
         setSaveError('Confira as respostas obrigatórias antes de continuar.')
         return
       }
+      const invalid = contactError(question.name)
+      if (invalid) { showFieldError(question.name, invalid); return }
     }
 
     setSavingLead(true)
@@ -389,7 +415,7 @@ export default function BookingExperience({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
-          name: attendee.name, email: attendee.email, whatsapp: attendee.whatsapp,
+          name: attendee.name, email: attendee.email.trim(), whatsapp: attendee.whatsapp,
           answers, attribution, privacyAccepted, turnstileToken,
           // Only the yes/no cookie choice; fbp/fbc never reach the CRM (decision C2).
           marketing: marketingChoice,
@@ -429,8 +455,8 @@ export default function BookingExperience({
       const code = error instanceof Error ? error.message : ''
       const messages: Record<string, string> = {
         INVALID_NAME: 'Revise o nome informado.',
-        INVALID_EMAIL: 'Confira o formato do e-mail fictício, como teste@exemplo.com.',
-        INVALID_WHATSAPP: 'Confira o telefone fictício: inclua DDD e pelo menos 10 dígitos.',
+        INVALID_EMAIL: 'Confira o endereço de e-mail informado.',
+        INVALID_WHATSAPP: 'Confira o número informado.',
         INVALID_FORM_ANSWERS: 'Revise as respostas do formulário. Uma delas pode estar incompleta.',
         PRIVACY_NOT_ACCEPTED: 'Confirme a Política de Privacidade para continuar.',
         TOO_MANY_REQUESTS: 'Muitas tentativas. Tente novamente mais tarde.',
@@ -441,7 +467,9 @@ export default function BookingExperience({
         FORBIDDEN: 'A página de testes perdeu a autorização de origem. Atualize a página e tente novamente.',
         NOT_FOUND: 'O ambiente de testes não está disponível. Não envie dados reais.',
       }
-      setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
+      // O servidor recusou o formato do contato: volta ao campo, com os dados preservados.
+      if (code === 'INVALID_EMAIL' || code === 'INVALID_WHATSAPP') showFieldError(code === 'INVALID_EMAIL' ? 'email' : 'whatsapp', messages[code])
+      else setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
       setTurnstileReset(value => value + 1)
     } finally {
       setSavingLead(false)
@@ -566,7 +594,7 @@ export default function BookingExperience({
           </div>
 
           {step === 1 && question && <form className="booking-form booking-question-form"
-            onSubmit={next} key={question.name}>
+            onSubmit={next} key={question.name} noValidate>
             <div className="booking-question-topline">
               <span>PERGUNTA {String(questionIndex + 1).padStart(2,'0')} DE {String(questions.length).padStart(2,'0')}</span>
               <span>{Math.round(progress * 100)}% concluído</span>
@@ -594,13 +622,20 @@ export default function BookingExperience({
               </div> : <label className="booking-question-field" htmlFor={'question-' + question.name}>
                 <span className="booking-visually-hidden">{question.label}</span>
                 <input id={'question-' + question.name} required
-                  minLength={question.name === 'whatsapp' ? 10 : question.name === 'email' ? 5 : 2}
                   type={question.type} autoComplete={question.autoComplete}
+                  inputMode={question.type === 'tel' ? 'tel' : question.type === 'email' ? 'email' : undefined}
+                  autoCapitalize={question.type === 'email' || question.type === 'tel' ? 'none' : undefined}
+                  autoCorrect={question.type === 'email' ? 'off' : undefined}
+                  spellCheck={question.type === 'email' || question.type === 'tel' ? false : undefined}
                   ref={focusWithoutScroll}
+                  aria-invalid={fieldError?.name === question.name ? true : undefined}
+                  aria-describedby={fieldError?.name === question.name ? 'question-field-error' : undefined}
                   maxLength={question.type === 'email' ? 180 : question.type === 'tel' ? 24 : 120}
                   placeholder={question.placeholder} value={attendee[question.name]}
                   onChange={event => update(question.name, event.target.value)}/>
               </label>}
+              {fieldError?.name === question.name && <p id="question-field-error" className="booking-field-error"
+                aria-live="polite">{fieldError.message}</p>}
             </div>
             {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">

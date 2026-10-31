@@ -199,3 +199,6 @@ body:has(#cassiellos-booking) .nav,body:has(#cassiellos-booking) .foot,body:has(
 #cassiellos-booking .consent-current{margin-top:6px!important;color:#cfe3f5!important}
 #cassiellos-booking .consent-choice[aria-pressed=true]{border-color:#6cdeff;background:rgba(108,222,255,.12)}
 #cassiellos-booking .booking-homologation-banner{background:rgba(241,60,75,.14);border-color:rgba(241,60,75,.45)}
+/* Etapa 6 — erro de formato junto ao campo (telefone/e-mail), discreto e sem deslocar o layout além de uma linha. */
+#cassiellos-booking .booking-field-error{margin:8px 2px 0;color:#ffd4da;font-size:12px;line-height:1.5}
+#cassiellos-booking .booking-question-field input[aria-invalid=true]{border-color:rgba(241,60,75,.75)}

@@ -6,6 +6,7 @@ import {
   type TurnstileConfig, type TurnstileFailure, type TurnstileResult,
 } from './turnstile'
 import { sanitizeAttribution } from './attribution'
+import { validateBrazilianPhone, validateEmailAddress } from './contact-validation'
 
 /**
  * Cadastro do formulário público (POST /api/booking/leads), sem dependências de
@@ -25,15 +26,17 @@ export function validatedName(value: unknown): string | null {
   const name = clean(value, 120)
   return name && name.length >= 2 ? name : null
 }
+/** Formato do e-mail (lib/crm/contact-validation.ts — as mesmas regras do formulário). */
 export function validatedEmail(value: unknown): string | null {
-  const email = clean(value, 180)?.toLowerCase()
-  return email && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? email : null
+  const result = validateEmailAddress(value)
+  return result.ok ? result.email : null
 }
+/** Telefone brasileiro (celular ou fixo com DDD, +55 opcional), persistido como DDD + número em dígitos. */
 export function validatedPhone(value: unknown): string | null {
   const phone = clean(value, 24)
   if (!phone) return null
-  const digits = phone.replace(/\D/g, '')
-  return digits.length >= 10 && digits.length <= 13 ? digits : null
+  const result = validateBrazilianPhone(phone)
+  return result.ok ? result.digits : null
 }
 function configuredAnswers(form: BookingForm, raw: unknown) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
