@@ -13,6 +13,7 @@ import { readPushEnv } from '@/lib/crm/push/config'
 import { confirmedMeetingFrom, queueThenDeliver } from '@/lib/crm/push/hooks'
 import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/store'
+import { bookingAccessConfig } from '@/lib/crm/booking-access'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -39,11 +40,6 @@ function json(data: unknown, status: number) {
   })
 }
 
-function bookingsEnabled(): boolean {
-  return process.env.VERCEL_ENV === 'preview' &&
-    process.env.CRM_GOOGLE_BOOKINGS_ENABLED === 'true' &&
-    Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim())
-}
 
 /**
  * PREVIEW ONLY. Deliberately OFF unless the owner opts in and adds two
@@ -54,7 +50,8 @@ function bookingsEnabled(): boolean {
  */
 export async function POST(request: NextRequest) {
   if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
-  if (!bookingsEnabled()) return json({ error: 'BOOKING_DISABLED' }, 423)
+  const access = bookingAccessConfig()
+  if (!access.enabled) return json({ error: 'BOOKING_DISABLED' }, 423)
   const origin = request.headers.get('origin')
   if (!isCrmPreviewOrigin(origin)) return json({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
@@ -75,7 +72,8 @@ export async function POST(request: NextRequest) {
     readBusy: readGoogleBusyIntervals,
     createEvent: createGoogleBooking,
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
-    allowedEmail: process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim() || '',
+    // Público: qualquer e-mail válido. Só restringe ao e-mail de homologação se CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL=true.
+    allowedEmail: access.allowedEmail, restrictToAllowedEmail: access.restrictedToAllowedEmail,
     metaHomologation: homologationClaims(request.headers.get('cookie')),
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),

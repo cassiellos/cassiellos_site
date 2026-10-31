@@ -131,9 +131,9 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
+  form, bookingEnabled, bookingRestricted = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
 }: {
-  form: BookingForm; bookingEnabled: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
+  form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
   /** Homologação do Meta Pixel ativa no Pixel comercial (1 Lead e 1 Schedule de teste; lib/marketing/homologation.ts). */
   metaHomologation?: { expiresAt: string } | null
 }) {
@@ -576,7 +576,7 @@ export default function BookingExperience({
       </section>
 
       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
-        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? "agendamentos reais habilitados apenas para o e-mail de teste." : "nenhuma reunião será criada."}</div>
+        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? (bookingRestricted ? "agendamentos reais habilitados apenas para o e-mail de teste." : "agendamentos reais habilitados.") : "nenhuma reunião será criada."}</div>
         {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
         {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status">
           <strong>HOMOLOGAÇÃO DO META PIXEL</strong> · Até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })},
@@ -770,7 +770,7 @@ export default function BookingExperience({
             <div className="booking-card-heading">
               <div className="booking-step-label">ETAPA 03 DE 03</div>
               <h2>Confira sua seleção.</h2>
-              <p>{bookingEnabled ? 'Confirme os dados antes de concluir o agendamento de teste. O link do Google Meet é disponibilizado na confirmação do agendamento.' : 'Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.'}</p>
+              <p>{bookingEnabled ? 'Confirme os dados antes de concluir o ' + (bookingRestricted ? 'agendamento de teste' : 'agendamento') + '. O link do Google Meet é disponibilizado na confirmação do agendamento.' : 'Este é um resumo visual para validar a experiência. Ainda não cria um compromisso real.'}</p>
             </div>
             <div className="booking-review-list">
               <div><small>DIAGNÓSTICO</small><strong>{form.meetingName}</strong></div>
@@ -790,7 +790,7 @@ export default function BookingExperience({
             <button className="booking-primary" type="button" disabled={!bookingEnabled || confirming || !bookingToken}
               onClick={confirmBooking}>
               {confirming ? 'Confirmando no Google Calendar…' :
-                bookingEnabled ? 'Confirmar reunião de teste' : 'Confirmar reunião (em desenvolvimento)'}
+                bookingEnabled ? (bookingRestricted ? 'Confirmar reunião de teste' : 'Confirmar reunião') : 'Confirmar reunião (em desenvolvimento)'}
               <Icon name="check"/>
             </button>
           </div>}

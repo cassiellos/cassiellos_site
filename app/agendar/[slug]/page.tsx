@@ -7,6 +7,7 @@ import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
 import { getMetaPixelConfig } from '@/lib/marketing/meta'
 import { activeHomologation } from '@/lib/marketing/homologation'
+import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import BookingExperience from './booking-experience'
 import './booking.css'
 
@@ -30,9 +31,8 @@ export default async function NicheBookingPage({
   const { slug } = await params
   const form = getBookingForm(slug)
   if (!form) notFound()
-  const bookingEnabled = process.env.VERCEL_ENV === 'preview' &&
-    process.env.CRM_GOOGLE_BOOKINGS_ENABLED === 'true' &&
-    Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim())
+  const access = bookingAccessConfig()
+  const bookingEnabled = access.enabled
   // Only the PUBLIC site key reaches the browser, and only when the server-side
   // configuration is complete (otherwise the form stays blocked: fail closed).
   const turnstile = getTurnstileConfig()
@@ -40,7 +40,7 @@ export default async function NicheBookingPage({
   // Métricas do funil: "test" no ambiente de testes (modo de teste ou allowlist ativa); só "live" conta como real.
   const analyticsMode = funnelModeFor({
     bookingMode: getCrmBookingMode(),
-    allowlistActive: Boolean(process.env.CRM_BOOKING_ALLOWED_EMAIL?.trim()),
+    allowlistActive: access.restrictedToAllowedEmail,
   })
   // Meta Pixel: desligado salvo META_PIXEL_ENABLED=true + META_PIXEL_ID válido (o ID do Pixel é público).
   const pixel = getMetaPixelConfig()
@@ -48,7 +48,7 @@ export default async function NicheBookingPage({
   // no máximo 1 Lead e 1 Schedule de teste, marcados (lib/marketing/homologation.ts).
   const homologation = activeHomologation((await cookies()).toString())
   const metaPixelId = homologation ? homologation.pixelId : pixel.enabled ? pixel.pixelId : null
-  return <BookingExperience form={form} bookingEnabled={bookingEnabled} turnstileSiteKey={turnstileSiteKey}
+  return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} turnstileSiteKey={turnstileSiteKey}
     analyticsMode={analyticsMode} metaPixelId={metaPixelId}
     metaHomologation={homologation ? { expiresAt: homologation.expiresAt } : null} />
 }

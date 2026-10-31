@@ -38,6 +38,11 @@ export type ConfirmDeps = {
   createEvent: (input: BookingEventInput) => Promise<CreatedEvent>
   calendarId: string
   allowedEmail: string
+  /**
+   * true (padrão, seguro para chamadas internas e testes) = só agenda o e-mail de allowedEmail.
+   * O fluxo público passa false (lib/crm/booking-access.ts): qualquer e-mail válido agenda, com as demais proteções.
+   */
+  restrictToAllowedEmail?: boolean
   limits?: EligibilityInput['limits']
   /**
    * Regras de disponibilidade (horário comercial, feriados, bloqueios, exceções). Lidas a cada
@@ -131,7 +136,7 @@ export async function confirmBookingRequest(
   const finishAt = new Date(ms + form.durationMinutes * 60_000).toISOString()
   const base = {
     leadId: session.leadId, submissionId: session.submissionId, formSlug: form.slug,
-    allowedEmail: deps.allowedEmail, limits: deps.limits,
+    allowedEmail: deps.allowedEmail, skipAllowlist: deps.restrictToAllowedEmail === false, limits: deps.limits,
   }
 
   try {
