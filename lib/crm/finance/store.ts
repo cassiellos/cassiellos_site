@@ -352,9 +352,10 @@ async function activeSettled(c: PoolClient, entryId: string): Promise<number> {
 /** Só cancela cobrança/conta sem movimento ativo (estorne antes). Fica registrada com motivo. */
 export async function cancelEntry(pool: FinancePool, entryId: string, reason: string, actor: string): Promise<void> {
   await tx(pool, async c => {
-    const e = await c.query('SELECT status FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [entryId])
+    const e = await c.query('SELECT status, project_source_id FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [entryId])
     if (!e.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
     if (e.rows[0].status === 'cancelled') return
+    if (e.rows[0].project_source_id) throw new FinanceRuleError('PROJECT_INSTALLMENT_CANNOT_CANCEL')
     if (await activeSettled(c, entryId) > 0) throw new FinanceRuleError('ENTRY_HAS_SETTLEMENTS')
     await c.query("UPDATE crm.finance_entries SET status = 'cancelled', cancelled_at = now(), cancel_reason = $2, updated_at = now() WHERE id = $1", [entryId, reason])
     await audit(c, 'entry', entryId, 'cancelled', actor, { reason })
