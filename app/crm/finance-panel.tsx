@@ -659,14 +659,18 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
 
 function Expenses({ data, month, setDialog, post, busy }: { data: Overview; month: string; setDialog: (d: Dialog) => void; post: (b: Record<string, unknown>, ok: string) => Promise<boolean>; busy: boolean }) {
   const list = data.sources.filter(s => s.direction === 'out')
+  const monthEntries = data.entries.filter(e => e.direction === 'out' && e.competenceMonth === month && e.state !== 'cancelled')
+  const monthTotal = monthEntries.filter(e => !e.clientAdBudget).reduce((sum, e) => sum + e.amountCents, 0)
   return <>
+    <EntryList title={'Despesas previstas — ' + monthLabel(month)}
+      subtitle="Contas e parcelas da competência selecionada. Pagamentos reais continuam separados da previsão."
+      list={monthEntries} setDialog={setDialog} empty="Nenhuma despesa prevista neste mês."
+      totals={[[ 'Total previsto nesta competência', monthTotal ]]}/>
     <div className="crm-fin-actions"><button type="button" className="crm-btn crm-btn-primary" onClick={() => setDialog({ kind: 'source', direction: 'out' })}>+ Nova despesa</button></div>
-    <section className="crm-card crm-panel"><div className="crm-panel-title">Despesas cadastradas</div>
-      <div className="crm-panel-subtitle">Fixas e variáveis. Verbas de anúncio de clientes ficam registradas, mas fora do caixa da agência.</div>
-      {list.length ? list.map(s => <SourceRow key={s.id} s={s} setDialog={setDialog} post={post} busy={busy}/>) : <p className="crm-fin-empty">Nenhuma despesa cadastrada — R$ 0,00.</p>}
+    <section className="crm-card crm-panel"><div className="crm-panel-title">Compromissos e despesas cadastrados</div>
+      <div className="crm-panel-subtitle">Cadastros de despesas fixas e variáveis, separados das cobranças de cada mês.</div>
+      {list.length ? list.map(source => <SourceRow key={source.id} s={source} setDialog={setDialog} post={post} busy={busy}/>) : <p className="crm-fin-empty">Nenhuma despesa cadastrada — R$ 0,00.</p>}
     </section>
-    <EntryList title={'Contas de ' + monthLabel(month)} subtitle="Competência do mês selecionado." list={data.entries.filter(e => e.direction === 'out' && e.competenceMonth === month)}
-      setDialog={setDialog} empty="Nenhuma conta com competência neste mês."/>
   </>
 }
 
