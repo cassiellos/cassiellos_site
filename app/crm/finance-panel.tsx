@@ -439,7 +439,11 @@ function MonthlyPending({ data, month, direction, setDialog }: { data: Overview;
   </>
 }
 
-function SourceRow({ s, setDialog, post, busy, monthEntry, referenceMonth }: { s: Source; setDialog: (d: Dialog) => void; post: (b: Record<string, unknown>, ok: string) => Promise<boolean>; busy: boolean; monthEntry?: Entry | null; referenceMonth?: string }) {
+function SourceRow({ s, setDialog, post, busy, monthEntry, monthEntries, referenceMonth }: { s: Source; setDialog: (d: Dialog) => void; post: (b: Record<string, unknown>, ok: string) => Promise<boolean>; busy: boolean; monthEntry?: Entry | null; monthEntries?: Entry[]; referenceMonth?: string }) {
+  const scheduled = monthEntries ?? (monthEntry ? [monthEntry] : [])
+  const dueTotal = scheduled.reduce((sum, e) => sum + e.amountCents, 0)
+  const receivedTotal = scheduled.reduce((sum, e) => sum + e.settledCents, 0)
+  const pendingTotal = scheduled.reduce((sum, e) => sum + e.remainingCents, 0)
   return <div className="crm-fin-row">
     <div className="crm-fin-row-main"><strong>{s.description}</strong>
       <small>{[s.clientName ?? s.supplier, s.categoryLabel, PERIODICITIES[s.periodicity], s.costKind === 'fixed' ? 'Fixa' : s.costKind === 'variable' ? 'Variável' : null,
@@ -456,10 +460,12 @@ function SourceRow({ s, setDialog, post, busy, monthEntry, referenceMonth }: { s
       <span className="crm-fin-badge" data-tone={FORMAL_TONE[s.formalizationStatus]}>{s.formalizationStatus === 'awaiting_signature' ? '✍ ' : ''}Contrato: {FORMALIZATION_STATUS[s.formalizationStatus]}</span>
     </div>}
     {s.direction === 'in' && referenceMonth && <div className="crm-fin-month-status">
-      <span className="crm-fin-badge" data-tone={monthEntry ? STATE_TONE[monthEntry.state] : 'muted'}>
-        {monthLabel(referenceMonth)}: {monthEntry ? monthEntry.stateLabel : 'Sem cobrança nesta competência'}
+      <span className="crm-fin-badge" data-tone={scheduled.length
+        ? pendingTotal <= 0 ? 'ok' : scheduled.some(e => e.overdue) ? 'bad' : receivedTotal > 0 ? 'warn' : 'info' : 'muted'}>
+        {monthLabel(referenceMonth)}: {scheduled.length ? (pendingTotal <= 0 ? 'Quitado' : scheduled.some(e => e.overdue) ? 'Em atraso' : 'Pendente')
+          : 'Sem cobrança nesta competência'}
       </span>
-      {monthEntry && <small>Recebido {formatCents(monthEntry.settledCents)} · saldo {formatCents(monthEntry.remainingCents)}</small>}
+      {scheduled.length > 0 && <small>{s.installmentPlan ? scheduled.length+' parcela(s) · ' : ''}Previsto {formatCents(dueTotal)} · recebido {formatCents(receivedTotal)} · saldo {formatCents(pendingTotal)}</small>}
     </div>}
     <div className="crm-fin-row-actions">
       {s.status !== 'ended' && <button type="button" className="crm-btn" onClick={() => setDialog({ kind: 'source', direction: s.direction, source: s })}>Editar</button>}
@@ -507,7 +513,7 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
             <button type="button" className="crm-btn" disabled={busy} onClick={() => post({ action: 'client_archive', id: c.id, archived: !c.archived }, c.archived ? 'Cliente reativado.' : 'Cliente arquivado (histórico preservado).')}>{c.archived ? 'Reativar' : 'Arquivar'}</button>
           </div></div>
         {services.map(s => <SourceRow key={s.id} s={s} setDialog={setDialog} post={post} busy={busy} referenceMonth={month}
-          monthEntry={data.entries.find(e => e.sourceId === s.id && e.competenceMonth === month && e.state !== 'cancelled')}/>)}
+          monthEntries={data.entries.filter(e => e.sourceId === s.id && e.competenceMonth === month && e.state !== 'cancelled')}/>)}
         {!services.length && <p className="crm-fin-empty">Nenhum serviço ativo cadastrado para este cliente.</p>}
         <details className="crm-fin-client-history">
           <summary>Histórico de faturamento e pagamentos até {monthLabel(month)} ({history.length})</summary>
