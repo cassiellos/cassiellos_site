@@ -106,3 +106,12 @@
 #cassiellos-crm .crm-fin-month input{flex:1;min-width:0}
 @media(max-width:830px){#cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{max-width:none}}
 @media(max-width:540px){#cassiellos-crm .crm-fin-filters .crm-fin-field:first-child{min-width:0}#cassiellos-crm .crm-fin-chart text{font-size:20px}}
+/* Carregamento/erro: substitui os números enquanto os dados do filtro atual não chegam. */
+#cassiellos-crm .crm-fin-loading{display:flex;align-items:center;gap:14px;min-height:120px}
+#cassiellos-crm .crm-fin-loading strong{display:block;font-size:14px;color:#f4f7ff}
+#cassiellos-crm .crm-fin-loading small{display:block;color:var(--crm-muted);font-size:12px;margin-top:4px}
+#cassiellos-crm .crm-fin-loading[data-error]{border-color:rgba(241,60,75,.35);justify-content:space-between;flex-wrap:wrap}
+#cassiellos-crm .crm-fin-loading .crm-btn{min-height:44px}
+#cassiellos-crm .crm-fin-spinner{width:26px;height:26px;flex:0 0 26px;border-radius:50%;border:3px solid #24344b;border-top-color:var(--crm-red);animation:crm-fin-spin .8s linear infinite}
+@keyframes crm-fin-spin{to{transform:rotate(360deg)}}
+#cassiellos-crm .crm-fin-refresh{margin:0;color:#8397b0;font-size:11px}

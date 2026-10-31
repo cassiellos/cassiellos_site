@@ -189,33 +189,52 @@ export default function FinancePanel() {
   const [tab, setTab] = useState<Tab>('geral')
   const [month, setMonth] = useState(() => todayInBrazil().slice(0, 7))
   const [filters, setFilters] = useState({ client: '', category: '', source: '' })
-  const [data, setData] = useState<Overview | null>(null)
+  // Cada resposta fica ligada à consulta (filtros) que a produziu. Os números só aparecem quando essa chave é a dos
+  // filtros atuais — nunca valores de um período sob o rótulo de outro.
+  const [result, setResult] = useState<{ key: string; body: Overview } | null>(null)
   const [pending, setPending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<{ key: string; text: string } | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [busy, setBusy] = useState(false)
   const seq = useRef(0)
-
-  const load = useCallback(() => {
-    const id = ++seq.current
-    setLoading(true)
+  const inflight = useRef<AbortController | null>(null)
+  const queryKey = useMemo(() => {
     const q = new URLSearchParams({ month })
     if (filters.client) q.set('client', filters.client)
     if (filters.category) q.set('category', filters.category)
     if (filters.source) q.set('source', filters.source)
-    fetch('/api/crm/finance?' + q, { cache: 'no-store', credentials: 'same-origin' })
+    return q.toString()
+  }, [month, filters])
+
+  const load = useCallback(() => {
+    // Só a consulta mais recente vale: a anterior é abortada e, se ainda assim responder, é descartada.
+    const id = ++seq.current
+    inflight.current?.abort()
+    const ctrl = new AbortController()
+    inflight.current = ctrl
+    const key = queryKey
+    setLoading(true)
+    setLoadError(null)
+    fetch('/api/crm/finance?' + key, { cache: 'no-store', credentials: 'same-origin', signal: ctrl.signal })
       .then(r => r.json().then(body => ({ ok: r.ok, body })))
       .then(({ ok, body }) => {
         if (id !== seq.current) return
-        if (!ok) { setMessage({ kind: 'error', text: explain(body?.error) }); return }
-        if (body.migrationPending) { setPending(true); setData(null); return }
-        setPending(false); setData(body as Overview)
+        if (!ok) { setResult(null); setLoadError({ key, text: explain(body?.error) }); return }
+        if (body.migrationPending) { setPending(true); setResult(null); return }
+        if (!body.kpis || typeof body.month !== 'string') { setResult(null); setLoadError({ key, text: explain(null) }); return }
+        setPending(false); setResult({ key, body: body as Overview })
       })
-      .catch(() => { if (id === seq.current) setMessage({ kind: 'error', text: 'Não foi possível consultar o Financeiro.' }) })
+      .catch(() => { if (id === seq.current && !ctrl.signal.aborted) { setResult(null); setLoadError({ key, text: 'Não foi possível consultar o Financeiro. Nenhum valor está sendo exibido até a consulta funcionar.' }) } })
       .finally(() => { if (id === seq.current) setLoading(false) })
-  }, [month, filters])
-  useEffect(() => { load() }, [load])
+  }, [queryKey])
+  useEffect(() => { load(); return () => inflight.current?.abort() }, [load])
+
+  // Dados válidos para os filtros atuais (ou nada). Durante a troca de filtros, nada antigo é mostrado.
+  const data = result && result.key === queryKey ? result.body : null
+  // Listas dos seletores (clientes/fontes) não são números: mantêm as opções enquanto carrega.
+  const options = result?.body ?? null
 
   async function post(body: Record<string, unknown>, success: string): Promise<boolean> {
     setBusy(true); setMessage(null)
@@ -259,18 +278,24 @@ export default function FinancePanel() {
       <Field label="Ano"><select value={month.slice(0, 4)} onChange={e => setMonth(e.target.value + '-' + month.slice(5, 7))}>
         {Array.from({ length: 9 }, (_, i) => String(Number(today.slice(0, 4)) - 6 + i)).map(y => <option key={y}>{y}</option>)}</select></Field>
       <Field label="Cliente"><select value={filters.client} onChange={e => setFilters({ ...filters, client: e.target.value })}>
-        <option value="">Todos</option>{(data?.clients ?? []).map(c => <option key={c.id} value={c.id}>{c.name}{c.archived ? ' (arquivado)' : ''}</option>)}</select></Field>
+        <option value="">Todos</option>{(options?.clients ?? []).map(c => <option key={c.id} value={c.id}>{c.name}{c.archived ? ' (arquivado)' : ''}</option>)}</select></Field>
       <Field label="Categoria"><select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })}>
         <option value="">Todas</option>
         <optgroup label="Receitas">{Object.entries(REVENUE_CATEGORIES).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</optgroup>
         <optgroup label="Despesas">{Object.entries(EXPENSE_CATEGORIES).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</optgroup></select></Field>
       <Field label="Fonte de receita / despesa"><select value={filters.source} onChange={e => setFilters({ ...filters, source: e.target.value })}>
-        <option value="">Todas</option>{(data?.sources ?? []).map(s => <option key={s.id} value={s.id}>{(s.direction === 'in' ? 'Receita · ' : 'Despesa · ') + s.description}</option>)}</select></Field>
+        <option value="">Todas</option>{(options?.sources ?? []).map(s => <option key={s.id} value={s.id}>{(s.direction === 'in' ? 'Receita · ' : 'Despesa · ') + s.description}</option>)}</select></Field>
       {(filters.client || filters.category || filters.source) && <button type="button" className="crm-btn" onClick={() => setFilters({ client: '', category: '', source: '' })}>Limpar filtros</button>}
     </section>
 
     {message && <p className="crm-fin-message" data-kind={message.kind} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p>}
-    {loading && !data && <p className="crm-fin-empty">Carregando dados do Neon…</p>}
+    {!data && loading && <section className="crm-card crm-panel crm-fin-loading" role="status" aria-live="polite" aria-busy="true">
+      <span className="crm-fin-spinner" aria-hidden="true"/><div><strong>Carregando {monthLabel(month)}{filters.client || filters.category || filters.source ? ' com os filtros escolhidos' : ''}…</strong>
+      <small>Os valores aparecem assim que o Neon responder. Nenhum número de outro período é exibido.</small></div></section>}
+    {!data && !loading && loadError && loadError.key === queryKey && <section className="crm-card crm-panel crm-fin-loading" role="alert" data-error>
+      <div><strong>Não foi possível carregar o Financeiro.</strong><small>{loadError.text}</small></div>
+      <button type="button" className="crm-btn" onClick={load}>Tentar de novo</button></section>}
+    {data && loading && <p className="crm-fin-refresh" role="status">Atualizando…</p>}
 
     {data && tab === 'geral' && <Overview data={data} v={v}/>}
     {data && tab === 'contratos' && <Contracts data={data} setDialog={setDialog} post={post} busy={busy}/>}
