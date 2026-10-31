@@ -501,7 +501,7 @@ function EntryList({ title, subtitle, list, setDialog, empty, totals }: { title:
 function CashActivity({ data, month, direction, setDialog, onBack }: {
   data: Overview; month: string; direction: Dir; setDialog: (d: Dialog) => void; onBack: () => void
 }) {
-  const movements = data.entries.flatMap(entry => entry.direction === direction && entry.state !== 'cancelled'
+  const movements = data.entries.flatMap(entry => entry.direction === direction && !entry.clientAdBudget && entry.state !== 'cancelled'
     ? entry.settlements.filter(s => !s.reversedAt && s.settledOn.slice(0, 7) === month).map(settlement => ({ entry, settlement }))
     : []).sort((a, b) => b.settlement.settledOn.localeCompare(a.settlement.settledOn))
   const sum = movements.reduce((total, item) => total + item.settlement.amountCents, 0)
