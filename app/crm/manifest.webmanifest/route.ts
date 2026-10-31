@@ -3,15 +3,15 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-static'
 
 /**
- * PWA do SHARK SCALE — SOMENTE a área administrativa (/crm). As páginas públicas (/agendar, site)
+ * PWA do CRM Cassiellos — SOMENTE a área administrativa (/crm). As páginas públicas (/agendar, site)
  * não referenciam este manifesto e não viram aplicativo.
  */
 export function GET() {
   if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') return new NextResponse(null, { status: 404 })
   return NextResponse.json({
     id: '/crm',
-    name: 'SHARK SCALE',
-    short_name: 'SHARK SCALE',
+    name: 'CRM | Cassiellos',
+    short_name: 'CRM | Cassiellos',
     description: 'Mini CRM da Cassiellos: leads, reuniões e avisos da equipe.',
     lang: 'pt-BR',
     start_url: '/crm',
