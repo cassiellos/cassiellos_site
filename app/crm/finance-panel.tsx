@@ -18,7 +18,7 @@ type Dir = 'in' | 'out'
 type MonthTotals = { month: string; competenceIn: number; competenceOut: number; cashIn: number; cashOut: number }
 type Settlement = { id: string; amountCents: number; settledOn: string; method: string; notes: string; createdAt: string | null; reversedAt: string | null; reversalReason: string | null }
 type Entry = {
-  id: string; direction: Dir; sourceId: string | null; clientId: string | null; clientName: string | null; company: string | null; category: string
+  id: string; direction: Dir; sourceId: string | null; installmentNumber: number | null; clientId: string | null; clientName: string | null; company: string | null; category: string
   categoryLabel: string; description: string; periodicity: string | null; competenceMonth: string; dueDate: string; amountCents: number; settledCents: number
   remainingCents: number; lastSettledOn: string | null; state: string; stateLabel: string; overdue: boolean; clientAdBudget: boolean; cancelReason: string | null
   invoice: { status: keyof typeof INVOICE_STATUS; label: string; number: string | null; issuedOn: string | null; externalRef: string | null; notes: string; recorded: boolean } | null
@@ -29,7 +29,7 @@ type Source = {
   id: string; direction: Dir; clientId: string | null; clientName: string | null; category: string; categoryLabel: string; description: string
   supplier: string | null; amountCents: number; periodicity: keyof typeof PERIODICITIES; costKind: 'fixed' | 'variable' | null; startDate: string
   endDate: string | null; dueDay: number; generateFrom: string; status: keyof typeof SOURCE_STATUS; invoiceRequired: boolean; clientAdBudget: boolean
-  notes: string; monthlyEquivalentCents: number
+  notes: string; monthlyEquivalentCents: number; installmentPlan: boolean; installmentCount: number; deliveryDueDate: string | null
   serviceStatus: keyof typeof SERVICE_STATUS; formalizationStatus: keyof typeof FORMALIZATION_STATUS; adminStatusUpdatedAt: string | null
 }
 type Comparison = { label: string; currentLabel: string; previousLabel: string; rows: { key: string; label: string; current: number; previous: number }[] }
@@ -51,7 +51,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 const ERRORS: Record<string, string> = {
   UNAUTHORIZED: 'Sua sessão administrativa expirou. Entre novamente.', FORBIDDEN: 'Origem não autorizada.', NOT_FOUND: 'Registro não encontrado.',
-  MIGRATION_PENDING: 'A migração 0011 (Financeiro) ainda não foi aplicada neste banco.', FINANCE_UNAVAILABLE: 'Financeiro indisponível no momento. Tente de novo.',
+  MIGRATION_PENDING: 'A migração 0011 (Financeiro) ainda não foi aplicada neste banco.', PROJECT_MIGRATION_PENDING: 'A migração 0015 para projetos parcelados ainda não foi aplicada.', FINANCE_UNAVAILABLE: 'Financeiro indisponível no momento. Tente de novo.',
   DATABASE_NOT_CONFIGURED: 'Banco do CRM não configurado neste ambiente.', INVALID_DATA: 'Dados fora das regras do Financeiro.', INVALID_REQUEST: 'Requisição inválida.',
   INVALID_NAME: 'Informe o nome (mínimo 2 caracteres).', INVALID_COMPANY: 'Empresa muito longa.', INVALID_NOTES: 'Observações muito longas.',
   CLIENT_REQUIRED: 'Selecione o cliente.', INVALID_CLIENT: 'Cliente inválido.', CLIENT_NOT_FOUND: 'Cliente não encontrado.', CLIENT_ARCHIVED: 'Cliente arquivado: reative antes.',
@@ -63,6 +63,13 @@ const ERRORS: Record<string, string> = {
   ENTRY_CANCELLED: 'Lançamento cancelado.', ENTRY_HAS_SETTLEMENTS: 'Há movimentos registrados: estorne-os antes.', IDEMPOTENCY_KEY_REUSED: 'Movimento já registrado com outros dados. Abra o formulário de novo.',
   REASON_REQUIRED: 'Informe o motivo (mínimo 3 caracteres).', SOURCE_ENDED: 'Contrato encerrado não pode ser reativado.', INVALID_DUE_DATE: 'Vencimento inválido.',
   INVALID_INVOICE_STATUS: 'Situação da nota inválida.', INVOICE_NUMBER_AND_DATE_REQUIRED: 'Nota emitida exige número e data de emissão.', INVALID_ISSUED_ON: 'Data de emissão inválida.',
+  INVALID_INSTALLMENT_COUNT: 'Escolha de 1 a 5 parcelas.', INVALID_INSTALLMENT: 'Parcela inválida.',
+  INVALID_INSTALLMENT_AMOUNT: 'Informe um valor positivo para cada parcela.',
+  INSTALLMENT_DATES_OUT_OF_ORDER: 'As datas das parcelas devem estar em ordem cronológica.',
+  INSTALLMENTS_TOTAL_MISMATCH: 'A soma das parcelas deve ser exatamente igual ao valor do contrato.',
+  INVALID_PROJECT_KIND: 'O parcelamento personalizado é exclusivo de receitas avulsas.',
+  INVALID_DELIVERY_DATE: 'O prazo de entrega não pode ser anterior ao início do projeto.',
+  PROJECT_INSTALLMENT_AMOUNT_LOCKED: 'O valor de cada parcela faz parte do total contratado. Para alterar a distribuição, ajuste o plano completo.',
   INVALID_SERVICE_STATUS: 'Situação do serviço inválida.', INVALID_FORMALIZATION_STATUS: 'Situação do contrato inválida.',
   ADMIN_STATUS_MIGRATION_PENDING: 'Situação do serviço e do contrato ainda indisponível: aguardando a migração 0012 no banco.',
   ADMIN_STATUS_ONLY_FOR_CONTRACTS: 'Situação do serviço/contrato só se aplica a receitas.',
@@ -437,10 +444,12 @@ function SourceRow({ s, setDialog, post, busy, monthEntry, referenceMonth }: { s
     <div className="crm-fin-row-main"><strong>{s.description}</strong>
       <small>{[s.clientName ?? s.supplier, s.categoryLabel, PERIODICITIES[s.periodicity], s.costKind === 'fixed' ? 'Fixa' : s.costKind === 'variable' ? 'Variável' : null,
         s.clientAdBudget ? 'Verba de cliente (fora do caixa)' : null, s.invoiceRequired ? 'Emite NF' : null].filter(Boolean).join(' · ')}</small></div>
-    <div className="crm-fin-row-cell"><span>Valor</span>{formatCents(s.amountCents)}</div>
-    <div className="crm-fin-row-cell"><span>Vencimento</span>dia {s.dueDay}</div>
+    <div className="crm-fin-row-cell"><span>{s.installmentPlan ? 'Total contratado' : 'Valor'}</span>{formatCents(s.amountCents)}</div>
+    <div className="crm-fin-row-cell"><span>{s.installmentPlan ? 'Plano de pagamento' : 'Vencimento'}</span>
+      {s.installmentPlan ? s.installmentCount + ' parcela(s) com datas livres' : 'dia ' + s.dueDay}</div>
     <div className="crm-fin-row-cell"><span>Início cadastrado / término</span>{formatDate(s.startDate)} → {s.endDate ? formatDate(s.endDate) : 'sem término'}
-      {s.generateFrom > s.startDate.slice(0, 7) && <small>Cobranças recorrentes desde {monthLabel(s.generateFrom)}</small>}</div>
+      {s.generateFrom > s.startDate.slice(0, 7) && !s.installmentPlan && <small>Cobranças recorrentes desde {monthLabel(s.generateFrom)}</small>}
+      {s.installmentPlan && <small>Prazo de entrega: {s.deliveryDueDate ? formatDate(s.deliveryDueDate) : 'não informado'}</small>}</div>
     <div className="crm-fin-row-cell"><span className="crm-fin-badge" data-tone={s.status === 'active' ? 'ok' : s.status === 'paused' ? 'warn' : 'muted'}>{SOURCE_STATUS[s.status]}</span></div>
     {s.direction === 'in' && <div className="crm-fin-admin" aria-label="Situação administrativa (não altera cobranças)">
       <span className="crm-fin-badge" data-tone={SERVICE_TONE[s.serviceStatus]}>Serviço: {SERVICE_STATUS[s.serviceStatus]}</span>
