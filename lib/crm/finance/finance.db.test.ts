@@ -353,8 +353,11 @@ describe('Financeiro — banco real descartável', { skip }, () => {
   it('logs só com tipo de evento e ids (sem valores nem nomes); tabelas existentes do CRM intactas', async () => {
     assert.ok(logs.length > 10)
     assert.ok(logs.every(l => !/Fictício|R\$|2\.000|amountCents/.test(l)), logs.find(l => /Fictício|R\$|amountCents/.test(l)))
-    const t = await pool.query(`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'crm' AND table_name LIKE 'finance\\_%'`)
-    assert.equal(t.rows[0].n, 6)
+    // Tabelas do Financeiro: as 6 do módulo (0011) + as 6 da fundação Asaas (0016), por nome — nenhuma outra.
+    const t = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'crm' AND table_name LIKE 'finance\\_%' ORDER BY 1`)
+    assert.deepEqual(t.rows.map(r => r.table_name), ['finance_asaas_customers', 'finance_asaas_events', 'finance_asaas_payment_settlements',
+      'finance_asaas_payments', 'finance_asaas_subscriptions', 'finance_audit_log', 'finance_clients', 'finance_entries', 'finance_integration_log',
+      'finance_invoices', 'finance_settlements', 'finance_sources'])
     const leads = await pool.query('SELECT count(*)::int AS n FROM crm.leads')
     assert.equal(typeof leads.rows[0].n, 'number') // o módulo nunca escreve fora das tabelas finance_*
   })
