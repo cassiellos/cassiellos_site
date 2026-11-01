@@ -1,5 +1,8 @@
 /**
  * 0012 — caminho REAL de atualização, contra um PostgreSQL DESCARTÁVEL que tenha só as migrações 0001–0011:
+ * (0) o código atual exige a 0015 (projetos parcelados) no núcleo do Financeiro: sem ela, responde MIGRATION_PENDING
+ *     de forma limpa e não grava nada; a 0015 (aditiva, independente da 0012) é então aplicada — esse é o esquema
+ *     mínimo do código atual sem a 0012;
  * (1) o Financeiro funciona sem a 0012 (controles indisponíveis, nada quebra); (2) dados financeiros são criados;
  * (3) a 0012 é aplicada; (4) tudo é preservado e os contratos existentes ficam "Não informado".
  * Executado só quando CRM_FINANCE_PRE0012_DATABASE_URL aponta para esse banco descartável (fica fora da suíte padrão).
@@ -29,6 +32,21 @@ describe('0012 — atualização de banco com dados existentes', { skip }, () =>
       (SELECT json_agg(t ORDER BY id) FROM (SELECT id, amount_cents, status, end_date, generate_from, updated_at FROM crm.finance_sources) t) AS sources,
       (SELECT json_agg(t ORDER BY id) FROM (SELECT id, amount_cents, status, competence_month, due_date FROM crm.finance_entries) t) AS entries,
       (SELECT json_agg(t ORDER BY id) FROM (SELECT id, amount_cents, settled_on, reversed_at FROM crm.finance_settlements) t) AS settlements`)).rows[0]
+
+  const migration = (file: string) => readFileSync(join(process.cwd(), 'db/migrations', file), 'utf8')
+
+  it('dependência da 0015: sem ela, contrato é recusado com MIGRATION_PENDING e nada é gravado; depois aplica a 0015', async () => {
+    const cols = await pool.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema = 'crm' AND table_name = 'finance_sources' AND column_name IN ('service_status', 'installment_plan')")
+    assert.equal(cols.rows[0].n, 0, 'este teste exige um banco só com 0001–0011')
+    const c = await post('client_create', { name: 'Cliente Fictício Pré-0015 ' + randomUUID().slice(0, 6) })
+    assert.equal(c.status, 200)
+    const before = await pool.query('SELECT count(*)::int AS n FROM crm.finance_sources')
+    const s = await post('source_create', { direction: 'in', clientId: c.body.id, category: 'hosting', description: 'Sem 0015', amount: '10', periodicity: 'monthly', startDate: '2026-10-01', dueDay: 10 })
+    assert.deepEqual([s.status, s.body.error], [409, 'MIGRATION_PENDING'])
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM crm.finance_sources')).rows[0].n, before.rows[0].n, 'nada gravado')
+    assert.equal((await view()).migrationPending, true)
+    await pool.query(migration('0015_finance_project_installments.sql'))
+  })
 
   it('sem a 0012: Financeiro funciona; controles novos indisponíveis; nada quebra', async () => {
     const cols = await pool.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema = 'crm' AND table_name = 'finance_sources' AND column_name = 'service_status'")
