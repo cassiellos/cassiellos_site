@@ -45,7 +45,7 @@ describe('normalização de dados do Asaas', () => {
   })
   it('dados inconsistentes são recusados (nunca gravados)', () => {
     for (const bad of [PAY({ id: 'x' }), PAY({ value: 0 }), PAY({ netValue: 80 }), PAY({ dueDate: undefined }), PAY({ subscription: 'abc' }),
-      PAY({ refunds: [{ value: 100 }] }), null]) assert.throws(() => normalizePayment(bad))
+      PAY({ refunds: [{ value: 100, status: 'DONE' }] }), null]) assert.throws(() => normalizePayment(bad))
   })
   it('assinatura: ciclo e valor', () => {
     const s = normalizeSubscription({ id: 'sub_fict000000000001', customer: 'cus_fict000000000001', value: 69.9, cycle: 'MONTHLY', nextDueDate: '2026-11-30', status: 'ACTIVE' })
@@ -83,7 +83,7 @@ describe('cobrança ↔ competência', () => {
   it('competência = mês do vencimento', () => assert.equal(competenceOf(p), '2026-11-01'))
   it('uma competência, uma cobrança principal', () => {
     assert.deepEqual(matchPayment({ payment: p, hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map() }),
-      { status: 'linked', entryId: 'e-nov', competenceMonth: '2026-11-01', divergences: [] })
+      { status: 'linked', entryId: 'e-nov', competenceMonth: '2026-11-01', basis: 'due_date', divergences: [] })
     // a mesma cobrança de novo: continua ligada (idempotente)
     assert.equal(matchPayment({ payment: p, hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map([['e-nov', p.id]]) }).status, 'linked')
   })
@@ -95,9 +95,13 @@ describe('cobrança ↔ competência', () => {
     assert.equal((matchPayment({ payment: p, hasSubscriptionLink: false, entries, primaryLinkedPaymentByEntry: new Map() }) as { reason: string }).reason, 'NO_SUBSCRIPTION_LINK')
     assert.equal((matchPayment({ payment: normalizePayment(PAY({ dueDate: '2027-05-30' })), hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map() }) as { reason: string }).reason, 'ENTRY_NOT_GENERATED')
   })
-  it('valor e vencimento divergentes ficam sinalizados', () => {
-    const r = matchPayment({ payment: normalizePayment(PAY({ value: 79.9, dueDate: '2026-11-28' })), hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map() })
-    assert.deepEqual(r.status === 'linked' && r.divergences, ['AMOUNT_MISMATCH', 'DUE_DATE_MISMATCH'])
+  it('valor e vencimento divergentes ficam sinalizados (vencimento original informado)', () => {
+    const r = matchPayment({ payment: normalizePayment(PAY({ value: 79.9, dueDate: '2026-11-28', originalDueDate: '2026-11-30' })), hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map() })
+    assert.deepEqual(r.status === 'linked' && [r.basis, r.divergences], ['original_due_date', ['AMOUNT_MISMATCH', 'DUE_DATE_MISMATCH']])
+  })
+  it('vencimento diferente do previsto e SEM vencimento original → revisão (nunca adivinha a competência)', () => {
+    const r = matchPayment({ payment: normalizePayment(PAY({ dueDate: '2026-11-28' })), hasSubscriptionLink: true, entries, primaryLinkedPaymentByEntry: new Map() })
+    assert.deepEqual(r, { status: 'review', competenceMonth: '2026-11-01', reason: 'COMPETENCE_UNCERTAIN', entryId: 'e-nov' })
   })
 })
 
@@ -107,7 +111,7 @@ describe('decisão de conciliação', () => {
     payment: normalizePayment(PAY({ status: o.status ?? 'RECEIVED', paymentDate: '2026-11-29', creditDate: '2026-12-01', ...(o.extra ?? {}) })),
     link: { status: 'linked', isAdditional: false, manualOverlapConfirmed: false },
     entry: { id: 'e-nov', status: 'open', amountCents: 6990, settledCents: 0 },
-    linkedMovements: [], manualMovements: [], ...o,
+    linkedMovements: [], manualMovements: [], today: '2026-12-15', ...o,
   })
   it('recebido → baixa do valor BRUTO na data de CAIXA (dinheiro disponível), chave determinística', () => {
     const a = decideReconciliation(base())
@@ -145,7 +149,7 @@ describe('decisão de conciliação', () => {
     const mov = [{ id: 's1', amountCents: 6990, reversed: false }]
     assert.deepEqual(decideReconciliation(base({ status: 'REFUNDED', linkedMovements: mov })), { type: 'reverse', settlementIds: ['s1'], reason: 'ASAAS_REFUNDED' })
     assert.deepEqual(decideReconciliation(base({ status: 'REFUNDED', linkedMovements: [{ ...mov[0], reversed: true }] })), { type: 'none', reason: 'NOTHING_TO_REVERSE' })
-    assert.deepEqual(decideReconciliation(base({ extra: { refunds: [{ value: 10 }] }, linkedMovements: mov })), { type: 'review', code: 'PARTIAL_REFUND' })
+    assert.deepEqual(decideReconciliation(base({ extra: { refunds: [{ value: 10, status: 'DONE' }] }, linkedMovements: mov })), { type: 'review', code: 'PARTIAL_REFUND' })
     assert.deepEqual(decideReconciliation(base({ status: 'CHARGEBACK_REQUESTED', linkedMovements: mov })), { type: 'review', code: 'CHARGEBACK' })
   })
   it('removida/vencida/pendente após recibo → revisão; sem recibo → nada (lançamento intacto)', () => {

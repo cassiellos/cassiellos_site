@@ -12,8 +12,8 @@ import { recordSettlement } from '../finance/store'
 import { parseWebhookEvent } from './policy'
 import { receiptIdempotencyKey } from './reconcile'
 import {
-  acceptAdditionalPayment, acceptAmountDivergence, AsaasLinkError, confirmManualOverlap, externalChargeGuard, ingestPayment, linkCustomer,
-  linkSubscription, processWebhookEvent, reconcilePayment, recordWebhookEvent, syncSubscriptionPayments,
+  acceptAdditionalPayment, acceptAmountDivergence, AsaasLinkError, bindAsaasEnvironment, confirmManualOverlap, externalChargeGuard, ingestPayment,
+  linkCustomer, linkSubscription, processWebhookEvent, reconcilePayment, recordWebhookEvent, syncSubscriptionPayments,
 } from './store'
 import { normalizePayment, type AsaasReadGateway } from './types'
 
@@ -25,7 +25,8 @@ const ACTOR = 'sessao-teste'
 
 describe('Asaas — fundação (PostgreSQL descartável, dados sintéticos)', { skip }, () => {
   let pool: Pool
-  before(() => { pool = new Pool({ connectionString: url, max: 8 }) })
+  // Este banco descartável representa um banco ligado ao SANDBOX (isolamento físico: o CRM real seria 'production').
+  before(async () => { pool = new Pool({ connectionString: url, max: 8 }); await bindAsaasEnvironment(pool, 'sandbox', ACTOR) })
   after(async () => { await pool?.end() })
   const base: FinanceAdminRequest = { method: 'GET', vercelEnv: 'preview', sessionValid: true, originAllowed: true, contentType: 'application/json', actorRef: ACTOR }
   const deps = () => ({ pool, now: () => new Date('2026-10-31T15:00:00Z'), log: () => undefined })
@@ -57,7 +58,7 @@ describe('Asaas — fundação (PostgreSQL descartável, dados sintéticos)', { 
   const ingest = async (raw: Body, eventAt: string | null = null) => ingestPayment(pool, 'sandbox', normalizePayment(raw), eventAt, ACTOR)
 
   // ───────────── clientes e assinaturas ─────────────
-  it('clientes: vínculo válido; duplicado e conflito recusados; mesmo id externo em outro ambiente permitido', async () => {
+  it('clientes: vínculo válido; duplicado e conflito recusados; outro ambiente recusado neste banco', async () => {
     const a = await contract()
     const b = await contract()
     const cus = rid('cus')
@@ -65,7 +66,8 @@ describe('Asaas — fundação (PostgreSQL descartável, dados sintéticos)', { 
     await assert.rejects(linkCustomer(pool, { environment: 'sandbox', clientId: a.clientId, asaasCustomerId: cus }, ACTOR), (e: AsaasLinkError) => e.code === 'CUSTOMER_ALREADY_LINKED')
     await assert.rejects(linkCustomer(pool, { environment: 'sandbox', clientId: b.clientId, asaasCustomerId: cus }, ACTOR), (e: AsaasLinkError) => e.code === 'CUSTOMER_ALREADY_LINKED')
     await assert.rejects(linkCustomer(pool, { environment: 'sandbox', clientId: a.clientId, asaasCustomerId: rid('cus') }, ACTOR), (e: AsaasLinkError) => e.code === 'CLIENT_ALREADY_LINKED')
-    assert.ok(await linkCustomer(pool, { environment: 'production', clientId: a.clientId, asaasCustomerId: cus }, ACTOR), 'ambientes isolados')
+    // Isolamento físico (P2-3): um banco ligado ao sandbox nunca aceita dado de produção.
+    await assert.rejects(linkCustomer(pool, { environment: 'production', clientId: a.clientId, asaasCustomerId: cus }, ACTOR), (e: AsaasLinkError) => e.code === 'ENVIRONMENT_MISMATCH')
     await assert.rejects(linkCustomer(pool, { environment: 'sandbox', clientId: b.clientId, asaasCustomerId: 'cliente-123' }, ACTOR), (e: AsaasLinkError) => e.code === 'INVALID_CUSTOMER_ID')
     // vínculos simultâneos do mesmo id: exatamente um vence (índice único)
     const c = await contract()

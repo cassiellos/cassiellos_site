@@ -353,11 +353,15 @@ describe('Financeiro — banco real descartável', { skip }, () => {
   it('logs só com tipo de evento e ids (sem valores nem nomes); tabelas existentes do CRM intactas', async () => {
     assert.ok(logs.length > 10)
     assert.ok(logs.every(l => !/Fictício|R\$|2\.000|amountCents/.test(l)), logs.find(l => /Fictício|R\$|amountCents/.test(l)))
-    // Tabelas do Financeiro: as 6 do módulo (0011) + as 6 da fundação Asaas (0016), por nome — nenhuma outra.
+    // Tabelas do Financeiro, por nome: as 6 do módulo (0011) — e, SE a 0016 estiver aplicada neste banco, exatamente
+    // as 7 da fundação Asaas. Nenhuma outra. (O CRM funciona com ou sem a 0016.)
     const t = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'crm' AND table_name LIKE 'finance\\_%' ORDER BY 1`)
-    assert.deepEqual(t.rows.map(r => r.table_name), ['finance_asaas_customers', 'finance_asaas_events', 'finance_asaas_payment_settlements',
-      'finance_asaas_payments', 'finance_asaas_subscriptions', 'finance_audit_log', 'finance_clients', 'finance_entries', 'finance_integration_log',
-      'finance_invoices', 'finance_settlements', 'finance_sources'])
+    const core = ['finance_audit_log', 'finance_clients', 'finance_entries', 'finance_invoices', 'finance_settlements', 'finance_sources']
+    const asaas = ['finance_asaas_binding', 'finance_asaas_customers', 'finance_asaas_events', 'finance_asaas_payment_settlements', 'finance_asaas_payments',
+      'finance_asaas_subscriptions', 'finance_integration_log']
+    const names = t.rows.map(r => r.table_name as string)
+    const with0016 = names.includes('finance_asaas_payments')
+    assert.deepEqual(names, (with0016 ? [...core, ...asaas] : core).sort())
     const leads = await pool.query('SELECT count(*)::int AS n FROM crm.leads')
     assert.equal(typeof leads.rows[0].n, 'number') // o módulo nunca escreve fora das tabelas finance_*
   })

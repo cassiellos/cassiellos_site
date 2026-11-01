@@ -14,7 +14,12 @@
 --   finance_asaas_payment_settlements   cobrança Asaas <-> movimentos do Financeiro (1:N — parciais/estornos preservados)
 --   finance_asaas_events                eventos de webhook (deduplicação, tentativas, erros), sem dados pessoais
 --   finance_integration_log             trilha da integração (vínculos, conciliações, divergências)
--- Toda unicidade inclui o AMBIENTE (sandbox/production): o mesmo id externo pode existir nos dois.
+-- ISOLAMENTO DE AMBIENTES (separação física): cada BANCO fica ligado a UM ambiente Asaas por finance_asaas_binding
+-- (linha única). Toda tabela da integração referencia esse ambiente por chave estrangeira: num banco ligado a
+-- 'production' (o CRM real) é impossível gravar qualquer vínculo, cobrança ou evento de 'sandbox' — e vice-versa.
+-- Testes de Sandbox exigem um banco separado (ex.: branch Neon descartável). Sem a linha de ligação, nada da
+-- integração pode ser gravado (negação por padrão). Um contrato tem no máximo UMA assinatura ativa, em qualquer
+-- ambiente.
 
 BEGIN;
 
@@ -33,6 +38,16 @@ BEGIN
   END IF;
 END $$;
 
+-- ── Ambiente ligado a este banco (linha única) ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS crm.finance_asaas_binding (
+    singleton   boolean PRIMARY KEY DEFAULT true,
+    environment text NOT NULL UNIQUE,
+    bound_by    text NOT NULL,
+    bound_at    timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT finance_asaas_binding_singleton CHECK (singleton),
+    CONSTRAINT finance_asaas_binding_env CHECK (environment IN ('sandbox', 'production'))
+);
+
 -- ── Clientes ───────────────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crm.finance_asaas_customers (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,7 +59,7 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_customers (
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now(),
     unlinked_at       timestamptz,
-    CONSTRAINT finance_asaas_customers_env CHECK (environment IN ('sandbox', 'production')),
+    CONSTRAINT finance_asaas_customers_env FOREIGN KEY (environment) REFERENCES crm.finance_asaas_binding (environment),
     CONSTRAINT finance_asaas_customers_status CHECK (status IN ('active', 'unlinked')),
     CONSTRAINT finance_asaas_customers_unlinked CHECK ((status = 'unlinked') = (unlinked_at IS NOT NULL)),
     CONSTRAINT finance_asaas_customers_ref CHECK (asaas_customer_id ~ '^cus_[A-Za-z0-9]{1,64}$')
@@ -74,7 +89,7 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_subscriptions (
     updated_at            timestamptz NOT NULL DEFAULT now(),
     last_synced_at        timestamptz,
     unlinked_at           timestamptz,
-    CONSTRAINT finance_asaas_subscriptions_env CHECK (environment IN ('sandbox', 'production')),
+    CONSTRAINT finance_asaas_subscriptions_env FOREIGN KEY (environment) REFERENCES crm.finance_asaas_binding (environment),
     CONSTRAINT finance_asaas_subscriptions_status CHECK (status IN ('active', 'unlinked')),
     CONSTRAINT finance_asaas_subscriptions_unlinked CHECK ((status = 'unlinked') = (unlinked_at IS NOT NULL)),
     CONSTRAINT finance_asaas_subscriptions_ref CHECK (asaas_subscription_id ~ '^sub_[A-Za-z0-9]{1,64}$'),
@@ -82,11 +97,11 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_subscriptions (
     CONSTRAINT finance_asaas_subscriptions_cycle CHECK (cycle IN ('WEEKLY', 'BIWEEKLY', 'MONTHLY', 'BIMONTHLY', 'QUARTERLY', 'SEMIANNUALLY', 'YEARLY')),
     CONSTRAINT finance_asaas_subscriptions_divergence CHECK (divergent = (cardinality(divergence_codes) > 0))
 );
--- Uma assinatura externa ativa liga a UM contrato; um contrato tem no máximo UMA assinatura ativa (por ambiente).
+-- Uma assinatura externa ativa liga a UM contrato; um contrato tem no máximo UMA assinatura ativa — em QUALQUER ambiente.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_subscriptions_external
     ON crm.finance_asaas_subscriptions (environment, asaas_subscription_id) WHERE status = 'active';
-CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_subscriptions_source
-    ON crm.finance_asaas_subscriptions (environment, source_id) WHERE status = 'active';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_subscriptions_source_any_env
+    ON crm.finance_asaas_subscriptions (source_id) WHERE status = 'active';
 
 -- ── Cobranças ──────────────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crm.finance_asaas_payments (
@@ -112,17 +127,20 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_payments (
     fee_cents                 bigint GENERATED ALWAYS AS (CASE WHEN net_value_cents IS NULL THEN NULL ELSE value_cents - net_value_cents END) STORED,
     refunded_cents            bigint NOT NULL DEFAULT 0,
     due_date                  date NOT NULL,
+    original_due_date         date,
+    competence_basis          text,
     payment_date              date,
     client_payment_date       date,
     confirmed_date            date,
     credit_date               date,
+    estimated_credit_date     date,
     divergence_codes          text[] NOT NULL DEFAULT '{}',
     review_reason             text,
     last_event_at             timestamptz,
     first_seen_at             timestamptz NOT NULL DEFAULT now(),
     last_synced_at            timestamptz NOT NULL DEFAULT now(),
     updated_at                timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT finance_asaas_payments_env CHECK (environment IN ('sandbox', 'production')),
+    CONSTRAINT finance_asaas_payments_env FOREIGN KEY (environment) REFERENCES crm.finance_asaas_binding (environment),
     CONSTRAINT finance_asaas_payments_ref CHECK (asaas_payment_id ~ '^pay_[A-Za-z0-9]{1,64}$'),
     CONSTRAINT finance_asaas_payments_link CHECK (link_status IN ('unmatched', 'linked', 'review', 'ignored')),
     CONSTRAINT finance_asaas_payments_linked_entry CHECK (link_status <> 'linked' OR entry_id IS NOT NULL),
@@ -133,7 +151,9 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_payments (
     CONSTRAINT finance_asaas_payments_values CHECK (value_cents > 0 AND value_cents <= 100000000000
         AND (net_value_cents IS NULL OR (net_value_cents >= 0 AND net_value_cents <= value_cents))
         AND refunded_cents >= 0 AND refunded_cents <= value_cents),
-    CONSTRAINT finance_asaas_payments_month CHECK (competence_month IS NULL OR competence_month = date_trunc('month', competence_month)::date)
+    CONSTRAINT finance_asaas_payments_month CHECK (competence_month IS NULL OR competence_month = date_trunc('month', competence_month)::date),
+    CONSTRAINT finance_asaas_payments_basis CHECK (competence_basis IS NULL OR competence_basis IN ('original_due_date', 'due_date')),
+    CONSTRAINT finance_asaas_payments_linked_basis CHECK (link_status <> 'linked' OR competence_basis IS NOT NULL)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_payments_external ON crm.finance_asaas_payments (environment, asaas_payment_id);
 -- REGRA CRÍTICA: no máximo UMA cobrança externa principal vinculada a cada lançamento (competência).
@@ -155,6 +175,24 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_payment_settlements (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_payment_settlements_settlement ON crm.finance_asaas_payment_settlements (settlement_id);
 
+-- Garantia no banco: o movimento ligado a uma cobrança pertence ao MESMO lançamento ao qual a cobrança está ligada.
+CREATE OR REPLACE FUNCTION crm.finance_asaas_payment_settlement_check() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM crm.finance_asaas_payments p JOIN crm.finance_settlements s ON s.entry_id = p.entry_id
+                  WHERE p.id = NEW.payment_link_id AND s.id = NEW.settlement_id AND p.link_status = 'linked') THEN
+    RAISE EXCEPTION 'finance_asaas_payment_settlements: movimento e cobrança de lançamentos diferentes' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END $fn$;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_finance_asaas_payment_settlement_check'
+                   AND tgrelid = 'crm.finance_asaas_payment_settlements'::regclass) THEN
+    CREATE TRIGGER trg_finance_asaas_payment_settlement_check BEFORE INSERT OR UPDATE ON crm.finance_asaas_payment_settlements
+      FOR EACH ROW EXECUTE FUNCTION crm.finance_asaas_payment_settlement_check();
+  END IF;
+END $$;
+
 -- ── Eventos (webhook) ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crm.finance_asaas_events (
     id                bigserial PRIMARY KEY,
@@ -169,14 +207,15 @@ CREATE TABLE IF NOT EXISTS crm.finance_asaas_events (
     last_error        text,
     processed_at      timestamptz,
     payload_min       jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT finance_asaas_events_env CHECK (environment IN ('sandbox', 'production')),
-    CONSTRAINT finance_asaas_events_status CHECK (status IN ('pending', 'processed', 'ignored', 'failed')),
+    CONSTRAINT finance_asaas_events_env FOREIGN KEY (environment) REFERENCES crm.finance_asaas_binding (environment),
+    date_trusted      boolean NOT NULL DEFAULT false,
+    CONSTRAINT finance_asaas_events_status CHECK (status IN ('pending', 'processed', 'ignored', 'failed', 'needs_resync')),
     CONSTRAINT finance_asaas_events_texts CHECK (char_length(event_id) BETWEEN 1 AND 120 AND char_length(event_type) BETWEEN 1 AND 80
         AND (last_error IS NULL OR char_length(last_error) <= 120))
 );
 -- Repetição do mesmo evento nunca é processada duas vezes.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_asaas_events ON crm.finance_asaas_events (environment, event_id);
-CREATE INDEX IF NOT EXISTS idx_finance_asaas_events_pending ON crm.finance_asaas_events (status, received_at) WHERE status IN ('pending', 'failed');
+CREATE INDEX IF NOT EXISTS idx_finance_asaas_events_pending ON crm.finance_asaas_events (status, received_at) WHERE status IN ('pending', 'failed', 'needs_resync');
 
 -- ── Trilha da integração ───────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS crm.finance_integration_log (
@@ -189,7 +228,7 @@ CREATE TABLE IF NOT EXISTS crm.finance_integration_log (
     actor       text NOT NULL,
     details     jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at  timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT finance_integration_log_env CHECK (environment IN ('sandbox', 'production')),
+    CONSTRAINT finance_integration_log_env FOREIGN KEY (environment) REFERENCES crm.finance_asaas_binding (environment),
     CONSTRAINT finance_integration_log_entity CHECK (entity IN ('customer', 'subscription', 'payment', 'event'))
 );
 CREATE INDEX IF NOT EXISTS idx_finance_integration_log_ref ON crm.finance_integration_log (entity, entity_ref, created_at);

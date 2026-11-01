@@ -82,6 +82,12 @@ export type ParsedWebhookEvent = {
   eventId: string
   eventType: string
   eventCreatedAt: string | null
+  /**
+   * true somente se dateCreated veio EXATAMENTE no formato documentado ("AAAA-MM-DD HH:mm:ss") e é uma data/hora
+   * real. Data ausente, inválida ou em outro formato = não confiável: o evento nunca é aplicado como "atual" — fica
+   * para releitura da cobrança no Asaas (Fase 2+).
+   */
+  dateTrusted: boolean
   /** Presente nos eventos de cobrança: só campos financeiros (o "payload mínimo" guardado). */
   payment: NormalizedPayment | null
   paymentMin: Record<string, unknown> | null
@@ -93,13 +99,19 @@ const EVENT_TYPE = /^[A-Z][A-Z_]{2,79}$/
 const PAYMENT_MIN_KEYS = ['id', 'customer', 'subscription', 'value', 'netValue', 'status', 'billingType', 'dueDate', 'originalDueDate',
   'paymentDate', 'clientPaymentDate', 'confirmedDate', 'creditDate', 'estimatedCreditDate', 'deleted', 'externalReference', 'refunds']
 
-/** "AAAA-MM-DD HH:mm:ss" do Asaas (horário de Brasília) → ISO. */
-function asaasDateTime(value: unknown): string | null {
+/**
+ * dateCreated do evento → ISO. Formato documentado pelo Asaas: "AAAA-MM-DD HH:mm:ss" (ex.: "2024-06-12 16:45:03").
+ * Fuso: interpretado como Brasília (UTC−03:00, sem horário de verão desde 2019) — PENDENTE de homologação no Sandbox.
+ * Qualquer outro formato, data impossível (ex.: 31/02) ou hora inválida → null (não confiável).
+ */
+export function asaasDateTime(value: unknown): string | null {
   if (typeof value !== 'string') return null
-  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/.exec(value)
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value)
   if (!m) return null
-  const d = new Date(m[1] + 'T' + m[2] + '-03:00')
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  const [y, mo, d, h, mi, se] = m.slice(1).map(Number)
+  if (y < 2000 || y > 2100 || mo < 1 || mo > 12 || h > 23 || mi > 59 || se > 59) return null
+  if (d < 1 || d > new Date(Date.UTC(y, mo, 0)).getUTCDate()) return null
+  return new Date(Date.UTC(y, mo - 1, d, h + 3, mi, se)).toISOString()
 }
 
 /**
@@ -123,5 +135,6 @@ export function parseWebhookEvent(environment: unknown, body: unknown): ParsedWe
       k === 'refunds' && Array.isArray(raw.refunds) ? raw.refunds.map(r => ({ value: (r as { value?: unknown })?.value, status: (r as { status?: unknown })?.status })) : raw[k]]))
     payment = normalizePayment(paymentMin, b.event)
   }
-  return { environment, eventId: b.id, eventType: b.event, eventCreatedAt: asaasDateTime(b.dateCreated), payment, paymentMin }
+  const eventCreatedAt = asaasDateTime(b.dateCreated)
+  return { environment, eventId: b.id, eventType: b.event, eventCreatedAt, dateTrusted: eventCreatedAt !== null, payment, paymentMin }
 }

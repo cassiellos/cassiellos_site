@@ -58,14 +58,40 @@ function isLastDayOfMonth(date: string): boolean {
 
 // ───────────────────────── cobrança ↔ lançamento da competência ─────────────────────────
 
-/** Competência da cobrança: mês do vencimento (AAAA-MM-01). */
-export const competenceOf = (payment: Pick<NormalizedPayment, 'dueDate'>): string => payment.dueDate.slice(0, 7) + '-01'
+/**
+ * Competência da cobrança — SEM heurística:
+ *  - competência já registrada para esta cobrança: permanece (mudar o vencimento depois não a altera); se o
+ *    vencimento ORIGINAL informado agora contradiz o registrado → revisão (COMPETENCE_CONFLICT);
+ *  - vencimento original informado pelo Asaas (originalDueDate): mês dele;
+ *  - sem vencimento original: mês do vencimento atual, MAS só é aceito se esse vencimento for exatamente o previsto
+ *    no lançamento do CRM (verificado em matchPayment); caso contrário → revisão (COMPETENCE_UNCERTAIN).
+ */
+export type CompetenceResolution =
+  | { status: 'resolved'; competenceMonth: string; basis: 'original_due_date' | 'due_date'; originalDueDate: string | null }
+  | { status: 'conflict'; reason: 'COMPETENCE_CONFLICT' }
+
+export function resolveCompetence(p: Pick<NormalizedPayment, 'dueDate' | 'originalDueDate'>,
+  stored: { competenceMonth: string | null; originalDueDate: string | null; basis: 'original_due_date' | 'due_date' | null }): CompetenceResolution {
+  const original = stored.originalDueDate ?? p.originalDueDate
+  if (stored.originalDueDate && p.originalDueDate && stored.originalDueDate !== p.originalDueDate) return { status: 'conflict', reason: 'COMPETENCE_CONFLICT' }
+  if (stored.competenceMonth && stored.basis) {
+    if (original && monthStart(original) !== stored.competenceMonth) return { status: 'conflict', reason: 'COMPETENCE_CONFLICT' }
+    return { status: 'resolved', competenceMonth: stored.competenceMonth, basis: stored.basis, originalDueDate: original }
+  }
+  if (original) return { status: 'resolved', competenceMonth: monthStart(original), basis: 'original_due_date', originalDueDate: original }
+  return { status: 'resolved', competenceMonth: monthStart(p.dueDate), basis: 'due_date', originalDueDate: null }
+}
+const monthStart = (date: string) => date.slice(0, 7) + '-01'
+
+/** Atalho (sem histórico): competência pelo vencimento original, se houver; senão pelo vencimento. */
+export const competenceOf = (payment: Pick<NormalizedPayment, 'dueDate'> & { originalDueDate?: string | null }): string =>
+  monthStart(payment.originalDueDate ?? payment.dueDate)
 
 export type EntryForMatch = { id: string; competenceMonth: string; dueDate: string; amountCents: number; status: 'open' | 'cancelled' }
 
 export type MatchResult =
-  | { status: 'linked'; entryId: string; competenceMonth: string; divergences: string[] }
-  | { status: 'review'; competenceMonth: string; reason: 'DUPLICATE_COMPETENCE'; entryId: string }
+  | { status: 'linked'; entryId: string; competenceMonth: string; basis: 'original_due_date' | 'due_date'; divergences: string[] }
+  | { status: 'review'; competenceMonth: string | null; reason: 'DUPLICATE_COMPETENCE' | 'COMPETENCE_UNCERTAIN' | 'COMPETENCE_CONFLICT'; entryId: string | null }
   | { status: 'unmatched'; competenceMonth: string; reason: 'ENTRY_NOT_GENERATED' | 'NO_SUBSCRIPTION_LINK' }
 
 /**
@@ -77,18 +103,32 @@ export function matchPayment(input: {
   hasSubscriptionLink: boolean
   entries: EntryForMatch[]
   primaryLinkedPaymentByEntry: ReadonlyMap<string, string>
+  /** Competência/vencimento original já registrados para esta cobrança (sincronizações anteriores). */
+  stored?: { competenceMonth: string | null; originalDueDate: string | null; basis: 'original_due_date' | 'due_date' | null }
 }): MatchResult {
-  const competenceMonth = competenceOf(input.payment)
+  const resolved = resolveCompetence(input.payment, input.stored ?? { competenceMonth: null, originalDueDate: null, basis: null })
+  if (resolved.status === 'conflict') return { status: 'review', competenceMonth: input.stored?.competenceMonth ?? null, reason: resolved.reason, entryId: null }
+  const { competenceMonth, basis } = resolved
   if (!input.hasSubscriptionLink) return { status: 'unmatched', competenceMonth, reason: 'NO_SUBSCRIPTION_LINK' }
   const entry = input.entries.find(e => e.competenceMonth === competenceMonth)
   if (!entry) return { status: 'unmatched', competenceMonth, reason: 'ENTRY_NOT_GENERATED' }
+  // Sem vencimento original: o vencimento atual só serve de evidência se for exatamente o previsto no CRM.
+  if (basis === 'due_date' && input.payment.dueDate !== entry.dueDate) return { status: 'review', competenceMonth, reason: 'COMPETENCE_UNCERTAIN', entryId: entry.id }
   const other = input.primaryLinkedPaymentByEntry.get(entry.id)
   if (other && other !== input.payment.id) return { status: 'review', competenceMonth, reason: 'DUPLICATE_COMPETENCE', entryId: entry.id }
   const divergences: string[] = []
   if (input.payment.valueCents !== entry.amountCents) divergences.push('AMOUNT_MISMATCH')
   if (input.payment.dueDate !== entry.dueDate) divergences.push('DUE_DATE_MISMATCH')
   if (entry.status === 'cancelled') divergences.push('ENTRY_CANCELLED')
-  return { status: 'linked', entryId: entry.id, competenceMonth, divergences }
+  return { status: 'linked', entryId: entry.id, competenceMonth, basis, divergences }
+}
+
+/**
+ * Precedência entre fotografias com a MESMA data de evento (o Asaas informa segundos): só avança, nunca regride
+ * (ex.: CONFIRMED e RECEIVED no mesmo segundo → fica RECEIVED, em qualquer ordem de chegada).
+ */
+export const STATE_RANK: Record<string, number> = {
+  unknown: 0, open: 1, overdue: 2, confirmed: 3, received: 4, refund_pending: 5, partially_refunded: 6, chargeback: 7, refunded: 8, deleted: 9,
 }
 
 // ───────────────────────── decisão de conciliação ─────────────────────────
@@ -106,6 +146,8 @@ export type ReconcileInput = {
   linkedMovements: Movement[]
   /** Movimentos ativos do lançamento que NÃO pertencem a nenhuma cobrança Asaas (baixas manuais). */
   manualMovements: Movement[]
+  /** Hoje (AAAA-MM-DD, Brasília): dinheiro com disponibilidade futura não vira caixa. */
+  today: string
 }
 
 export type ReconcileAction =
@@ -125,9 +167,12 @@ export function receiptIdempotencyKey(environment: AsaasEnvironment, paymentId: 
   return h.slice(0, 8) + '-' + h.slice(8, 12) + '-5' + h.slice(13, 16) + '-' + variant + h.slice(17, 20) + '-' + h.slice(20, 32)
 }
 
-/** Data de CAIXA: dinheiro disponível (creditDate); na falta, data do pagamento informada pelo Asaas. */
+/**
+ * Data de CAIXA = dinheiro disponível: data de crédito; na falta, a prevista; na falta, a do pagamento. Se for
+ * FUTURA, a baixa espera (nunca é antecipada nem substituída pela data de hoje).
+ */
 export function cashDateOf(p: NormalizedPayment): string | null {
-  return p.creditDate ?? p.paymentDate ?? p.clientPaymentDate ?? null
+  return p.creditDate ?? p.estimatedCreditDate ?? p.paymentDate ?? p.clientPaymentDate ?? null
 }
 
 export function decideReconciliation(input: ReconcileInput): ReconcileAction {
@@ -153,6 +198,7 @@ export function decideReconciliation(input: ReconcileInput): ReconcileAction {
       if (p.valueCents > entry.amountCents - entry.settledCents) return { type: 'review', code: 'AMOUNT_EXCEEDS_BALANCE' }
       const settledOn = cashDateOf(p)
       if (!settledOn) return { type: 'review', code: 'MISSING_PAYMENT_DATE' }
+      if (settledOn > input.today) return { type: 'none', reason: 'AWAITING_CREDIT_DATE' }
       return { type: 'record_receipt', amountCents: p.valueCents, settledOn, idempotencyKey: receiptIdempotencyKey(input.environment, p.id) }
     }
     case 'confirmed':

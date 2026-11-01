@@ -74,10 +74,14 @@ export type NormalizedPayment = {
   feeCents: number | null
   refundedCents: number
   dueDate: string
+  /** Vencimento original da cobrança (campo originalDueDate do Asaas), quando informado. */
+  originalDueDate: string | null
   paymentDate: string | null
   clientPaymentDate: string | null
   confirmedDate: string | null
   creditDate: string | null
+  /** Data PREVISTA de crédito (estimatedCreditDate): informativa, nunca vira caixa antes de chegar. */
+  estimatedCreditDate: string | null
   externalReference: string | null
 }
 
@@ -95,8 +99,9 @@ export function normalizePayment(raw: unknown, eventType?: string): NormalizedPa
   if (netValueCents !== null && netValueCents > valueCents) throw new AsaasDataError('INVALID_NET_VALUE')
   const refunds = Array.isArray(p.refunds) ? p.refunds : []
   let refundedCents = 0
+  // Documentação oficial: só estornos com status DONE representam dinheiro devolvido (PENDING ainda não, CANCELLED nunca).
   for (const r of refunds) {
-    if (r && typeof r === 'object' && (r as { status?: unknown }).status !== 'CANCELLED') {
+    if (r && typeof r === 'object' && (r as { status?: unknown }).status === 'DONE') {
       refundedCents += asaasValueToCents((r as { value?: unknown }).value, 'refund_value')
     }
   }
@@ -111,10 +116,12 @@ export function normalizePayment(raw: unknown, eventType?: string): NormalizedPa
     billingType: typeof p.billingType === 'string' ? p.billingType.slice(0, 30) : null,
     valueCents, netValueCents, feeCents: netValueCents === null ? null : valueCents - netValueCents, refundedCents,
     dueDate: date(p.dueDate, 'due_date', true)!,
+    originalDueDate: date(p.originalDueDate, 'original_due_date'),
     paymentDate: date(p.paymentDate, 'payment_date'),
     clientPaymentDate: date(p.clientPaymentDate, 'client_payment_date'),
     confirmedDate: date(p.confirmedDate, 'confirmed_date'),
     creditDate: date(p.creditDate, 'credit_date'),
+    estimatedCreditDate: date(p.estimatedCreditDate, 'estimated_credit_date'),
     externalReference: typeof p.externalReference === 'string' ? p.externalReference.slice(0, 100) : null,
   }
 }

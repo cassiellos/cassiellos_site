@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg'
 import {
+  todayInBrazil,
   INVOICE_STATUS, STATE_LABEL, addMonths, categoryLabel, competenceMonths, csvCell, csvMoney, dueDateFor, entryState,
   firstDay, lastDay, monthDiff, monthOf, monthlyEquivalentCents, type Direction, type EntryState, type FormalizationStatus, type InvoiceStatus,
   type Periodicity, type ServiceStatus, type SourceStatus,
@@ -383,46 +384,62 @@ export async function updateEntry(pool: FinancePool, entryId: string, amountCent
 
 /**
  * Registra um recebimento/pagamento REAL (parcial ou total). Idempotente pela chave: repetir a mesma requisição
- * devolve o movimento já gravado, sem duplicar. Nunca aceita valor acima do saldo em aberto.
+ * devolve o movimento já gravado, sem duplicar. Nunca aceita valor acima do saldo em aberto nem data FUTURA
+ * (o caixa não pode mostrar dinheiro antes de ele existir).
  */
-export async function recordSettlement(pool: FinancePool, input: SettlementInput, actor: string): Promise<{ id: string; duplicate: boolean; remainingCents: number }> {
-  return tx(pool, async c => {
-    const e = await c.query('SELECT status, amount_cents FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [input.entryId])
-    if (!e.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
-    const existing = await c.query('SELECT id, entry_id, amount_cents FROM crm.finance_settlements WHERE idempotency_key = $1', [input.idempotencyKey])
-    const settled = await activeSettled(c, input.entryId)
-    const amount = num(e.rows[0].amount_cents)
-    if (existing.rowCount) {
-      const x = existing.rows[0]
-      if (x.entry_id !== input.entryId || num(x.amount_cents) !== input.amountCents) throw new FinanceRuleError('IDEMPOTENCY_KEY_REUSED')
-      return { id: x.id, duplicate: true, remainingCents: Math.max(0, amount - settled) }
-    }
-    if (e.rows[0].status === 'cancelled') throw new FinanceRuleError('ENTRY_CANCELLED')
-    const remaining = amount - settled
-    if (remaining <= 0) throw new FinanceRuleError('ENTRY_ALREADY_SETTLED')
-    if (input.amountCents > remaining) throw new FinanceRuleError('AMOUNT_EXCEEDS_BALANCE')
-    const ins = await c.query(
-      `INSERT INTO crm.finance_settlements (entry_id, amount_cents, settled_on, method, notes, idempotency_key, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (idempotency_key) DO NOTHING RETURNING id`,
-      [input.entryId, input.amountCents, input.settledOn, input.method, input.notes, input.idempotencyKey, actor])
-    if (!ins.rowCount) throw new FinanceRuleError('IDEMPOTENCY_KEY_REUSED')
-    const id = ins.rows[0].id as string
-    await audit(c, 'settlement', id, 'recorded', actor, { entryId: input.entryId, amountCents: input.amountCents, settledOn: input.settledOn })
-    return { id, duplicate: false, remainingCents: remaining - input.amountCents }
-  })
+export async function recordSettlement(pool: FinancePool, input: SettlementInput, actor: string, opts: { today?: string } = {}):
+  Promise<{ id: string; duplicate: boolean; remainingCents: number }> {
+  return tx(pool, c => recordSettlementInTx(c, input, actor, opts))
+}
+
+/**
+ * Mesma regra de recordSettlement, dentro da transação de quem chama (ex.: conciliação Asaas, que precisa decidir e
+ * executar sob a mesma trava). Não abre nem confirma transação.
+ */
+export async function recordSettlementInTx(c: PoolClient, input: SettlementInput, actor: string, opts: { today?: string } = {}):
+  Promise<{ id: string; duplicate: boolean; remainingCents: number }> {
+  const e = await c.query('SELECT status, amount_cents FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [input.entryId])
+  if (!e.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
+  const existing = await c.query('SELECT id, entry_id, amount_cents FROM crm.finance_settlements WHERE idempotency_key = $1', [input.idempotencyKey])
+  const settled = await activeSettled(c, input.entryId)
+  const amount = num(e.rows[0].amount_cents)
+  if (existing.rowCount) {
+    const x = existing.rows[0]
+    if (x.entry_id !== input.entryId || num(x.amount_cents) !== input.amountCents) throw new FinanceRuleError('IDEMPOTENCY_KEY_REUSED')
+    return { id: x.id, duplicate: true, remainingCents: Math.max(0, amount - settled) }
+  }
+  // Data futura nunca vira caixa (vale para qualquer origem: tela, integração ou script).
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.settledOn) || input.settledOn > (opts.today ?? todayInBrazil())) {
+    throw new FinanceRuleError('SETTLED_ON_IN_FUTURE', 400)
+  }
+  if (e.rows[0].status === 'cancelled') throw new FinanceRuleError('ENTRY_CANCELLED')
+  const remaining = amount - settled
+  if (remaining <= 0) throw new FinanceRuleError('ENTRY_ALREADY_SETTLED')
+  if (input.amountCents > remaining) throw new FinanceRuleError('AMOUNT_EXCEEDS_BALANCE')
+  const ins = await c.query(
+    `INSERT INTO crm.finance_settlements (entry_id, amount_cents, settled_on, method, notes, idempotency_key, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (idempotency_key) DO NOTHING RETURNING id`,
+    [input.entryId, input.amountCents, input.settledOn, input.method, input.notes, input.idempotencyKey, actor])
+  if (!ins.rowCount) throw new FinanceRuleError('IDEMPOTENCY_KEY_REUSED')
+  const id = ins.rows[0].id as string
+  await audit(c, 'settlement', id, 'recorded', actor, { entryId: input.entryId, amountCents: input.amountCents, settledOn: input.settledOn })
+  return { id, duplicate: false, remainingCents: remaining - input.amountCents }
 }
 
 /** Estorno: o movimento continua no histórico, marcado como estornado (quem, quando, motivo). */
 export async function reverseSettlement(pool: FinancePool, settlementId: string, reason: string, actor: string): Promise<void> {
-  await tx(pool, async c => {
-    const s = await c.query('SELECT entry_id, reversed_at FROM crm.finance_settlements WHERE id = $1', [settlementId])
-    if (!s.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
-    await c.query('SELECT 1 FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [s.rows[0].entry_id])
-    if (s.rows[0].reversed_at) return
-    await c.query('UPDATE crm.finance_settlements SET reversed_at = now(), reversed_by = $2, reversal_reason = $3 WHERE id = $1 AND reversed_at IS NULL',
-      [settlementId, actor, reason])
-    await audit(c, 'settlement', settlementId, 'reversed', actor, { entryId: s.rows[0].entry_id, reason })
-  })
+  await tx(pool, c => reverseSettlementInTx(c, settlementId, reason, actor))
+}
+
+/** Mesma regra de reverseSettlement, dentro da transação de quem chama. Idempotente (já estornado = nada a fazer). */
+export async function reverseSettlementInTx(c: PoolClient, settlementId: string, reason: string, actor: string): Promise<void> {
+  const s = await c.query('SELECT entry_id, reversed_at FROM crm.finance_settlements WHERE id = $1', [settlementId])
+  if (!s.rowCount) throw new FinanceRuleError('NOT_FOUND', 404)
+  await c.query('SELECT 1 FROM crm.finance_entries WHERE id = $1 FOR UPDATE', [s.rows[0].entry_id])
+  if (s.rows[0].reversed_at) return
+  await c.query('UPDATE crm.finance_settlements SET reversed_at = now(), reversed_by = $2, reversal_reason = $3 WHERE id = $1 AND reversed_at IS NULL',
+    [settlementId, actor, reason])
+  await audit(c, 'settlement', settlementId, 'reversed', actor, { entryId: s.rows[0].entry_id, reason })
 }
 
 // ───────────────────────── notas fiscais (controle manual) ─────────────────────────
