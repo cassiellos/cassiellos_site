@@ -19,7 +19,7 @@ function mock(handler: (url: string) => { status: number; body: unknown } | Prom
   return { calls, transport }
 }
 const enabled = (transport: AsaasTransport, o: Record<string, unknown> = {}) =>
-  createAsaasSandboxGateway({ environment: 'sandbox', enabled: true, apiKey: FAKE_SANDBOX_KEY, transport, ...o })
+  createAsaasSandboxGateway({ environment: 'sandbox', enabled: true, apiKey: FAKE_SANDBOX_KEY, transport, minIntervalMs: 0, sleep: async () => undefined, ...o })
 const rejects = (p: Promise<unknown>, code: string) => assert.rejects(p, (e: unknown) => e instanceof AsaasHttpError && e.code === code)
 
 describe('cliente Asaas — ativação e ambiente', () => {

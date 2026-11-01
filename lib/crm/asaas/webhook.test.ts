@@ -84,13 +84,21 @@ describe('barreiras estáticas da Fase 2.2A', () => {
       .filter(f => /from ['"][^'"]*asaas[^'"]*['"]/.test(readFileSync(f, 'utf8')))
     assert.deepEqual(importers, [])
   })
-  it('módulo sem fetch global, sem process.env e sem URL de produção do Asaas', () => {
+  it('módulo sem fetch global, sem process.env e sem URL de produção; rede SÓ no transporte HTTPS do Sandbox', () => {
     for (const f of prod) {
       const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')
-      assert.ok(!/\bfetch\s*\(|globalThis\.fetch|XMLHttpRequest|node:https?|undici/.test(src), 'rede em ' + f)
+      assert.ok(!/\bfetch\s*\(|globalThis\.fetch|XMLHttpRequest|undici|node:net|node:tls|node:http2/.test(src), 'rede em ' + f)
+      if (!f.endsWith('transport-https.ts')) assert.ok(!/['"]node:https?['"]/.test(src), 'rede em ' + f)
+      else assert.ok(!/api\.asaas\.com|hostname:\s*['"]/.test(src), 'host fixo deve vir da base do Sandbox')
       assert.ok(!/process\.env/.test(src), 'process.env em ' + f)
       assert.ok(!/api\.asaas\.com|www\.asaas\.com/.test(src), 'URL de produção em ' + f)
     }
+  })
+  it('transporte HTTPS, credencial e consulta só são importados pelo script do titular', () => {
+    const importers = files(join(root, 'scripts')).filter(f => /from ['"][^'"]*asaas\/(transport-https|credential|probe)['"]/.test(readFileSync(f, 'utf8')))
+    assert.deepEqual(importers.map(f => f.slice(root.length + 1)), ['scripts/asaas-sandbox-probe.ts'])
+    const inLib = files(asaasDir).filter(f => !/\.test\.ts$/.test(f) && !f.endsWith('probe.ts') && /from ['"]\.\/(transport-https|credential)['"]/.test(readFileSync(f, 'utf8')))
+    assert.deepEqual(inLib, [])
   })
   it('nenhum método de escrita no cliente HTTP (somente GET)', () => {
     const src = readFileSync(join(asaasDir, 'http.ts'), 'utf8')
