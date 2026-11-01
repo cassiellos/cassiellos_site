@@ -1,3 +1,5 @@
+import { buildBookingEventRequest, parseCreatedEvent, type BookingEventInput, type ParsedCreatedEvent } from './booking-event'
+
 /**
  * Operações administrativas sobre eventos do Google Calendar (Fase 3.4), sem
  * dependência de credenciais para poderem ser testadas. O adaptador real fica em
@@ -51,4 +53,29 @@ export async function readGoogleEventState(request: GoogleRequest, calendarId: s
   const meetingUrl = 'hangoutLink' in data && typeof data.hangoutLink === 'string' &&
     /^https:\/\/meet\.google\.com\//.test(data.hangoutLink) ? data.hangoutLink : null
   return { state: 'active', meetingUrl }
+}
+
+export type GoogleInsert = (path: string, body: unknown) => Promise<{ status: number; json: unknown }>
+
+/**
+ * Criação do evento do agendamento (testável sem credenciais). Com participante: sendUpdates=all.
+ * Se o Google RECUSAR o evento com participante (403), repete UMA vez sem participante — o id do evento é fixo,
+ * então nunca há dois eventos nem dois Meet, e a reunião não trava por causa do convite. Qualquer outra falha
+ * (inclusive 409: evento com esse id já existe) = não confirmado, para revisão manual (sem convite duplicado).
+ */
+export async function insertBookingEvent(
+  insert: GoogleInsert, calendarId: string, input: BookingEventInput,
+  onRetry?: (status: number) => void,
+): Promise<ParsedCreatedEvent> {
+  let effective = input
+  let req = buildBookingEventRequest(calendarId, effective)
+  let result = await insert(req.path, req.body)
+  if (result.status === 403 && input.attendeeEmail) {
+    onRetry?.(result.status)
+    effective = { ...input, attendeeEmail: null }
+    req = buildBookingEventRequest(calendarId, effective)
+    result = await insert(req.path, req.body)
+  }
+  if (result.status < 200 || result.status >= 300) throw new Error('CRM_GOOGLE_CALENDAR_UNAVAILABLE')
+  return parseCreatedEvent(result.json, effective.attendeeEmail)
 }

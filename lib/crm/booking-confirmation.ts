@@ -9,7 +9,7 @@ import {
 } from './availability/engine'
 import type { HandlerResponse } from './booking-intake-request'
 import type { BookingEventInput } from './booking-event'
-import { isGoogleMeetUrl } from './booking-event'
+import { bookingEventTitle, isGoogleMeetUrl, isInvitableEmail } from './booking-event'
 
 /** Grade de horários: 30 min (decisão D3). Como o fuso é -03:00, a grade local coincide com a UTC. */
 const SLOT_GRID_MS = 30 * 60_000
@@ -27,7 +27,7 @@ const SLOT_GRID_MS = 30 * 60_000
 
 export type BookingSession = { leadId: string; submissionId: string; formSlug: string }
 
-export type CreatedEvent = { id: string; meetingUrl: string | null; htmlLink: string | null }
+export type CreatedEvent = { id: string; meetingUrl: string | null; htmlLink: string | null; invitationRequested?: boolean }
 
 export type ConfirmDeps = {
   pool: ConnectablePool
@@ -43,6 +43,11 @@ export type ConfirmDeps = {
    * O fluxo público passa false (lib/crm/booking-access.ts): qualquer e-mail válido agenda, com as demais proteções.
    */
   restrictToAllowedEmail?: boolean
+  /**
+   * true = convida o e-mail do lead para o evento (o Google envia o convite com o Meet; sendUpdates=all).
+   * Padrão false (seguro para chamadas internas e testes); a rota pública decide (CRM_BOOKING_SEND_INVITES).
+   */
+  sendInvites?: boolean
   limits?: EligibilityInput['limits']
   /**
    * Regras de disponibilidade (horário comercial, feriados, bloqueios, exceções). Lidas a cada
@@ -183,9 +188,12 @@ export async function confirmBookingRequest(
       return { status: 409, body: { error: 'SLOT_UNAVAILABLE' } }
     }
 
-    // Sem convidados: o e-mail do lead (reservation.email) NÃO vai ao Google.
+    // Convite: o e-mail do lead (reservation.email) vira o ÚNICO participante, só com sendInvites ligado.
+    const attendeeEmail = deps.sendInvites === true && isInvitableEmail(reservation.email.trim().toLowerCase())
+      ? reservation.email.trim().toLowerCase() : null
     const event = await deps.createEvent({
-      title: form.meetingName,
+      title: bookingEventTitle(form.meetingName),
+      attendeeEmail,
       startAt: normalizedStart,
       endAt: finishAt,
       requestId: reservation.id,
@@ -213,6 +221,9 @@ export async function confirmBookingRequest(
         googleMeetUrl: isGoogleMeetUrl(event.meetingUrl) ? event.meetingUrl : null,
         meetPending: !isGoogleMeetUrl(event.meetingUrl),
         meetingTitle: form.meetingName,
+        // O Google aceitou o evento com o lead como participante (pedido de convite). Entrega e aceite NÃO são
+        // conhecidos aqui: invitationSent continua false de propósito.
+        invitationRequested: event.invitationRequested === true,
         invitationSent: false,
         environment: 'preview',
         // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.

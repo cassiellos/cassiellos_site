@@ -27,14 +27,14 @@ describe('acesso público ao agendamento (configuração)', () => {
   const preview = { VERCEL_ENV: 'preview', CRM_GOOGLE_BOOKINGS_ENABLED: 'true' }
   it('allowlist de homologação presente NÃO restringe o público (padrão)', () => {
     assert.deepEqual(bookingAccessConfig({ ...preview, CRM_BOOKING_ALLOWED_EMAIL: HOMOLOGATION }),
-      { enabled: true, restrictedToAllowedEmail: false, allowedEmail: HOMOLOGATION })
+      { enabled: true, restrictedToAllowedEmail: false, allowedEmail: HOMOLOGATION, sendInvites: true })
   })
   it('não exige mais o e-mail de homologação para habilitar a confirmação', () => {
     assert.equal(bookingAccessConfig(preview).enabled, true)
   })
   it('restrição só com CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL=true; sem e-mail configurado = desligado (falha fechada)', () => {
     assert.deepEqual(bookingAccessConfig({ ...preview, CRM_BOOKING_ALLOWED_EMAIL: HOMOLOGATION, CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL: 'true' }),
-      { enabled: true, restrictedToAllowedEmail: true, allowedEmail: HOMOLOGATION })
+      { enabled: true, restrictedToAllowedEmail: true, allowedEmail: HOMOLOGATION, sendInvites: true })
     assert.equal(bookingAccessConfig({ ...preview, CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL: 'true' }).enabled, false)
   })
   it('continua desligado fora do Preview ou sem o interruptor', () => {

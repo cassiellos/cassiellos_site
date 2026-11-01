@@ -16,9 +16,11 @@ import MetaPixel from '@/components/marketing/meta-pixel'
 import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
-/** Reunião confirmada pelo servidor (sem convite por e-mail: o link fica nesta tela). */
+/** Reunião confirmada pelo servidor. O link fica nesta tela mesmo quando o convite do Google Agenda foi pedido. */
 type Confirmation = {
   bookingRequestId: string; startAt: string; endAt: string; meetUrl: string | null; title: string
+  /** O Google aceitou o evento com o lead como participante (convite PEDIDO; entrega/aceite não são conhecidos). */
+  invitationRequested: boolean
   /** Estado real do backend: 'confirmed' = evento com link do Meet; 'link_pending' = horário reservado, link em preparação. */
   state: 'confirmed' | 'link_pending'
 }
@@ -131,9 +133,9 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, bookingRestricted = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
+  form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
 }: {
-  form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
+  form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; invitesEnabled?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
   /** Homologação do Meta Pixel ativa no Pixel comercial (1 Lead e 1 Schedule de teste; lib/marketing/homologation.ts). */
   metaHomologation?: { expiresAt: string } | null
 }) {
@@ -503,6 +505,7 @@ export default function BookingExperience({
         bookingRequestId: typeof value.bookingRequestId === 'string' ? value.bookingRequestId : '',
         startAt, endAt, meetUrl,
         title: typeof value.meetingTitle === 'string' ? value.meetingTitle : form.meetingName,
+        invitationRequested: value.invitationRequested === true,
         state: meetUrl ? 'confirmed' : 'link_pending',
       })
       // Meta "Schedule": só quando o backend confirmou a reunião (evento válido no Google) de um lead REAL —
@@ -781,7 +784,9 @@ export default function BookingExperience({
             </div>
             <div className="booking-demo-confirm"><Icon name="shield"/>
               <span>{bookingEnabled
-                ? 'Teste controlado: a confirmação cria a reunião na agenda da Cassiellos e não envia convite por e-mail.'
+                ? (bookingRestricted ? 'Teste controlado: a' : 'A') + (invitesEnabled
+                  ? ' confirmação cria a reunião na agenda da Cassiellos e o Google Agenda envia um convite para ' + attendee.email + '.'
+                  : ' confirmação cria a reunião na agenda da Cassiellos e não envia convite por e-mail.')
                 : 'Prévia de interface. A confirmação real permanece bloqueada até autorizarmos um teste controlado com e-mail real.'}</span>
             </div>
             <button type="button" className="booking-secondary booking-back-full"
@@ -805,8 +810,12 @@ export default function BookingExperience({
             </div> : <div className="booking-card-heading">
               <div className="booking-step-label">AGENDAMENTO CONFIRMADO</div>
               <h2>Reunião registrada com sucesso.</h2>
-              <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: se quiser, use os
-                botões para salvar a reunião na sua agenda.</p>
+              {confirmation?.invitationRequested
+                ? <p>Pedimos ao Google Agenda que envie o convite para <strong>{attendee.email}</strong>. Ele pode levar alguns
+                  minutos para chegar — confira também as pastas de spam e promoções. O link e os botões abaixo continuam
+                  disponíveis caso prefira salvar a reunião agora.</p>
+                : <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: se quiser, use os
+                  botões para salvar a reunião na sua agenda.</p>}
             </div>}
             <div className="booking-review-list">
               <div><small>DATA</small><strong>{confirmation ? dateFormat.format(new Date(confirmation.startAt)) : date && humanDate(date)}</strong></div>
@@ -840,7 +849,7 @@ export default function BookingExperience({
                 startAt: confirmation.startAt, endAt: confirmation.endAt, meetUrl: confirmation.meetUrl,
               }))}><Icon name="calendar"/>Baixar para Apple / Outlook (.ics)</button>
             </div>}
-            <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>
+            {bookingRestricted && <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>}
           </div>}
         </div>
       </section>

@@ -48,7 +48,7 @@ export default async function NicheBookingPage({
   // no máximo 1 Lead e 1 Schedule de teste, marcados (lib/marketing/homologation.ts).
   const homologation = activeHomologation((await cookies()).toString())
   const metaPixelId = homologation ? homologation.pixelId : pixel.enabled ? pixel.pixelId : null
-  return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} turnstileSiteKey={turnstileSiteKey}
+  return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} invitesEnabled={access.sendInvites} turnstileSiteKey={turnstileSiteKey}
     analyticsMode={analyticsMode} metaPixelId={metaPixelId}
     metaHomologation={homologation ? { expiresAt: homologation.expiresAt } : null} />
 }

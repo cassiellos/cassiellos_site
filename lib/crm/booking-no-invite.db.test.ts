@@ -81,7 +81,9 @@ describe('agendamento público sem convite (PostgreSQL descartável)', { skip },
     const [slot] = slots(1)
     const r = await confirmBookingRequest(deps(g, l.email), { bookingToken: session(l), startAt: slot.startAt, pageOrigin: ORIGIN })
     assert.equal(r.status, 201)
-    assert.deepEqual(Object.keys(g.inputs[0]).sort(), ['endAt', 'googleEventId', 'reference', 'requestId', 'startAt', 'title'])
+    // Convite desligado (padrão interno): attendeeEmail = null — nenhum participante vai ao Google.
+    assert.deepEqual(Object.keys(g.inputs[0]).sort(), ['attendeeEmail', 'endAt', 'googleEventId', 'reference', 'requestId', 'startAt', 'title'])
+    assert.equal(g.inputs[0].attendeeEmail, null)
     const sent = JSON.stringify(g.inputs[0])
     for (const pii of [l.email, l.name, l.phone, '@']) assert.equal(sent.includes(pii), false, 'dado pessoal no evento: ' + pii)
     assert.equal(r.body.googleMeetUrl, MEET)

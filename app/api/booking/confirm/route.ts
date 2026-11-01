@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
     // Público: qualquer e-mail válido. Só restringe ao e-mail de homologação se CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL=true.
     allowedEmail: access.allowedEmail, restrictToAllowedEmail: access.restrictedToAllowedEmail,
+    sendInvites: access.sendInvites,
     metaHomologation: homologationClaims(request.headers.get('cookie')),
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),

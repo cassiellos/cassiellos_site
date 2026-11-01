@@ -9,12 +9,14 @@
  * - Proteções que valem para todos: Turnstile verificado no servidor, cota por IP, limite por caixa de e-mail,
  *   uma reunião ativa por contato e reserva atômica do horário.
  */
-export type BookingAccess = { enabled: boolean; restrictedToAllowedEmail: boolean; allowedEmail: string }
+export type BookingAccess = { enabled: boolean; restrictedToAllowedEmail: boolean; allowedEmail: string; sendInvites: boolean }
 
 export function bookingAccessConfig(env: Record<string, string | undefined> = process.env): BookingAccess {
   const allowedEmail = (env.CRM_BOOKING_ALLOWED_EMAIL ?? '').trim()
   const restrictedToAllowedEmail = env.CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL?.trim().toLowerCase() === 'true'
   const switchOn = env.VERCEL_ENV === 'preview' && env.CRM_GOOGLE_BOOKINGS_ENABLED === 'true'
   const enabled = switchOn && (!restrictedToAllowedEmail || allowedEmail.includes('@'))
-  return { enabled, restrictedToAllowedEmail, allowedEmail }
+  // Convite do Google Agenda ao e-mail do lead: LIGADO por padrão; CRM_BOOKING_SEND_INVITES=false desliga sem novo deploy.
+  const sendInvites = env.CRM_BOOKING_SEND_INVITES?.trim().toLowerCase() !== 'false'
+  return { enabled, restrictedToAllowedEmail, allowedEmail, sendInvites }
 }

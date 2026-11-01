@@ -3,9 +3,9 @@ import 'server-only'
 import type { BusyInterval } from '@/lib/crm/booking-slots'
 import { CRM_BOOKING_TIME_ZONE } from '@/lib/crm/booking-slots'
 import { getGoogleRefreshToken, googleOAuthConfig } from '@/lib/crm/google-oauth'
-import { buildBookingEventRequest, parseCreatedEvent, type BookingEventInput } from './booking-event'
+import type { BookingEventInput } from './booking-event'
 import {
-  cancelGoogleEvent, readGoogleEventState,
+  cancelGoogleEvent, insertBookingEvent, readGoogleEventState,
   type GoogleCancelResult, type GoogleEventState, type GoogleRequest,
 } from '@/lib/crm/google-event-ops'
 
@@ -118,17 +118,32 @@ export type GoogleCreatedEvent = {
   id: string
   meetingUrl: string | null
   htmlLink: string | null
+  /** Google aceitou o evento com o lead como participante e sendUpdates=all (não comprova entrega nem aceite). */
+  invitationRequested: boolean
+}
+
+/** POST que devolve o status (para distinguir recusa do Google de falha de rede). */
+async function calendarInsert(config: Credentials, path: string, body: unknown): Promise<{ status: number; json: unknown }> {
+  const token = await googleAccessToken(config)
+  const response = await fetch('https://www.googleapis.com/calendar/v3/' + path, {
+    method: 'POST', cache: 'no-store',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(8_000),
+  })
+  return { status: response.status, json: response.ok ? await response.json() : null }
 }
 
 /**
- * Cria o evento do agendamento na agenda da Cassiellos com Google Meet e SEM CONVIDADOS
- * (nenhum convite automático para e-mail não verificado). Ver lib/crm/booking-event.ts.
+ * Cria o evento do agendamento na agenda da Cassiellos, com Google Meet. Com attendeeEmail, o lead é o único
+ * participante e o Google envia o convite (sendUpdates=all). Escopo: o mesmo calendar.events.owned já autorizado.
+ * Se o Google RECUSAR o evento com participante (403), repete UMA vez sem participante: o id do evento é fixo,
+ * então nunca há segundo evento nem segundo Meet, e a reunião não fica travada por causa do convite.
  */
 export async function createGoogleBooking(input: BookingEventInput): Promise<GoogleCreatedEvent> {
   const config = await credentials()
   if (!config) throw new Error('CRM_GOOGLE_NOT_CONFIGURED')
-  const { path, body } = buildBookingEventRequest(config.calendarId, input)
-  return parseCreatedEvent(await calendarRequest(config, path, body))
+  return insertBookingEvent((path, body) => calendarInsert(config, path, body), config.calendarId, input,
+    status => console.warn(JSON.stringify({ scope: 'google_booking', event: 'invite_refused_retry_without_attendee', status })))
 }
 
 /**
