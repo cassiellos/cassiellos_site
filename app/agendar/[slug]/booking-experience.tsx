@@ -764,7 +764,7 @@ export default function BookingExperience({
               onClick={() => setStep(2)}><Icon name="back"/> Escolher outro horário</button>
             {confirmationError && <p className="booking-save-error" role="alert">{confirmationError}</p>}
             <button className="booking-primary" type="button" disabled={!bookingEnabled || confirming || !bookingToken}
-              onClick={confirmBooking}>
+              onClick={() => void confirmBooking()}>
               {confirming ? 'Confirmando no Google Calendar…' :
                 bookingEnabled ? (bookingRestricted ? 'Confirmar reunião de teste' : 'Confirmar reunião') : 'Confirmar reunião (em desenvolvimento)'}
               <Icon name="check"/>
