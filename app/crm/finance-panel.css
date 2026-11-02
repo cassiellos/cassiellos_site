@@ -458,3 +458,33 @@
   #cassiellos-crm .crm-fin-kpi-link{transition:none}
   #cassiellos-crm .crm-fin-kpi-link:hover{transform:none}
 }
+
+
+/* Visão Geral: semáforo de leitura com contraste premium no fundo marinho. */
+#cassiellos-crm .crm-fin-kpi[data-tone="green"] {
+  border-color:rgba(52,214,160,.25);
+  background:linear-gradient(160deg,rgba(30,101,80,.12),transparent 72%),#0d1a2b;
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="green"] strong {
+  color:#36dfab;text-shadow:0 0 20px rgba(42,208,155,.12);
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="orange"] {
+  border-color:rgba(255,166,70,.24);
+  background:linear-gradient(160deg,rgba(143,83,27,.10),transparent 72%),#0d1a2b;
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="orange"] strong {
+  color:#ffb468;
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="red"] {
+  border-color:rgba(255,74,94,.31);
+  background:linear-gradient(160deg,rgba(154,30,52,.14),transparent 72%),#0d1a2b;
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="red"] strong {
+  color:#ff526d;text-shadow:0 0 18px rgba(255,62,86,.19);
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="default"] strong {
+  color:#f4f7ff;
+}
+#cassiellos-crm .crm-fin-kpi[data-tone="red"][data-negative] strong {
+  color:#ff526d;
+}
