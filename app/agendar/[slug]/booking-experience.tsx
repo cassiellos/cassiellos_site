@@ -386,7 +386,9 @@ export default function BookingExperience({
       return
     }
     if (!turnstileToken) {
-      setSaveError('Aguarde a conclusão da verificação de segurança e tente novamente.')
+      setSaveError(turnstileState === 'error'
+        ? 'A verificação de segurança não carregou. Toque em “Tentar novamente” abaixo e aguarde.'
+        : 'Conclua a verificação de segurança para finalizar seu agendamento.')
       return
     }
     for (const question of questions) {
@@ -724,10 +726,27 @@ export default function BookingExperience({
               {fieldError?.name === 'email' && <p className="booking-field-error" id="booking-email-error" role="alert">{fieldError.message}</p>}
               <p className="booking-inline-privacy">Ao confirmar o agendamento, você solicita contato sobre o diagnóstico.
                 Saiba como usamos seus dados na <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>.</p>
-              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
-                resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>}
+              {turnstileSiteKey && <>
+                <TurnstileWidget key={turnstileReset} siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
+                  resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>
+                {!turnstileToken && <div className="booking-security-help" role="status" aria-live="polite">
+                  <span>{turnstileState === 'error'
+                    ? 'A verificação de segurança não carregou.'
+                    : turnstileState === 'expired'
+                      ? 'A verificação expirou.'
+                      : turnstileState === 'loading' || turnstileState === 'verifying'
+                        ? 'Verificando segurança… Se necessário, conclua a verificação acima.'
+                        : 'Conclua a verificação acima para confirmar.'}</span>
+                  {(turnstileState === 'error' || turnstileState === 'expired' || turnstileState === 'verifying') &&
+                    <button type="button" onClick={() => {
+                      setSaveError('')
+                      setTurnstileToken(null)
+                      setTurnstileReset(value => value + 1)
+                    }}>Tentar novamente</button>}
+                </div>}
+              </>}
               {!turnstileSiteKey && <p className="booking-security-status" data-state="error" role="alert">A confirmação está indisponível nesta prévia até configurar a verificação de segurança.</p>}
-              <button type="submit" className="booking-primary" disabled={savingLead || confirming || !bookingEnabled || !attendee.email.trim() || !turnstileToken}>
+              <button type="submit" className="booking-primary" disabled={savingLead || confirming || !bookingEnabled || !attendee.email.trim()}>
                 {savingLead ? 'Confirmando sua reunião…' : 'Confirmar agendamento'} <Icon name="check"/>
               </button>
               {saveError && <p className="booking-save-error" role="alert">{saveError}</p>}
