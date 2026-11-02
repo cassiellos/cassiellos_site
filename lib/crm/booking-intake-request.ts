@@ -45,6 +45,7 @@ function configuredAnswers(form: BookingForm, raw: unknown) {
     const rawValue = (raw as Record<string, unknown>)[field.name]
     const value = clean(rawValue, 120)
     if (field.required && (!value || value.length < 2)) return null
+    if (field.name === 'instagram' && value && !(/^@[a-zA-Z0-9._]{2,30}$/.test(value) || /^https:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]{2,30}\/?$/.test(value))) return null
     if (value && field.type === 'select' && !field.options?.includes(value)) return null
     if (value) answers[field.name] = value
   }
