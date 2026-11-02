@@ -1,5 +1,5 @@
 export type BookingField = {
-  name: 'clinic' | 'priority' | 'units' | 'revenue'
+  name: 'clinic' | 'priority' | 'units' | 'revenue' | 'instagram' | 'budget'
   label: string
   type: 'text' | 'select'
   required: boolean
@@ -37,21 +37,18 @@ export const REVENUE_RANGES = [
 const bookingForms: Record<string, BookingForm> = {
   odontologia: {
     slug: 'odontologia',
-    version: 'odontologia-v2',
+    version: 'odontologia-v3',
     niche: 'Clínicas odontológicas',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
-    headline: 'Sua clínica tem espaço para crescer. Vamos conversar?',
-    description: 'Conte rapidamente sobre sua clínica e escolha o melhor horário para uma conversa estratégica com a Cassiellos.',
+    headline: 'Tráfego pago para clínicas odontológicas que querem vender mais.'
+    description: 'Um diagnóstico direto para entender o momento da sua clínica e avaliar oportunidades de crescimento.'
     meetingName: 'Diagnóstico estratégico • Odontologia',
     durationMinutes: 30,
     fields: [
-      { name: 'clinic', label: 'Nome da clínica', type: 'text', required: true, placeholder: 'Como sua clínica se chama?' },
-      { name: 'revenue', label: 'Qual é o faturamento médio mensal da clínica?', type: 'select', required: true,
-        options: REVENUE_RANGES },
-      { name: 'priority', label: 'Qual é seu principal objetivo?', type: 'select', required: true,
-        options: ['Atrair mais pacientes', 'Melhorar o marketing da clínica', 'Organizar os anúncios e resultados', 'Quero entender as possibilidades'] },
-    ],
-  },
+      { name: 'instagram', label: 'Qual é o site ou @ do Instagram da sua clínica?', type: 'text', required: true, placeholder: '@suaclinica' },
+      { name: 'revenue', label: 'Qual é o faturamento mensal da sua clínica?', type: 'select', required: true, options: REVENUE_RANGES },
+      { name: 'budget', label: 'Para escalar com segurança, recomendamos um investimento a partir de (valor). Isso cabe no seu planejamento?', type: 'select', required: true, options: ['Sim', 'Não'] },
+    ],  },
 }
 
 /** Uma configuração por nicho; novas versões podem ser adicionadas sem redesenhar a página. */
