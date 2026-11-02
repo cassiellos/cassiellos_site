@@ -81,11 +81,12 @@ export async function changePushSettings(pool: Queryable, change: SettingsChange
   if (!(await loadPushSettings(pool))) return { ok: false, error: 'MIGRATION_PENDING' }
   const by = 'crm_admin:' + actorRef.slice(0, 16)
   if (change.action === 'preferences') {
+    // Não reabilitar avisos de cadastro: a qualificação exige reunião confirmada.
     if (typeof change.notifyLeads !== 'boolean' || typeof change.notifyMeetings !== 'boolean') return { ok: false, error: 'INVALID_REQUEST' }
     await pool.query(
       `INSERT INTO crm.push_settings (id, notify_leads, notify_meetings, updated_by, updated_at) VALUES (1, $1, $2, $3, now())
        ON CONFLICT (id) DO UPDATE SET notify_leads = $1, notify_meetings = $2, updated_by = $3, updated_at = now()`,
-      [change.notifyLeads, change.notifyMeetings, by])
+      [false, change.notifyMeetings, by])
     return { ok: true }
   }
   if (change.action === 'restore_template') {
