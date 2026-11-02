@@ -170,6 +170,9 @@ export default function BookingExperience({
   const [turnstileState, setTurnstileState] = useState<TurnstileState>('loading')
   const [turnstileReset, setTurnstileReset] = useState(0)
   const submissionKey = useRef<string | null>(null)
+  // Guards synchronous rapid taps while the two protected server requests run.
+  const leadSubmissionInFlight = useRef(false)
+  const bookingConfirmationInFlight = useRef(false)
   // Marketing choice last recorded in the CRM for this booking session (null = nothing saved yet).
   const syncedMarketingConsent = useRef<boolean | null>(null)
 
@@ -369,8 +372,11 @@ export default function BookingExperience({
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (savingLead) return
-    if (leadSaved) return
+    if (savingLead || leadSaved || leadSubmissionInFlight.current || bookingConfirmationInFlight.current) return
+    if (!chosen || loading || failed || !bookingEnabled) {
+      setSaveError('Selecione um dia e horário disponível para confirmar a reunião.')
+      return
+    }
     if (!attendee.email.trim() || contactError('email')) {
       setFieldError({ name: 'email', message: 'Confira o seu e-mail para confirmar o horário.' })
       return
@@ -394,6 +400,7 @@ export default function BookingExperience({
       if (invalid) { setStep(1); showFieldError(question.name, invalid); return }
     }
 
+    leadSubmissionInFlight.current = true
     setSavingLead(true)
     setSaveError('')
     try {
@@ -451,10 +458,13 @@ export default function BookingExperience({
         trackMetaConversion('Lead', result.tracking.lead.eventId, { content_name: form.slug, homologation: Boolean(metaHomologation) })
       }
       setLeadSaved(true)
-      setStep(2)
       // Um lead por contato: a deduplicação usa o id do lead (resposta idempotente ou reenvio não contam de novo).
       const leadRef = 'leadId' in result && typeof result.leadId === 'string' ? result.leadId : null
       funnel('booking_lead_registered', {}, leadRef)
+      // Uma única ação do visitante: após o cadastro verificado, confirmar a reunião
+      // usando o token devolvido pela API (sem depender do próximo render do React).
+      // A função de confirmação trata falhas e NÃO repete chamadas incertas ao Google.
+      await confirmBooking(result.bookingToken)
     } catch (error) {
       funnel('booking_form_error', { stage: 'lead', code: errorCode(error, 'SAVE') })
       const code = error instanceof Error ? error.message : ''
@@ -477,19 +487,21 @@ export default function BookingExperience({
       else setSaveError(messages[code] ?? 'Não foi possível registrar suas informações no momento. Tente novamente.')
       setTurnstileReset(value => value + 1)
     } finally {
+      leadSubmissionInFlight.current = false
       setSavingLead(false)
     }
   }
 
-  async function confirmBooking() {
-    if (!bookingEnabled || !bookingToken || !chosen || confirming) return
+  async function confirmBooking(sessionToken: string | null = bookingToken) {
+    if (!bookingEnabled || !sessionToken || !chosen || confirming || bookingConfirmationInFlight.current) return
+    bookingConfirmationInFlight.current = true
     setConfirming(true)
     setConfirmationError('')
     try {
       const response = await fetch('/api/booking/confirm', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingToken, startAt: chosen.startAt }),
+        body: JSON.stringify({ bookingToken: sessionToken, startAt: chosen.startAt }),
       })
       const data: unknown = await response.json()
       if (!data || typeof data !== 'object') throw new Error('BOOKING_UNAVAILABLE')
@@ -540,6 +552,7 @@ export default function BookingExperience({
       }
       setConfirmationError(messages[code] || 'Não foi possível confirmar agora. Contate a equipe antes de tentar novamente.')
     } finally {
+      bookingConfirmationInFlight.current = false
       setConfirming(false)
     }
   }
@@ -656,9 +669,9 @@ export default function BookingExperience({
               <strong>{month ? monthLabel(month) : 'Carregando calendário'}</strong>
               <div className="booking-month-controls">
                 <button type="button" aria-label="Mês anterior" onClick={() => goMonth(-1)}
-                  disabled={!firstMonth || month <= firstMonth}>‹</button>
+                  disabled={savingLead || confirming || !firstMonth || month <= firstMonth}>‹</button>
                 <button type="button" aria-label="Próximo mês" onClick={() => goMonth(1)}
-                  disabled={!maxMonth || month >= maxMonth}>›</button>
+                  disabled={savingLead || confirming || !maxMonth || month >= maxMonth}>›</button>
               </div>
             </div>
             <div className="booking-calendar-grid">
@@ -666,7 +679,7 @@ export default function BookingExperience({
               {days.map((day, index) => day ? (
                 <button type="button" className="booking-day" key={day}
                   data-active={date === day} data-today={day === today}
-                  disabled={!today || !selectableDate(day, today, serverCalendar)}
+                  disabled={savingLead || confirming || !today || !selectableDate(day, today, serverCalendar)}
                   onClick={() => { setDate(day); setChosen(null) }}
                   aria-pressed={date === day}
                   aria-label={humanDate(day)}>
@@ -690,7 +703,7 @@ export default function BookingExperience({
                 <p className="booking-calendar-hint">Não há horários disponíveis para esta data. Escolha outro dia.</p>}
               {!loading && !failed && slots.length > 0 &&
                 <div className="booking-time-grid">
-                  {slots.map(slot => <button type="button" key={slot.startAt}
+                  {slots.map(slot => <button type="button" key={slot.startAt} disabled={savingLead || confirming}
                     data-selected={chosen?.startAt === slot.startAt}
                     aria-pressed={chosen?.startAt === slot.startAt}
                     onClick={() => {
@@ -703,7 +716,7 @@ export default function BookingExperience({
             {chosen && <div className="booking-selected-summary"><Icon name="check"/><span>{date && humanDate(date)}, às {chosen.localTime} · {form.durationMinutes} minutos</span></div>}
             {chosen && (!leadSaved ? <form className="booking-calendar-email" onSubmit={submitLead} noValidate>
               <label htmlFor="booking-last-email">Seu melhor e-mail <span aria-hidden="true">*</span></label>
-              <input type="email" id="booking-last-email" value={attendee.email}
+              <input type="email" id="booking-last-email" value={attendee.email} disabled={savingLead || confirming}
                 placeholder="seu@email.com" autoComplete="email" required maxLength={180}
                 onChange={event => update('email', event.currentTarget.value)}
                 aria-invalid={fieldError?.name === 'email'}
@@ -714,8 +727,8 @@ export default function BookingExperience({
               {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
                 resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>}
               {!turnstileSiteKey && <p className="booking-security-status" data-state="error" role="alert">A confirmação está indisponível nesta prévia até configurar a verificação de segurança.</p>}
-              <button type="submit" className="booking-primary" disabled={savingLead || !attendee.email.trim() || !turnstileToken}>
-                {savingLead ? 'Verificando…' : 'Continuar para agendamento'} <Icon name="arrow"/>
+              <button type="submit" className="booking-primary" disabled={savingLead || confirming || !bookingEnabled || !attendee.email.trim() || !turnstileToken}>
+                {savingLead ? 'Confirmando sua reunião…' : 'Confirmar agendamento'} <Icon name="check"/>
               </button>
               {saveError && <p className="booking-save-error" role="alert">{saveError}</p>}
             </form> : <div className="booking-calendar-contact">
@@ -723,10 +736,8 @@ export default function BookingExperience({
               <p>{attendee.email}</p>
             </div>)}
             {confirmationError && <p role="alert" className="booking-save-error">{confirmationError}</p>}
-            {leadSaved && <div className="booking-actions">
-              <button type="button" className="booking-primary" disabled={!chosen || loading || failed || !bookingEnabled || !bookingToken || confirming}
-                onClick={confirmBooking}>{confirming ? 'Confirmando…' : 'Agendar horário'} <Icon name="check"/></button>
-            </div>}
+            {leadSaved && (savingLead || confirming) && <p className="booking-calendar-hint" role="status">Criando sua reunião no Google Agenda e preparando o link do Meet…</p>}
+            {leadSaved && confirmationError && <p className="booking-calendar-hint" role="status">Se a confirmação não foi concluída, entre em contato com a equipe antes de tentar novamente. Isso evita reservas duplicadas.</p>}
           </div>}
 
           {step === 3 && <div className="booking-review">
