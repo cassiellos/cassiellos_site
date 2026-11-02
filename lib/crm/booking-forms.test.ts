@@ -7,7 +7,7 @@ describe('booking form odontologia — faturamento em faixas', () => {
 
   it('usa a versão odontologia-v2', () => {
     assert.ok(form)
-    assert.equal(form.version, 'odontologia-v2')
+    assert.equal(form.version, 'odontologia-v3')
   })
 
   it('revenue é seleção obrigatória com as 7 faixas aprovadas, na ordem', () => {
@@ -34,7 +34,7 @@ describe('booking form odontologia — faturamento em faixas', () => {
     }
   })
 
-  it('preserva os nomes de campo consumidos pelo CRM (clinic, revenue, priority)', () => {
-    assert.deepEqual(form?.fields.map(field => field.name), ['clinic', 'revenue', 'priority'])
+  it('configura o novo funil sem alterar dados de contato do CRM', () => {
+    assert.deepEqual(form?.fields.map(field => field.name), ['instagram', 'revenue', 'budget'])
   })
 })
