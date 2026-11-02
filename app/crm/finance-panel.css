@@ -488,3 +488,13 @@
 #cassiellos-crm .crm-fin-kpi[data-tone="red"][data-negative] strong {
   color:#ff526d;
 }
+
+/* Explicação do vencimento prorrogado sem reescrever a data contratual. */
+#cassiellos-crm .crm-fin-row-cell .crm-fin-effective-due {
+  display:block;
+  margin-top:4px;
+  color:#e1b06c;
+  font-size:10px;
+  font-weight:600;
+  white-space:normal;
+}
