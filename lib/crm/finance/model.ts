@@ -242,8 +242,8 @@ export function entryState(e: { status: 'open' | 'cancelled'; amountCents: numbe
   today: string): EntryState {
   if (e.status === 'cancelled') return 'cancelled'
   if (e.settledCents >= e.amountCents) return 'settled'
-  if (overdueByBusinessDay(e.dueDate, today)) return 'overdue'
   if (e.settledCents > 0) return 'partial'
+  if (overdueByBusinessDay(e.dueDate, today)) return 'overdue'
   if (monthOf(e.competenceMonth) > monthOf(today)) return 'forecast'
   return 'open'
 }
