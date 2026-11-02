@@ -11,7 +11,7 @@ import {
 } from './web-push'
 import { decryptWebPushPayload } from './web-push-receiver'
 import { publicPushEnv, readPushEnv } from './config'
-import { NOTIFICATION_TEXT, buildPushPayload, notificationText, safePushFirstName, safePushMeetingTime, receiptToken, validReceipt } from './messages'
+import { NOTIFICATION_TEXT, buildPushPayload, isPushDemoVariant, notificationText, safePushFirstName, safePushMeetingTime, receiptToken, validReceipt } from './messages'
 import { confirmedMeetingFrom, newLeadFrom, queueThenDeliver } from './hooks'
 import { SERVICE_WORKER_SOURCE } from './service-worker'
 import { handlePushAdmin, type PushAdminDeps } from './admin-request'
@@ -139,7 +139,6 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     }
     assert.ok(!serialized.toLowerCase().includes('toque para'))
     for (const [variant, expectedTitle, expectedBody] of [
-      ['lead', '👤 Novo lead', 'Márcio preencheu o formulário'],
       ['meeting', '📅 Novo agendamento', 'Márcio marcou quarta-feira às 9h30'],
       ['whatsapp', '💬 Enviar WhatsApp', 'Enviar confirmação para Márcio'],
     ] as const) {
@@ -151,6 +150,7 @@ describe('Web Push — configuração e privacidade do aviso', () => {
       assert.equal(demo.u, '/crm/notificacoes/abrir/' + UUID_A)
       assert.ok(!JSON.stringify(demo).includes('Exemplo'), 'o aviso deve parecer com o formato real')
     }
+    assert.equal(isPushDemoVariant('lead'), false)
     const generic = buildPushPayload({ kind: 'test', notificationId: UUID_A, deliveryId: UUID_B, secret: 'k' })
     assert.equal(generic.t, NOTIFICATION_TEXT.test.title)
   })
