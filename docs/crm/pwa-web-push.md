@@ -17,22 +17,31 @@ Não usa Telegram nem serviço pago de notificações.
 | Fila | `lib/crm/push/store.ts` + migração `0010_admin_web_push.sql` | Persistente, com deduplicação, ordem, tentativas e vencimento |
 | Ganchos | `app/api/booking/leads` e `app/api/booking/confirm` | Só lead novo (201, `reused=false`) e reunião nova (201). Com `PWA_PUSH_ENABLED` desligada, nenhuma consulta extra |
 | Painel | `app/crm/notifications-panel.tsx` (aba **Notificações**) | Status, ativar o aparelho, teste, aparelhos, preferências, mensagem do WhatsApp e histórico |
-| Destinos | `/crm/notificacoes/abrir/<id>` → `/crm?lead=<id>` ou `/crm/reuniao/<id>[?whatsapp=1]` | Exigem a sessão administrativa. Sem sessão: login e volta à mesma tela (`next` seguro) |
+| Destinos | `/crm/notificacoes/abrir/<id>` → `/crm?lead=<id>`, `/crm/reuniao/<id>` ou `/crm/reuniao/<id>/whatsapp` | Exigem sessão administrativa; o último abre o WhatsApp com o texto preparado, mas não envia mensagem sozinho. Sem sessão: login → destino seguro |
+
+## Notificações compactas (versão mobile aprovada em 02/11/2026)
+
+A apresentação do aviso depende do sistema operacional (iOS/Android). O app usa o nome `CRM Cassiellos` no manifesto, mas um PWA já instalado pode conservar o nome antigo até ser reinstalado. O ícone permanece o oficial.
+
+| Evento | Título | Corpo quando houver dados válidos |
+|---|---|---|
+| Lead | 👤 Novo lead | Juliana • novo contato pelo formulário |
+| Reunião | 📅 Nova reunião agendada | Márcio • quarta-feira, às 9h30 |
+| WhatsApp | 💬 Enviar mensagem no WhatsApp | Márcio • mensagem pronta para enviar |
+| Teste | ✅ Teste de notificações | Notificações funcionando. |
+
+**Sem frases "toque para abrir/ver"** e sem informações desnecessárias.
 
 ## Privacidade do aviso
 
-- **O aviso leva só:**
-  - tipo;
-  - título e texto genéricos;
-  - destino `/crm/notificacoes/abrir/<id da notificação>`;
-  - tag (o mesmo ID);
-  - ID da entrega e recibo (HMAC).
-- **Nunca leva:** nome, telefone, e-mail, respostas, link do Meet nem tokens.
-- **Conteúdo cifrado de ponta a ponta para o aparelho:** o serviço de push (Google, Apple, Mozilla ou Microsoft) só transporta bytes ilegíveis.
-- **Estados registrados:**
-  - **aceita**: o serviço de push devolveu 201;
-  - **exibida**: recibo do service worker;
-  - **aberta**: toque no aviso ou abertura da tela autenticada.
+- **A solicitação explícita do administrador inclui mostrar o PRIMEIRO nome e o dia/horário da reunião na notificação móvel.** Esses dados podem aparecer mesmo com o aparelho bloqueado; só habilite notificações em aparelhos pessoais protegidos por senha/biometria.
+- O payload **cifrado para o aparelho** inclui apenas: tipo, título e mensagem (primeiro nome quando válido + dia/horário para reunião), destino interno opaco, tag, ID da entrega e recibo HMAC. Apple/Google/Mozilla transportam o payload criptografado.
+- **Nunca enviar no push:** nome completo, telefone, e-mail, respostas do formulário, link do Meet, orçamento, dados financeiros, texto completo do WhatsApp, credenciais ou tokens.
+- O nome e horário são consultados do CRM ao enviar cada aviso, **sem cópia nas tabelas de notificações ou nos logs**. Quando faltar dado, usar corpo genérico.
+- WhatsApp: tocar no segundo aviso faz a sequência `/crm/notificacoes/abrir/<id>` → autenticação → `/crm/reuniao/<id>/whatsapp` → redirecionamento `https://wa.me/...` com número e texto previamente verificados.
+- O administrador precisa **tocar em Enviar no WhatsApp**. O CRM não dispara mensagens automaticamente e não usa a API paga.
+- Sem telefone válido, com reunião cancelada/encerrada ou link Meet pendente, o redirecionamento volta à ficha da reunião, com a opção manual.
+- **Estados registrados:** aceita pelo serviço ≠ exibida no aparelho ≠ aberta no toque. O clique autenticado continua marcado por ID.
 
 ## Entrega confiável sem Cron
 
@@ -90,5 +99,5 @@ Trocar o par invalida as inscrições existentes. Os aparelhos precisam ser auto
 5. Com `PWA_PUSH_ENABLED=true`, só no Preview:
    - envie um lead fictício pelo formulário;
    - depois, faça uma reunião fictícia controlada, autorizada e cancelada em seguida.
-6. Abra o aviso **✅ CONFIRMAÇÃO PRONTA!** e toque em **Enviar pelo WhatsApp**. O WhatsApp abre com o texto, e o envio continua manual.
+6. Abra o aviso **💬 Enviar mensagem no WhatsApp**. Ele deve abrir a conversa com a mensagem preparada, após autenticação quando necessário; apenas o envio da mensagem permanece manual.
 7. Volte `PWA_PUSH_ENABLED` para `false` se a homologação não continuar.

@@ -10,8 +10,8 @@ export function GET() {
   if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') return new NextResponse(null, { status: 404 })
   return NextResponse.json({
     id: '/crm',
-    name: 'CRM | Cassiellos',
-    short_name: 'CRM | Cassiellos',
+    name: 'CRM Cassiellos',
+    short_name: 'CRM Cassiellos',
     description: 'Mini CRM da Cassiellos: leads, reuniões e avisos da equipe.',
     lang: 'pt-BR',
     start_url: '/crm',

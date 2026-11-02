@@ -1,46 +1,92 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 /**
- * Conteúdo das notificações. PRIORIDADE: nada pessoal na tela bloqueada.
- * O aviso leva só tipo, título e texto genéricos, um ID interno opaco (da notificação, não do lead)
- * e um recibo. Nome, telefone, e-mail, respostas, link do Meet e tokens NUNCA entram no push:
- * os detalhes só aparecem depois que o CRM autenticado é aberto.
+ * Mensagens compactas para PWA (aprovadas em 02/11/2026).
+ * A notificação mostra APENAS o primeiro nome e, na reunião, o dia/horário.
+ * Não envia ao push telefone, e-mail, nome completo, respostas, orçamento,
+ * link do Meet, dados financeiros ou modelo do WhatsApp. A tela bloqueada
+ * pode exibir o primeiro nome; o painel administrativo avisa sobre isso.
  */
-
 export type NotificationKind = 'lead_created' | 'meeting_confirmed' | 'meeting_whatsapp_ready' | 'test'
 
 export const NOTIFICATION_TEXT: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
   lead_created: {
-    title: 'Novo lead | CRM | Cassiellos',
-    body: 'Um novo contato chegou pelo formulário. Toque para visualizar e atender no CRM.',
+    title: '👤 Novo lead',
+    body: 'Novo contato pelo formulário.',
   },
   meeting_confirmed: {
-    title: 'Reunião confirmada | CRM | Cassiellos',
-    body: 'Uma reunião foi agendada. Toque para visualizar os detalhes no CRM.',
+    title: '📅 Nova reunião agendada',
+    body: 'Uma reunião foi confirmada.',
   },
   meeting_whatsapp_ready: {
-    title: 'Confirmação pronta | CRM | Cassiellos',
-    body: 'A mensagem de confirmação para o cliente já está preparada. Toque para revisar e abrir o WhatsApp.',
+    title: '💬 Enviar mensagem no WhatsApp',
+    body: 'Mensagem de confirmação pronta.',
   },
   test: {
-    title: 'CRM | Cassiellos',
-    body: 'Notificações funcionando. Toque para abrir o CRM.',
+    title: '✅ Teste de notificações',
+    body: 'Notificações funcionando.',
   },
 }
 
-/** Formato EXATO do payload (v1). Qualquer campo novo precisa passar pelo teste de privacidade. */
+/** Dados consultados apenas no momento do envio; nunca persistidos no histórico do push. */
+export type PushDisplayDetails = {
+  fullName?: string | null
+  startsAt?: Date | string | null
+}
+
+const BRAZIL_TZ = 'America/Sao_Paulo'
+const weekday = new Intl.DateTimeFormat('pt-BR', { timeZone: BRAZIL_TZ, weekday: 'long' })
+const timeParts = new Intl.DateTimeFormat('en-GB', {
+  timeZone: BRAZIL_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+
+/** First-name only. Rejects e-mail, phone, markup and overlong/unusual tokens. */
+export function safePushFirstName(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const first = value.trim().split(/\s+/u)[0] || ''
+  return /^[\p{L}][\p{L}\p{M}'’-]{0,27}$/u.test(first) ? first : null
+}
+
+export function safePushMeetingTime(value: unknown): string | null {
+  if (!(value instanceof Date) && typeof value !== 'string') return null
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return null
+  const parts = timeParts.formatToParts(date)
+  const hour = parts.find(part => part.type === 'hour')?.value
+  const minute = parts.find(part => part.type === 'minute')?.value
+  if (!hour || !minute) return null
+  return weekday.format(date) + ', às ' + Number(hour) + 'h' + (minute === '00' ? '' : minute)
+}
+
+export function notificationText(kind: NotificationKind, details?: PushDisplayDetails): { title: string; body: string } {
+  const fallback = NOTIFICATION_TEXT[kind]
+  const name = safePushFirstName(details?.fullName)
+  if (kind === 'lead_created') {
+    return { title: fallback.title, body: name ? name + ' • novo contato pelo formulário' : fallback.body }
+  }
+  if (kind === 'meeting_confirmed') {
+    const dateTime = safePushMeetingTime(details?.startsAt)
+    return {
+      title: fallback.title,
+      body: name && dateTime ? name + ' • ' + dateTime : name ? name + ' • reunião confirmada'
+        : dateTime ? 'Reunião • ' + dateTime : fallback.body,
+    }
+  }
+  if (kind === 'meeting_whatsapp_ready') {
+    return { title: fallback.title, body: name ? name + ' está aguardando seu contato.' : fallback.body }
+  }
+  return fallback
+}
+
+/** Envelope mínimo cifrado em Web Push. Apenas t/b podem conter primeiro nome e horário. */
 export type PushPayload = {
   v: 1
-  /** tipo */
   k: NotificationKind
-  /** título e texto genéricos */
   t: string
   b: string
-  /** destino relativo no CRM (resolvido só com sessão administrativa) */
+  /** Caminho interno opaco; autenticado antes de abrir o CRM ou WhatsApp. */
   u: string
-  /** tag = ID opaco da notificação (o aparelho substitui em vez de duplicar) */
   g: string
-  /** entrega + recibo (exibida/aberta), sem sessão */
   d: string
   r: string
 }
@@ -49,8 +95,10 @@ export function openPath(notificationId: string): string {
   return '/crm/notificacoes/abrir/' + encodeURIComponent(notificationId)
 }
 
-export function buildPushPayload(input: { kind: NotificationKind; notificationId: string; deliveryId: string; secret: string }): PushPayload {
-  const text = NOTIFICATION_TEXT[input.kind]
+export function buildPushPayload(input: {
+  kind: NotificationKind; notificationId: string; deliveryId: string; secret: string; details?: PushDisplayDetails
+}): PushPayload {
+  const text = notificationText(input.kind, input.details)
   return {
     v: 1, k: input.kind, t: text.title, b: text.body,
     u: openPath(input.notificationId), g: input.notificationId,

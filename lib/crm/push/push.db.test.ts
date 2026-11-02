@@ -117,14 +117,14 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     return { result, session: s }
   }
 
-  it('novo lead → 1 aviso por aparelho, cifrado, genérico; tocar abre a ficha do lead', async () => {
+  it('novo lead → 1 aviso por aparelho, cifrado, compacto; tocar abre a ficha do lead', async () => {
     const a = await addDevice('iPhone · Safari'); const b = await addDevice('Android · Chrome')
     const svc = pushService()
     const lead = await newLead(email('lead'))
     assert.equal(await runHook(newLeadFrom(intakeResult(lead)), t => enqueueLeadNotification(deps(svc.fetch), t.leadId).then(r => r.ids), svc.fetch), true)
     assert.deepEqual(svc.sent.map(s => s.endpoint).sort(), [a.endpoint, b.endpoint].sort())
     const p = svc.sent[0].payload
-    assert.deepEqual([p.k, p.t, p.b], ['lead_created', NOTIFICATION_TEXT.lead_created.title, NOTIFICATION_TEXT.lead_created.body])
+    assert.deepEqual([p.k, p.t, p.b], ['lead_created', NOTIFICATION_TEXT.lead_created.title, 'Beatriz • novo contato pelo formulário'])
     assert.equal(p.g, svc.sent[1].payload.g, 'mesmo aviso lógico nos dois aparelhos')
     assert.equal(await resolveNotification(pool, p.g), '/crm?lead=' + lead.leadId)
     assert.ok((await q("SELECT opened_at FROM crm.push_notifications WHERE id = $1", [p.g]))[0].opened_at)
@@ -166,7 +166,7 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     assert.deepEqual([first.t, second.t], [NOTIFICATION_TEXT.meeting_confirmed.title, NOTIFICATION_TEXT.meeting_whatsapp_ready.title])
     const appointmentId = result.body.appointmentId as string
     assert.equal(await resolveNotification(pool, first.g), '/crm/reuniao/' + appointmentId)
-    assert.equal(await resolveNotification(pool, second.g), '/crm/reuniao/' + appointmentId + '?whatsapp=1')
+    assert.equal(await resolveNotification(pool, second.g), '/crm/reuniao/' + appointmentId + '/whatsapp')
     // Repetição da confirmação (refresh / clique duplo): 200 idempotente, nenhum aviso extra.
     const before = svc.sent.length
     assert.equal(confirmedMeetingFrom({ status: 200, body: { ok: true, alreadyConfirmed: true, bookingRequestId: result.body.bookingRequestId } }), null)
@@ -328,7 +328,7 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     assert.equal((await loadPushSettings(pool))!.templateCustomized, false)
   })
 
-  it('privacidade: nenhum dado pessoal nos avisos decifrados, nas tabelas de push nem nos logs', async () => {
+  it('privacidade: só primeiro nome nos avisos decifrados, nunca nome completo/dados sensíveis nos avisos, tabelas ou logs', async () => {
     await addDevice('Celular')
     const svc = pushService()
     const lead = await newLead(email('privacy'))
@@ -339,7 +339,17 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     const payloads = JSON.stringify(svc.sent.map(s => s.payload))
     const tables = JSON.stringify([await q('SELECT * FROM crm.push_notifications'), await q('SELECT * FROM crm.push_deliveries'), await q('SELECT * FROM crm.push_settings'),
       await listHistory(pool), await listDevices(pool)])
-    for (const secret of [NAME, 'Beatriz', PHONE, '99123-4567', 'Clínica Fictícia', MEET, 'meet.google.com', '@exemplo.com', 'Até R$', VAPID.privateKey, SECRET]) {
+    assert.ok(payloads.includes('Beatriz'), 'notificação deve mostrar apenas o primeiro nome')
+    for (const secret of [NAME, PHONE, '99123-4567', 'Clínica Fictícia', MEET, 'meet.google.com', '@exemplo.com', 'Até R
+      assert.ok(!payloads.includes(secret), 'aviso contém ' + secret)
+      assert.ok(!tables.includes(secret), 'tabelas de push contêm ' + secret)
+      assert.ok(!logs.join('\n').includes(secret), 'log contém ' + secret)
+    }
+    for (const s of svc.sent) assert.deepEqual(Object.keys(s.payload).sort(), ['b', 'd', 'g', 'k', 'r', 't', 'u', 'v'])
+    assert.ok(!JSON.stringify(await listDevices(pool)).includes('fcm.googleapis.com/fcm/send/'), 'painel não expõe o endpoint completo')
+  })
+})
+, VAPID.privateKey, SECRET]) {
       assert.ok(!payloads.includes(secret), 'aviso contém ' + secret)
       assert.ok(!tables.includes(secret), 'tabelas de push contêm ' + secret)
       assert.ok(!logs.join('\n').includes(secret), 'log contém ' + secret)

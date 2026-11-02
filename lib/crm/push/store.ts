@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 import { validateWhatsappTemplate, DEFAULT_WHATSAPP_TEMPLATE } from '../whatsapp-message'
-import { buildPushPayload, type NotificationKind } from './messages'
+import { buildPushPayload, type PushDisplayDetails, type NotificationKind } from './messages'
 import { b64url, pushHostOf, sendWebPush, type FetchLike, type PushOutcome, type VapidKeys } from './web-push'
 
 /**
@@ -298,6 +298,28 @@ async function blockReason(pool: Queryable, c: Claimed): Promise<string | null> 
   return null
 }
 
+/**
+ * O aviso mostra só primeiro nome e dia/horário. Busca o dado na hora, por ID,
+ * sem gravá-lo nas tabelas de push nem nos logs. Falhas usam texto genérico
+ * e NÃO impedem a entrega do aviso.
+ */
+async function pushDisplayDetails(pool: Queryable, delivery: Claimed): Promise<PushDisplayDetails | undefined> {
+  try {
+    if (delivery.kind === 'lead_created' && delivery.lead_id) {
+      const row = (await pool.query<{ full_name: string | null }>(
+        'SELECT full_name FROM crm.leads WHERE id = $1 LIMIT 1', [delivery.lead_id])).rows[0]
+      return row ? { fullName: row.full_name } : undefined
+    }
+    if ((delivery.kind === 'meeting_confirmed' || delivery.kind === 'meeting_whatsapp_ready') && delivery.appointment_id) {
+      const row = (await pool.query<{ full_name: string | null; starts_at: Date }>(
+        'SELECT l.full_name, a.starts_at FROM crm.appointments a JOIN crm.leads l ON l.id = a.lead_id WHERE a.id = $1 LIMIT 1',
+        [delivery.appointment_id])).rows[0]
+      return row ? { fullName: row.full_name, startsAt: row.starts_at } : undefined
+    }
+  } catch { /* uma falha no enriquecimento não interrompe a notificação */ }
+  return undefined
+}
+
 /** Processa UMA entrega (com tentativas imediatas curtas). Devolve o estado final desta rodada. */
 async function processDelivery(deps: PushDeps, deliveryId: string, inline: { left: number }): Promise<string> {
   const log = deps.log ?? defaultLog
@@ -320,7 +342,9 @@ async function processDelivery(deps: PushDeps, deliveryId: string, inline: { lef
       log('cancelled', { deliveryId: c.id, kind: c.kind, code: block })
       return 'cancelled'
     }
-    const payload = buildPushPayload({ kind: c.kind, notificationId: c.notification_id, deliveryId: c.id, secret: deps.secret })
+    const details = await pushDisplayDetails(deps.pool, c)
+    const payload = buildPushPayload({ kind: c.kind, notificationId: c.notification_id, deliveryId: c.id,
+      secret: deps.secret, details })
     let outcome: PushOutcome
     try {
       outcome = await sendWebPush(deps.fetch, { endpoint: c.endpoint, p256dh: c.p256dh, auth: c.auth }, payload, env.vapid,
@@ -444,7 +468,7 @@ export async function resolveNotification(pool: Queryable, notificationId: strin
   if (!n) return '/crm'
   if (n.kind === 'lead_created' && n.lead_id) return '/crm?lead=' + n.lead_id
   if (n.kind === 'meeting_confirmed' && n.appointment_id) return '/crm/reuniao/' + n.appointment_id
-  if (n.kind === 'meeting_whatsapp_ready' && n.appointment_id) return '/crm/reuniao/' + n.appointment_id + '?whatsapp=1'
+  if (n.kind === 'meeting_whatsapp_ready' && n.appointment_id) return '/crm/reuniao/' + n.appointment_id + '/whatsapp'
   return '/crm?view=notificacoes'
 }
 

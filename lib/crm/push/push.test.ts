@@ -11,7 +11,7 @@ import {
 } from './web-push'
 import { decryptWebPushPayload } from './web-push-receiver'
 import { publicPushEnv, readPushEnv } from './config'
-import { NOTIFICATION_TEXT, buildPushPayload, receiptToken, validReceipt } from './messages'
+import { NOTIFICATION_TEXT, buildPushPayload, notificationText, safePushFirstName, safePushMeetingTime, receiptToken, validReceipt } from './messages'
 import { confirmedMeetingFrom, newLeadFrom, queueThenDeliver } from './hooks'
 import { SERVICE_WORKER_SOURCE } from './service-worker'
 import { handlePushAdmin, type PushAdminDeps } from './admin-request'
@@ -105,18 +105,34 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     const shown = JSON.stringify(publicPushEnv(ENV))
     assert.ok(!shown.includes(VAPID.privateKey) && shown.includes(VAPID.publicKey))
   })
-  it('payload mínimo: só tipo, título/texto genéricos, destino opaco, tag e recibo', () => {
+  it('payload compacto: primeiro nome e horário somente quando disponíveis, sem dados sensíveis', () => {
     const p = buildPushPayload({ kind: 'meeting_whatsapp_ready', notificationId: UUID_A, deliveryId: UUID_B, secret: 's3cr3t' })
     assert.deepEqual(Object.keys(p).sort(), ['b', 'd', 'g', 'k', 'r', 't', 'u', 'v'])
     assert.equal(p.u, '/crm/notificacoes/abrir/' + UUID_A); assert.equal(p.g, UUID_A)
     assert.deepEqual([p.t, p.b], [NOTIFICATION_TEXT.meeting_whatsapp_ready.title, NOTIFICATION_TEXT.meeting_whatsapp_ready.body])
-    assert.equal(NOTIFICATION_TEXT.lead_created.title, 'Novo lead | CRM | Cassiellos')
-    assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Um novo contato chegou pelo formulário. Toque para visualizar e atender no CRM.')
-    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, 'Reunião confirmada | CRM | Cassiellos')
-    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi agendada. Toque para visualizar os detalhes no CRM.')
-    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, 'Confirmação pronta | CRM | Cassiellos')
-    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'A mensagem de confirmação para o cliente já está preparada. Toque para revisar e abrir o WhatsApp.')
+    assert.equal(NOTIFICATION_TEXT.lead_created.title, '👤 Novo lead')
+    assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Novo contato pelo formulário.')
+    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, '📅 Nova reunião agendada')
+    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi confirmada.')
+    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, '💬 Enviar mensagem no WhatsApp')
+    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'Mensagem de confirmação pronta.')
     assert.ok(JSON.stringify(p).length < 600)
+    const details = { fullName: 'Márcio Fernandes', startsAt: '2026-11-04T12:30:00.000Z' }
+    const meeting = buildPushPayload({ kind: 'meeting_confirmed', notificationId: UUID_A, deliveryId: UUID_B, secret: 'k', details })
+    assert.equal(meeting.b, 'Márcio • quarta-feira, às 9h30')
+    assert.equal(meeting.t, '📅 Nova reunião agendada')
+    assert.equal(notificationText('meeting_whatsapp_ready', details).body, 'Márcio está aguardando seu contato.')
+    assert.equal(notificationText('lead_created', { fullName: 'Juliana Silva' }).body, 'Juliana • novo contato pelo formulário')
+    assert.equal(notificationText('lead_created', { fullName: '<script>attack' }).body, 'Novo contato pelo formulário.')
+    assert.equal(safePushFirstName('email@example.com'), null)
+    assert.equal(safePushFirstName('11999999999'), null)
+    assert.equal(safePushFirstName('Márcio Fernandes'), 'Márcio')
+    assert.equal(safePushMeetingTime('invalid'), null)
+    const serialized = JSON.stringify(meeting)
+    for (const forbidden of ['Fernandes', '31999999999', '@gmail.com', 'meet.google.com']) {
+      assert.ok(!serialized.includes(forbidden), forbidden)
+    }
+    assert.ok(!serialized.toLowerCase().includes('toque para'))
   })
   it('recibo: só com o token HMAC da própria entrega', () => {
     const t = receiptToken('s3cr3t', UUID_B)
@@ -243,7 +259,7 @@ describe('Service worker do PWA', () => {
     const sw = load()
     await fire(sw.handlers.push, { data: { json: () => ({ t: 123, u: 'https://evil.example', g: 'x' }) } })
     await fire(sw.handlers.push, { data: { json: () => { throw new Error('bad') } } })
-    assert.equal(sw.shown[0].title, 'CRM | Cassiellos')
+    assert.equal(sw.shown[0].title, 'CRM Cassiellos')
     assert.equal((sw.shown[0].options.data as { url: string }).url, '/crm')
     await fire(sw.handlers.notificationclick, { notification: { close: () => undefined, data: { url: '//evil.example' } } })
     assert.deepEqual(sw.opened, ['https://crm.cassiellos.com.br/crm'])
@@ -282,7 +298,7 @@ describe('PWA — manifesto e ícones', () => {
     assert.equal(res.headers.get('content-type'), 'application/manifest+json; charset=utf-8')
     const m = await res.json() as Record<string, unknown> & { icons: Array<{ src: string; sizes: string; purpose: string }> }
     assert.deepEqual([m.name, m.short_name, m.start_url, m.scope, m.display, m.theme_color, m.background_color, m.lang],
-      ['CRM | Cassiellos', 'CRM | Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
+      ['CRM Cassiellos', 'CRM Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
     // tsconfig usa "jsx": "preserve" (o Next compila com o runtime automático); o tsx dos testes compila o JSX da rota
     // no modo clássico (React.createElement), então o React precisa existir no escopo global só aqui, no teste.
     ;(globalThis as { React?: unknown }).React ??= (await import('react')).default

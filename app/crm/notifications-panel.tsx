@@ -6,7 +6,8 @@ import './notifications-panel.css'
 /**
  * NOTIFICAÇÕES (Etapa 5 — PWA + Web Push). Somente administradores, somente Preview.
  * A permissão do navegador só é pedida depois de um toque explícito em "Ativar notificações neste aparelho".
- * Os avisos não levam dados pessoais: título e texto genéricos; os detalhes só aparecem no CRM autenticado.
+ * Os avisos podem mostrar primeiro nome e dia/horário na tela bloqueada. Telefone, e-mail e link do Meet
+ * permanecem protegidos no CRM autenticado; WhatsApp só é enviado manualmente.
  */
 
 type Env = { switchOn: boolean; vapidReady: boolean; ready: boolean; publicKey: string | null; issues: string[] }
@@ -23,7 +24,7 @@ type BeforeInstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Pr
 
 const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const when = (iso: string | null) => iso ? fmt.format(new Date(iso)) : '—'
-const KIND: Record<string, string> = { lead_created: 'Novo lead', meeting_confirmed: 'Reunião confirmada', meeting_whatsapp_ready: 'Confirmação pronta', test: 'Teste' }
+const KIND: Record<string, string> = { lead_created: 'Novo lead', meeting_confirmed: 'Nova reunião agendada', meeting_whatsapp_ready: 'Enviar mensagem no WhatsApp', test: 'Teste' }
 const DEVICE_STATUS: Record<string, string> = { active: 'Ativo', revoked: 'Revogado', expired: 'Expirado', rejected: 'Precisa autorizar de novo' }
 const ISSUES: Record<string, string> = {
   NOT_PREVIEW: 'fora do Preview', SWITCH_OFF: 'avisos automáticos desligados (PWA_PUSH_ENABLED)',
@@ -175,7 +176,7 @@ export default function NotificationsPanel() {
   return <>
     <section className="crm-card crm-panel crm-push" aria-labelledby="push-title">
       <div className="crm-panel-title" id="push-title">Notificações</div>
-      <div className="crm-panel-subtitle">CRM | Cassiellos · avisos de novos leads e reuniões · sem dados pessoais na tela bloqueada</div>
+      <div className="crm-panel-subtitle">Avisos objetivos para celular · nome e horário podem aparecer na tela bloqueada; sem e-mail, telefone ou link do Meet.</div>
       <div className="crm-push-grid">
         <div><span>Avisos automáticos</span><strong data-on={env.ready}>{env.ready ? 'LIGADOS' : 'DESLIGADOS'}</strong></div>
         <div><span>Chaves VAPID</span><strong>{env.vapidReady ? 'Configuradas' : 'Pendentes'}</strong></div>
@@ -213,7 +214,7 @@ export default function NotificationsPanel() {
             onChange={e => post({ action: 'preferences', notifyLeads: key === 'notifyLeads' ? e.target.checked : status.settings.notifyLeads,
               notifyMeetings: key === 'notifyMeetings' ? e.target.checked : status.settings.notifyMeetings }, 'Preferências salvas.')} /> {text}</label>)}
         <div className="crm-panel-title" style={{ marginTop: 22 }}>Mensagem do WhatsApp</div>
-        <div className="crm-panel-subtitle">Pré-preenchida no botão “Enviar pelo WhatsApp” da reunião · envio sempre manual</div>
+        <div className="crm-panel-subtitle">O toque no aviso abre o WhatsApp com a mensagem pronta · envio sempre manual. Se não houver número ou link válido, abre a ficha da reunião.</div>
         <label className="crm-push-field">Modelo {status.settings.templateCustomized && <em>(personalizado)</em>}
           <textarea rows={9} maxLength={status.limits.whatsappTemplate} value={template} onChange={e => setTemplate(e.target.value)} />
           <small>{template.length}/{status.limits.whatsappTemplate}</small>
