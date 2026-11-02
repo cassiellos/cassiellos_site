@@ -9,7 +9,7 @@
  *   que exige a sessão administrativa (sem sessão → login → volta para a ficha).
  * - Sem botões de ação na notificação (nem todo navegador suporta).
  */
-export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-4'
+export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-5'
 
 export const SERVICE_WORKER_SOURCE = `'use strict';
 const VERSION = '${SERVICE_WORKER_VERSION}';
@@ -34,7 +34,7 @@ function receipt(data, event) {
 self.addEventListener('push', event => {
   let data = null;
   try { data = event.data ? event.data.json() : null; } catch (e) { data = null; }
-  const title = text(data && data.t, 'CRM Cassiellos', 80);
+  const title = text(data && data.t, 'Novo aviso', 80);
   const options = {
     body: text(data && data.b, 'Você tem uma nova notificação.', 160),
     tag: typeof (data && data.g) === 'string' ? data.g.slice(0, 64) : undefined,

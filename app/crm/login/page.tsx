@@ -6,7 +6,7 @@ import '../crm.css'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'CRM Cassiellos',
+  title: 'CRM',
   robots: { index: false, follow: false, nocache: true },
 }
 

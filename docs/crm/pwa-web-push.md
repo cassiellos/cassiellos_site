@@ -21,7 +21,7 @@ Não usa Telegram nem serviço pago de notificações.
 
 ## Notificações compactas (versão mobile aprovada em 02/11/2026)
 
-A apresentação do aviso depende do sistema operacional (iOS/Android). O app usa o nome `CRM Cassiellos` no manifesto, mas um PWA já instalado pode conservar o nome antigo até ser reinstalado. O ícone permanece o oficial.
+A apresentação do aviso depende do sistema operacional (iOS/Android). O app usa o nome curto `CRM` no manifesto e nos metadados iOS. O iOS acrescenta `from` + nome instalado nas notificações PWA; essa linha NÃO pode ser removida pelo site. Se o ícone foi instalado com `Entrar CRM | Cassiellos`, essa identificação antiga só muda após o titular reinstalar o app pelo Safari com nome `CRM` e reautorizar o push. **NÃO remova o app remotamente nem revogue a inscrição atual.** O ícone permanece o oficial.
 
 | Evento | Título | Corpo quando houver dados válidos |
 |---|---|---|

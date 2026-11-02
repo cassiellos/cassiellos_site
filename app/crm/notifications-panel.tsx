@@ -137,7 +137,7 @@ export default function NotificationsPanel() {
     if (!status?.env.publicKey) { setMessage({ kind: 'error', text: ERRORS.VAPID_NOT_READY }); return }
     if (!device.supported) { setMessage({ kind: 'error', text: 'Este navegador não oferece notificações push.' }); return }
     if (device.ios && !device.standalone) {
-      setMessage({ kind: 'error', text: 'No iPhone, primeiro adicione o CRM | Cassiellos à Tela de Início (Compartilhar → Adicionar à Tela de Início), abra pelo ícone e ative aqui.' })
+      setMessage({ kind: 'error', text: 'No iPhone, primeiro adicione o CRM à Tela de Início (Compartilhar → Adicionar à Tela de Início), abra pelo ícone e ative aqui.' })
       return
     }
     setBusy(true); setMessage(null)
@@ -203,7 +203,7 @@ export default function NotificationsPanel() {
         <div className="crm-info-box">Pendências: {env.issues.map(i => ISSUES[i] || i).join(' · ')}.</div>}
       {status.migrationPending && <div className="crm-info-box">Dispositivos, fila e histórico dependem da migração 0010, aplicada no Neon Preview só com autorização.</div>}
       {device.ios && !device.standalone && <div className="crm-info-box crm-push-ios">
-        <strong>iPhone:</strong> as notificações só funcionam com o app instalado. No Safari, toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>, abra o CRM | Cassiellos pelo ícone e volte a esta tela.
+        <strong>iPhone:</strong> as notificações só funcionam com o app instalado. No Safari, toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>, abra o app CRM pelo ícone e volte a esta tela.
       </div>}
       {!device.supported && !device.ios && <div className="crm-info-box">Este navegador não oferece notificações push. Use Chrome, Edge, Firefox ou Safari atualizados.</div>}
       <label className="crm-push-field">Nome deste aparelho (opcional)

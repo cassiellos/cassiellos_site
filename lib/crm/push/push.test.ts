@@ -116,6 +116,11 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi marcada.')
     assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, '💬 Enviar WhatsApp')
     assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'Enviar confirmação da reunião.')
+    for (const kind of ['lead_created', 'meeting_confirmed', 'meeting_whatsapp_ready'] as const) {
+      const display = notificationText(kind, { fullName: 'Márcio Fernandes', startsAt: '2026-11-04T12:30:00.000Z' })
+      assert.ok(!/cassiellos|crm|toque para|abra o/i.test(display.title + ' ' + display.body),
+        'Notificação não deve duplicar nome de aplicativo nem instruções')
+    }
     assert.ok(JSON.stringify(p).length < 600)
     const details = { fullName: 'Márcio Fernandes', startsAt: '2026-11-04T12:30:00.000Z' }
     const meeting = buildPushPayload({ kind: 'meeting_confirmed', notificationId: UUID_A, deliveryId: UUID_B, secret: 'k', details })
@@ -274,7 +279,7 @@ describe('Service worker do PWA', () => {
     const sw = load()
     await fire(sw.handlers.push, { data: { json: () => ({ t: 123, u: 'https://evil.example', g: 'x' }) } })
     await fire(sw.handlers.push, { data: { json: () => { throw new Error('bad') } } })
-    assert.equal(sw.shown[0].title, 'CRM Cassiellos')
+    assert.equal(sw.shown[0].title, 'Novo aviso')
     assert.equal((sw.shown[0].options.data as { url: string }).url, '/crm')
     await fire(sw.handlers.notificationclick, { notification: { close: () => undefined, data: { url: '//evil.example' } } })
     assert.deepEqual(sw.opened, ['https://crm.cassiellos.com.br/crm'])
@@ -313,7 +318,7 @@ describe('PWA — manifesto e ícones', () => {
     assert.equal(res.headers.get('content-type'), 'application/manifest+json; charset=utf-8')
     const m = await res.json() as Record<string, unknown> & { icons: Array<{ src: string; sizes: string; purpose: string }> }
     assert.deepEqual([m.name, m.short_name, m.start_url, m.scope, m.display, m.theme_color, m.background_color, m.lang],
-      ['CRM Cassiellos', 'CRM Cassiellos', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
+      ['CRM', 'CRM', '/crm', '/crm', 'standalone', '#07101F', '#07101F', 'pt-BR'])
     // tsconfig usa "jsx": "preserve" (o Next compila com o runtime automático); o tsx dos testes compila o JSX da rota
     // no modo clássico (React.createElement), então o React precisa existir no escopo global só aqui, no teste.
     ;(globalThis as { React?: unknown }).React ??= (await import('react')).default
