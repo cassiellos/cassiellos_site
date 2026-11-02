@@ -27,19 +27,44 @@ let scriptPromise: Promise<TurnstileApi> | null = null
 function loadTurnstile(): Promise<TurnstileApi> {
   if (window.turnstile) return Promise.resolve(window.turnstile)
   if (scriptPromise) return scriptPromise
+  // Failed or blocked loads must not leave a dead script node preventing retry.
   scriptPromise = new Promise((resolve, reject) => {
-    const done = () => window.turnstile ? resolve(window.turnstile) : reject(new Error('TURNSTILE_UNAVAILABLE'))
-    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
-    const script = existing ?? document.createElement('script')
-    script.addEventListener('load', done, { once: true })
-    script.addEventListener('error', () => { scriptPromise = null; reject(new Error('TURNSTILE_BLOCKED')) }, { once: true })
-    if (!existing) {
-      script.id = SCRIPT_ID
-      script.src = SCRIPT_SRC
-      script.async = true
-      script.defer = true
-      document.head.appendChild(script)
+    const stale = document.getElementById(SCRIPT_ID)
+    if (stale) stale.remove()
+    const script = document.createElement('script')
+    let settled = false
+    const timeout = window.setTimeout(() => fail('TURNSTILE_TIMEOUT'), 15_000)
+    function cleanup() {
+      window.clearTimeout(timeout)
+      script.removeEventListener('load', done)
+      script.removeEventListener('error', failed)
     }
+    function fail(reason: string) {
+      if (settled) return
+      settled = true
+      cleanup()
+      script.remove()
+      scriptPromise = null
+      reject(new Error(reason))
+    }
+    function done() {
+      if (window.turnstile) {
+        if (settled) return
+        settled = true
+        cleanup()
+        resolve(window.turnstile)
+      } else {
+        fail('TURNSTILE_UNAVAILABLE')
+      }
+    }
+    function failed() { fail('TURNSTILE_BLOCKED') }
+    script.addEventListener('load', done)
+    script.addEventListener('error', failed)
+    script.id = SCRIPT_ID
+    script.src = SCRIPT_SRC
+    script.async = true
+    script.defer = true
+    document.head.appendChild(script)
   })
   return scriptPromise
 }
