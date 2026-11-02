@@ -338,3 +338,39 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
 @media (prefers-reduced-motion:reduce) {
   #cassiellos-crm .crm-neon-meter-fill { transition:none; }
 }
+
+
+/* Mobile CRM is horizontal-nav based; show Neon as a collapsed small status strip. */
+#cassiellos-crm .crm-neon-toggle { display:none; }
+@media (max-width:830px) {
+  #cassiellos-crm .crm-sidebar-footer {
+    display:block;
+    padding:0 12px 10px;
+    border-top:0;
+  }
+  #cassiellos-crm .crm-sidebar-footer .crm-profile,
+  #cassiellos-crm .crm-sidebar-footer > form { display:none; }
+  #cassiellos-crm .crm-neon-monitor {
+    padding:8px 11px;
+    margin:0;
+    border-radius:8px;
+  }
+  #cassiellos-crm .crm-neon-title-row { margin-bottom:0; }
+  #cassiellos-crm .crm-neon-plan { margin-left:auto; }
+  #cassiellos-crm .crm-neon-toggle {
+    display:inline-flex;
+    border:1px solid rgba(89,231,181,.2);
+    border-radius:5px;
+    padding:4px 8px;
+    color:#a9d9cf;
+    background:transparent;
+    font-size:10px;
+    font-weight:650;
+    white-space:nowrap;
+  }
+  #cassiellos-crm .crm-neon-details { display:none; }
+  #cassiellos-crm .crm-neon-monitor[data-mobile-expanded="true"] .crm-neon-details {
+    display:block;
+    padding-top:11px;
+  }
+}
