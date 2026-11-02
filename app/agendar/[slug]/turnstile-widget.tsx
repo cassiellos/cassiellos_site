@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 
 /**
  * Cloudflare Turnstile (renderização explícita). O token só é usado no servidor;
- * nenhuma chave secreta existe no navegador. O widget aparece apenas quando a
- * Cloudflare precisa de interação (appearance: interaction-only) e renova
- * automaticamente tokens expirados (refresh-expired: auto).
+ * nenhuma chave secreta existe no navegador. O widget permanece visível para
+ * sinalizar claramente a verificação e permitir desafios interativos.
+ * Tokens expirados são renovados automaticamente (refresh-expired: auto).
  */
 
 type TurnstileApi = {
@@ -70,9 +70,9 @@ export default function TurnstileWidget({
       widgetId.current = api.render(container.current, {
         sitekey: siteKey,
         action,
-        theme: 'dark',
+        theme: 'light',
         size: 'flexible',
-        appearance: 'interaction-only',
+        appearance: 'always',
         language: 'pt-br',
         'refresh-expired': 'auto',
         'refresh-timeout': 'auto',
