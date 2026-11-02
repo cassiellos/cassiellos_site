@@ -7,6 +7,8 @@
  * - Estados ("Recebido", "Parcial", "Atrasado"...) são DERIVADOS dos movimentos reais, nunca digitados.
  */
 
+import { addDays, holidaysForYear } from '../availability/holidays'
+
 export const MAX_CENTS = 100_000_000_000 // R$ 1 bilhão: teto de sanidade (mesmo limite das constraints da 0011)
 export const TIME_ZONE = 'America/Sao_Paulo'
 
@@ -152,6 +154,39 @@ export function dueDateFor(month: string, dueDay: number): string {
   const [y, m] = month.split('-').map(Number)
   return month + '-' + String(Math.min(dueDay, daysInMonth(y, m))).padStart(2, '0')
 }
+/**
+ * Ajusta apenas o vencimento EFETIVO, sem reescrever a data original do contrato.
+ * Sábados, domingos e feriados legais nacionais/estaduais/municipais de BH.
+ * Não trata ponto facultativo ou ponte como feriado, salvo quando também feriado legal.
+ */
+const legalHolidayCache = new Map<number, ReadonlySet<string>>()
+function legalHolidays(year: number): ReadonlySet<string> {
+  let result = legalHolidayCache.get(year)
+  if (!result) {
+    result = new Set(holidaysForYear(year)
+      .filter(item => item.kinds.some(kind =>
+        kind === 'national_holiday' || kind === 'state_holiday' || kind === 'municipal_holiday'))
+      .map(item => item.date))
+    legalHolidayCache.set(year, result)
+  }
+  return result
+}
+export function effectiveBusinessDueDate(dueDate: string): string {
+  if (!isValidDate(dueDate)) return dueDate
+  let adjusted = dueDate
+  for (let safety = 0; safety < 15; safety++) {
+    const day = new Date(adjusted + 'T12:00:00Z').getUTCDay()
+    const isWeekend = day === 0 || day === 6
+    if (!isWeekend && !legalHolidays(Number(adjusted.slice(0, 4))).has(adjusted)) return adjusted
+    adjusted = addDays(adjusted, 1)
+  }
+  return adjusted
+}
+/** Atraso só começa no DIA SEGUINTE ao vencimento efetivo. */
+export function overdueByBusinessDay(dueDate: string, today: string): boolean {
+  return isValidDate(today) && effectiveBusinessDueDate(dueDate) < today
+}
+
 const MONTH_NAMES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 export const monthLabel = (month: string): string => MONTH_NAMES[Number(month.slice(5, 7)) - 1] + '/' + month.slice(0, 4)
 export const shortMonth = (month: string): string => MONTH_NAMES[Number(month.slice(5, 7)) - 1]
@@ -207,8 +242,8 @@ export function entryState(e: { status: 'open' | 'cancelled'; amountCents: numbe
   today: string): EntryState {
   if (e.status === 'cancelled') return 'cancelled'
   if (e.settledCents >= e.amountCents) return 'settled'
+  if (overdueByBusinessDay(e.dueDate, today)) return 'overdue'
   if (e.settledCents > 0) return 'partial'
-  if (e.dueDate < today) return 'overdue'
   if (monthOf(e.competenceMonth) > monthOf(today)) return 'forecast'
   return 'open'
 }
