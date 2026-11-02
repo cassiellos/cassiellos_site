@@ -10,7 +10,7 @@ import { emitFunnel } from '@/lib/crm/funnel-client'
 import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
-import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
+import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 import MetaPixel from '@/components/marketing/meta-pixel'
 import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
@@ -144,6 +144,7 @@ export default function BookingExperience({
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0)
   const [questionIndex, setQuestionIndex] = useState(0)
+  const [showPrivacyPreferences, setShowPrivacyPreferences] = useState(false)
   // Browser and server calculate current date in the same timezone, not user's machine timezone.
   const [today, setToday] = useState('')
   const [month, setMonth] = useState('')
@@ -815,16 +816,13 @@ export default function BookingExperience({
         </div>
       </section>}
     </main>
-    <div className="booking-cookie-notice"><ConsentNotice marketingEnabled={marketingEnabled}/></div>
-    <details className="booking-preview-details">
-      <summary>Informações sobre este ambiente de testes</summary>
-      <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Cadastros são salvos no Neon Preview; {bookingEnabled ? (bookingRestricted ? 'agendamentos reais habilitados apenas para o e-mail de teste.' : 'agendamentos reais habilitados.') : 'nenhuma reunião será criada.'}</div>
-      {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status"><strong>HOMOLOGAÇÃO META PIXEL</strong> · Ativa até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}.</div>}
-    </details>
-    <footer className="booking-footer"><span>© Cassiellos · Experiência em desenvolvimento</span>
-      <span className="booking-footer-links"><a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
-        <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Cookies</a>
-        <ConsentPreferencesButton/></span>
-      <span>Ambiente Preview · {form.niche}</span></footer>
+    {(step === 2 || step === 4) && <aside className="booking-privacy-minimal" aria-label="Informações de privacidade">
+      <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+      <button type="button" onClick={() => setShowPrivacyPreferences(current => !current)}
+        aria-expanded={showPrivacyPreferences} aria-controls="booking-privacy-options">Preferências de cookies</button>
+      <div id="booking-privacy-options">
+        {showPrivacyPreferences && <ConsentNotice marketingEnabled={marketingEnabled}/>}
+      </div>
+    </aside>}
   </div>
 }
