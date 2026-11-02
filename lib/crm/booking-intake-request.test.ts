@@ -61,7 +61,7 @@ function body(over: Record<string, unknown> = {}): Record<string, unknown> {
     formSlug: 'odontologia', idempotencyKey: randomUUID(),
     name: 'Lead Turnstile', email: 'lead.turnstile@exemplo.com', whatsapp: '(31) 90000-0001',
     answers: { instagram: '@clinicateste', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
-    attribution: { utm_source: 'teste' }, privacyAccepted: true, turnstileToken: K.dummyToken, ...over,
+    attribution: { utm_source: 'teste' }, contactRequest: true, turnstileToken: K.dummyToken, ...over,
   }
 }
 
@@ -104,12 +104,24 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
   it('rejeita Instagram inválido e orçamento fora das opções antes de consultar a segurança', async () => {
     for (const answers of [
       { instagram: 'perfil com espaços', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
+      { instagram: 'javascript:alert(1)', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
       { instagram: '@clinicateste', revenue: 'Até R$ 10 mil/mês', budget: 'Talvez' },
     ]) {
       const t = setup()
       const r = await handleLeadIntake(t.deps, { value: body({ answers }), remoteIp: null })
       assert.deepEqual(r, { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } })
       assert.deepEqual(t.counts(), { quotaCalls: 0, verifyCalls: 0 })
+    }
+  })
+
+  it('aceita site e Instagram sem arroba como formas válidas de presença digital', async () => {
+    for (const instagram of ['cassiellos.com.br', 'https://www.cassiellos.com.br/', 'cassiellos.agencia',
+      'https://instagram.com/cassiellos.agencia', '@cassiellos.agencia']) {
+      const t = setup()
+      const r = await handleLeadIntake(t.deps, {
+        value: body({ answers: { instagram, revenue: 'Até R$ 10 mil/mês', budget: 'Sim' } }), remoteIp: null,
+      })
+      assert.equal(r.status, 201, instagram)
     }
   })
 
@@ -124,7 +136,7 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
     for (const [override, error] of [
       [{ website: 'http://spam' }, 'INVALID_REQUEST'], [{ formSlug: 'x' }, 'UNKNOWN_FORM'],
       [{ idempotencyKey: '1' }, 'INVALID_REQUEST_KEY'], [{ email: 'nao-e-email' }, 'INVALID_EMAIL'],
-      [{ privacyAccepted: false }, 'PRIVACY_NOT_ACCEPTED'],
+      [{ contactRequest: false }, 'CONTACT_REQUEST_REQUIRED'],
     ] as const) {
       const t = setup()
       const r = await handleLeadIntake(t.deps, { value: body(override), remoteIp: null })
