@@ -216,11 +216,10 @@ export default function BookingExperience({
   }, [form.slug, analyticsMode])
 
   useEffect(() => {
-    if (step !== 2 || !bookingToken) return
+    if (step !== 2) return
     const controller = new AbortController()
     fetch('/api/booking/calendar?form=' + encodeURIComponent(form.slug), {
       cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
-      headers: { 'X-Booking-Session': bookingToken },
     })
       .then(response => response.ok ? response.json() : null)
       .then((data: unknown) => {
@@ -233,10 +232,10 @@ export default function BookingExperience({
       // Falha: mantém a regra local; o servidor continua recusando dias fechados.
       .catch(() => undefined)
     return () => controller.abort()
-  }, [step, form.slug, bookingToken])
+  }, [step, form.slug])
 
   useEffect(() => {
-    if (step !== 2 || !date || !bookingToken) return
+    if (step !== 2 || !date) return
     const controller = new AbortController()
     let active = true
     setLoading(true)
@@ -248,7 +247,6 @@ export default function BookingExperience({
     fetch('/api/booking/availability?form=' + encodeURIComponent(form.slug) +
       '&date=' + encodeURIComponent(date), {
       cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
-      headers: bookingToken ? { 'X-Booking-Session': bookingToken } : {},
     })
       .then(async response => {
         if (!response.ok) {
@@ -282,7 +280,7 @@ export default function BookingExperience({
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false; controller.abort() }
-  }, [step, date, retry, form.slug, bookingToken])
+  }, [step, date, retry, form.slug])
 
   const questions = useMemo<Question[]>(() => [
     { name: 'name', label: 'Qual é o seu nome?', type: 'text',
@@ -374,7 +372,7 @@ export default function BookingExperience({
     if (savingLead) return
     if (leadSaved) return
     if (!attendee.email.trim() || contactError('email')) {
-      setFieldError({ name: 'email', message: 'Confira o seu e-mail antes de consultar os horários.' })
+      setFieldError({ name: 'email', message: 'Confira o seu e-mail para confirmar o horário.' })
       return
     }
     if (!turnstileSiteKey) {
@@ -681,17 +679,16 @@ export default function BookingExperience({
                 <strong>{date ? humanDate(date) : windowClosed ? 'Sem horários disponíveis' : 'Selecione um dia'}</strong>
                 <small>Horário de Brasília · 30 minutos</small>
               </div>
-              {bookingToken && windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
-              {!bookingToken && <p className="booking-calendar-hint">Escolha um dia e informe seu e-mail abaixo para consultar os horários disponíveis.</p>}
-              {bookingToken && !date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data no calendário para consultar os horários.</p>}
+              {windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
+                            {!date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data no calendário para consultar os horários.</p>}
               {loading && <p className="booking-calendar-hint">Consultando disponibilidade real…</p>}
               {failed && <div className="booking-availability-error" role="alert">
                 {availabilityError || 'Não foi possível consultar a agenda agora.'}
                 {!availabilityError && <button type="button" onClick={() => setRetry(v => v + 1)}>Tentar novamente</button>}
               </div>}
-              {bookingToken && !loading && !failed && date && slots.length === 0 &&
+              {!loading && !failed && date && slots.length === 0 &&
                 <p className="booking-calendar-hint">Não há horários disponíveis para esta data. Escolha outro dia.</p>}
-              {bookingToken && !loading && !failed && slots.length > 0 &&
+              {!loading && !failed && slots.length > 0 &&
                 <div className="booking-time-grid">
                   {slots.map(slot => <button type="button" key={slot.startAt}
                     data-selected={chosen?.startAt === slot.startAt}
@@ -704,7 +701,7 @@ export default function BookingExperience({
                 </div>}
             </div>
             {chosen && <div className="booking-selected-summary"><Icon name="check"/><span>{date && humanDate(date)}, às {chosen.localTime} · {form.durationMinutes} minutos</span></div>}
-            {!leadSaved ? <form className="booking-calendar-email" onSubmit={submitLead} noValidate>
+            {chosen && (!leadSaved ? <form className="booking-calendar-email" onSubmit={submitLead} noValidate>
               <label htmlFor="booking-last-email">Seu melhor e-mail <span aria-hidden="true">*</span></label>
               <input type="email" id="booking-last-email" value={attendee.email}
                 placeholder="seu@email.com" autoComplete="email" required maxLength={180}
@@ -712,19 +709,19 @@ export default function BookingExperience({
                 aria-invalid={fieldError?.name === 'email'}
                 aria-describedby={fieldError?.name === 'email' ? 'booking-email-error' : undefined}/>
               {fieldError?.name === 'email' && <p className="booking-field-error" id="booking-email-error" role="alert">{fieldError.message}</p>}
-              <p className="booking-inline-privacy">Ao consultar horários, você solicita contato sobre o diagnóstico.
+              <p className="booking-inline-privacy">Ao confirmar o agendamento, você solicita contato sobre o diagnóstico.
                 Saiba como usamos seus dados na <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>.</p>
               {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
                 resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>}
               {!turnstileSiteKey && <p className="booking-security-status" data-state="error" role="alert">A confirmação está indisponível nesta prévia até configurar a verificação de segurança.</p>}
               <button type="submit" className="booking-primary" disabled={savingLead || !attendee.email.trim() || !turnstileToken}>
-                {savingLead ? 'Verificando…' : 'Ver horários disponíveis'} <Icon name="arrow"/>
+                {savingLead ? 'Verificando…' : 'Continuar para agendamento'} <Icon name="arrow"/>
               </button>
               {saveError && <p className="booking-save-error" role="alert">{saveError}</p>}
             </form> : <div className="booking-calendar-contact">
               <small>AGENDAMENTO PARA</small><p><strong>{attendee.name}</strong></p>
               <p>{attendee.email}</p>
-            </div>}
+            </div>)}
             {confirmationError && <p role="alert" className="booking-save-error">{confirmationError}</p>}
             {leadSaved && <div className="booking-actions">
               <button type="button" className="booking-primary" disabled={!chosen || loading || failed || !bookingEnabled || !bookingToken || confirming}
