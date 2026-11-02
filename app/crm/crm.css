@@ -326,6 +326,29 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
   color:#7d91a6;
   line-height:1.45;
 }
+#cassiellos-crm .crm-neon-alert {
+  margin:0;
+  padding:5px 7px;
+  border-radius:6px;
+  font-size:9px;
+  font-weight:700;
+  line-height:1.35;
+  color:#ffd9a8;
+  background:rgba(255,180,101,.12);
+  border:1px solid rgba(255,180,101,.35);
+}
+#cassiellos-crm .crm-neon-monitor[data-alert="critical"] .crm-neon-alert {
+  color:#ffc4cc;
+  background:rgba(255,99,118,.13);
+  border-color:rgba(255,99,118,.42);
+}
+#cassiellos-crm .crm-neon-flag { font-weight:750; }
+#cassiellos-crm .crm-neon-meter[data-tone="warning"] .crm-neon-flag { color:#ffc17d; }
+#cassiellos-crm .crm-neon-meter[data-tone="critical"] .crm-neon-flag { color:#ff8291; }
+@media (max-width:830px) {
+  #cassiellos-crm .crm-neon-monitor[data-alert="warning"],
+  #cassiellos-crm .crm-neon-monitor[data-alert="critical"] { border-color:rgba(255,180,101,.5); }
+}
 #cassiellos-crm .crm-neon-update {
   display:flex;
   justify-content:space-between;

@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
   if (!verifyCrmSession(session)) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401, headers })
   }
-  const result = await readNeonUsage()
+  // Manual refresh from the sidebar button; server throttles it to one Neon call per minute.
+  const manual = request.nextUrl.searchParams.get('refresh') === '1'
+  const result = await readNeonUsage({ manual })
   return NextResponse.json(result, { status: 200, headers })
 }
