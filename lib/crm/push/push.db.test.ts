@@ -124,7 +124,7 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     assert.equal(await runHook(newLeadFrom(intakeResult(lead)), t => enqueueLeadNotification(deps(svc.fetch), t.leadId).then(r => r.ids), svc.fetch), true)
     assert.deepEqual(svc.sent.map(s => s.endpoint).sort(), [a.endpoint, b.endpoint].sort())
     const p = svc.sent[0].payload
-    assert.deepEqual([p.k, p.t, p.b], ['lead_created', NOTIFICATION_TEXT.lead_created.title, 'Beatriz • novo contato pelo formulário'])
+    assert.deepEqual([p.k, p.t, p.b], ['lead_created', NOTIFICATION_TEXT.lead_created.title, 'Beatriz preencheu o formulário'])
     assert.equal(p.g, svc.sent[1].payload.g, 'mesmo aviso lógico nos dois aparelhos')
     assert.equal(await resolveNotification(pool, p.g), '/crm?lead=' + lead.leadId)
     assert.ok((await q("SELECT opened_at FROM crm.push_notifications WHERE id = $1", [p.g]))[0].opened_at)
@@ -295,7 +295,7 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     if (t.ok) await dispatchNotifications({ ...deps(svc.fetch), env: off }, t.ids)
     assert.deepEqual(svc.sent.map(s => [s.endpoint, s.payload.k]), [[d.endpoint, 'test']])
     assert.equal(svc.sent[0].payload.t, '👤 Novo lead')
-    assert.equal(svc.sent[0].payload.b, 'Márcio • novo contato pelo formulário')
+    assert.equal(svc.sent[0].payload.b, 'Márcio preencheu o formulário')
     assert.equal(await resolveNotification(pool, svc.sent[0].payload.g), '/crm?view=notificacoes')
     assert.deepEqual(await enqueueTestNotification({ ...deps(svc.fetch), env: off }, {}), { ok: false, error: 'TEST_TOO_SOON' })
     assert.deepEqual(await enqueueTestNotification({ ...deps(svc.fetch), env: off }, { variant: 'invalid' }), { ok: false, error: 'INVALID_TEST_VARIANT' })
