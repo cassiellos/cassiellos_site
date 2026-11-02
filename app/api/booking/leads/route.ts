@@ -9,7 +9,7 @@ import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { deliverAfterEvent, enqueueLeadNotification } from '@/lib/crm/push/store'
 import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { saveLeadSubmission } from '@/lib/crm/lead-intake'
-import { CRM_CANONICAL_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { CRM_CANONICAL_ORIGIN, CRM_FORM_DESIGN_PREVIEW_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
 import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
 import { activeHomologation } from '@/lib/marketing/homologation'
@@ -43,7 +43,7 @@ function response(body: unknown, status: number) {
 
 /** Turnstile tokens are accepted only for the CRM host (local test keys also allow localhost). */
 function expectedHostnames(usingTestKeys: boolean): string[] {
-  const hosts = [new URL(CRM_CANONICAL_ORIGIN).hostname]
+  const hosts = [new URL(CRM_CANONICAL_ORIGIN).hostname, ...(process.env.VERCEL_ENV === 'preview' ? [new URL(CRM_FORM_DESIGN_PREVIEW_ORIGIN).hostname] : [])]
   return usingTestKeys ? [...hosts, 'localhost', '127.0.0.1', 'example.com'] : hosts
 }
 
