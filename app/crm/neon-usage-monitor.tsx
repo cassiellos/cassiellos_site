@@ -46,7 +46,7 @@ function UsageBar({ label, value, kind, help }: {
 export default function NeonUsageMonitor() {
   const [result, setResult] = useState<NeonUsageResult | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [mobileExpanded, setMobileExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const load = useCallback(async (signal?: AbortSignal, manual = false) => {
     setRefreshing(true)
@@ -83,30 +83,26 @@ export default function NeonUsageMonitor() {
   const cycleEnd = ready ? dayMonth(ready.periodEnd) : null
   const alert = ready ? overallSeverity([ready.compute, ready.storagePreview, ready.outboundTransfer]) : 'unknown'
 
-  return <section className="crm-neon-monitor" data-mobile-expanded={mobileExpanded} data-alert={alert}
+  return <section className="crm-neon-monitor" data-expanded={expanded} data-alert={alert}
     aria-label="Uso de recursos do banco Neon">
     <div className="crm-neon-title-row">
-      <div className="crm-neon-title">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
-          <path d="M5 2.8h9.4c4 0 6.6 2.7 6.6 6.5v5.4c0 4-2.7 6.4-6.2 6.4h-1.9V8.5l-5.6 9.8c-1.1 2-3.1 2.8-4.7 2.8V5.5C2.6 3.9 3.5 2.8 5 2.8Z" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round"/>
-        </svg>
-        <span>NEON · CONSUMO</span>
-      </div>
-      {ready && <span className="crm-neon-plan" title="Plano da organização Neon">{ready.plan}</span>}
       <button type="button" className="crm-neon-toggle" aria-controls="crm-neon-details"
-        aria-expanded={mobileExpanded} onClick={() => setMobileExpanded(value => !value)}>
-        {mobileExpanded ? 'Fechar' : 'Ver uso'}
-      </button>
-      <button type="button" className="crm-neon-refresh" aria-label="Atualizar consumo da Neon"
-        title="Atualizar consumo" disabled={refreshing} onClick={() => void load(undefined, true)}>
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>
-        </svg>
+        aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
+        title={expanded ? 'Recolher monitor Neon' : 'Mostrar consumo da Neon'}>
+        <span className="crm-neon-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
+            <path d="M5 2.8h9.4c4 0 6.6 2.7 6.6 6.5v5.4c0 4-2.7 6.4-6.2 6.4h-1.9V8.5l-5.6 9.8c-1.1 2-3.1 2.8-4.7 2.8V5.5C2.6 3.9 3.5 2.8 5 2.8Z" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round"/>
+          </svg>
+          <span>NEON · CONSUMO</span>
+        </span>
+        {ready && <span className="crm-neon-plan" title="Plano da organização Neon">{ready.plan}</span>}
+        <svg className="crm-neon-chevron" viewBox="0 0 24 24" width="15" height="15"
+          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
     </div>
 
-    <div id="crm-neon-details" className="crm-neon-details">
+    <div id="crm-neon-details" className="crm-neon-details" hidden={!expanded}>
     {!result && <p className="crm-neon-status" role="status">Carregando uso da Neon…</p>}
     {result?.status === 'not_configured' && <p className="crm-neon-status" role="status">
       <strong>Conexão pendente.</strong> Configure a chave privada Neon no ambiente Preview da Vercel.
@@ -125,13 +121,23 @@ export default function NeonUsageMonitor() {
         help="Tamanho lógico da branch Preview frente ao limite lógico por branch; não é o armazenamento faturável do projeto."/>
       <UsageBar label="Transferência" value={ready.outboundTransfer} kind="bytes"
         help="Transferência de saída (egress) do projeto no ciclo mensal da Neon."/>
-      <p className="crm-neon-footnote">
-        Armazenamento: tamanho lógico da Preview (limite por branch), não o total faturável do projeto.
-        {cycleStart && cycleEnd ? ' Ciclo ' + cycleStart + '–' + cycleEnd + '.' : ''}
-      </p>
+      <details className="crm-neon-info">
+        <summary>Sobre armazenamento e ciclo</summary>
+        <p className="crm-neon-footnote">
+          Armazenamento: tamanho lógico da Preview (limite por branch), não o total faturável do projeto.
+          {cycleStart && cycleEnd ? ' Ciclo ' + cycleStart + '–' + cycleEnd + '.' : ''}
+        </p>
+      </details>
       <div className="crm-neon-update" aria-label="Última atualização">
         <span>{updated ? 'Atualizado ' + updated : 'Atualização pendente'}</span>
         <span>auto 15 min</span>
+        <button type="button" className="crm-neon-refresh" aria-label="Atualizar consumo da Neon"
+          title="Atualizar consumo" disabled={refreshing} onClick={() => void load(undefined, true)}>
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>
+          </svg>
+        </button>
       </div>
     </div>}
     </div>
