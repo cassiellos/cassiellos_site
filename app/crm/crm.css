@@ -397,3 +397,113 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
     padding-top:11px;
   }
 }
+
+
+/* Neon v2 — o CRM tem prioridade visual: monitor recolhido por padrão em TODOS os tamanhos. */
+#cassiellos-crm .crm-nav-wrap {
+  min-height:0; /* links Financeiro/Configurações continuam roláveis quando a tela é baixa */
+}
+#cassiellos-crm .crm-sidebar-footer {
+  flex-shrink:0;
+}
+#cassiellos-crm .crm-neon-monitor {
+  margin-bottom:9px;
+  padding:7px 9px;
+}
+#cassiellos-crm .crm-neon-title-row {
+  margin-bottom:0;
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-toggle {
+  width:100%;
+  min-height:32px;
+  padding:1px 2px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  text-align:left;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#a7e9d4;
+  cursor:pointer;
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-toggle:hover {
+  background:rgba(93,224,179,.075);
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-toggle:focus-visible {
+  outline:2px solid #74efc6;
+  outline-offset:2px;
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-title {
+  font-size:10px;
+  white-space:nowrap;
+  letter-spacing:.06em;
+  min-width:0;
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-plan {
+  margin-left:auto;
+  font-size:9px;
+}
+#cassiellos-crm .crm-neon-chevron {
+  flex-shrink:0;
+  margin-left:auto;
+  color:#91aabe;
+  transition:transform .18s ease;
+}
+#cassiellos-crm .crm-neon-plan + .crm-neon-chevron {
+  margin-left:3px;
+}
+#cassiellos-crm .crm-neon-monitor[data-expanded="true"] .crm-neon-chevron {
+  transform:rotate(180deg);
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-details[hidden] {
+  display:none!important;
+}
+#cassiellos-crm .crm-neon-monitor .crm-neon-details:not([hidden]) {
+  display:block;
+  padding-top:10px;
+  max-height:min(43vh,360px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+#cassiellos-crm .crm-neon-info {
+  border-top:1px solid rgba(220,227,238,.09);
+  padding-top:8px;
+}
+#cassiellos-crm .crm-neon-info summary {
+  cursor:pointer;
+  font-size:9px;
+  line-height:1.45;
+  color:#a8bfd0;
+  font-weight:650;
+  list-style-position:inside;
+}
+#cassiellos-crm .crm-neon-info summary:hover {
+  color:#d6f2e7;
+}
+#cassiellos-crm .crm-neon-info .crm-neon-footnote {
+  margin-top:7px;
+}
+#cassiellos-crm .crm-neon-update {
+  align-items:center;
+}
+#cassiellos-crm .crm-neon-update .crm-neon-refresh {
+  flex-shrink:0;
+  margin-left:0;
+}
+@media (max-width:830px) {
+  #cassiellos-crm .crm-neon-monitor {
+    margin:0;
+    padding:6px 9px;
+  }
+  #cassiellos-crm .crm-neon-monitor .crm-neon-toggle {
+    min-height:32px;
+    padding:1px 2px;
+    border:0;
+    background:transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cassiellos-crm .crm-neon-chevron { transition:none; }
+}
