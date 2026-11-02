@@ -12,6 +12,7 @@ import AvailabilityPanel from './availability-panel'
 import MetaHomologationPanel from './meta-homologation-panel'
 import NotificationsPanel from './notifications-panel'
 import FinancePanel from './finance-panel'
+import NeonUsageMonitor from './neon-usage-monitor'
 
 type View = 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'notificacoes' | 'relatorios' | 'configuracoes' | 'financeiro'
 type Lead = { id: string; company: string; contact: string; origin: string; status: string; date: string; amount: string; initials: string }
@@ -188,7 +189,7 @@ export default function MiniCrm() {
           <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
           <button type="button" className="crm-nav-btn" data-active={view === 'financeiro'} onClick={() => openView('financeiro')} aria-current={view === 'financeiro' ? 'page' : undefined}><Icon name="wallet"/>Financeiro</button>
         </nav>
-        <div className="crm-sidebar-footer"><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>Ambiente de demonstração</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
+        <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>Ambiente de demonstração</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
       </aside>
 
       <main className="crm-main">
