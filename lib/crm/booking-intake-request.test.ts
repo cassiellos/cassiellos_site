@@ -60,7 +60,7 @@ function body(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     formSlug: 'odontologia', idempotencyKey: randomUUID(),
     name: 'Lead Turnstile', email: 'lead.turnstile@exemplo.com', whatsapp: '(31) 90000-0001',
-    answers: { clinic: 'Clínica Teste', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
+    answers: { instagram: '@clinicateste', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
     attribution: { utm_source: 'teste' }, privacyAccepted: true, turnstileToken: K.dummyToken, ...over,
   }
 }
@@ -100,6 +100,18 @@ describe('handleLeadIntake — Turnstile obrigatório antes de qualquer gravaç�
       assert.equal(t.counts().quotaCalls, 0)
     })
   }
+
+  it('rejeita Instagram inválido e orçamento fora das opções antes de consultar a segurança', async () => {
+    for (const answers of [
+      { instagram: 'perfil com espaços', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
+      { instagram: '@clinicateste', revenue: 'Até R$ 10 mil/mês', budget: 'Talvez' },
+    ]) {
+      const t = setup()
+      const r = await handleLeadIntake(t.deps, { value: body({ answers }), remoteIp: null })
+      assert.deepEqual(r, { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } })
+      assert.deepEqual(t.counts(), { quotaCalls: 0, verifyCalls: 0 })
+    }
+  })
 
   it('limite por IP atingido: 429 mesmo com token válido, sem gravação', async () => {
     const t = setup({ quota: false })
