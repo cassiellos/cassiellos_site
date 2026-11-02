@@ -1,4 +1,4 @@
-import type { BookingForm } from './booking-forms'
+import { isValidWebPresence, type BookingForm } from './booking-forms'
 import type { LeadSubmissionInput, LeadSubmissionResult } from './lead-intake'
 import { META_CLICK_ID_PARAM, resolveMarketingConsent } from '../marketing/meta'
 import {
@@ -45,7 +45,7 @@ function configuredAnswers(form: BookingForm, raw: unknown) {
     const rawValue = (raw as Record<string, unknown>)[field.name]
     const value = clean(rawValue, 120)
     if (field.required && (!value || value.length < 2)) return null
-    if (field.name === 'instagram' && value && !(/^@[a-zA-Z0-9._]{2,30}$/.test(value) || /^https:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]{2,30}\/?$/.test(value))) return null
+    if (field.name === 'instagram' && value && !isValidWebPresence(value)) return null
     if (value && field.type === 'select' && !field.options?.includes(value)) return null
     if (value) answers[field.name] = value
   }
@@ -100,7 +100,9 @@ export async function handleLeadIntake(
   if (!email) return { status: 400, body: { error: 'INVALID_EMAIL' } }
   if (!phone) return { status: 400, body: { error: 'INVALID_WHATSAPP' } }
   if (!answers) return { status: 400, body: { error: 'INVALID_FORM_ANSWERS' } }
-  if (value.privacyAccepted !== true) return { status: 400, body: { error: 'PRIVACY_NOT_ACCEPTED' } }
+  // Contact scheduling is requested directly by an explicit submit action after
+  // a visible privacy notice; no standalone consent checkbox or fictitious consent claim.
+  if (value.contactRequest !== true) return { status: 400, body: { error: 'CONTACT_REQUEST_REQUIRED' } }
 
   // Marketing choice validated on the server (body + consent cookie of this request).
   // Only the yes/no choice reaches the CRM; fbp/fbc are discarded (decision C2).
