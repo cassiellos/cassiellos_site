@@ -40,15 +40,16 @@ const bookingForms: Record<string, BookingForm> = {
     version: 'odontologia-v3',
     niche: 'Clínicas odontológicas',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
-    headline: 'Tráfego pago para clínicas odontológicas que querem vender mais.'
-    description: 'Um diagnóstico direto para entender o momento da sua clínica e avaliar oportunidades de crescimento.'
+    headline: 'Tráfego pago para clínicas odontológicas que querem vender mais.',
+    description: 'Um diagnóstico direto para entender o momento da sua clínica e avaliar oportunidades de crescimento.',
     meetingName: 'Diagnóstico estratégico • Odontologia',
     durationMinutes: 30,
     fields: [
       { name: 'instagram', label: 'Qual é o site ou @ do Instagram da sua clínica?', type: 'text', required: true, placeholder: '@suaclinica' },
       { name: 'revenue', label: 'Qual é o faturamento mensal da sua clínica?', type: 'select', required: true, options: REVENUE_RANGES },
       { name: 'budget', label: 'Para escalar com segurança, recomendamos um investimento a partir de (valor). Isso cabe no seu planejamento?', type: 'select', required: true, options: ['Sim', 'Não'] },
-    ],  },
+    ],
+  },
 }
 
 /** Uma configuração por nicho; novas versões podem ser adicionadas sem redesenhar a página. */
