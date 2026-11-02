@@ -21,7 +21,7 @@ type Settlement = { id: string; amountCents: number; settledOn: string; method: 
 type Entry = {
   id: string; direction: Dir; sourceId: string | null; installmentNumber: number | null; clientId: string | null; clientName: string | null; company: string | null; category: string
   categoryLabel: string; description: string; periodicity: string | null; competenceMonth: string; dueDate: string; amountCents: number; settledCents: number
-  remainingCents: number; lastSettledOn: string | null; state: string; stateLabel: string; overdue: boolean; clientAdBudget: boolean; cancelReason: string | null
+  remainingCents: number; lastSettledOn: string | null; state: string; stateLabel: string; overdue: boolean; effectiveDueDate: string; clientAdBudget: boolean; cancelReason: string | null
   invoice: { status: keyof typeof INVOICE_STATUS; label: string; number: string | null; issuedOn: string | null; externalRef: string | null; notes: string; recorded: boolean } | null
   settlements: Settlement[]
 }
@@ -398,30 +398,50 @@ export default function FinancePanel() {
 }
 
 function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void }) {
-  // Cada cartão abre a lista que explica o número. Indicadores de caixa usam a data real
-  // do movimento; indicadores de competência usam o mês de vencimento.
-  const cards: { label: string; cents: number; sub: string; extra?: string; tab: Tab; mode?: DrilldownMode }[] = [
-    { label: 'Receita prevista do mês', cents: v('revenueForecastCents'), sub: 'Competência · cobranças do mês', tab: 'receitas' },
-    { label: 'Receita recebida', cents: v('revenueReceivedCashCents'), sub: 'Caixa · entrou no mês', extra: 'Da competência do mês: ' + formatCents(v('revenueReceivedOfCompetenceCents')), tab: 'receitas', mode: 'cash' },
-    { label: 'Despesas previstas', cents: v('expensesForecastCents'), sub: 'Competência · contas do mês', tab: 'despesas' },
-    { label: 'Despesas pagas', cents: v('expensesPaidCashCents'), sub: 'Caixa · saiu no mês', tab: 'pagar', mode: 'cash' },
-    { label: 'Resultado do mês (caixa)', cents: v('resultCashCents'), sub: 'Recebido − pago no mês', extra: 'Por competência: ' + formatCents(v('resultCompetenceCents')), tab: 'relatorios' },
-    { label: 'Contas a receber', cents: v('receivableMonthCents'), sub: 'Saldo das cobranças do mês', extra: 'Em aberto até o mês: ' + formatCents(v('receivableOpenTotalCents')), tab: 'receber' },
-    { label: 'Contas a pagar', cents: v('payableMonthCents'), sub: 'Saldo das contas do mês', extra: 'Em aberto até o mês: ' + formatCents(v('payableOpenTotalCents')), tab: 'pagar' },
-    { label: 'Em atraso (hoje)', cents: v('overdueReceivableCents'), sub: v('overdueReceivableCount') + ' a receber vencida(s)', extra: 'A pagar vencido: ' + formatCents(v('overduePayableCents')), tab: v('overdueReceivableCents') > 0 || v('overduePayableCents') === 0 ? 'receber' : 'pagar', mode: 'overdue' },
+  // Só projeções visuais: nenhuma retirada dos sócios é lançada no Financeiro.
+  const result = v('resultCashCents')
+  const distributable = Math.max(0, result)
+  const daniel = Math.ceil(distributable / 2)
+  const guilherme = distributable - daniel
+  const allExpensesPaid = v('expensesForecastCents') > 0 && v('payableMonthCents') === 0
+  type Tone = 'default' | 'green' | 'orange' | 'red'
+  type Card = { label: string; cents: number; sub: string; extra?: string; tab?: Tab; mode?: DrilldownMode; tone: Tone }
+  const cards: Card[] = [
+    { label: 'Contas a receber', cents: v('receivableMonthCents'), sub: 'Saldo pendente das cobranças do mês',
+      extra: 'Em aberto até o mês: ' + formatCents(v('receivableOpenTotalCents')), tab: 'receber', tone: 'default' },
+    { label: 'Receita recebida', cents: v('revenueReceivedCashCents'), sub: 'Caixa · entrou no mês',
+      extra: 'Da competência do mês: ' + formatCents(v('revenueReceivedOfCompetenceCents')), tab: 'receitas', mode: 'cash', tone: 'green' },
+    { label: 'Despesas previstas', cents: v('expensesForecastCents'), sub: 'Competência · contas do mês',
+      tab: 'despesas', tone: 'orange' },
+    { label: 'Despesas pagas', cents: v('expensesPaidCashCents'), sub: 'Caixa · saiu no mês',
+      extra: allExpensesPaid ? 'Despesas da competência quitadas' : 'Há despesas da competência a pagar',
+      tab: 'pagar', mode: 'cash', tone: allExpensesPaid ? 'green' : 'orange' },
+    { label: 'Resultado do mês (caixa)', cents: result, sub: 'Recebido − pago no mês',
+      extra: 'Por competência: ' + formatCents(v('resultCompetenceCents')), tab: 'relatorios', tone: 'red' },
+    { label: 'Em atraso (hoje)', cents: v('overdueReceivableCents'),
+      sub: v('overdueReceivableCount') + ' cobrança(s) após o vencimento útil',
+      extra: 'A pagar vencido: ' + formatCents(v('overduePayableCents')),
+      tab: v('overdueReceivableCents') > 0 || v('overduePayableCents') === 0 ? 'receber' : 'pagar',
+      mode: 'overdue', tone: v('overdueReceivableCents') > 0 || v('overduePayableCents') > 0 ? 'red' : 'green' },
+    { label: 'Daniel Barcelos', cents: daniel, sub: '50% da sobra positiva de caixa',
+      extra: 'Simulação · não é retirada', tone: 'green' },
+    { label: 'Guilherme Cassim', cents: guilherme, sub: '50% da sobra positiva de caixa',
+      extra: 'Simulação · não é retirada', tone: 'green' },
   ]
   return <div className="crm-fin-kpis">
     {cards.map(card => {
       const body = <>
         <span>{card.label}</span><strong>{formatCents(card.cents)}</strong><small>{card.sub}</small>
         {card.extra && <small className="crm-fin-kpi-extra">{card.extra}</small>}
-        {onNavigate && <span className="crm-fin-kpi-open" aria-hidden="true">Ver detalhes <span>↗</span></span>}
+        {onNavigate && card.tab && <span className="crm-fin-kpi-open" aria-hidden="true">Ver detalhes <span>↗</span></span>}
       </>
-      return onNavigate
+      return onNavigate && card.tab
         ? <button key={card.label} type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link"
-            data-negative={card.cents < 0 || undefined} onClick={() => onNavigate(card.tab, card.mode)}
+            data-tone={card.tone} data-negative={card.cents < 0 || undefined}
+            onClick={() => onNavigate(card.tab!, card.mode)}
             aria-label={card.label + ': ' + formatCents(card.cents) + '. Abrir detalhes.'}>{body}</button>
-        : <div key={card.label} className="crm-card crm-fin-kpi" data-negative={card.cents < 0 || undefined}>{body}</div>
+        : <div key={card.label} className="crm-card crm-fin-kpi"
+            data-tone={card.tone} data-negative={card.cents < 0 || undefined}>{body}</div>
     })}
     {onNavigate
       ? <button type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link" onClick={() => onNavigate('contratos')}
@@ -430,7 +450,8 @@ function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab
           <small>Equivalente mensal: {formatCents(v('recurringMonthlyCents'))}</small>
           <span className="crm-fin-kpi-open" aria-hidden="true">Ver clientes e contratos <span>↗</span></span>
         </button>
-      : <div className="crm-card crm-fin-kpi"><span>Contratos recorrentes ativos</span><strong>{v('activeRecurringContracts')}</strong>
+      : <div className="crm-card crm-fin-kpi"><span>Contratos recorrentes ativos</span>
+          <strong>{v('activeRecurringContracts')}</strong>
           <small>Equivalente mensal: {formatCents(v('recurringMonthlyCents'))}</small></div>}
   </div>
 }
