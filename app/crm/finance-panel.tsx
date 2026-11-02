@@ -261,7 +261,11 @@ export default function FinancePanel() {
     // O usuário permanece no mesmo Financeiro; posiciona a aba escolhida no início da tela.
     requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
-  const [month, setMonth] = useState(() => todayInBrazil().slice(0, 7))
+  // O Financeiro da Cassiellos começou em 2026; o filtro visível fica em 2026–2030.
+  const MIN_FINANCE_MONTH = '2026-01'
+  const MAX_FINANCE_MONTH = '2030-12'
+  const limitFinanceMonth = (value: string) => value < MIN_FINANCE_MONTH ? MIN_FINANCE_MONTH : value > MAX_FINANCE_MONTH ? MAX_FINANCE_MONTH : value
+  const [month, setMonth] = useState(() => limitFinanceMonth(todayInBrazil().slice(0, 7)))
   const [filters, setFilters] = useState({ client: '', category: '', source: '' })
   // Cada resposta fica ligada à consulta (filtros) que a produziu. Os números só aparecem quando essa chave é a dos
   // filtros atuais — nunca valores de um período sob o rótulo de outro.
@@ -345,12 +349,12 @@ export default function FinancePanel() {
 
     <section className="crm-fin-filters" aria-label="Filtros">
       <Field label="Mês"><div className="crm-fin-month">
-        <button type="button" className="crm-btn" aria-label="Mês anterior" onClick={() => setMonth(addMonths(month, -1))}>‹</button>
-        <input type="month" value={month} min="2000-01" max="2100-12" onChange={e => e.target.value && setMonth(e.target.value)} aria-label="Mês de referência"/>
-        <button type="button" className="crm-btn" aria-label="Próximo mês" onClick={() => setMonth(addMonths(month, 1))}>›</button>
+        <button type="button" className="crm-btn" aria-label="Mês anterior" disabled={month <= MIN_FINANCE_MONTH} onClick={() => setMonth(limitFinanceMonth(addMonths(month, -1)))}>‹</button>
+        <input type="month" value={month} min={MIN_FINANCE_MONTH} max={MAX_FINANCE_MONTH} onChange={e => e.target.value && setMonth(limitFinanceMonth(e.target.value))} aria-label="Mês de referência"/>
+        <button type="button" className="crm-btn" aria-label="Próximo mês" disabled={month >= MAX_FINANCE_MONTH} onClick={() => setMonth(limitFinanceMonth(addMonths(month, 1)))}>›</button>
       </div></Field>
       <Field label="Ano"><select value={month.slice(0, 4)} onChange={e => setMonth(e.target.value + '-' + month.slice(5, 7))}>
-        {Array.from({ length: 9 }, (_, i) => String(Number(today.slice(0, 4)) - 6 + i)).map(y => <option key={y}>{y}</option>)}</select></Field>
+        {[2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={String(y)}>{y}</option>)}</select></Field>
       <Field label="Cliente"><select value={filters.client} onChange={e => setFilters({ ...filters, client: e.target.value })}>
         <option value="">Todos</option>{(options?.clients ?? []).map(c => <option key={c.id} value={c.id}>{c.name}{c.archived ? ' (arquivado)' : ''}</option>)}</select></Field>
       <Field label="Categoria"><select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })}>
@@ -417,7 +421,7 @@ function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab
       extra: allExpensesPaid ? 'Despesas da competência quitadas' : 'Há despesas da competência a pagar',
       tab: 'pagar', mode: 'cash', tone: allExpensesPaid ? 'green' : 'orange' },
     { label: 'Resultado do mês (caixa)', cents: result, sub: 'Recebido − pago no mês',
-      extra: 'Por competência: ' + formatCents(v('resultCompetenceCents')), tab: 'relatorios', tone: 'red' },
+      extra: 'Por competência: ' + formatCents(v('resultCompetenceCents')), tab: 'relatorios', tone: 'default' },
     { label: 'Em atraso (hoje)', cents: v('overdueReceivableCents'),
       sub: v('overdueReceivableCount') + ' cobrança(s) após o vencimento útil',
       extra: 'A pagar vencido: ' + formatCents(v('overduePayableCents')),
