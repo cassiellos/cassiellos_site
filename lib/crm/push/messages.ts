@@ -8,6 +8,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  * pode exibir o primeiro nome; o painel administrativo avisa sobre isso.
  */
 export type NotificationKind = 'lead_created' | 'meeting_confirmed' | 'meeting_whatsapp_ready' | 'test'
+/** Only fixed, fictitious samples; no lead/appointment is created for a preview push. */
+export type PushDemoVariant = 'generic' | 'lead' | 'meeting' | 'whatsapp'
+export function isPushDemoVariant(value: unknown): value is PushDemoVariant {
+  return value === 'generic' || value === 'lead' || value === 'meeting' || value === 'whatsapp'
+}
 
 export const NOTIFICATION_TEXT: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
   lead_created: {
@@ -58,6 +63,15 @@ export function safePushMeetingTime(value: unknown): string | null {
   return weekday.format(date) + ', às ' + Number(hour) + 'h' + (minute === '00' ? '' : minute)
 }
 
+/** The preview alerts deliberately reuse the actual formatting functions. */
+export function demoNotificationText(variant: PushDemoVariant): { title: string; body: string } {
+  const details: PushDisplayDetails = { fullName: 'Márcio Exemplo', startsAt: '2026-11-04T12:30:00.000Z' }
+  if (variant === 'lead') return notificationText('lead_created', details)
+  if (variant === 'meeting') return notificationText('meeting_confirmed', details)
+  if (variant === 'whatsapp') return notificationText('meeting_whatsapp_ready', details)
+  return NOTIFICATION_TEXT.test
+}
+
 export function notificationText(kind: NotificationKind, details?: PushDisplayDetails): { title: string; body: string } {
   const fallback = NOTIFICATION_TEXT[kind]
   const name = safePushFirstName(details?.fullName)
@@ -96,9 +110,11 @@ export function openPath(notificationId: string): string {
 }
 
 export function buildPushPayload(input: {
-  kind: NotificationKind; notificationId: string; deliveryId: string; secret: string; details?: PushDisplayDetails
+  kind: NotificationKind; notificationId: string; deliveryId: string; secret: string; details?: PushDisplayDetails; demoVariant?: PushDemoVariant
 }): PushPayload {
-  const text = notificationText(input.kind, input.details)
+  const text = input.kind === 'test' && input.demoVariant
+    ? demoNotificationText(input.demoVariant)
+    : notificationText(input.kind, input.details)
   return {
     v: 1, k: input.kind, t: text.title, b: text.body,
     u: openPath(input.notificationId), g: input.notificationId,

@@ -119,6 +119,20 @@ export default function NotificationsPanel() {
     return () => window.removeEventListener('beforeinstallprompt', onPrompt)
   }, [load, inspectDevice])
 
+  /** Dispara apenas um aviso fictício; não registra lead/reunião e não envia WhatsApp. */
+  async function sendSample(variant: 'lead' | 'meeting' | 'whatsapp') {
+    const names = { lead: 'Novo lead', meeting: 'Nova reunião agendada', whatsapp: 'Mensagem no WhatsApp' }
+    const r = await post({ action: 'test', variant })
+    if (r) {
+      const accepted = typeof r.accepted === 'number' ? r.accepted : 0
+      const total = typeof r.total === 'number' ? r.total : 0
+      setMessage({ kind: accepted > 0 ? 'ok' : 'error', text: accepted > 0
+        ? 'Exemplo de ' + names[variant] + ' aceito pelo serviço de push em ' + accepted + ' de ' + total + ' aparelho(s). Confira o iPhone.'
+        : 'O exemplo não foi aceito pelo serviço de push. Confira os aparelhos e o histórico.' })
+      load()
+    }
+  }
+
   async function enableHere() {
     if (!status?.env.publicKey) { setMessage({ kind: 'error', text: ERRORS.VAPID_NOT_READY }); return }
     if (!device.supported) { setMessage({ kind: 'error', text: 'Este navegador não oferece notificações push.' }); return }
@@ -198,10 +212,15 @@ export default function NotificationsPanel() {
       <div className="crm-push-actions">
         {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={enableHere}>Ativar notificações neste aparelho</button>}
         {here && <button type="button" className="crm-btn" disabled={busy} onClick={disableHere}>Desativar neste aparelho</button>}
+        <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
+          onClick={() => void sendSample('lead')}>Testar aviso: Novo lead</button>
         <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
-          onClick={async () => { const r = await post({ action: 'test' }); if (r) setMessage({ kind: 'ok', text: 'Teste aceito pelo serviço de push em ' + r.accepted + ' de ' + r.total + ' aparelho(s). Confira o celular.' }); load() }}>Enviar teste</button>
+          onClick={() => void sendSample('meeting')}>Testar: reunião</button>
+        <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
+          onClick={() => void sendSample('whatsapp')}>Testar: WhatsApp</button>
         {installEvent && !device.standalone && <button type="button" className="crm-btn" onClick={install}>Instalar aplicativo</button>}
       </div>
+      <p className="crm-push-sub">Simulação com Márcio (exemplo). Não cria lead, reunião nem envia WhatsApp. Aguarde 30 segundos entre testes; ao tocar no aviso, abre a central de notificações do CRM.</p>
       {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className="crm-push-message" data-kind={message.kind}>{message.text}</p>}
     </section>
 

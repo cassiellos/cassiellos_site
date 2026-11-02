@@ -133,6 +133,21 @@ describe('Web Push — configuração e privacidade do aviso', () => {
       assert.ok(!serialized.includes(forbidden), forbidden)
     }
     assert.ok(!serialized.toLowerCase().includes('toque para'))
+    for (const [variant, expectedTitle, expectedBody] of [
+      ['lead', '👤 Novo lead', 'Márcio • novo contato pelo formulário'],
+      ['meeting', '📅 Nova reunião agendada', 'Márcio • quarta-feira, às 9h30'],
+      ['whatsapp', '💬 Enviar mensagem no WhatsApp', 'Márcio está aguardando seu contato.'],
+    ] as const) {
+      const demo = buildPushPayload({ kind: 'test', notificationId: UUID_A, deliveryId: UUID_B,
+        secret: 'k', demoVariant: variant })
+      assert.equal(demo.k, 'test', 'amostras jamais criam eventos reais')
+      assert.equal(demo.t, expectedTitle)
+      assert.equal(demo.b, expectedBody)
+      assert.equal(demo.u, '/crm/notificacoes/abrir/' + UUID_A)
+      assert.ok(!JSON.stringify(demo).includes('Exemplo'), 'o aviso deve parecer com o formato real')
+    }
+    const generic = buildPushPayload({ kind: 'test', notificationId: UUID_A, deliveryId: UUID_B, secret: 'k' })
+    assert.equal(generic.t, NOTIFICATION_TEXT.test.title)
   })
   it('recibo: só com o token HMAC da própria entrega', () => {
     const t = receiptToken('s3cr3t', UUID_B)

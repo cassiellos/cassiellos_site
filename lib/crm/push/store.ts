@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 import { validateWhatsappTemplate, DEFAULT_WHATSAPP_TEMPLATE } from '../whatsapp-message'
-import { buildPushPayload, type PushDisplayDetails, type NotificationKind } from './messages'
+import { buildPushPayload, isPushDemoVariant, type PushDisplayDetails, type NotificationKind } from './messages'
 import { b64url, pushHostOf, sendWebPush, type FetchLike, type PushOutcome, type VapidKeys } from './web-push'
 
 /**
@@ -235,9 +235,11 @@ export async function enqueueMeetingNotifications(
 }
 
 /** Teste manual pelo painel: só VAPID + banco (a chave geral pode estar desligada). Nada de lead. */
-export async function enqueueTestNotification(deps: PushDeps, input: { subscriptionId?: unknown; now?: Date }):
+export async function enqueueTestNotification(deps: PushDeps, input: { subscriptionId?: unknown; now?: Date; variant?: unknown }):
   Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
   if (!deps.env().vapidReady) return { ok: false, error: 'VAPID_NOT_READY' }
+  const variant: unknown = input.variant ?? 'generic'
+  if (!isPushDemoVariant(variant)) return { ok: false, error: 'INVALID_TEST_VARIANT' }
   const settings = await loadPushSettings(deps.pool)
   if (!settings) return { ok: false, error: 'MIGRATION_PENDING' }
   const now = input.now ?? new Date()
@@ -248,14 +250,14 @@ export async function enqueueTestNotification(deps: PushDeps, input: { subscript
   if (!active.rows[0]?.n) return { ok: false, error: 'NO_ACTIVE_DEVICE' }
   await deps.pool.query('UPDATE crm.push_settings SET last_test_at = now() WHERE id = 1')
   const testId = (await deps.pool.query<{ id: string }>('SELECT gen_random_uuid() AS id')).rows[0].id
-  const id = await createNotification(deps.pool, { kind: 'test', dedupeKey: 'test:' + testId, sequence: 1, isTest: true, subscriptionId })
+  const id = await createNotification(deps.pool, { kind: 'test', dedupeKey: (variant === 'generic' ? 'test:' : 'test:' + variant + ':') + testId, sequence: 1, isTest: true, subscriptionId })
   return id ? { ok: true, ids: [id] } : { ok: false, error: 'TEST_FAILED' }
 }
 
 /* ------------------------------------------------------------- dispatch */
 
 type Claimed = { id: string; attempts: number; subscription_id: string; notification_id: string; kind: NotificationKind
-  created_at: Date; endpoint: string; p256dh: string; auth: string; sub_status: string
+  dedupe_key: string; created_at: Date; endpoint: string; p256dh: string; auth: string; sub_status: string
   lead_id: string | null; appointment_id: string | null }
 
 async function claimDelivery(pool: Queryable, deliveryId: string): Promise<Claimed | null> {
@@ -269,7 +271,7 @@ async function claimDelivery(pool: Queryable, deliveryId: string): Promise<Claim
                 WHERE pn.appointment_id = n.appointment_id AND pn.sequence = 1
                   AND p.subscription_id = d.subscription_id AND p.status = 'accepted'))
        RETURNING d.id, d.attempts, d.subscription_id, d.notification_id)
-     SELECT c.*, n.kind, n.created_at, n.lead_id, n.appointment_id, s.endpoint, s.p256dh, s.auth, s.status AS sub_status
+     SELECT c.*, n.kind, n.dedupe_key, n.created_at, n.lead_id, n.appointment_id, s.endpoint, s.p256dh, s.auth, s.status AS sub_status
        FROM c JOIN crm.push_notifications n ON n.id = c.notification_id JOIN crm.push_subscriptions s ON s.id = c.subscription_id`,
     [deliveryId])
   return found.rows[0] ?? null
@@ -343,8 +345,12 @@ async function processDelivery(deps: PushDeps, deliveryId: string, inline: { lef
       return 'cancelled'
     }
     const details = await pushDisplayDetails(deps.pool, c)
+    // Preview samples are marked is_test in the existing notification table.
+    // Never create a real lead or appointment just to test the iPhone appearance.
+    const candidate = c.kind === 'test' ? c.dedupe_key.split(':')[1] : undefined
+    const demoVariant = isPushDemoVariant(candidate) ? candidate : undefined
     const payload = buildPushPayload({ kind: c.kind, notificationId: c.notification_id, deliveryId: c.id,
-      secret: deps.secret, details })
+      secret: deps.secret, details, demoVariant })
     let outcome: PushOutcome
     try {
       outcome = await sendWebPush(deps.fetch, { endpoint: c.endpoint, p256dh: c.p256dh, auth: c.auth }, payload, env.vapid,

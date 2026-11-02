@@ -80,11 +80,11 @@ export async function handlePushAdmin(deps: PushAdminDeps, req: PushAdminRequest
         return done ? status(deps) : bad('NOT_FOUND', 404)
       }
       case 'test': {
-        const queued = await enqueueTestNotification(deps, { subscriptionId: data.deviceId })
-        if (!queued.ok) return bad(queued.error, queued.error === 'TEST_TOO_SOON' ? 429 : 409)
+        const queued = await enqueueTestNotification(deps, { subscriptionId: data.deviceId, variant: data.variant })
+        if (!queued.ok) return bad(queued.error, queued.error === 'TEST_TOO_SOON' ? 429 : queued.error === 'INVALID_TEST_VARIANT' ? 400 : 409)
         const results = await dispatchNotifications(deps, queued.ids, { inlineRetries: 1 })
         const values = Object.values(results)
-        audit('test', { ...actor, accepted: values.filter(v => v === 'accepted').length, total: values.length })
+        audit('test', { ...actor, variant: typeof data.variant === 'string' ? data.variant : 'generic', accepted: values.filter(v => v === 'accepted').length, total: values.length })
         return { status: 200, body: { ok: true, accepted: values.filter(v => v === 'accepted').length, total: values.length, results: values } }
       }
       case 'preferences':
