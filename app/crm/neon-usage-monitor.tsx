@@ -42,6 +42,7 @@ function UsageBar({ label, value, kind, help }: {
 export default function NeonUsageMonitor() {
   const [result, setResult] = useState<NeonUsageResult | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [mobileExpanded, setMobileExpanded] = useState(false)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setRefreshing(true)
@@ -74,7 +75,7 @@ export default function NeonUsageMonitor() {
     timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   }) : null
 
-  return <section className="crm-neon-monitor" aria-label="Uso de recursos do banco Neon">
+  return <section className="crm-neon-monitor" data-mobile-expanded={mobileExpanded} aria-label="Uso de recursos do banco Neon">
     <div className="crm-neon-title-row">
       <div className="crm-neon-title">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
@@ -83,6 +84,10 @@ export default function NeonUsageMonitor() {
         <span>NEON</span>
       </div>
       {ready && <span className="crm-neon-plan">{ready.plan}</span>}
+      <button type="button" className="crm-neon-toggle" aria-controls="crm-neon-details"
+        aria-expanded={mobileExpanded} onClick={() => setMobileExpanded(value => !value)}>
+        {mobileExpanded ? 'Fechar' : 'Ver uso'}
+      </button>
       <button type="button" className="crm-neon-refresh" aria-label="Atualizar consumo da Neon"
         title="Atualizar consumo" disabled={refreshing} onClick={() => void load()}>
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
@@ -92,6 +97,7 @@ export default function NeonUsageMonitor() {
       </button>
     </div>
 
+    <div id="crm-neon-details" className="crm-neon-details">
     {!result && <p className="crm-neon-status" role="status">Carregando uso da Neon…</p>}
     {result?.status === 'not_configured' && <p className="crm-neon-status" role="status">
       <strong>Conexão pendente.</strong> Configure a chave privada Neon no ambiente Preview da Vercel.
@@ -115,5 +121,6 @@ export default function NeonUsageMonitor() {
         <span>15 min</span>
       </div>
     </div>}
+    </div>
   </section>
 }
