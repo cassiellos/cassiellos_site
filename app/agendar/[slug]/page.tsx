@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getBookingForm } from '@/lib/crm/booking-forms'
@@ -10,6 +10,9 @@ import { activeHomologation } from '@/lib/marketing/homologation'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import BookingExperience from './booking-experience'
 import './booking.css'
+
+// Keep Safari/browser chrome white on the standalone booking experience.
+export const viewport: Viewport = { themeColor: '#ffffff' }
 
 export const dynamic = 'force-dynamic'
 

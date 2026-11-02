@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { BookingForm } from '@/lib/crm/booking-forms'
+import { isValidWebPresence, type BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
 import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
 import { daysAhead, type FunnelEventName, type FunnelMode } from '@/lib/crm/funnel-events'
@@ -38,7 +38,7 @@ function downloadIcs(content: string) {
   anchor.click()
   setTimeout(() => URL.revokeObjectURL(url), 1_000)
 }
-type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string }
+type Attendee = { name: string; whatsapp: string; email: string; clinic: string; priority: string; units: string; revenue: string; instagram: string; budget: string }
 type Question = {
   name: keyof Attendee
   label: string
@@ -50,7 +50,7 @@ type Question = {
 
 
 const INITIAL_ATTENDEE: Attendee = {
-  name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '', revenue: '',
+  name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '', revenue: '', instagram: '', budget: '',
 }
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
@@ -142,7 +142,7 @@ export default function BookingExperience({
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
   const marketingEnabled = Boolean(metaPixelId)
   const [attendee, setAttendee] = useState<Attendee>(INITIAL_ATTENDEE)
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0)
   const [questionIndex, setQuestionIndex] = useState(0)
   // Browser and server calculate current date in the same timezone, not user's machine timezone.
   const [today, setToday] = useState('')
@@ -153,7 +153,6 @@ export default function BookingExperience({
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [retry, setRetry] = useState(0)
-  const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [savingLead, setSavingLead] = useState(false)
   const [saveError, setSaveError] = useState('')
   // Erro de formato de um campo (telefone ou e-mail), exibido junto ao próprio campo.
@@ -236,7 +235,7 @@ export default function BookingExperience({
   }, [step, form.slug, bookingToken])
 
   useEffect(() => {
-    if (step !== 2 || !date) return
+    if (step !== 2 || !date || !bookingToken) return
     const controller = new AbortController()
     let active = true
     setLoading(true)
@@ -285,19 +284,14 @@ export default function BookingExperience({
   }, [step, date, retry, form.slug, bookingToken])
 
   const questions = useMemo<Question[]>(() => [
+    { name: 'name', label: 'Qual é o seu nome?', type: 'text',
+      placeholder: 'Seu nome', autoComplete: 'name' },
+    { name: 'whatsapp', label: 'Qual é o seu telefone?', type: 'tel',
+      placeholder: 'WhatsApp com DDD', autoComplete: 'tel' },
     ...form.fields.map(field => ({
-      name: field.name,
-      label: field.label,
-      type: field.type,
-      placeholder: field.placeholder,
-      options: field.options,
+      name: field.name, label: field.label, type: field.type,
+      placeholder: field.placeholder, options: field.options,
     })),
-    { name: 'name', label: 'Como podemos chamar você?', type: 'text',
-      placeholder: 'Seu nome completo', autoComplete: 'name' },
-    { name: 'whatsapp', label: 'Qual é o seu WhatsApp?', type: 'tel',
-      placeholder: '(31) 99999-9999', autoComplete: 'tel' },
-    { name: 'email', label: 'Qual é seu melhor e-mail?', type: 'email',
-      placeholder: 'voce@clinica.com.br', autoComplete: 'email' },
   ], [form.fields])
   const question = questions[questionIndex]
   // Same behaviour as autoFocus, but without scrolling the page: on small screens the jump
@@ -305,8 +299,9 @@ export default function BookingExperience({
   const focusWithoutScroll = (input: HTMLInputElement | null) => {
     if (input && document.activeElement !== input) input.focus({ preventScroll: true })
   }
-  const totalStages = questions.length + 3
-  const progress = (step === 1 ? questionIndex + 1 : step === 2 ? questions.length + 2 : totalStages) / totalStages
+  const totalStages = questions.length + 2
+  const progress = step === 0 ? 0 : step === 1 ? (questionIndex + 1) / totalStages
+    : step === 2 ? (questions.length + 1) / totalStages : 1
   const days = useMemo(() => month ? monthDays(month) : [], [month])
   // Nenhuma data da janela tem horário (fim de semana, feriado, bloqueio ou antecedência): mensagem aprovada (R-2).
   const windowClosed = Boolean(serverCalendar) && (() => {
@@ -337,6 +332,10 @@ export default function BookingExperience({
   function contactError(name: keyof Attendee): string | null {
     if (name === 'whatsapp') { const r = validateBrazilianPhone(attendee.whatsapp); return r.ok ? null : r.message }
     if (name === 'email') { const r = validateEmailAddress(attendee.email); return r.ok ? null : r.message }
+    if (name === 'instagram') {
+      return isValidWebPresence(attendee.instagram)
+        ? null : 'Informe um site válido ou usuário do Instagram (com ou sem @).'
+    }
     const question = questions.find(item => item.name === name)
     if (question && question.type !== 'select' && attendee[name].trim().length < 2) {
       return name === 'name' ? 'Revise o nome informado.' : 'Revise a resposta informada.'
@@ -365,14 +364,18 @@ export default function BookingExperience({
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(index => index + 1)
     } else {
-      setQuestionIndex(questions.length)
+      setStep(2)
     }
   }
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!privacyAccepted || savingLead) return
-    if (leadSaved) { setStep(2); return }
+    if (savingLead) return
+    if (leadSaved) return
+    if (!attendee.email.trim() || contactError('email')) {
+      setFieldError({ name: 'email', message: 'Confira o seu e-mail antes de consultar os horários.' })
+      return
+    }
     if (!turnstileSiteKey) {
       setSaveError('A verificação de segurança está indisponível no momento. Tente novamente mais tarde.')
       return
@@ -384,11 +387,12 @@ export default function BookingExperience({
     for (const question of questions) {
       if (!attendee[question.name].trim()) {
         setQuestionIndex(questions.findIndex(item => item.name === question.name))
+        setStep(1)
         setSaveError('Confira as respostas obrigatórias antes de continuar.')
         return
       }
       const invalid = contactError(question.name)
-      if (invalid) { showFieldError(question.name, invalid); return }
+      if (invalid) { setStep(1); showFieldError(question.name, invalid); return }
     }
 
     setSavingLead(true)
@@ -418,7 +422,7 @@ export default function BookingExperience({
         body: JSON.stringify({
           formSlug: form.slug, idempotencyKey: submissionKey.current,
           name: attendee.name, email: attendee.email.trim(), whatsapp: attendee.whatsapp,
-          answers, attribution, privacyAccepted, turnstileToken,
+          answers, attribution, contactRequest: true, turnstileToken,
           // Only the yes/no cookie choice; fbp/fbc never reach the CRM (decision C2).
           marketing: marketingChoice,
         }),
@@ -459,8 +463,8 @@ export default function BookingExperience({
         INVALID_NAME: 'Revise o nome informado.',
         INVALID_EMAIL: 'Confira o endereço de e-mail informado.',
         INVALID_WHATSAPP: 'Confira o número informado.',
+        CONTACT_REQUEST_REQUIRED: 'Confirme a solicitação de agendamento.',
         INVALID_FORM_ANSWERS: 'Revise as respostas do formulário. Uma delas pode estar incompleta.',
-        PRIVACY_NOT_ACCEPTED: 'Confirme a Política de Privacidade para continuar.',
         TOO_MANY_REQUESTS: 'Muitas tentativas. Tente novamente mais tarde.',
         SECURITY_CHECK_REQUIRED: 'Aguarde a conclusão da verificação de segurança e tente novamente.',
         SECURITY_CHECK_EXPIRED: 'A verificação de segurança expirou. Ela foi renovada; envie novamente.',
@@ -552,75 +556,66 @@ export default function BookingExperience({
     setChosen(null)
   }
 
-  return <div id="cassiellos-booking">
+  return <div id="cassiellos-booking" data-screen={step === 0 ? 'intro' : step === 1 ? 'question' : step === 2 ? 'calendar' : step === 4 ? 'success' : 'review'}>
     <MetaPixel pixelId={metaPixelId}/>
     <header className="booking-header">
+      {step !== 0 && step !== 4 && <button type="button" className="booking-nav-back"
+        aria-label="Voltar" onClick={() => {
+          if (step === 1) {
+            if (questionIndex > 0) setQuestionIndex(index => index - 1)
+            else setStep(0)
+          } else if (step === 2) {
+            setStep(1)
+            setQuestionIndex(questions.length - 1)
+          } else if (step === 3) setStep(2)
+        }}>‹</button>}
       <div className="booking-brand">
         <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" width="47" height="34"/>
-        <span><strong>Cassiellos</strong><small>DIAGNÓSTICO ESTRATÉGICO</small></span>
+        <span><strong>Cassiellos</strong><small>AGÊNCIA CASSIELLOS</small></span>
       </div>
-      <span className="booking-header-tag">EXPERIÊNCIA DE AGENDAMENTO</span>
+
     </header>
 
     <main className="booking-shell">
-      <section className="booking-intro">
-        <div className="booking-kicker"><span className="booking-kicker-dot"/> {form.eyebrow}</div>
-        <h1>{form.headline}</h1>
-        <p className="booking-lead">{form.description}</p>
-        <div className="booking-highlights">
-          <span><Icon name="clock"/> {form.durationMinutes} minutos</span>
-          <span><Icon name="video"/> Reunião online</span>
-          <span><Icon name="calendar"/> Horários em Brasília</span>
+      {step === 0 && <section className="booking-intro">
+        <div className="booking-hero-copy">
+          <h1>{form.headline}</h1>
+          <ul className="booking-hero-points">
+            <li><span aria-hidden="true">🎯</span><span>Método testado e comprovado <em>(depoimentos)</em></span></li>
+            <li><span aria-hidden="true">🏆</span><span>Exclusivo para <em>(perfil de cliente ideal)</em></span></li>
+            <li><span aria-hidden="true">🌎</span><span><em>(resultado ou diferencial comprovado)</em></span></li>
+          </ul>
+          <p>Uma conversa direta para entender seu negócio e as oportunidades de crescimento.</p>
         </div>
-        <div className="booking-note">
-          <Icon name="shield"/>
-          <p>Uma conversa direta para entender seu momento, objetivos e próximos passos.</p>
-        </div>
-      </section>
-
-      <section className="booking-card" aria-label="Formulário e calendário de agendamento">
-        <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Ambiente Preview. Cadastros são salvos no Neon; {bookingEnabled ? (bookingRestricted ? "agendamentos reais habilitados apenas para o e-mail de teste." : "agendamentos reais habilitados.") : "nenhuma reunião será criada."}</div>
-        {/* No cartão, acima das perguntas: visível ao carregar também no celular (o foco automático rola até o campo). */}
-        {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status">
-          <strong>HOMOLOGAÇÃO DO META PIXEL</strong> · Até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })},
-          este navegador pode enviar ao Pixel comercial um único Lead e um único Schedule de teste, marcados como
-          homologação (com consentimento de marketing). Eles podem aparecer nas métricas do conjunto de dados.
-          Use apenas o contato de teste.</div>}
-        <ConsentNotice marketingEnabled={marketingEnabled}/>
+        <button type="button" className="booking-hero-cta" onClick={() => setStep(1)}>
+          Quero vender mais <span aria-hidden="true">→</span>
+        </button>
+      </section>}
+      {step !== 0 &&       <section className="booking-card" aria-label="Formulário e calendário de agendamento">
         <div className="booking-card-inside">
-          <div className="booking-progress">
-            <span className={step >= 1 ? 'is-current' : ''}>01 <span>Seus dados</span></span>
-            <i/>
-            <span className={step >= 2 ? 'is-current' : ''}>02 <span>Horário</span></span>
-            <i/>
-            <span className={step >= 3 ? 'is-current' : ''}>03 <span>Revisão</span></span>
-          </div>
-
+          {step !== 4 && <div className="booking-step-meter booking-global-meter" role="progressbar"
+            aria-label="Progresso do formulário" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <span style={{ width: progress * 100 + '%' }}/>
+          </div>}
           {step === 1 && question && <form className="booking-form booking-question-form"
             onSubmit={next} key={question.name} noValidate>
-            <div className="booking-question-topline">
-              <span>PERGUNTA {String(questionIndex + 1).padStart(2,'0')} DE {String(questions.length).padStart(2,'0')}</span>
-              <span>{Math.round(progress * 100)}% concluído</span>
-            </div>
-            <div className="booking-step-meter" aria-label={Math.round(progress * 100) + '% do formulário concluído'}>
-              <span style={{ width: progress * 100 + '%' }}/>
-            </div>
             <div className="booking-card-heading booking-question-heading">
-              <div className="booking-step-label">DIAGNÓSTICO / {form.niche.toUpperCase()}</div>
-              <h2 id="booking-question-label">{question.label}</h2>
-              <p>Uma resposta por vez. É rápido e você pode voltar quando quiser.</p>
+              <h2 id="booking-question-label">{question.label}<span className="booking-required" aria-label="obrigatório"> *</span></h2>
+              {question.name === 'whatsapp' && <p>Não queremos te encher de spam, apenas facilitar a comunicação :)</p>}
+              {question.name === 'instagram' && <p>Queremos analisar sua presença digital antes da conversa.</p>}
+              {question.name === 'revenue' && <p>Responda com base na média dos últimos 6 meses.</p>}
             </div>
             <div className="booking-inputs booking-question-inputs">
               {question.type === 'select' ? <div className="booking-choices" role="group"
                   aria-labelledby="booking-question-label">
-                {question.options?.map(option => <button
+                {question.options?.map((option, optionIndex) => <button
                   type="button" key={option}
                   className="booking-choice"
                   data-selected={attendee[question.name] === option}
                   aria-pressed={attendee[question.name] === option}
                   onClick={() => update(question.name, option)}>
-                  <span>{option}</span><span className="booking-choice-indicator" aria-hidden="true">
-                    {attendee[question.name] === option ? '✓' : ''}</span>
+                  <span className="booking-choice-label"><span className="booking-choice-key">{String.fromCharCode(65 + optionIndex)}</span>{option}</span>
+                  <span className="booking-choice-indicator" aria-hidden="true">{attendee[question.name] === option ? '✓' : ''}</span>
                 </button>)}
               </div> : <label className="booking-question-field" htmlFor={'question-' + question.name}>
                 <span className="booking-visually-hidden">{question.label}</span>
@@ -642,75 +637,21 @@ export default function BookingExperience({
             </div>
             {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">
-              {questionIndex > 0 ? <button className="booking-secondary" type="button"
-                onClick={backQuestion}><Icon name="back"/> Voltar</button> :
-                <span className="booking-first-question-note">Primeiro passo</span>}
+
               <button className="booking-primary" type="submit"
                 disabled={!attendee[question.name].trim()}>
-                {questionIndex === questions.length - 1 ? 'Continuar para privacidade' : 'Continuar'}
+                Continuar
                 <Icon name="arrow"/>
               </button>
             </div>
-            <p className="booking-privacy">Suas respostas permanecem nesta tela até você confirmar o envio na etapa seguinte. <a href="/politica-de-privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
-          </form>}
 
-          {step === 1 && !question && <form className="booking-form booking-question-form"
-            onSubmit={submitLead}>
-            <div className="booking-question-topline">
-              <span>ETAPA FINAL · SEUS DADOS</span>
-              <span>{Math.round(progress * 100)}% concluído</span>
-            </div>
-            <div className="booking-step-meter">
-              <span style={{ width: progress * 100 + '%' }}/>
-            </div>
-            <div className="booking-card-heading booking-question-heading">
-              <div className="booking-step-label">PRIVACIDADE / CONFIRMAÇÃO</div>
-              <h2>Podemos registrar suas informações?</h2>
-              <p>Assim conseguimos preparar seu diagnóstico. Depois você escolherá o horário da conversa.</p>
-            </div>
-            <label className="booking-consent">
-              <input type="checkbox" required checked={privacyAccepted}
-                onChange={event => setPrivacyAccepted(event.target.checked)} />
-              <span>Li a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
-                {' '}e autorizo a Cassiellos a utilizar meus dados para responder à solicitação deste diagnóstico.</span>
-            </label>
-            <p className="booking-test-warning">Atenção: estamos no ambiente de testes. Utilize somente
-              nome, telefone e e-mail fictícios. A partir desta etapa, os dados serão armazenados
-              no banco Neon Preview.</p>
-            {!leadSaved && (turnstileSiteKey
-              ? <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
-                  resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>
-              : null)}
-            {!leadSaved && <p className="booking-security-status" role="status" data-state={
-              !turnstileSiteKey ? 'error' : turnstileToken ? 'ready' : turnstileState}>
-              <Icon name="shield"/>
-              <span>{!turnstileSiteKey
-                ? 'Verificação de segurança indisponível no momento. O envio está temporariamente bloqueado.'
-                : turnstileToken ? 'Verificação de segurança concluída.'
-                : turnstileState === 'error' ? 'Não foi possível carregar a verificação de segurança. Recarregue a página ou desative bloqueadores para este site.'
-                : turnstileState === 'expired' ? 'Renovando a verificação de segurança…'
-                : 'Verificando a segurança do envio…'}
-                {' '}Proteção por Cloudflare Turnstile (<a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">privacidade</a>).</span>
-            </p>}
-            {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
-            <div className="booking-question-footer">
-              <button className="booking-secondary" type="button" disabled={savingLead}
-                onClick={() => setQuestionIndex(questions.length - 1)}><Icon name="back"/> Voltar</button>
-              <button className="booking-primary" type="submit"
-                disabled={!privacyAccepted || savingLead || (!leadSaved && !turnstileToken)}>
-                {savingLead ? 'Registrando...' : 'Salvar e escolher horário'} <Icon name="arrow"/>
-              </button>
-            </div>
           </form>}
 
           {step === 2 && <div className="booking-schedule">
-            {leadSaved && <p className="booking-saved-notice" role="status">
-              <Icon name="check"/> Cadastro registrado no CRM de testes.
-            </p>}
+
             <div className="booking-card-heading">
-              <div className="booking-step-label">ETAPA 02 DE 03</div>
-              <h2>Escolha seu melhor horário.</h2>
-              <p>Selecione uma data e veja os horários disponíveis no Google Calendar.</p>
+              <h2>Escolha o melhor horário para o seu diagnóstico</h2>
+              <p>{form.durationMinutes} minutos para entender o seu negócio e mostrar oportunidades de crescimento.</p>
             </div>
             <div className="booking-month-row">
               <strong>{month ? monthLabel(month) : 'Carregando calendário'}</strong>
@@ -739,16 +680,17 @@ export default function BookingExperience({
                 <strong>{date ? humanDate(date) : windowClosed ? 'Sem horários disponíveis' : 'Selecione um dia'}</strong>
                 <small>Horário de Brasília · 30 minutos</small>
               </div>
-              {windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
-              {!date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data destacada no calendário para consultar os horários.</p>}
+              {bookingToken && windowClosed && <p className="booking-calendar-hint" role="status">Não encontramos horários disponíveis nos próximos 3 dias. Volte em breve para consultar novas datas.</p>}
+              {!bookingToken && <p className="booking-calendar-hint">Escolha um dia e informe seu e-mail abaixo para consultar os horários disponíveis.</p>}
+              {bookingToken && !date && !windowClosed && <p className="booking-calendar-hint">Escolha uma data no calendário para consultar os horários.</p>}
               {loading && <p className="booking-calendar-hint">Consultando disponibilidade real…</p>}
               {failed && <div className="booking-availability-error" role="alert">
                 {availabilityError || 'Não foi possível consultar a agenda agora.'}
                 {!availabilityError && <button type="button" onClick={() => setRetry(v => v + 1)}>Tentar novamente</button>}
               </div>}
-              {!loading && !failed && date && slots.length === 0 &&
+              {bookingToken && !loading && !failed && date && slots.length === 0 &&
                 <p className="booking-calendar-hint">Não há horários disponíveis para esta data. Escolha outro dia.</p>}
-              {!loading && !failed && slots.length > 0 &&
+              {bookingToken && !loading && !failed && slots.length > 0 &&
                 <div className="booking-time-grid">
                   {slots.map(slot => <button type="button" key={slot.startAt}
                     data-selected={chosen?.startAt === slot.startAt}
@@ -760,13 +702,33 @@ export default function BookingExperience({
                     }}>{slot.localTime}</button>)}
                 </div>}
             </div>
-            <div className="booking-actions">
-              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setQuestionIndex(questions.length); setChosen(null) }}>
-                <Icon name="back"/> Voltar
+            {chosen && <div className="booking-selected-summary"><Icon name="check"/><span>{date && humanDate(date)}, às {chosen.localTime} · {form.durationMinutes} minutos</span></div>}
+            {!leadSaved ? <form className="booking-calendar-email" onSubmit={submitLead} noValidate>
+              <label htmlFor="booking-last-email">Seu melhor e-mail <span aria-hidden="true">*</span></label>
+              <input type="email" id="booking-last-email" value={attendee.email}
+                placeholder="seu@email.com" autoComplete="email" required maxLength={180}
+                onChange={event => update('email', event.currentTarget.value)}
+                aria-invalid={fieldError?.name === 'email'}
+                aria-describedby={fieldError?.name === 'email' ? 'booking-email-error' : undefined}/>
+              {fieldError?.name === 'email' && <p className="booking-field-error" id="booking-email-error" role="alert">{fieldError.message}</p>}
+              <p className="booking-inline-privacy">Ao consultar horários, você solicita contato sobre o diagnóstico.
+                Saiba como usamos seus dados na <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>.</p>
+              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_ACTION}
+                resetSignal={turnstileReset} onToken={setTurnstileToken} onStateChange={setTurnstileState}/>}
+              {!turnstileSiteKey && <p className="booking-security-status" data-state="error" role="alert">A confirmação está indisponível nesta prévia até configurar a verificação de segurança.</p>}
+              <button type="submit" className="booking-primary" disabled={savingLead || !attendee.email.trim() || !turnstileToken}>
+                {savingLead ? 'Verificando…' : 'Ver horários disponíveis'} <Icon name="arrow"/>
               </button>
-              <button type="button" className="booking-primary" disabled={!chosen || loading || failed}
-                onClick={() => setStep(3)}>Revisar agendamento <Icon name="arrow"/></button>
-            </div>
+              {saveError && <p className="booking-save-error" role="alert">{saveError}</p>}
+            </form> : <div className="booking-calendar-contact">
+              <small>AGENDAMENTO PARA</small><p><strong>{attendee.name}</strong></p>
+              <p>{attendee.email}</p>
+            </div>}
+            {confirmationError && <p role="alert" className="booking-save-error">{confirmationError}</p>}
+            {leadSaved && <div className="booking-actions">
+              <button type="button" className="booking-primary" disabled={!chosen || loading || failed || !bookingEnabled || !bookingToken || confirming}
+                onClick={confirmBooking}>{confirming ? 'Confirmando…' : 'Agendar horário'} <Icon name="check"/></button>
+            </div>}
           </div>}
 
           {step === 3 && <div className="booking-review">
@@ -803,13 +765,12 @@ export default function BookingExperience({
           {step === 4 && <div className="booking-review booking-confirmed" role="status"
             data-state={confirmation?.state ?? 'confirmed'}>
             {confirmation?.state === 'link_pending' ? <div className="booking-card-heading">
-              <div className="booking-step-label">HORÁRIO RESERVADO · LINK EM PREPARAÇÃO</div>
               <h2>Seu horário foi reservado!</h2>
               <p>O link da reunião ainda está sendo preparado. Nossa equipe entrará em contato pelo WhatsApp informado
                 para enviar as instruções de acesso.</p>
             </div> : <div className="booking-card-heading">
-              <div className="booking-step-label">AGENDAMENTO CONFIRMADO</div>
-              <h2>Reunião registrada com sucesso.</h2>
+              <h2>Obrigado pelo envio!</h2>
+              <p>Sua reunião foi registrada com sucesso.</p>
               {confirmation?.invitationRequested
                 ? <p>Pedimos ao Google Agenda que envie o convite para <strong>{attendee.email}</strong>. Ele pode levar alguns
                   minutos para chegar — confira também as pastas de spam e promoções. O link e os botões abaixo continuam
@@ -852,8 +813,14 @@ export default function BookingExperience({
             {bookingRestricted && <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>}
           </div>}
         </div>
-      </section>
+      </section>}
     </main>
+    <div className="booking-cookie-notice"><ConsentNotice marketingEnabled={marketingEnabled}/></div>
+    <details className="booking-preview-details">
+      <summary>Informações sobre este ambiente de testes</summary>
+      <div className="booking-preview-banner"><strong>PRÉVIA EM DESENVOLVIMENTO</strong> · Cadastros são salvos no Neon Preview; {bookingEnabled ? (bookingRestricted ? 'agendamentos reais habilitados apenas para o e-mail de teste.' : 'agendamentos reais habilitados.') : 'nenhuma reunião será criada.'}</div>
+      {metaHomologation && <div className="booking-preview-banner booking-homologation-banner" role="status"><strong>HOMOLOGAÇÃO META PIXEL</strong> · Ativa até {new Date(metaHomologation.expiresAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}.</div>}
+    </details>
     <footer className="booking-footer"><span>© Cassiellos · Experiência em desenvolvimento</span>
       <span className="booking-footer-links"><a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
         <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Cookies</a>

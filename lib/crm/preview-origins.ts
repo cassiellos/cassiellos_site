@@ -11,7 +11,10 @@ export const CRM_CANONICAL_ORIGIN = 'https://crm.cassiellos.com.br'
 export const CRM_LEGACY_PREVIEW_ORIGIN =
   'https://agencia-cassiellos-git-feature-mini-244029-cassiellos-projects.vercel.app'
 
-export const CRM_PREVIEW_ORIGINS: readonly string[] = [CRM_CANONICAL_ORIGIN, CRM_LEGACY_PREVIEW_ORIGIN]
+export const CRM_FORM_DESIGN_PREVIEW_ORIGIN =
+  'https://agencia-cassiellos-git-design-formul-5e3c88-cassiellos-projects.vercel.app'
+
+export const CRM_PREVIEW_ORIGINS: readonly string[] = [CRM_CANONICAL_ORIGIN, CRM_LEGACY_PREVIEW_ORIGIN, CRM_FORM_DESIGN_PREVIEW_ORIGIN]
 
 /** Comparação exata (esquema + host, sem porta, sem barra final). */
 export function isCrmPreviewOrigin(origin: string | null | undefined): origin is string {

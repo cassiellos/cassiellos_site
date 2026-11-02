@@ -1,5 +1,5 @@
 export type BookingField = {
-  name: 'clinic' | 'priority' | 'units' | 'revenue'
+  name: 'clinic' | 'priority' | 'units' | 'revenue' | 'instagram' | 'budget'
   label: string
   type: 'text' | 'select'
   required: boolean
@@ -34,22 +34,48 @@ export const REVENUE_RANGES = [
   'Acima de R$ 300 mil/mês',
 ] as const
 
+/**
+ * Accept an Instagram username (with or without @), an Instagram profile URL,
+ * or a normal public website URL with or without https://.
+ * Pure validation shared by browser and server; no network lookups.
+ */
+export function isValidWebPresence(input: unknown): boolean {
+  if (typeof input !== 'string') return false
+  const value = input.trim()
+  if (value.length < 2 || value.length > 120 || /[\s\u0000-\u001f\u007f]/.test(value)) return false
+  if (/^@?[a-zA-Z0-9._]{2,30}$/.test(value)) return true
+  if (!/^(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9]/i.test(value)) return false
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : 'https://' + value)
+    if (!['http:', 'https:'].includes(url.protocol)) return false
+    if (url.username || url.password || url.port) return false
+    const hostname = url.hostname.toLowerCase()
+    // No localhost, private hosts, IP literals or tricky domain label shapes.
+    if (/^(?:localhost|.*\.localhost)$/.test(hostname)) return false
+    if (!/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(hostname)) return false
+    if (hostname === 'instagram.com' || hostname === 'www.instagram.com') {
+      return /^\/[a-zA-Z0-9._]{2,30}\/?$/.test(url.pathname)
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 const bookingForms: Record<string, BookingForm> = {
   odontologia: {
     slug: 'odontologia',
-    version: 'odontologia-v2',
+    version: 'odontologia-v3',
     niche: 'Clínicas odontológicas',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
-    headline: 'Sua clínica tem espaço para crescer. Vamos conversar?',
-    description: 'Conte rapidamente sobre sua clínica e escolha o melhor horário para uma conversa estratégica com a Cassiellos.',
+    headline: 'Tráfego pago para [seu nicho] que querem vender mais.',
+    description: 'Uma conversa direta para entender o seu negócio e encontrar oportunidades de crescimento.',
     meetingName: 'Diagnóstico estratégico • Odontologia',
     durationMinutes: 30,
     fields: [
-      { name: 'clinic', label: 'Nome da clínica', type: 'text', required: true, placeholder: 'Como sua clínica se chama?' },
-      { name: 'revenue', label: 'Qual é o faturamento médio mensal da clínica?', type: 'select', required: true,
-        options: REVENUE_RANGES },
-      { name: 'priority', label: 'Qual é seu principal objetivo?', type: 'select', required: true,
-        options: ['Atrair mais pacientes', 'Melhorar o marketing da clínica', 'Organizar os anúncios e resultados', 'Quero entender as possibilidades'] },
+      { name: 'instagram', label: 'Qual é o seu site ou o Instagram do seu negócio?', type: 'text', required: true, placeholder: 'Seu site ou usuário do Instagram' },
+      { name: 'revenue', label: 'Qual é o faturamento mensal do seu negócio?', type: 'select', required: true, options: REVENUE_RANGES },
+      { name: 'budget', label: 'Para escalar com segurança, recomendamos investir a partir de [valor]. Isso cabe no seu orçamento?', type: 'select', required: true, options: ['Sim', 'Não'] },
     ],
   },
 }

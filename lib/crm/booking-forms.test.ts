@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { getBookingForm, REVENUE_RANGES } from './booking-forms'
+import { getBookingForm, REVENUE_RANGES, isValidWebPresence } from './booking-forms'
 
 describe('booking form odontologia — faturamento em faixas', () => {
   const form = getBookingForm('odontologia')
 
   it('usa a versão odontologia-v2', () => {
     assert.ok(form)
-    assert.equal(form.version, 'odontologia-v2')
+    assert.equal(form.version, 'odontologia-v3')
   })
 
   it('revenue é seleção obrigatória com as 7 faixas aprovadas, na ordem', () => {
@@ -34,7 +34,23 @@ describe('booking form odontologia — faturamento em faixas', () => {
     }
   })
 
-  it('preserva os nomes de campo consumidos pelo CRM (clinic, revenue, priority)', () => {
-    assert.deepEqual(form?.fields.map(field => field.name), ['clinic', 'revenue', 'priority'])
+  it('configura o novo funil sem alterar dados de contato do CRM', () => {
+    assert.deepEqual(form?.fields.map(field => field.name), ['instagram', 'revenue', 'budget'])
+  })
+})
+
+describe('presença digital — site ou Instagram', () => {
+  it('aceita domínios, URLs e usernames sem arroba', () => {
+    for (const text of ['cassiellos.com.br','https://cassiellos.com.br',
+      'www.cassiellos.com.br', 'cassiellos.agencia', '@cassiellos.agencia',
+      'https://www.instagram.com/cassiellos.agencia/']) {
+      assert.equal(isValidWebPresence(text), true, text)
+    }
+  })
+  it('rejeita esquemas inseguros e espaços', () => {
+    for (const text of ['javascript:alert(1)','http://localhost/path',
+      'site com espaços', 'https://foo@bar.com', 'http://192.168.1.1']) {
+      assert.equal(isValidWebPresence(text), false, text)
+    }
   })
 })
