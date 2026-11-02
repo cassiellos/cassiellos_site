@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  FORMALIZATION_STATUS, SERVICE_STATUS, addMonths, competenceMonths, csvCell, dueDateFor, entryState, formatCents, formatChange, monthlyEquivalentCents, parseMoneyToCents,
+  FORMALIZATION_STATUS, SERVICE_STATUS, addMonths, competenceMonths, csvCell, dueDateFor, effectiveBusinessDueDate,
+  overdueByBusinessDay, entryState, formatCents, formatChange, monthlyEquivalentCents, parseMoneyToCents,
   percentChange, todayInBrazil, type GenerationSource,
 } from './model'
 import { parseFilters, validateAdminStatus, validateClient, validateInvoice, validateSettlement, validateSource } from './validation'
@@ -93,6 +94,27 @@ describe('estado derivado dos movimentos (não é "Pago: sim/não")', () => {
     assert.equal(entryState({ ...e, dueDate: '2026-11-10', competenceMonth: '2026-11' }, TODAY), 'forecast')
     assert.equal(entryState({ ...e, settledCents: 200000 }, TODAY), 'settled')
     assert.equal(entryState({ ...e, status: 'cancelled' }, TODAY), 'cancelled')
+  })
+})
+
+describe('vencimento efetivo em dias úteis — cartão de atrasos', () => {
+  it('prorroga vencimento de domingo 01/11/2026 e Finados 02/11 para terça 03/11', () => {
+    assert.equal(effectiveBusinessDueDate('2026-11-01'), '2026-11-03')
+    assert.equal(effectiveBusinessDueDate('2026-11-02'), '2026-11-03')
+    assert.equal(overdueByBusinessDay('2026-11-01', '2026-11-02'), false)
+    assert.equal(overdueByBusinessDay('2026-11-01', '2026-11-03'), false)
+    assert.equal(overdueByBusinessDay('2026-11-01', '2026-11-04'), true)
+    assert.equal(entryState({ status: 'open', amountCents: 600000, settledCents: 0,
+      dueDate: '2026-11-01', competenceMonth: '2026-11' }, '2026-11-02'), 'open')
+    assert.equal(entryState({ status: 'open', amountCents: 600000, settledCents: 0,
+      dueDate: '2026-11-01', competenceMonth: '2026-11' }, '2026-11-04'), 'overdue')
+  })
+  it('também respeita o feriado legal de Consciência Negra e viradas de mês/ano', () => {
+    assert.equal(effectiveBusinessDueDate('2026-11-20'), '2026-11-23')
+    assert.equal(effectiveBusinessDueDate('2026-10-31'), '2026-11-03')
+    assert.equal(effectiveBusinessDueDate('2026-12-25'), '2026-12-28')
+    assert.equal(effectiveBusinessDueDate('2027-01-01'), '2027-01-04')
+    assert.equal(effectiveBusinessDueDate('2026-11-03'), '2026-11-03')
   })
 })
 
