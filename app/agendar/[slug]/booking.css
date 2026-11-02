@@ -336,3 +336,13 @@ body:has(#cassiellos-booking) .progress,body:has(#cassiellos-booking) [class*="s
 @media(prefers-reduced-motion:reduce){
   #cassiellos-booking *,#cassiellos-booking *::before,#cassiellos-booking *::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
 }
+
+/* Reference navigation: centered mark with one back chevron on question screens. */
+#cassiellos-booking .booking-nav-back{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  display:grid;place-items:center;width:30px;height:35px;
+  padding:0;border:0;background:transparent;color:#6d7786;
+  font-size:27px;font-weight:330;line-height:1
+}
+#cassiellos-booking .booking-nav-back:hover{color:#367bf3}
+#cassiellos-booking .booking-nav-back:focus-visible{outline:2px solid #367bf3;outline-offset:1px}
