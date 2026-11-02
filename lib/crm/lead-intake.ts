@@ -196,6 +196,7 @@ export async function saveLeadSubmission(
           niche: input.niche, formSlug: input.formSlug,
           contact: { name: input.name, email, whatsapp: input.phone },
           questions: input.answers, attribution: attributionForStorage(input.attribution, input.marketing),
+          serviceRequest: { basis: 'pre_contractual_request', noticeVersion: LEAD_POLICY_VERSION },
           ...(input.protection ? { protection: input.protection } : {}),
           // Only the yes/no choice is stored; never browser identifiers (decision C2).
           ...(input.marketing ? { marketing: {
@@ -204,13 +205,9 @@ export async function saveLeadSubmission(
         }), input.idempotencyKey],
     )
     const submissionId = submission.rows[0].id
-    // Consent of this submission is appended; previous consents are never touched.
-    await client.query(
-      `INSERT INTO crm.consents
-       (lead_id, purpose, legal_basis, granted, policy_version)
-       VALUES ($1,'diagnostic_contact','consent',true,$2)`,
-      [leadId, LEAD_POLICY_VERSION],
-    )
+    // A visitor requesting a diagnostic directly is not required to tick
+    // a separate consent checkbox. Do not create a fabricated consent grant.
+    // The service request and privacy notice version are recorded on this submission.
     // Marketing consent (cookies): a grant is appended as evidence of this submission.
     if (input.marketing?.consent === true) {
       await client.query(
@@ -245,6 +242,7 @@ export async function saveLeadSubmission(
     const baseDetails = {
       submissionId, formSlug: input.formSlug, formVersion: input.formVersion,
       environment: 'preview', bookingMode: input.bookingMode, isTest,
+      requestBasis: 'pre_contractual_request', policyVersion: LEAD_POLICY_VERSION,
     }
     await client.query(
       `INSERT INTO crm.lead_activities (lead_id, activity_kind, performed_by, details)
