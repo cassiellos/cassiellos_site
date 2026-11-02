@@ -9,9 +9,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  */
 export type NotificationKind = 'lead_created' | 'meeting_confirmed' | 'meeting_whatsapp_ready' | 'test'
 /** Only fixed, fictitious samples; no lead/appointment is created for a preview push. */
-export type PushDemoVariant = 'generic' | 'lead' | 'meeting' | 'whatsapp'
+export type PushDemoVariant = 'generic' | 'meeting' | 'whatsapp'
 export function isPushDemoVariant(value: unknown): value is PushDemoVariant {
-  return value === 'generic' || value === 'lead' || value === 'meeting' || value === 'whatsapp'
+  return value === 'generic' || value === 'meeting' || value === 'whatsapp'
 }
 
 export const NOTIFICATION_TEXT: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
@@ -66,7 +66,6 @@ export function safePushMeetingTime(value: unknown): string | null {
 /** The preview alerts deliberately reuse the actual formatting functions. */
 export function demoNotificationText(variant: PushDemoVariant): { title: string; body: string } {
   const details: PushDisplayDetails = { fullName: 'Márcio Exemplo', startsAt: '2026-11-04T12:30:00.000Z' }
-  if (variant === 'lead') return notificationText('lead_created', details)
   if (variant === 'meeting') return notificationText('meeting_confirmed', details)
   if (variant === 'whatsapp') return notificationText('meeting_whatsapp_ready', details)
   return NOTIFICATION_TEXT.test
