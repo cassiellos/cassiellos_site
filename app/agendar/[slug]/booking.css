@@ -443,3 +443,75 @@ body:has(#cassiellos-booking){
  #cassiellos-booking .booking-question-form{min-height:calc(100dvh - 100px)}
  #cassiellos-booking .booking-hero-cta{max-width:100%}
 }
+
+
+/* V2 focus mode: introduction + questions fill exactly one viewport.
+   Calendar and confirmation retain normal vertical scrolling. */
+html:has(#cassiellos-booking[data-screen="intro"]),
+html:has(#cassiellos-booking[data-screen="question"]),
+body:has(#cassiellos-booking[data-screen="intro"]),
+body:has(#cassiellos-booking[data-screen="question"]){
+  height:100%;overflow:hidden!important;overscroll-behavior:none
+}
+#cassiellos-booking[data-screen="intro"],
+#cassiellos-booking[data-screen="question"]{
+  display:flex;flex-direction:column;
+  height:100dvh;min-height:0;overflow:hidden;
+  overscroll-behavior:none
+}
+#cassiellos-booking[data-screen="intro"] .booking-header,
+#cassiellos-booking[data-screen="question"] .booking-header{
+  flex:0 0 73px
+}
+#cassiellos-booking[data-screen="intro"] .booking-shell,
+#cassiellos-booking[data-screen="question"] .booking-shell{
+  flex:1 1 auto;min-height:0;height:auto;padding:0;
+  overflow:hidden
+}
+#cassiellos-booking[data-screen="intro"] .booking-intro{
+  height:100%;min-height:0;
+  padding:clamp(34px,9dvh,84px) 0 clamp(25px,5dvh,44px);
+  gap:24px
+}
+#cassiellos-booking[data-screen="question"] .booking-card,
+#cassiellos-booking[data-screen="question"] .booking-card-inside{
+  height:100%;min-height:0;display:flex;flex-direction:column
+}
+#cassiellos-booking[data-screen="question"] .booking-global-meter{flex:0 0 3px}
+#cassiellos-booking[data-screen="question"] .booking-question-form{
+  flex:1 1 auto;min-height:0;height:auto;
+  padding-top:clamp(30px,8dvh,72px);
+  padding-bottom:15px;overflow-y:auto;
+  overscroll-behavior-y:contain;
+  scrollbar-width:none
+}
+#cassiellos-booking[data-screen="question"] .booking-question-form::-webkit-scrollbar{display:none}
+#cassiellos-booking[data-screen="question"] .booking-question-footer{flex:0 0 auto}
+#cassiellos-booking .booking-privacy-minimal{
+  width:min(calc(100% - 34px),520px);min-width:0;
+  margin:0 auto 18px;padding:10px 0;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 15px;
+  font-size:10px;color:#8893a1
+}
+#cassiellos-booking .booking-privacy-minimal>a{
+  color:#7288a7;text-decoration:underline;text-underline-offset:2px
+}
+#cassiellos-booking .booking-privacy-minimal>button{
+  appearance:none;background:none;border:0;
+  padding:0;font:inherit;color:#7288a7;
+  text-decoration:underline;text-underline-offset:2px
+}
+#cassiellos-booking .booking-privacy-minimal>div{
+  flex-basis:100%;min-width:0
+}
+#cassiellos-booking .booking-privacy-minimal .consent-notice{
+  margin:8px 0 0; padding:12px 0 0;border-top:1px solid #edf0f4
+}
+/* Only small-screen/landscape accessibility fallback when options exceed viewport. */
+@media(max-height:620px){
+ #cassiellos-booking[data-screen="intro"] .booking-intro{
+   padding-top:20px;padding-bottom:14px;gap:12px
+ }
+ #cassiellos-booking[data-screen="intro"] .booking-hero-points{gap:4px;margin-bottom:7px}
+ #cassiellos-booking[data-screen="question"] .booking-question-form{padding-top:18px}
+}
