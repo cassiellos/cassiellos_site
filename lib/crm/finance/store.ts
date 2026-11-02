@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg'
 import {
   todayInBrazil,
   INVOICE_STATUS, STATE_LABEL, addMonths, categoryLabel, competenceMonths, csvCell, csvMoney, dueDateFor, entryState,
+  effectiveBusinessDueDate, overdueByBusinessDay,
   firstDay, lastDay, monthDiff, monthOf, monthlyEquivalentCents, type Direction, type EntryState, type FormalizationStatus, type InvoiceStatus,
   type Periodicity, type ServiceStatus, type SourceStatus,
 } from './model'
@@ -466,7 +467,7 @@ export type EntryView = {
   id: string; direction: Direction; sourceId: string | null; installmentNumber: number | null; clientId: string | null; clientName: string | null; company: string | null
   category: string; categoryLabel: string; description: string; periodicity: Periodicity | null; competenceMonth: string; dueDate: string
   amountCents: number; settledCents: number; remainingCents: number; lastSettledOn: string | null; state: EntryState; stateLabel: string
-  overdue: boolean; clientAdBudget: boolean; cancelReason: string | null
+  overdue: boolean; effectiveDueDate: string; clientAdBudget: boolean; cancelReason: string | null
   invoice: { status: InvoiceStatus; label: string; number: string | null; issuedOn: string | null; externalRef: string | null; notes: string; recorded: boolean } | null
   settlements: { id: string; amountCents: number; settledOn: string; method: string; notes: string; createdAt: string | null; reversedAt: string | null; reversalReason: string | null }[]
 }
@@ -546,10 +547,10 @@ async function loadEntries(c: PoolClient, f: Filters, today: string, where: stri
     return {
       id: r.id, direction: r.direction, sourceId: r.source_id, installmentNumber: r.installment_number ?? null, clientId: r.client_id, clientName: r.client_name, company: r.company,
       category: r.category, categoryLabel: categoryLabel(r.category), description: r.description, periodicity: r.periodicity ?? null,
-      competenceMonth: r.competence_month, dueDate: r.due_date, amountCents, settledCents,
+      competenceMonth: r.competence_month, dueDate: r.due_date, effectiveDueDate: effectiveBusinessDueDate(r.due_date), amountCents, settledCents,
       remainingCents: r.status === 'cancelled' ? 0 : Math.max(0, amountCents - settledCents), lastSettledOn: r.last_on ?? null,
       state, stateLabel: STATE_LABEL[r.direction as Direction][state],
-      overdue: r.status === 'open' && settledCents < amountCents && r.due_date < today,
+      overdue: r.status === 'open' && settledCents < amountCents && overdueByBusinessDay(r.due_date, today),
       clientAdBudget: r.client_ad_budget, cancelReason: r.cancel_reason ?? null,
       invoice: invoiceView(r.direction, r.invoice_required, r),
       settlements: settlements.filter(s => s.entry_id === r.id).map(s => ({
@@ -585,12 +586,23 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
          FROM crm.finance_entries e
          LEFT JOIN LATERAL (SELECT sum(amount_cents) AS total FROM crm.finance_settlements s WHERE s.entry_id = e.id AND s.reversed_at IS NULL) st ON true
         WHERE ${FILTER_SQL} AND e.status = 'open' AND NOT e.client_ad_budget AND e.competence_month = $4::date GROUP BY 1`, [...p, firstDay(M)])
-    const overdue = await c.query(
-      `SELECT e.direction, count(*) AS n, sum(e.amount_cents - COALESCE(st.total, 0)) AS remaining
-         FROM crm.finance_entries e
-         LEFT JOIN LATERAL (SELECT sum(amount_cents) AS total FROM crm.finance_settlements s WHERE s.entry_id = e.id AND s.reversed_at IS NULL) st ON true
-        WHERE ${FILTER_SQL} AND e.status = 'open' AND NOT e.client_ad_budget AND e.due_date < $4::date AND COALESCE(st.total, 0) < e.amount_cents
-        GROUP BY 1`, [...p, today])
+    // Consistência entre cards e listas: prorrogação até o próximo dia útil.
+    // Apenas candidatos nominais são lidos; feriados são calculados na regra compartilhada.
+    const overdueCandidates = await c.query(
+      `SELECT e.direction, e.due_date::text AS due_date, (e.amount_cents - COALESCE(st.total, 0)) AS remaining
+          FROM crm.finance_entries e
+          LEFT JOIN LATERAL (SELECT sum(amount_cents) AS total FROM crm.finance_settlements s WHERE s.entry_id = e.id AND s.reversed_at IS NULL) st ON true
+         WHERE ${FILTER_SQL} AND e.status = 'open' AND NOT e.client_ad_budget AND e.due_date < $4::date AND COALESCE(st.total, 0) < e.amount_cents`,
+      [...p, today])
+    const overdueTotal: Record<Direction, { remaining: number; n: number }> = {
+      in: { remaining: 0, n: 0 }, out: { remaining: 0, n: 0 },
+    }
+    for (const item of overdueCandidates.rows) {
+      if (!overdueByBusinessDay(String(item.due_date), today)) continue
+      const direction: Direction = item.direction === 'out' ? 'out' : 'in'
+      overdueTotal[direction].remaining += num(item.remaining)
+      overdueTotal[direction].n += 1
+    }
     const openAll = await c.query(
       `SELECT e.direction, sum(e.amount_cents - COALESCE(st.total, 0)) AS remaining
          FROM crm.finance_entries e
@@ -681,8 +693,8 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
         payableMonthCents: pick(monthBalances, 'out', 'remaining'),
         receivableOpenTotalCents: pick(openAll, 'in', 'remaining'),
         payableOpenTotalCents: pick(openAll, 'out', 'remaining'),
-        overdueReceivableCents: pick(overdue, 'in', 'remaining'), overdueReceivableCount: pick(overdue, 'in', 'n'),
-        overduePayableCents: pick(overdue, 'out', 'remaining'), overduePayableCount: pick(overdue, 'out', 'n'),
+        overdueReceivableCents: overdueTotal.in.remaining, overdueReceivableCount: overdueTotal.in.n,
+        overduePayableCents: overdueTotal.out.remaining, overduePayableCount: overdueTotal.out.n,
         activeRecurringContracts: recurring.length,
         recurringMonthlyCents: recurring.reduce((a, s) => a + s.monthlyEquivalentCents, 0),
         clientAdBudgetCents: num(adBudget.rows[0].total),
