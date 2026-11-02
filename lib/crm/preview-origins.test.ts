@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   CRM_CANONICAL_ORIGIN,
   CRM_LEGACY_PREVIEW_ORIGIN,
+  CRM_FORM_DESIGN_PREVIEW_ORIGIN,
   isAllowedOAuthRedirectHost,
   isCrmPreviewOrigin,
 } from './preview-origins'
@@ -12,6 +13,7 @@ describe('isCrmPreviewOrigin', () => {
     assert.equal(isCrmPreviewOrigin('https://crm.cassiellos.com.br'), true)
     assert.equal(isCrmPreviewOrigin(CRM_CANONICAL_ORIGIN), true)
     assert.equal(isCrmPreviewOrigin(CRM_LEGACY_PREVIEW_ORIGIN), true)
+    assert.equal(isCrmPreviewOrigin(CRM_FORM_DESIGN_PREVIEW_ORIGIN), true)
   })
 
   it('rejeita qualquer outra origem (comparação exata)', () => {
@@ -30,6 +32,7 @@ describe('isCrmPreviewOrigin', () => {
       'https://www.cassiellos.com.br',
       'https://agencia-cassiellos.vercel.app',
       'https://attacker.vercel.app',
+      'https://agencia-cassiellos-git-design-formul-5e3c88-cassiellos-projects.vercel.app.evil.test',
     ]) {
       assert.equal(isCrmPreviewOrigin(origin), false, String(origin))
     }
