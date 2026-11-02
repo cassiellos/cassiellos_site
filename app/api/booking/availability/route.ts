@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
-import { verifyBookingGrant } from '@/lib/crm/booking-grant'
-import { checkAvailabilityAccess } from '@/lib/crm/booking-confirmation'
-import { parseLimitExemptMailboxes } from '@/lib/crm/booking-reservation'
 import { AVAILABILITY_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
 import { CRM_BOOKING_TIME_ZONE, isValidBookingDate } from '@/lib/crm/booking-slots'
 import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/crm/availability/engine'
@@ -40,10 +37,8 @@ export async function GET(request: NextRequest) {
   if (!getBookingForm(form) || !isValidBookingDate(date)) {
     return json({ error: 'INVALID_REQUEST' }, 400)
   }
-  // Phase 3 / item 4: only visitors holding a booking session (issued after the
-  // server-side Turnstile check) can trigger calendar lookups.
-  const session = verifyBookingGrant(request.headers.get('x-booking-session'))
-  if (!session || session.formSlug !== form) return json({ error: 'BOOKING_SESSION_EXPIRED' }, 401)
+  // Consulta pública somente de horários livres. Rate limit antes da consulta ao Google;
+  // a autorização do contato permanece obrigatória no POST de confirmação.
   // Business hours, holidays, policies, manual blocks and exceptions (no Google call).
   let rules: AvailabilityRules
   try {
@@ -63,15 +58,6 @@ export async function GET(request: NextRequest) {
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
   if (!allowed) return json({ error: 'TOO_MANY_REQUESTS' }, 429)
-
-  try {
-    // Blocked contacts (active meeting / e-mail limit) stop here, before Google.
-    const denied = await checkAvailabilityAccess(getCrmPool(), session, form,
-      { exemptMailboxes: parseLimitExemptMailboxes() })
-    if (denied) return json(denied.body, denied.status)
-  } catch {
-    return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
-  }
 
   try {
     const busy = await readGoogleBusyIntervals(date)
