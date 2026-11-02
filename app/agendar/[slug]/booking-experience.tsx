@@ -557,6 +557,16 @@ export default function BookingExperience({
   return <div id="cassiellos-booking" data-screen={step === 0 ? 'intro' : step === 1 ? 'question' : step === 2 ? 'calendar' : step === 4 ? 'success' : 'review'}>
     <MetaPixel pixelId={metaPixelId}/>
     <header className="booking-header">
+      {step !== 0 && step !== 4 && <button type="button" className="booking-nav-back"
+        aria-label="Voltar" onClick={() => {
+          if (step === 1) {
+            if (questionIndex > 0) setQuestionIndex(index => index - 1)
+            else setStep(0)
+          } else if (step === 2) {
+            setStep(1)
+            setQuestionIndex(questions.length)
+          } else if (step === 3) setStep(2)
+        }}>‹</button>}
       <div className="booking-brand">
         <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" width="47" height="34"/>
         <span><strong>Cassiellos</strong><small>AGÊNCIA CASSIELLOS</small></span>
@@ -625,9 +635,7 @@ export default function BookingExperience({
             </div>
             {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">
-              {questionIndex > 0 ? <button className="booking-secondary" type="button"
-                onClick={backQuestion}><Icon name="back"/> Voltar</button> :
-                <span className="booking-first-question-note" aria-hidden="true"/>}
+
               <button className="booking-primary" type="submit"
                 disabled={!attendee[question.name].trim()}>
                 Continuar
@@ -667,8 +675,6 @@ export default function BookingExperience({
             </p>}
             {saveError && <p role="alert" className="booking-save-error">{saveError}</p>}
             <div className="booking-question-footer">
-              <button className="booking-secondary" type="button" disabled={savingLead}
-                onClick={() => setQuestionIndex(questions.length - 1)}><Icon name="back"/> Voltar</button>
               <button className="booking-primary" type="submit"
                 disabled={!privacyAccepted || savingLead || (!leadSaved && !turnstileToken)}>
                 {savingLead ? 'Registrando...' : 'Continuar'} <Icon name="arrow"/>
@@ -730,16 +736,13 @@ export default function BookingExperience({
                     }}>{slot.localTime}</button>)}
                 </div>}
             </div>
-            <div className="booking-actions">
-              <button type="button" className="booking-secondary" onClick={() => { setStep(1); setQuestionIndex(questions.length); setChosen(null) }}>
-                <Icon name="back"/> Voltar
-              </button>
-              <button type="button" className="booking-primary" disabled={!chosen || loading || failed || !bookingEnabled || !bookingToken || confirming}
-                onClick={confirmBooking}>{confirming ? 'Confirmando…' : 'Agendar horário'} <Icon name="check"/></button>
-            </div>
             {chosen && <div className="booking-selected-summary"><Icon name="check"/><span>{date && humanDate(date)}, às {chosen.localTime} · {form.durationMinutes} minutos</span></div>}
             <div className="booking-calendar-contact"><small>SEUS DADOS</small><p><strong>{attendee.name}</strong></p><p>{attendee.email}</p><p>{attendee.whatsapp}</p></div>
             {confirmationError && <p role="alert" className="booking-save-error">{confirmationError}</p>}
+            <div className="booking-actions">
+              <button type="button" className="booking-primary" disabled={!chosen || loading || failed || !bookingEnabled || !bookingToken || confirming}
+                onClick={confirmBooking}>{confirming ? 'Confirmando…' : 'Agendar horário'} <Icon name="check"/></button>
+            </div>
           </div>}
 
           {step === 3 && <div className="booking-review">
