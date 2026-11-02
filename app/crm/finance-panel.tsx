@@ -497,7 +497,9 @@ function EntryRow({ e, setDialog }: { e: Entry; setDialog: (d: Dialog) => void }
   return <div className="crm-fin-row" data-overdue={e.overdue || undefined}>
     <div className="crm-fin-row-main"><strong>{clientFirst ? e.clientName : e.description}</strong>
       <small>{[clientFirst ? e.description : e.clientName, e.categoryLabel, 'Competência ' + monthLabel(e.competenceMonth)].filter(Boolean).join(' · ')}{e.clientAdBudget ? ' · verba de cliente (fora do caixa)' : ''}</small></div>
-    <div className="crm-fin-row-cell"><span>Vencimento</span>{formatDate(e.dueDate)}</div>
+    <div className="crm-fin-row-cell"><span>Vencimento</span>{formatDate(e.dueDate)}
+      {e.effectiveDueDate !== e.dueDate && <small className="crm-fin-effective-due">Prazo útil: {formatDate(e.effectiveDueDate)}</small>}
+    </div>
     <div className="crm-fin-row-cell"><span>Valor</span>{formatCents(e.amountCents)}</div>
     <div className="crm-fin-row-cell"><span>{e.direction === 'in' ? 'Recebido' : 'Pago'}</span>{formatCents(e.settledCents)}</div>
     <div className="crm-fin-row-cell"><span>Saldo</span><b>{formatCents(e.remainingCents)}</b></div>
