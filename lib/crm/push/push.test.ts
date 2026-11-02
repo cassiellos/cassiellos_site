@@ -111,19 +111,19 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     assert.equal(p.u, '/crm/notificacoes/abrir/' + UUID_A); assert.equal(p.g, UUID_A)
     assert.deepEqual([p.t, p.b], [NOTIFICATION_TEXT.meeting_whatsapp_ready.title, NOTIFICATION_TEXT.meeting_whatsapp_ready.body])
     assert.equal(NOTIFICATION_TEXT.lead_created.title, '👤 Novo lead')
-    assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Novo contato pelo formulário.')
-    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, '📅 Nova reunião agendada')
-    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi confirmada.')
-    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, '💬 Enviar mensagem no WhatsApp')
-    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'Mensagem de confirmação pronta.')
+    assert.equal(NOTIFICATION_TEXT.lead_created.body, 'Novo formulário preenchido.')
+    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.title, '📅 Novo agendamento')
+    assert.equal(NOTIFICATION_TEXT.meeting_confirmed.body, 'Uma reunião foi marcada.')
+    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.title, '💬 Enviar WhatsApp')
+    assert.equal(NOTIFICATION_TEXT.meeting_whatsapp_ready.body, 'Enviar confirmação da reunião.')
     assert.ok(JSON.stringify(p).length < 600)
     const details = { fullName: 'Márcio Fernandes', startsAt: '2026-11-04T12:30:00.000Z' }
     const meeting = buildPushPayload({ kind: 'meeting_confirmed', notificationId: UUID_A, deliveryId: UUID_B, secret: 'k', details })
-    assert.equal(meeting.b, 'Márcio • quarta-feira, às 9h30')
-    assert.equal(meeting.t, '📅 Nova reunião agendada')
-    assert.equal(notificationText('meeting_whatsapp_ready', details).body, 'Márcio está aguardando seu contato.')
-    assert.equal(notificationText('lead_created', { fullName: 'Juliana Silva' }).body, 'Juliana • novo contato pelo formulário')
-    assert.equal(notificationText('lead_created', { fullName: '<script>attack' }).body, 'Novo contato pelo formulário.')
+    assert.equal(meeting.b, 'Márcio marcou quarta-feira às 9h30')
+    assert.equal(meeting.t, '📅 Novo agendamento')
+    assert.equal(notificationText('meeting_whatsapp_ready', details).body, 'Enviar confirmação para Márcio')
+    assert.equal(notificationText('lead_created', { fullName: 'Juliana Silva' }).body, 'Juliana preencheu o formulário')
+    assert.equal(notificationText('lead_created', { fullName: '<script>attack' }).body, 'Novo formulário preenchido.')
     assert.equal(safePushFirstName('email@example.com'), null)
     assert.equal(safePushFirstName('11999999999'), null)
     assert.equal(safePushFirstName('Márcio Fernandes'), 'Márcio')
@@ -134,9 +134,9 @@ describe('Web Push — configuração e privacidade do aviso', () => {
     }
     assert.ok(!serialized.toLowerCase().includes('toque para'))
     for (const [variant, expectedTitle, expectedBody] of [
-      ['lead', '👤 Novo lead', 'Márcio • novo contato pelo formulário'],
-      ['meeting', '📅 Nova reunião agendada', 'Márcio • quarta-feira, às 9h30'],
-      ['whatsapp', '💬 Enviar mensagem no WhatsApp', 'Márcio está aguardando seu contato.'],
+      ['lead', '👤 Novo lead', 'Márcio preencheu o formulário'],
+      ['meeting', '📅 Novo agendamento', 'Márcio marcou quarta-feira às 9h30'],
+      ['whatsapp', '💬 Enviar WhatsApp', 'Enviar confirmação para Márcio'],
     ] as const) {
       const demo = buildPushPayload({ kind: 'test', notificationId: UUID_A, deliveryId: UUID_B,
         secret: 'k', demoVariant: variant })
