@@ -25,9 +25,9 @@ A apresentação do aviso depende do sistema operacional (iOS/Android). O app us
 
 | Evento | Título | Corpo quando houver dados válidos |
 |---|---|---|
-| Lead | 👤 Novo lead | Juliana • novo contato pelo formulário |
-| Reunião | 📅 Nova reunião agendada | Márcio • quarta-feira, às 9h30 |
-| WhatsApp | 💬 Enviar mensagem no WhatsApp | Márcio • mensagem pronta para enviar |
+| Lead | 👤 Novo lead | Juliana preencheu o formulário |
+| Reunião | 📅 Novo agendamento | Márcio marcou quarta-feira às 9h30 |
+| WhatsApp | 💬 Enviar WhatsApp | Enviar confirmação para Márcio |
 | Teste | ✅ Teste de notificações | Notificações funcionando. |
 
 **Sem frases "toque para abrir/ver"** e sem informações desnecessárias.
@@ -99,5 +99,5 @@ Trocar o par invalida as inscrições existentes. Os aparelhos precisam ser auto
 5. Com `PWA_PUSH_ENABLED=true`, só no Preview:
    - envie um lead fictício pelo formulário;
    - depois, faça uma reunião fictícia controlada, autorizada e cancelada em seguida.
-6. Abra o aviso **💬 Enviar mensagem no WhatsApp**. Ele deve abrir a conversa com a mensagem preparada, após autenticação quando necessário; apenas o envio da mensagem permanece manual.
+6. Abra o aviso **💬 Enviar WhatsApp**. Ele deve abrir a conversa com a mensagem preparada, após autenticação quando necessário; apenas o envio da mensagem permanece manual.
 7. Volte `PWA_PUSH_ENABLED` para `false` se a homologação não continuar.
