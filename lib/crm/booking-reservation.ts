@@ -307,6 +307,30 @@ export async function finalizeBookingReservation(
         WHERE id = $1 AND status = 'processing'`,
       [input.bookingId, input.eventId, appointmentId],
     )
+    // A qualificação comercial decorre do agendamento REALMENTE confirmado.
+    // Não promover apenas quem preencheu o formulário e não regredir cliente/desqualificado.
+    // Atualização e histórico acontecem na mesma transação da reunião confirmada.
+    const promoted = await client.query<{ previous_stage: string }>(
+      `WITH previous AS (
+           SELECT id, stage FROM crm.leads
+            WHERE id = $1 AND stage IN ('new', 'contacted') FOR UPDATE
+         ), moved AS (
+           UPDATE crm.leads l SET stage = 'qualified', updated_at = now()
+             FROM previous p WHERE l.id = p.id
+             RETURNING p.stage AS previous_stage
+         ) SELECT previous_stage FROM moved`,
+      [input.leadId],
+    )
+    if (promoted.rows[0]) {
+      await client.query(
+        `INSERT INTO crm.lead_activities (lead_id, appointment_id, activity_kind, performed_by, details)
+         VALUES ($1, $2, 'stage_changed', 'public_booking', $3::jsonb)`,
+        [input.leadId, appointmentId, JSON.stringify({
+          from: promoted.rows[0].previous_stage, to: 'qualified',
+          reason: 'meeting_confirmed', bookingRequestId: input.bookingId,
+        })],
+      )
+    }
     await client.query(
       `INSERT INTO crm.lead_activities
          (lead_id, appointment_id, activity_kind, performed_by, details)
