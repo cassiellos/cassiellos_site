@@ -24,7 +24,7 @@ type BeforeInstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Pr
 
 const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const when = (iso: string | null) => iso ? fmt.format(new Date(iso)) : '—'
-const KIND: Record<string, string> = { lead_created: 'Novo lead', meeting_confirmed: 'Nova reunião agendada', meeting_whatsapp_ready: 'Enviar mensagem no WhatsApp', test: 'Teste' }
+const KIND: Record<string, string> = { lead_created: 'Novo lead', meeting_confirmed: 'Novo agendamento', meeting_whatsapp_ready: 'Enviar WhatsApp', test: 'Teste' }
 const DEVICE_STATUS: Record<string, string> = { active: 'Ativo', revoked: 'Revogado', expired: 'Expirado', rejected: 'Precisa autorizar de novo' }
 const ISSUES: Record<string, string> = {
   NOT_PREVIEW: 'fora do Preview', SWITCH_OFF: 'avisos automáticos desligados (PWA_PUSH_ENABLED)',
@@ -121,7 +121,7 @@ export default function NotificationsPanel() {
 
   /** Dispara apenas um aviso fictício; não registra lead/reunião e não envia WhatsApp. */
   async function sendSample(variant: 'lead' | 'meeting' | 'whatsapp') {
-    const names = { lead: 'Novo lead', meeting: 'Nova reunião agendada', whatsapp: 'Mensagem no WhatsApp' }
+    const names = { lead: 'Novo lead', meeting: 'Novo agendamento', whatsapp: 'Enviar WhatsApp' }
     const r = await post({ action: 'test', variant })
     if (r) {
       const accepted = typeof r.accepted === 'number' ? r.accepted : 0
@@ -228,7 +228,7 @@ export default function NotificationsPanel() {
       <section className="crm-card crm-panel" aria-labelledby="push-prefs">
         <div className="crm-panel-title" id="push-prefs">Preferências de avisos</div>
         <div className="crm-panel-subtitle">Valem para todos os aparelhos autorizados</div>
-        {([['notifyLeads', 'Novo lead (1 aviso por cadastro novo)'], ['notifyMeetings', 'Reunião confirmada (2 avisos: reunião e confirmação pronta)']] as const).map(([key, text]) =>
+        {([['notifyLeads', 'Novo lead (1 aviso por cadastro novo)'], ['notifyMeetings', 'Agendamento (2 avisos: reunião e WhatsApp)']] as const).map(([key, text]) =>
           <label key={key} className="crm-push-toggle"><input type="checkbox" checked={status.settings[key]} disabled={busy || status.migrationPending}
             onChange={e => post({ action: 'preferences', notifyLeads: key === 'notifyLeads' ? e.target.checked : status.settings.notifyLeads,
               notifyMeetings: key === 'notifyMeetings' ? e.target.checked : status.settings.notifyMeetings }, 'Preferências salvas.')} /> {text}</label>)}
