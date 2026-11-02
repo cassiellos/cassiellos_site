@@ -120,8 +120,8 @@ export default function NotificationsPanel() {
   }, [load, inspectDevice])
 
   /** Dispara apenas um aviso fictício; não registra lead/reunião e não envia WhatsApp. */
-  async function sendSample(variant: 'lead' | 'meeting' | 'whatsapp') {
-    const names = { lead: 'Novo lead', meeting: 'Novo agendamento', whatsapp: 'Enviar WhatsApp' }
+  async function sendSample(variant: 'meeting' | 'whatsapp') {
+    const names = { meeting: 'Novo agendamento', whatsapp: 'Enviar WhatsApp' }
     const r = await post({ action: 'test', variant })
     if (r) {
       const accepted = typeof r.accepted === 'number' ? r.accepted : 0
@@ -212,15 +212,13 @@ export default function NotificationsPanel() {
       <div className="crm-push-actions">
         {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={enableHere}>Ativar notificações neste aparelho</button>}
         {here && <button type="button" className="crm-btn" disabled={busy} onClick={disableHere}>Desativar neste aparelho</button>}
-        <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
-          onClick={() => void sendSample('lead')}>Testar aviso: Novo lead</button>
         <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
           onClick={() => void sendSample('meeting')}>Testar: reunião</button>
         <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
           onClick={() => void sendSample('whatsapp')}>Testar: WhatsApp</button>
         {installEvent && !device.standalone && <button type="button" className="crm-btn" onClick={install}>Instalar aplicativo</button>}
       </div>
-      <p className="crm-push-sub">Simulação com Márcio (exemplo). Não cria lead, reunião nem envia WhatsApp. Aguarde 30 segundos entre testes; ao tocar no aviso, abre a central de notificações do CRM.</p>
+      <p className="crm-push-sub">Notificações automáticas só após reunião confirmada. Os testes usam Márcio (exemplo) e não criam leads nem agendamentos. Aguarde 30 segundos entre testes.</p>
       {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className="crm-push-message" data-kind={message.kind}>{message.text}</p>}
     </section>
 
@@ -228,10 +226,11 @@ export default function NotificationsPanel() {
       <section className="crm-card crm-panel" aria-labelledby="push-prefs">
         <div className="crm-panel-title" id="push-prefs">Preferências de avisos</div>
         <div className="crm-panel-subtitle">Valem para todos os aparelhos autorizados</div>
-        {([['notifyLeads', 'Novo lead (1 aviso por cadastro novo)'], ['notifyMeetings', 'Agendamento (2 avisos: reunião e WhatsApp)']] as const).map(([key, text]) =>
-          <label key={key} className="crm-push-toggle"><input type="checkbox" checked={status.settings[key]} disabled={busy || status.migrationPending}
-            onChange={e => post({ action: 'preferences', notifyLeads: key === 'notifyLeads' ? e.target.checked : status.settings.notifyLeads,
-              notifyMeetings: key === 'notifyMeetings' ? e.target.checked : status.settings.notifyMeetings }, 'Preferências salvas.')} /> {text}</label>)}
+        <label className="crm-push-toggle"><input type="checkbox"
+          checked={status.settings.notifyMeetings} disabled={busy || status.migrationPending}
+          onChange={e => post({ action: 'preferences', notifyLeads: false,
+            notifyMeetings: e.target.checked }, 'Preferências salvas.')} />
+          Agendamento confirmado (2 avisos: reunião e WhatsApp)</label>
         <div className="crm-panel-title" style={{ marginTop: 22 }}>Mensagem do WhatsApp</div>
         <div className="crm-panel-subtitle">O toque no aviso abre o WhatsApp com a mensagem pronta · envio sempre manual. Se não houver número ou link válido, abre a ficha da reunião.</div>
         <label className="crm-push-field">Modelo {status.settings.templateCustomized && <em>(personalizado)</em>}
