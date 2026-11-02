@@ -17,15 +17,15 @@ export function isPushDemoVariant(value: unknown): value is PushDemoVariant {
 export const NOTIFICATION_TEXT: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
   lead_created: {
     title: '👤 Novo lead',
-    body: 'Novo contato pelo formulário.',
+    body: 'Novo formulário preenchido.',
   },
   meeting_confirmed: {
-    title: '📅 Nova reunião agendada',
-    body: 'Uma reunião foi confirmada.',
+    title: '📅 Novo agendamento',
+    body: 'Uma reunião foi marcada.',
   },
   meeting_whatsapp_ready: {
-    title: '💬 Enviar mensagem no WhatsApp',
-    body: 'Mensagem de confirmação pronta.',
+    title: '💬 Enviar WhatsApp',
+    body: 'Enviar confirmação da reunião.',
   },
   test: {
     title: '✅ Teste de notificações',
@@ -76,18 +76,18 @@ export function notificationText(kind: NotificationKind, details?: PushDisplayDe
   const fallback = NOTIFICATION_TEXT[kind]
   const name = safePushFirstName(details?.fullName)
   if (kind === 'lead_created') {
-    return { title: fallback.title, body: name ? name + ' • novo contato pelo formulário' : fallback.body }
+    return { title: fallback.title, body: name ? name + ' preencheu o formulário' : fallback.body }
   }
   if (kind === 'meeting_confirmed') {
     const dateTime = safePushMeetingTime(details?.startsAt)
     return {
       title: fallback.title,
-      body: name && dateTime ? name + ' • ' + dateTime : name ? name + ' • reunião confirmada'
-        : dateTime ? 'Reunião • ' + dateTime : fallback.body,
+      body: name && dateTime ? name + ' marcou ' + dateTime.replace(', às ', ' às ') : name ? name + ' marcou uma reunião'
+        : dateTime ? 'Reunião marcada para ' + dateTime : fallback.body,
     }
   }
   if (kind === 'meeting_whatsapp_ready') {
-    return { title: fallback.title, body: name ? name + ' está aguardando seu contato.' : fallback.body }
+    return { title: fallback.title, body: name ? 'Enviar confirmação para ' + name : fallback.body }
   }
   return fallback
 }
