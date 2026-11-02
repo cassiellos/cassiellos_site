@@ -346,3 +346,100 @@ body:has(#cassiellos-booking) .progress,body:has(#cassiellos-booking) [class*="s
 }
 #cassiellos-booking .booking-nav-back:hover{color:#367bf3}
 #cassiellos-booking .booking-nav-back:focus-visible{outline:2px solid #367bf3;outline-offset:1px}
+
+/* V2 feedback — iPhone Safari auto-zoom, viewport containment and inline calendar email. */
+html:has(#cassiellos-booking),
+body:has(#cassiellos-booking){
+  width:100%;max-width:100%;overflow-x:clip
+}
+#cassiellos-booking{
+  width:100%;max-width:100%;min-width:0;overflow-x:clip;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%
+}
+#cassiellos-booking .booking-header,
+#cassiellos-booking .booking-shell,
+#cassiellos-booking .booking-card,
+#cassiellos-booking .booking-card-inside,
+#cassiellos-booking .booking-intro,
+#cassiellos-booking .booking-question-form,
+#cassiellos-booking .booking-schedule,
+#cassiellos-booking .booking-question-inputs,
+#cassiellos-booking .booking-choices,
+#cassiellos-booking .booking-calendar-email,
+#cassiellos-booking .booking-calendar-grid,
+#cassiellos-booking .booking-cookie-notice,
+#cassiellos-booking .booking-footer{
+  min-width:0;max-width:100%
+}
+#cassiellos-booking .booking-choices .booking-choice,
+#cassiellos-booking .booking-choice-label{
+  min-width:0;overflow-wrap:anywhere;word-break:normal
+}
+#cassiellos-booking .booking-choice-label{flex:1}
+#cassiellos-booking .booking-hero-points li>span:first-child{
+  font-size:15px;line-height:1.22;flex:0 0 22px;min-width:22px
+}
+#cassiellos-booking .booking-hero-cta,
+#cassiellos-booking .booking-primary{min-height:44px}
+#cassiellos-booking .booking-calendar-email{
+  display:grid;gap:7px;margin:18px 0 0;padding:16px 0 0;
+  border-top:1px solid #edf0f5
+}
+#cassiellos-booking .booking-calendar-email>label{
+  color:#3b4452;font-weight:630;font-size:12px
+}
+#cassiellos-booking .booking-calendar-email>label span{color:#d34848}
+#cassiellos-booking .booking-calendar-email input{
+  display:block;box-sizing:border-box;width:100%;max-width:100%;
+  height:46px;padding:7px 9px;min-width:0;
+  background:#fff;border:1px solid #d9e0ec;border-radius:5px;
+  color:#303947;font-size:16px;line-height:1.3;outline:none
+}
+#cassiellos-booking .booking-calendar-email input:focus{
+  border-color:#367bf3;box-shadow:0 0 0 3px rgba(54,123,243,.10)
+}
+#cassiellos-booking .booking-calendar-email input::placeholder{color:#a4adbb}
+#cassiellos-booking .booking-calendar-email .booking-primary{
+  justify-self:start;margin-top:4px;max-width:100%
+}
+#cassiellos-booking .booking-inline-privacy{
+  font-size:10px;line-height:1.55;color:#7e8897;margin:3px 0 5px;
+  max-width:440px
+}
+#cassiellos-booking .booking-inline-privacy a{
+  color:#316dd5;text-decoration:underline;text-underline-offset:2px
+}
+#cassiellos-booking .booking-schedule .booking-slots{
+  min-height:45px
+}
+#cassiellos-booking .booking-choices .booking-choice,
+#cassiellos-booking .booking-primary,
+#cassiellos-booking .booking-secondary,
+#cassiellos-booking .booking-hero-cta{
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+/* Inputs must be >=16px to avoid unwanted focus zoom on iPhones. */
+@media (hover:none) and (pointer:coarse) {
+  #cassiellos-booking input,
+  #cassiellos-booking select,
+  #cassiellos-booking textarea{font-size:16px!important}
+}
+@media(max-width:480px){
+ #cassiellos-booking .booking-header,
+ #cassiellos-booking .booking-shell,
+ #cassiellos-booking .booking-cookie-notice,
+ #cassiellos-booking .booking-footer,
+ #cassiellos-booking .booking-preview-details{
+   width:calc(100% - 36px)!important;margin-left:auto;margin-right:auto
+ }
+ #cassiellos-booking .booking-card-heading h2,
+ #cassiellos-booking .booking-question-heading h2{
+   max-width:100%;overflow-wrap:break-word
+ }
+ #cassiellos-booking .booking-calendar-grid{
+   padding:10px 4px;gap:2px
+ }
+ #cassiellos-booking .booking-day{min-height:0;min-width:0;aspect-ratio:1/1}
+ #cassiellos-booking .booking-question-form{min-height:calc(100dvh - 100px)}
+ #cassiellos-booking .booking-hero-cta{max-width:100%}
+}
