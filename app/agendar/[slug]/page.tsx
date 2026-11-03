@@ -5,7 +5,7 @@ import { getBookingForm } from '@/lib/crm/booking-forms'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
 import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
-import { getMetaPixelConfig } from '@/lib/marketing/meta'
+import { chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig } from '@/lib/marketing/meta'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import BookingExperience from './booking-experience'
@@ -51,7 +51,15 @@ export default async function NicheBookingPage({
   // no máximo 1 Lead e 1 Schedule de teste, marcados (lib/marketing/homologation.ts).
   const homologation = activeHomologation((await cookies()).toString())
   const metaPixelId = homologation ? homologation.pixelId : pixel.enabled ? pixel.pixelId : null
+  // Liberação futura, DESATIVADA por padrão: somente visitantes reais, Pixel disponível
+  // e consentimento de marketing no navegador. A liberação de homologação prevalece.
+  const chronosMode = chronosDispatchMode({
+    pixelReady: Boolean(metaPixelId),
+    bookingMode: analyticsMode,
+    liveEnabled: getChronosLiveEnabled(),
+    homologationScope: homologation?.scope ?? null,
+  })
   return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} invitesEnabled={access.sendInvites} turnstileSiteKey={turnstileSiteKey}
-    analyticsMode={analyticsMode} metaPixelId={metaPixelId}
+    analyticsMode={analyticsMode} metaPixelId={metaPixelId} chronosMode={chronosMode}
     metaHomologation={homologation ? { expiresAt: homologation.expiresAt, scope: homologation.scope } : null} />
 }

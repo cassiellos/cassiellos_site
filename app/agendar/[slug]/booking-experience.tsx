@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isValidWebPresence, type BookingForm } from '@/lib/crm/booking-forms'
 import TurnstileWidget, { type TurnstileState } from './turnstile-widget'
@@ -12,7 +12,7 @@ import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
 import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackChronosEvent, trackMetaConversion } from '@/lib/marketing/meta-client'
-import type { ChronosCustomEvent } from '@/lib/marketing/meta'
+import type { ChronosCustomEvent, ChronosDispatchMode } from '@/lib/marketing/meta'
 import MetaPixel from '@/components/marketing/meta-pixel'
 import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
 
@@ -134,7 +134,7 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
+  form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null, chronosMode = 'off',
 }: {
   form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; invitesEnabled?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
   /**
@@ -142,6 +142,8 @@ export default function BookingExperience({
    * 1 Schedule de teste; escopo "chronos" = somente os eventos personalizados da jornada (sem Lead/Schedule).
    */
   metaHomologation?: { expiresAt: string; scope?: 'conversions' | 'chronos' } | null
+  /** Fica OFF até uma liberação comercial futura. Resolvido pelo servidor por Preview/live/Pixel/flag. */
+  chronosMode?: ChronosDispatchMode
 }) {
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
   const marketingEnabled = Boolean(metaPixelId)
@@ -201,13 +203,16 @@ export default function BookingExperience({
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
   }, [marketingEnabled, bookingToken])
 
-  // Eventos personalizados da jornada (ChronosView etc.): ainda NÃO liberados para visitantes reais. Só saem na
-  // liberação de homologação com escopo "chronos" (Pixel comercial carregado + consentimento de marketing).
-  const chronosHomologation = marketingEnabled && metaHomologation?.scope === 'chronos'
-  function chronos(event: ChronosCustomEvent) {
-    if (!chronosHomologation) return
-    trackChronosEvent(event, { content_name: form.slug, homologation: true })
-  }
+  // Modo de envio resolvido no servidor. Sem a flag explícita, visitantes reais ficam OFF.
+  // O próprio trackChronosEvent valida consentimento de marketing em CADA evento.
+  const chronosEnabled = marketingEnabled && chronosMode !== 'off'
+  const chronos = useCallback((event: ChronosCustomEvent): boolean => {
+    if (!chronosEnabled) return false
+    // A liberação de 30 minutos deve continuar temporária inclusive se a aba ficar aberta.
+    if (chronosMode === 'homologation' &&
+      (!metaHomologation?.expiresAt || Date.parse(metaHomologation.expiresAt) <= Date.now())) return false
+    return trackChronosEvent(event, { content_name: form.slug, homologation: chronosMode === 'homologation' })
+  }, [chronosEnabled, chronosMode, metaHomologation?.expiresAt, form.slug])
 
   /** Marco do funil (lib/crm/funnel-events): só com consentimento, sem dados pessoais e sem duplicidade. */
   function funnel(name: FunnelEventName, extra: Record<string, unknown> = {}, ref?: string | null) {
@@ -230,21 +235,27 @@ export default function BookingExperience({
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, view)
   }, [form.slug, analyticsMode])
 
-  // ChronosView: primeira visualização do formulário. O Pixel pode carregar logo depois (ou após o aceite de
-  // marketing): novas tentativas curtas; o event_id por evento+sessão impede envio duplicado.
+  // ChronosView: apenas quando o Pixel e o consentimento estão disponíveis.
+  // As tentativas curtas cobrem aceite e carregamento assíncrono; event_id evita duplicação.
   useEffect(() => {
-    if (!chronosHomologation) return
-    const send = () => { trackChronosEvent('ChronosView', { content_name: form.slug, homologation: true }) }
+    if (!chronosEnabled) return
+    const send = () => { chronos('ChronosView') }
     send()
     const timers = [1500, 4000].map(ms => window.setTimeout(send, ms))
     window.addEventListener(CONSENT_CHANGE_EVENT, send)
     return () => { timers.forEach(id => window.clearTimeout(id)); window.removeEventListener(CONSENT_CHANGE_EVENT, send) }
-  }, [chronosHomologation, form.slug])
+  }, [chronosEnabled, chronos])
 
-  // Chronos_View_Scheduled: a etapa de agendamento (calendário) ficou visível.
+  // Chronos_View_Scheduled: etapa de agendamento realmente visível. Se o consentimento
+  // vier enquanto a etapa estiver aberta, registra somente a visualização atual.
   useEffect(() => {
-    if (step === 2) chronos('Chronos_View_Scheduled')
-  }, [step]) // chronos() só depende de props estáveis da página
+    if (!chronosEnabled || step !== 2) return
+    const send = () => { chronos('Chronos_View_Scheduled') }
+    send()
+    const timers = [1500, 4000].map(ms => window.setTimeout(send, ms))
+    window.addEventListener(CONSENT_CHANGE_EVENT, send)
+    return () => { timers.forEach(id => window.clearTimeout(id)); window.removeEventListener(CONSENT_CHANGE_EVENT, send) }
+  }, [chronosEnabled, chronos, step])
 
   useEffect(() => {
     if (step !== 2) return

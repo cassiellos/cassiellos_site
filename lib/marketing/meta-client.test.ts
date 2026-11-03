@@ -126,6 +126,22 @@ describe('Meta Pixel — eventos personalizados Chronos (trackCustom)', () => {
     assert.equal(fbqCalls.length, 0)
   })
 
+  it('eventos comerciais só após marketing aceito, sem marca de homologação e sem duplicidade', () => {
+    setMarketingConsent(true)
+    store.delete('cassiellos_chronos_session')
+    store.delete('cassiellos_meta_sent')
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'odontologia' }), true)
+    const first = fbqCalls.at(-1)
+    assert.equal(first?.[0], 'trackCustom')
+    assert.equal(first?.[1], 'ChronosView')
+    assert.deepEqual(first?.[2], { content_name: 'odontologia' }, 'evento real não recebe cassiellos_teste')
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'odontologia' }), false)
+    assert.equal(fbqCalls.length, 1)
+    setMarketingConsent(false)
+    assert.equal(trackChronosEvent('ChronosFirstInteraction', { content_name: 'odontologia' }), false)
+    assert.equal(fbqCalls.length, 1, 'revogação impede novos eventos')
+  })
+
   it('nunca usa trackCustom para conversões padrão nem envia dados pessoais', () => {
     setMarketingConsent(true)
     for (const name of ['Schedule', 'Lead', 'Chronos_Scheduled', 'chronosview', '']) {

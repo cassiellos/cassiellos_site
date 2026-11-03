@@ -68,6 +68,37 @@ export function chronosEventId(event: ChronosCustomEvent, sessionId: string): st
   return CHRONOS_EVENT_ID_PREFIX[event] + '_' + sessionId
 }
 
+/**
+ * Liberação COMERCIAL dos eventos personalizados Chronos (etapa independente da homologação).
+ * Default OFF; somente valor literal `true` é aceito. Não habilita Pixel nem afeta Lead/Schedule.
+ * A variável deve ser instalada somente após aprovação do titular e novo deploy.
+ */
+export function getChronosLiveEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.META_CHRONOS_LIVE_ENABLED?.trim() === 'true'
+}
+
+export type ChronosDispatchMode = 'off' | 'homologation' | 'live'
+
+/**
+ * Proteções fail-closed:
+ * - sem Pixel: nunca dispara;
+ * - homologação Chronos: somente os 4 eventos personalizados de teste;
+ * - homologação Lead/Schedule: não mistura os eventos comerciais Chronos;
+ * - modo real: flag explícita + formulário live; páginas de teste/allowlist não enviam.
+ * A camada de navegador também exige consentimento de marketing vigente em cada envio.
+ */
+export function chronosDispatchMode(input: {
+  pixelReady: boolean
+  bookingMode: 'live' | 'test'
+  liveEnabled: boolean
+  homologationScope?: 'conversions' | 'chronos' | null
+}): ChronosDispatchMode {
+  if (!input.pixelReady) return 'off'
+  if (input.homologationScope === 'chronos') return 'homologation'
+  if (input.homologationScope === 'conversions') return 'off'
+  return input.liveEnabled && input.bookingMode === 'live' ? 'live' : 'off'
+}
+
 /** event_id do Lead: um por lead (reenvios do mesmo contato não contam como nova conversão). */
 export function leadTrackingEventId(leadId: string): string {
   return 'lead_' + leadId.replaceAll('-', '').toLowerCase()

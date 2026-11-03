@@ -4,7 +4,7 @@ import { CONSENT_VERSION, hasMarketingConsent, parseConsent, serializeConsent } 
 
 const mk = (marketing: boolean, now?: Date) => serializeConsent({ analytics: null, marketing }, now)
 import {
-  META_EVENT_MAP, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
+  META_EVENT_MAP, chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
   leadTrackingEventId, metaEventNameFor, resolveMarketingConsent, sanitizeMarketingConsent,
 } from './meta'
 
@@ -114,5 +114,43 @@ describe('eventos personalizados Chronos — nomes e event_id', () => {
     // O mapeamento padrão continua igual: Chronos_Scheduled -> Schedule; os personalizados não viram conversão padrão.
     assert.equal(metaEventNameFor('Chronos_Scheduled'), 'Schedule')
     assert.equal(metaEventNameFor('ChronosView'), null)
+  })
+})
+
+
+describe('liberação comercial Chronos — flag isolada e fail-closed', () => {
+  const input = {
+    pixelReady: true,
+    bookingMode: 'live' as const,
+    liveEnabled: true,
+    homologationScope: null,
+  }
+
+  it('chave é desligada por padrão e somente true literal habilita', () => {
+    assert.equal(getChronosLiveEnabled({}), false)
+    assert.equal(getChronosLiveEnabled({ META_CHRONOS_LIVE_ENABLED: 'false' }), false)
+    assert.equal(getChronosLiveEnabled({ META_CHRONOS_LIVE_ENABLED: 'yes' }), false)
+    assert.equal(getChronosLiveEnabled({ META_CHRONOS_LIVE_ENABLED: 'true' }), true)
+  })
+
+  it('libera apenas Pixel disponível, modo REAL e flag explicitamente true', () => {
+    assert.equal(chronosDispatchMode(input), 'live')
+    assert.equal(chronosDispatchMode({ ...input, pixelReady: false }), 'off')
+    assert.equal(chronosDispatchMode({ ...input, bookingMode: 'test' }), 'off')
+    assert.equal(chronosDispatchMode({ ...input, liveEnabled: false }), 'off')
+    assert.equal(chronosDispatchMode({ ...input, pixelReady: false, liveEnabled: false }), 'off')
+  })
+
+  it('homologação Chronos é isolada da comercial; homologação conversões bloqueia Chronos', () => {
+    assert.equal(chronosDispatchMode({ ...input, homologationScope: 'conversions' }), 'off')
+    assert.equal(chronosDispatchMode({ ...input, homologationScope: 'chronos' }), 'homologation')
+    assert.equal(chronosDispatchMode({ ...input, homologationScope: 'chronos', liveEnabled: false, bookingMode: 'test' }), 'homologation')
+    assert.equal(chronosDispatchMode({ ...input, homologationScope: 'chronos', pixelReady: false }), 'off')
+  })
+
+  it('Lead e Chronos_Scheduled continuam mapeados aos eventos padrão, sem duplicação', () => {
+    assert.deepEqual(META_EVENT_MAP, { Lead: 'Lead', Chronos_Scheduled: 'Schedule' })
+    assert.equal(metaEventNameFor('ChronosView'), null)
+    assert.equal(metaEventNameFor('Chronos_Scheduled'), 'Schedule')
   })
 })
