@@ -227,22 +227,27 @@ export default function MiniCrm() {
             <section className="crm-card crm-panel">
               <div className="crm-panel-head"><div>
                 <div className="crm-panel-title">Eventos da jornada</div>
-                <div className="crm-panel-subtitle">Evento efetivamente homologado × próximos eventos da estratégia Shark Scale</div>
+                <div className="crm-panel-subtitle">Eventos com recebimento comprovado na Meta (Gerenciador de Eventos) · histórico verificado manualmente</div>
               </div><Icon name="target"/></div>
-              <div className="crm-event crm-meta-event-verified">
-                <code>Schedule</code><span className="crm-tag">Validado</span><small>Agendamento confirmado · Meta Pixel (navegador)</small>
-              </div>
               {([
-                ['ChronosView','Visualização do formulário'],
-                ['ChronosFirstInteraction','Primeira interação'],
-                ['ChronosSubmit','Envio do formulário'],
-                ['Chronos_View_Scheduled','Visualização da etapa de agendamento'],
-                ['Chronos_Scheduled','Evento personalizado da estratégia; distinto do Schedule validado'],
+                ['Schedule','Agendamento confirmado · padrão · navegador · 03/11/2026 09:43:10'],
+                ['Lead','Cadastro de lead · padrão · navegador · 30/10/2026 (conjunto de dados)'],
+                ['ChronosView','Visualização do formulário · personalizado · navegador · 03/11/2026 11:28:25'],
+                ['ChronosFirstInteraction','Primeira interação · personalizado · navegador · 03/11/2026 11:30:29'],
+                ['Chronos_View_Scheduled','Etapa de agendamento visível · personalizado · navegador · 03/11/2026 11:33:11'],
+                ['ChronosSubmit','Envio aceito pelo backend · personalizado · navegador · 03/11/2026 11:34:00'],
               ] as const).map(([name, desc]) =>
-                <div className="crm-event" key={name}>
-                  <code>{name}</code><span className="crm-tag crm-tag-muted">Planejado</span><small>{desc}</small>
+                <div className="crm-event crm-meta-event-verified" key={name}>
+                  <code>{name}</code><span className="crm-tag">Validado</span><small>{desc}</small>
                 </div>
               )}
+              <div className="crm-event">
+                <code>Chronos_Scheduled</code><span className="crm-tag crm-tag-muted">Mapeado</span><small>Nome interno do agendamento; enviado à Meta como Schedule (não é um evento separado)</small>
+              </div>
+              <p style={{ color: '#a8b8cb', fontSize: 12, margin: '10px 0 0' }}>
+                Os quatro eventos Chronos foram validados em homologação (marcados <code>cassiellos_teste=homologacao</code>) e ainda
+                não são enviados para visitantes reais: essa liberação exige uma nova etapa.
+              </p>
             </section>
             <section className="crm-card crm-panel">
               <div className="crm-panel-title">Evento de agendamento</div>
