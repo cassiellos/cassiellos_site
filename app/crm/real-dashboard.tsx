@@ -79,12 +79,12 @@ export default function RealDashboard({period,openView}:{period:'7d'|'30d';openV
         <section className="crm-card crm-panel"><div className="crm-panel-head"><div>
           <div className="crm-panel-title">Funil de conversão</div>
           <div className="crm-panel-subtitle">Indicadores reais do período · métricas independentes</div>
-        </div><button type="button" className="crm-icon-btn" aria-label="Abrir funil demonstrativo" onClick={()=>openView('funil')}>↗</button></div>
+        </div><button type="button" className="crm-icon-btn" aria-label="Abrir funil comercial" onClick={()=>openView('funil')}>↗</button></div>
         <div className="crm-funnel-list">{funnel.map(([label,value])=><div className="crm-funnel-row" key={label}>
           <span>{label}</span><div className="crm-funnel-track"><div className="crm-funnel-fill" style={{width:(data.metrics.leads?Math.min(100,value/data.metrics.leads*100):0)+'%'}}/></div><strong>{value}</strong>
         </div>)}</div>
         <p className="crm-live-note">Qualificados: etapa atual do lead. Reuniões e contratos: eventos registrados no período. Cada indicador tem seu próprio critério.</p>
-        <div className="crm-live-event-note">Evento interno confirmado: <code>Chronos_Scheduled</code> · envio à Meta ainda não ativado.</div>
+        <div className="crm-live-event-note">Evento interno <code>Chronos_Scheduled</code> · Meta Pixel e CAPI habilitados para <code>Schedule</code>, conforme consentimento de marketing e confirmação do agendamento.</div>
         </section>
       </div>
       <section className="crm-card crm-table-panel">
