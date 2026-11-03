@@ -843,8 +843,8 @@ export default function BookingExperience({
               <p>O link da reunião ainda está sendo preparado. Nossa equipe entrará em contato pelo WhatsApp informado
                 para enviar as instruções de acesso.</p>
             </div> : <div className="booking-card-heading">
-              <h2>Obrigado pelo envio!</h2>
-              <p>Sua reunião foi registrada com sucesso.</p>
+              <h2>Reunião confirmada!</h2>
+              <p>Seu agendamento já foi concluído. Você não precisa marcar outro horário.</p>
               {confirmation?.invitationRequested
                 ? <p>Pedimos ao Google Agenda que envie o convite para <strong>{attendee.email}</strong>. Ele pode levar alguns
                   minutos para chegar — confira também as pastas de spam e promoções. O link e os botões abaixo continuam
@@ -874,16 +874,21 @@ export default function BookingExperience({
               {copyState === 'failed' && <p className="booking-calendar-hint" role="alert">Não foi possível copiar automaticamente.
                 Selecione o link acima e copie manualmente.</p>}
             </> : null}
-            {confirmation && <div className="booking-confirmed-actions" aria-label="Adicionar à minha agenda">
+            {confirmation && <>
+              <p className="booking-calendar-hint">{confirmation.invitationRequested
+                ? "Os botões abaixo são opcionais. Se você já recebeu o convite, não precisa usá-los: salvar manualmente pode criar uma cópia na sua agenda pessoal."
+                : "Os botões abaixo são opcionais. Eles salvam o compromisso na sua agenda pessoal, sem criar outra reserva no CRM."}</p>
+              <div className="booking-confirmed-actions" aria-label="Salvar compromisso na minha agenda (opcional)">
               <a className="booking-secondary" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
                 href={googleCalendarTemplateUrl({ title: confirmation.title, startAt: confirmation.startAt,
                   endAt: confirmation.endAt, meetUrl: confirmation.meetUrl })}>
-                <Icon name="calendar"/>Adicionar ao Google Agenda</a>
+                <Icon name="calendar"/>Salvar na minha agenda Google (opcional)</a>
               <button type="button" className="booking-secondary" onClick={() => downloadIcs(buildIcs({
                 uid: confirmation.bookingRequestId || confirmation.startAt, title: confirmation.title,
                 startAt: confirmation.startAt, endAt: confirmation.endAt, meetUrl: confirmation.meetUrl,
               }))}><Icon name="calendar"/>Baixar para Apple / Outlook (.ics)</button>
-            </div>}
+              </div>
+            </>}
             {bookingRestricted && <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>}
           </div>}
         </div>

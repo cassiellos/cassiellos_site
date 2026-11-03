@@ -18,6 +18,8 @@ type StoredLead = {
   revenue: string | null
   objective: string | null
   formVersion: string | null
+  latestContactName: string | null
+  latestContactWhatsapp: string | null
   source: string | null
   campaign: string | null
   medium: string | null
@@ -128,7 +130,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
       : null}
     {state === 'ready' && filtered.length > 0 ? <div className="crm-table-wrap"><table>
       <thead><tr>
-        <th>Empresa / Contato</th><th>Contato</th><th>Nicho</th>
+        <th>Empresa / Contato</th><th>Contato</th><th>Segmento</th>
         <th>Faturamento informado</th><th>Origem</th><th>Etapa</th><th>Entrada</th><th>Detalhes</th>
       </tr></thead>
       <tbody>{filtered.map(lead => <tr key={lead.id}>
@@ -136,6 +138,8 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
           <span className="crm-company-logo">{initials(lead.company || lead.name)}</span>
           <span>{lead.company || 'Empresa não informada'} {lead.isTest && <span className="crm-test-tag">TESTE</span>}
             <span className="crm-real-person">{lead.name}</span>
+            {lead.latestContactName && lead.latestContactName.trim().toLowerCase() !== lead.name.trim().toLowerCase() &&
+              <span className="crm-real-person">Último formulário: {lead.latestContactName}</span>}
           </span>
         </div></td>
         <td className="crm-real-contact">
@@ -162,8 +166,10 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
         <button type="button" className="crm-btn" onClick={() => setSelected(null)}>Fechar</button>
       </div>
       <div className="crm-real-detail-grid">
-        <div><span>Responsável</span><strong>{active.name}</strong></div>
-        <div><span>Clínica / empresa</span><strong>{active.company || '—'}</strong></div>
+        <div><span>Contato cadastrado</span><strong>{active.name}</strong></div>
+        <div><span>Nome informado no último formulário</span><strong>{active.latestContactName || '—'}</strong></div>
+        <div><span>WhatsApp informado no último formulário</span><strong>{parseBrazilianWhatsapp(active.latestContactWhatsapp)?.display || active.latestContactWhatsapp || '—'}</strong></div>
+        <div><span>Empresa cadastrada</span><strong>{active.company || '—'}</strong></div>
         <div><span>WhatsApp</span><strong>{parseBrazilianWhatsapp(active.whatsapp)?.display || active.whatsapp || '—'}</strong></div>
         <div><span>Faturamento informado</span><strong>{active.revenue || '—'}</strong></div>
         <div><span>Objetivo principal</span><strong>{active.objective || '—'}</strong></div>

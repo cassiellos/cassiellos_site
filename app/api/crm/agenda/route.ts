@@ -42,11 +42,25 @@ export async function GET(request: NextRequest) {
   try {
     const result = await withCrmReadOnlyTransaction(async client => {
       const records = await client.query<AppointmentRow>(
-        `SELECT a.id, a.lead_id, a.is_test, l.full_name, l.company, l.email, l.whatsapp,
-           l.segment, a.status, a.starts_at, a.ends_at, a.meeting_url,
+        `SELECT a.id, a.lead_id, a.is_test,
+           COALESCE(NULLIF(submitted.answers #>> '{contact,name}', ''), l.full_name) AS full_name,
+           CASE WHEN submitted.answers IS NOT NULL THEN NULLIF(submitted.answers #>> '{questions,clinic}', '')
+                ELSE l.company END AS company,
+           COALESCE(NULLIF(submitted.answers #>> '{contact,email}', ''), l.email) AS email,
+           COALESCE(NULLIF(submitted.answers #>> '{contact,whatsapp}', ''), l.whatsapp) AS whatsapp,
+           COALESCE(NULLIF(submitted.answers ->> 'niche', ''), l.segment) AS segment,
+           a.status, a.starts_at, a.ends_at, a.meeting_url,
            a.calendar_event_id, a.confirmed_at, a.completed_at, a.cancelled_at
          FROM crm.appointments a
          JOIN crm.leads l ON l.id = a.lead_id
+         LEFT JOIN LATERAL (
+           SELECT f.answers
+             FROM crm.booking_requests br
+             JOIN crm.form_submissions f ON f.id = br.submission_id
+            WHERE br.appointment_id = a.id
+            ORDER BY br.created_at DESC, br.id DESC
+            LIMIT 1
+         ) submitted ON TRUE
          ORDER BY a.starts_at DESC, a.id DESC LIMIT 150`,
       )
       const counts = await client.query<{

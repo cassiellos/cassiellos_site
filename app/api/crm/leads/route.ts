@@ -24,6 +24,8 @@ type RealLeadRow = {
   is_test: boolean
   created_at: Date
   form_version: string | null
+  latest_contact_name: string | null
+  latest_contact_whatsapp: string | null
   revenue: string | null
   objective: string | null
   utm_source: string | null
@@ -47,6 +49,8 @@ export async function GET(request: NextRequest) {
           `SELECT l.id, l.is_test, l.full_name, l.email, l.whatsapp, l.company,
              l.segment, l.stage, l.created_at,
              s.form_version, s.latest_submission_at,
+             s.answers #>> '{contact,name}' AS latest_contact_name,
+             s.answers #>> '{contact,whatsapp}' AS latest_contact_whatsapp,
              s.answers #>> '{questions,revenue}' AS revenue,
              s.answers #>> '{questions,priority}' AS objective,
              s.answers #>> '{attribution,utm_source}' AS utm_source,
@@ -80,6 +84,8 @@ export async function GET(request: NextRequest) {
           revenue: row.revenue,
           objective: row.objective,
           formVersion: row.form_version,
+          latestContactName: row.latest_contact_name,
+          latestContactWhatsapp: row.latest_contact_whatsapp,
           source: row.utm_source,
           campaign: row.utm_campaign,
           medium: row.utm_medium,
