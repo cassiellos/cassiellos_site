@@ -24,3 +24,60 @@
  #cassiellos-crm .crm-real-detail-grid{grid-template-columns:minmax(0,1fr)}
 }
 #cassiellos-crm .crm-real-whatsapp{margin-top:14px;display:inline-flex;text-decoration:none;min-height:44px;align-items:center}
+
+/* Ficha do lead como diálogo independente da tabela: funciona para qualquer posição na lista. */
+#cassiellos-crm .crm-real-modal-overlay{
+  position:fixed;inset:0;z-index:220;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(2,7,15,.82);backdrop-filter:blur(7px);
+  overscroll-behavior:contain
+}
+#cassiellos-crm .crm-real-modal{
+  width:min(980px,100%);max-height:calc(100dvh - 32px);min-height:0;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:#0b1728;border:1px solid rgba(92,129,170,.42);
+  border-radius:16px;box-shadow:0 32px 100px rgba(0,0,0,.52);
+  outline:none
+}
+#cassiellos-crm .crm-real-modal:focus-visible{
+  outline:2px solid var(--crm-cyan);outline-offset:2px
+}
+#cassiellos-crm .crm-real-modal-header{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:20px 24px;background:#101e31;border-bottom:1px solid var(--crm-border);flex:0 0 auto
+}
+#cassiellos-crm .crm-real-modal-header>div{min-width:0}
+#cassiellos-crm .crm-real-modal-eyebrow{
+  color:#6ed6eb;letter-spacing:.1em;font-size:10px;font-weight:750
+}
+#cassiellos-crm .crm-real-modal-header h2{
+  font-size:clamp(19px,2.6vw,27px);color:#f2f7ff;line-height:1.2;
+  margin:6px 0 5px;letter-spacing:-.03em;overflow-wrap:anywhere
+}
+#cassiellos-crm .crm-real-modal-header small{
+  font-size:11px;color:#93a9c1;line-height:1.5
+}
+#cassiellos-crm .crm-real-modal-header .crm-btn{flex:0 0 auto;min-height:44px}
+#cassiellos-crm .crm-real-modal-body{
+  overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;
+  padding:18px 22px 24px;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#526b85 #0b1728
+}
+#cassiellos-crm .crm-real-modal-body .crm-real-detail{
+  margin:0 0 14px;padding:19px
+}
+#cassiellos-crm .crm-real-modal-body .crm-lead-management{
+  margin:0;padding:19px
+}
+@media(max-width:680px){
+  #cassiellos-crm .crm-real-modal-overlay{padding:0;align-items:stretch}
+  #cassiellos-crm .crm-real-modal{
+    width:100%;max-height:100dvh;height:100dvh;border:0;border-radius:0
+  }
+  #cassiellos-crm .crm-real-modal-header{padding:15px 16px;gap:9px}
+  #cassiellos-crm .crm-real-modal-header .crm-btn{padding:0 12px}
+  #cassiellos-crm .crm-real-modal-body{padding:14px}
+  #cassiellos-crm .crm-real-modal-body .crm-real-detail,
+  #cassiellos-crm .crm-real-modal-body .crm-lead-management{margin:0 0 12px;padding:15px}
+  #cassiellos-crm .crm-real-modal-body .crm-real-detail-grid{grid-template-columns:1fr}
+}
