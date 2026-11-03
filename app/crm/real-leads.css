@@ -30,7 +30,7 @@
   position:fixed;inset:0;z-index:220;
   display:flex;align-items:center;justify-content:center;
   padding:16px;background:rgba(2,7,15,.82);backdrop-filter:blur(7px);
-  overscroll-behavior:contain
+  overscroll-behavior:contain;touch-action:none
 }
 #cassiellos-crm .crm-real-modal{
   width:min(980px,100%);max-height:calc(100dvh - 32px);min-height:0;
@@ -61,6 +61,7 @@
 #cassiellos-crm .crm-real-modal-body{
   overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;
   padding:18px 22px 24px;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y;
   scrollbar-width:thin;scrollbar-color:#526b85 #0b1728
 }
 #cassiellos-crm .crm-real-modal-body .crm-real-detail{
