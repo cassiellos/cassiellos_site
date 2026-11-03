@@ -12,6 +12,16 @@ Fonte única da versão: `LEGAL_POLICY_VERSION` em `lib/legal/policy.ts`. A mesm
 | Cookies 22/08/2026 | main e Preview | Política de Cookies original (contato antigo `contato@agenciacassiellos.com.br`) | Publicada |
 | Privacidade 29/10/2026 | main e Preview (com a seção Turnstile) | Seções 1–11 | Publicada |
 | **v3 — 30/10/2026** (`LEGAL_POLICY_VERSION = 2026-10-30`) | Preview (`feature/mini-crm-shark-scale`) | Ver a lista abaixo; aprovada pelo responsável em 30/10/2026 (D5, rev. 3) | Publicada no Preview com este commit. A main não foi alterada |
+| **v4 — 03/11/2026** (`LEGAL_POLICY_VERSION = 2026-11-03`) | Preview (`feature/mini-crm-shark-scale`) | Seção 11: etapas do formulário (eventos Chronos), evento Schedule e API de Conversões da Meta; aviso de cookies e Política de Cookies alinhados | Aprovada pelo titular em 03/11/2026 e publicada no Preview. A main não foi alterada |
+
+O que muda na v4:
+- seção 11 passa a cobrir Meta Pixel e API de Conversões da Meta;
+- quatro etapas do formulário registradas pelo Pixel (exibição, primeira interação, envio aceito, etapa de horário), no máximo uma vez por sessão;
+- evento Schedule também pode ser enviado pelo servidor com autorização vigente e reunião confirmada; IP e user agent usados apenas no envio (não armazenados);
+- desduplicação navegador + servidor planejada pelo mesmo código interno do evento, ainda em análise pela Meta;
+- recusa ou revogação impede novos envios pelo servidor; efeitos sobre envios futuros;
+- não são enviados nome, e-mail, telefone, respostas, `_fbp`/`_fbc` para a CAPI (decisões C2/G2 mantidas);
+- aviso de cookies (marketing) e Política de Cookies alinhados.
 
 O que muda na v3:
 - controlador (razão social e CNPJ);

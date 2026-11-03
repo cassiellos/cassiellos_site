@@ -8,8 +8,9 @@
  *   exibido e legalPublicationBlockers() aponta o que ainda impede a publicação. Nada é presumido.
  */
 
-// v3 aprovada (D5) e publicada no Preview em 30/10/2026 — data efetiva da publicação.
-export const LEGAL_POLICY_VERSION = '2026-10-30'
+// v4 aprovada pelo titular em 03/11/2026 e publicada no Preview nesta data; v3: 2026-10-30.
+// Base legal e conteúdo técnico revisados; abertura comercial é autorizada separadamente.
+export const LEGAL_POLICY_VERSION = '2026-11-03'
 
 export type DataProtectionOfficer = { name: string; email: string }
 
