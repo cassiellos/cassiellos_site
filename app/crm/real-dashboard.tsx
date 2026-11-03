@@ -13,17 +13,46 @@ const fullTime = new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',ho
 const stages: Record<string,string> = {new:'Novo',contacted:'Contatado',qualified:'Qualificado',disqualified:'Desqualificado',customer:'Cliente'}
 
 function LeadGraph({days}:{days:Data['days']}) {
+  const [hovered,setHovered] = useState<number|null>(null)
   const max = Math.max(1,...days.map(d=>d.count))
   const points = days.map((d,i)=>({x:32 + i*680/Math.max(1,days.length-1),y:196-d.count/max*170}))
   const line = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' ')
   const area = line + ' L 712 196 L 32 196 Z'
+  // Em 7 dias, números em todos os dias com captação; em 30 dias, só nos picos
+  // para manter o gráfico legível. O hover informa qualquer dia, inclusive zero.
+  const isVisiblePeak = (i:number) => {
+    if (days[i].count<=0) return false
+    if (days.length<=7) return true
+    const previous = i===0 ? -1 : days[i-1].count
+    const next = i===days.length-1 ? -1 : days[i+1].count
+    return days[i].count>=previous && days[i].count>=next && (days[i].count>previous || days[i].count>next)
+  }
+  const activePoint = hovered!==null ? points[hovered] : null
+  const activeDay = hovered!==null ? days[hovered] : null
+  const badgeX = activePoint ? Math.max(5,Math.min(683,activePoint.x-28)) : 0
+  const badgeY = activePoint ? (activePoint.y<58 ? activePoint.y+13 : activePoint.y-36) : 0
   return <div className="crm-live-graph">
-    <svg viewBox="0 0 744 216" role="img" aria-label="Evolução diária real dos leads no período">
+    <svg viewBox="0 0 744 216" role="group" aria-label="Evolução diária real dos leads no período" onMouseLeave={()=>setHovered(null)}>
       {[0,.25,.5,.75,1].map(n=><line key={n} x1="32" x2="712" y1={196-n*170} y2={196-n*170}
         stroke="#334058" strokeOpacity=".5" strokeDasharray="4 7"/>)}
       {points.length>0&&<><path d={area} fill="rgba(241,60,75,.13)"/><path d={line}
         stroke="#f13c4b" strokeWidth="3.3" fill="none" strokeLinejoin="round" strokeLinecap="round"/>
-        {points.map((p,i)=>days[i].count>0&&<circle key={i} cx={p.x} cy={p.y} r="3.8" fill="#f13c4b"/>)}</>}
+        {points.map((p,i)=><g key={days[i].date}>
+          {days[i].count>0&&<circle cx={p.x} cy={p.y} r="3.8" fill="#f13c4b" aria-hidden="true"/>}
+          {isVisiblePeak(i)&&hovered!==i&&<text className="crm-live-point-label" x={p.x} y={Math.max(12,p.y-12)}
+            textAnchor="middle" aria-hidden="true">{days[i].count}</text>}
+          <circle className="crm-live-point-hit" cx={p.x} cy={p.y} r="12" fill="transparent"
+            tabIndex={0} role="button"
+            aria-label={formatDay.format(new Date(days[i].date+'T12:00:00Z'))+': '+days[i].count+' lead(s)'}
+            onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+            onFocus={()=>setHovered(i)} onBlur={()=>setHovered(null)}/>
+        </g>)}
+        {activePoint&&activeDay&&<g className="crm-live-point-tooltip" pointerEvents="none" aria-hidden="true">
+          <rect x={badgeX} y={badgeY} width="56" height="22" rx="6"/>
+          <text x={badgeX+28} y={badgeY+15} textAnchor="middle">
+            {activeDay.count} {activeDay.count===1?'lead':'leads'}
+          </text>
+        </g>}</>}
     </svg>
     <div className="crm-live-chart-labels">{days.filter((_,i)=>i===0||i===days.length-1||(days.length<=7)||(i%5===0)).map(d=>
       <span key={d.date}>{formatDay.format(new Date(d.date+'T12:00:00Z'))}</span>)}</div>
