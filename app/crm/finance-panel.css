@@ -514,3 +514,23 @@
 #cassiellos-crm .crm-fin-share-note{color:#a5b9ce;font-size:12px;line-height:1.6;margin:14px 0 0}
 #cassiellos-crm .crm-fin-rateio .crm-fin-actions{margin-top:16px}
 @media(max-width:650px){#cassiellos-crm .crm-fin-share-metrics,#cassiellos-crm .crm-fin-share-partners{grid-template-columns:1fr}}
+
+/* Dois sócios dentro de um único KPI: valor individual visível, sem criar cartões extras. */
+#cassiellos-crm .crm-fin-kpi-partner-values{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:7px 0 5px
+}
+#cassiellos-crm .crm-fin-kpi-partner-values>div{
+  min-width:0;padding:8px 9px;border-radius:9px;background:rgba(52,214,160,.055);border:1px solid rgba(52,214,160,.17)
+}
+#cassiellos-crm .crm-fin-kpi-partner-values small{
+  display:block;color:#a8bacf;font-size:10px;line-height:1.4;margin-bottom:5px
+}
+#cassiellos-crm .crm-fin-kpi-partner-values strong{
+  display:block;color:#55e4b1;font-size:clamp(16px,1.4vw,21px);line-height:1.2;
+  letter-spacing:-.04em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere
+}
+@media(max-width:370px){
+  #cassiellos-crm .crm-fin-kpi-partner-values{gap:5px}
+  #cassiellos-crm .crm-fin-kpi-partner-values>div{padding:7px}
+  #cassiellos-crm .crm-fin-kpi-partner-values strong{font-size:16px}
+}
