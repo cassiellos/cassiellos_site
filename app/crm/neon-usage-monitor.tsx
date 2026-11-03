@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  formatBytesDecimal, formatLimitBytes, overallSeverity, usagePercent, usageSeverity,
+  formatBytesDecimal, formatLimitBytes, overallSeverity, usagePercent, usagePercentLabel, usageSeverity,
   type NeonUsageResult, type UsageQuantity,
 } from '@/lib/crm/neon-usage'
 
@@ -16,6 +16,7 @@ function UsageBar({ label, value, kind, help }: {
   label: string; value: UsageQuantity; kind: 'cu' | 'bytes'; help?: string
 }) {
   const pct = usagePercent(value)
+  const percentLabel = usagePercentLabel(value)
   const tone = usageSeverity(value)
   const text = (n: number) => kind === 'cu' ? fmt(n) + ' CU-h' : formatBytesDecimal(n)
   const limitText = (n: number) => kind === 'cu' ? fmt(n, 0) + ' CU-h' : formatLimitBytes(n)
@@ -31,12 +32,12 @@ function UsageBar({ label, value, kind, help }: {
       aria-valuemin={pct === null ? undefined : 0}
       aria-valuemax={pct === null ? undefined : 100}
       aria-valuenow={pct === null ? undefined : Math.round(pct)}
-      aria-valuetext={pct === null ? 'Limite não disponível' : fmt(pct, 1) + '% utilizado'}>
+      aria-valuetext={percentLabel ?? 'Limite não disponível'}>
       {pct !== null && <div className="crm-neon-meter-fill"
         style={{ width: pct === 0 ? '0' : 'max(2px, ' + pct + '%)' }}/>}
     </div>
     <small>
-      {pct === null ? limit : limit + ' · ' + fmt(Math.max(0, 100 - pct), 1) + '% disponível'}
+      {pct === null ? limit : limit + ' · ' + percentLabel}
       {tone === 'warning' && <b className="crm-neon-flag"> · acima de 80%</b>}
       {tone === 'critical' && <b className="crm-neon-flag"> · acima de 95%</b>}
     </small>

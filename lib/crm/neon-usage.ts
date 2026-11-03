@@ -120,6 +120,15 @@ export function usagePercent(metric: UsageQuantity): number | null {
   return Math.max(0, Math.min(100, metric.used / metric.limit * 100))
 }
 
+/** Label sem arredondamento enganoso quando já existe um consumo menor que 0,1%. */
+export function usagePercentLabel(metric: UsageQuantity): string | null {
+  const percent = usagePercent(metric)
+  if (percent === null) return null
+  if (percent === 0) return '0,0% utilizado'
+  if (percent < 0.1) return 'menos de 0,1% utilizado'
+  return (100 - percent).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '% disponível'
+}
+
 export function usageSeverity(metric: UsageQuantity): 'normal' | 'warning' | 'critical' | 'unknown' {
   const percent = usagePercent(metric)
   if (percent === null) return 'unknown'

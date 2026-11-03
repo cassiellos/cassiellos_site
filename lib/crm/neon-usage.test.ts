@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   CACHE_TTL_MS, DECIMAL_GB, MANUAL_REFRESH_MIN_INTERVAL_MS, formatBytesDecimal, formatLimitBytes,
-  overallSeverity, planFromSubscription, projectUsageFromNeon, shouldRefetch, usagePercent, usageSeverity,
+  overallSeverity, planFromSubscription, projectUsageFromNeon, shouldRefetch, usagePercent, usagePercentLabel, usageSeverity,
 } from './neon-usage'
 
 const PROJECT = 'rough-cloud-13370615'
@@ -113,6 +113,19 @@ describe('Neon usage projection (only safe numbers)', () => {
     assert.equal(formatBytesDecimal(5 * DECIMAL_GB), '5,00 GB')
     assert.equal(formatLimitBytes(GIB), '1 GiB')
     assert.equal(formatLimitBytes(5 * DECIMAL_GB), '5,00 GB')
+  })
+
+  it('shows honest labels for zero, tiny usage, intermediate and near-limit usage', () => {
+    assert.equal(usagePercentLabel({ used: 0, limit: 100 }), '0,0% utilizado')
+    assert.equal(usagePercentLabel({ used: 0.05, limit: 100 }), 'menos de 0,1% utilizado')
+    assert.equal(usagePercentLabel({ used: 2465717, limit: 5 * DECIMAL_GB }), 'menos de 0,1% utilizado')
+    assert.equal(usagePercentLabel({ used: 0.1, limit: 100 }), '99,9% disponível')
+    assert.equal(usagePercentLabel({ used: 50, limit: 100 }), '50,0% disponível')
+    assert.equal(usagePercentLabel({ used: 94.9, limit: 100 }), '5,1% disponível')
+    assert.equal(usagePercentLabel({ used: 95, limit: 100 }), '5,0% disponível')
+    assert.equal(usagePercentLabel({ used: 100, limit: 100 }), '0,0% disponível')
+    assert.equal(usagePercentLabel({ used: null, limit: 100 }), null)
+    assert.equal(usagePercentLabel({ used: 2, limit: null }), null)
   })
 
   it('serves the 15-minute cache, letting manual refresh through at most once a minute', () => {

@@ -391,11 +391,6 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
     font-weight:650;
     white-space:nowrap;
   }
-  #cassiellos-crm .crm-neon-details { display:none; }
-  #cassiellos-crm .crm-neon-monitor[data-mobile-expanded="true"] .crm-neon-details {
-    display:block;
-    padding-top:11px;
-  }
 }
 
 
