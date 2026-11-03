@@ -18,7 +18,8 @@ import { bookingAccessConfig } from '@/lib/crm/booking-access'
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
   const active = activeHomologation(cookieHeader)
-  if (!active) return null
+  // Liberação "chronos": só eventos personalizados da jornada; nenhum Lead/Schedule de teste é reservado.
+  if (!active || active.scope !== 'conversions') return null
   return {
     claim: (input: { event: 'Schedule'; leadId: string; eventId: string }) =>
       claimHomologationEvent(getCrmPool(), { ...input, nonce: active.nonce, actorRef: active.actorRef }),

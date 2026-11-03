@@ -14,7 +14,8 @@ import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Lead da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
   const active = activeHomologation(cookieHeader)
-  if (!active) return null
+  // Liberação "chronos": só eventos personalizados da jornada; nenhum Lead/Schedule de teste é reservado.
+  if (!active || active.scope !== 'conversions') return null
   return {
     claim: (input: { event: 'Lead'; leadId: string; eventId: string }) =>
       claimHomologationEvent(getCrmPool(), { ...input, nonce: active.nonce, actorRef: active.actorRef }),

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
-import { readMarketingConsent, trackMetaConversion } from './meta-client'
+import { chronosSessionId, readMarketingConsent, trackChronosEvent, trackMetaConversion } from './meta-client'
 import { setAnalyticsConsent, setMarketingConsent } from '../privacy/consent-client'
 
 /*
@@ -85,5 +85,57 @@ describe('Meta Pixel — conversões no navegador', () => {
     delete win.fbq
     assert.equal(trackMetaConversion('Lead', 'lead_' + 'b'.repeat(32)), false)
     win.fbq = fbq
+  })
+})
+
+describe('Meta Pixel — eventos personalizados Chronos (trackCustom)', () => {
+  beforeEach(() => { fbqCalls.length = 0 })
+
+  it('sem consentimento de marketing ou sem Pixel: nada é enviado', () => {
+    setMarketingConsent(false)
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'odontologia', homologation: true }), false)
+    setMarketingConsent(true)
+    const fbq = win.fbq
+    delete win.fbq
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'odontologia', homologation: true }), false)
+    win.fbq = fbq
+    assert.equal(fbqCalls.length, 0)
+  })
+
+  it('envia com o nome exato, event_id por evento+sessão, só o slug e a marca de homologação', () => {
+    setMarketingConsent(true)
+    const session = chronosSessionId()
+    assert.match(session ?? '', /^[a-f0-9]{32}$/)
+    assert.equal(chronosSessionId(), session, 'mesma sessão na mesma aba')
+    for (const event of ['ChronosView', 'ChronosFirstInteraction', 'ChronosSubmit', 'Chronos_View_Scheduled'] as const) {
+      assert.equal(trackChronosEvent(event, { content_name: 'odontologia', homologation: true }), true, event)
+    }
+    assert.deepEqual(fbqCalls.map(call => [call[0], call[1], call[3]]), [
+      ['trackCustom', 'ChronosView', { eventID: 'chronos_view_' + session }],
+      ['trackCustom', 'ChronosFirstInteraction', { eventID: 'chronos_first_interaction_' + session }],
+      ['trackCustom', 'ChronosSubmit', { eventID: 'chronos_submit_' + session }],
+      ['trackCustom', 'Chronos_View_Scheduled', { eventID: 'chronos_view_scheduled_' + session }],
+    ])
+    for (const call of fbqCalls) assert.deepEqual(call[2], { content_name: 'odontologia', cassiellos_teste: 'homologacao' })
+  })
+
+  it('deduplicação: o mesmo evento da mesma sessão nunca é enviado de novo', () => {
+    setMarketingConsent(true)
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'odontologia', homologation: true }), false)
+    assert.equal(trackChronosEvent('ChronosSubmit', { content_name: 'odontologia', homologation: true }), false)
+    assert.equal(fbqCalls.length, 0)
+  })
+
+  it('nunca usa trackCustom para conversões padrão nem envia dados pessoais', () => {
+    setMarketingConsent(true)
+    for (const name of ['Schedule', 'Lead', 'Chronos_Scheduled', 'chronosview', '']) {
+      assert.equal(trackChronosEvent(name as never, { content_name: 'odontologia' }), false, name)
+    }
+    store.delete('cassiellos_chronos_session')
+    store.delete('cassiellos_meta_sent')
+    assert.equal(trackChronosEvent('ChronosView', { content_name: 'maria@clinica.com' }), true)
+    assert.deepEqual(fbqCalls.at(-1)?.[2], {}, 'parâmetro com aparência de dado pessoal é descartado; sem marca fora da homologação')
+    const sent = JSON.stringify(fbqCalls)
+    for (const pii of ['@', 'fbclid', 'F1', 'utm_', 'maria']) assert.equal(sent.includes(pii), false, pii)
   })
 })

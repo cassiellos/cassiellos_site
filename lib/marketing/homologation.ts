@@ -43,25 +43,36 @@ function signingKey(secretHex: string | undefined): Buffer | null {
   return createHmac('sha256', Buffer.from(secretHex, 'hex')).update('cassiellos:meta-homologation:v1').digest()
 }
 
-type GrantPayload = { v: 1; kind: 'meta_homologation'; iat: number; exp: number; ref: string; n: string }
+/**
+ * Escopo da liberação:
+ * - `conversions` (padrão, comportamento original): no máximo 1 Lead e 1 Schedule de teste.
+ * - `chronos`: somente os eventos personalizados da jornada (ChronosView, ChronosFirstInteraction, ChronosSubmit,
+ *   Chronos_View_Scheduled). Nessa liberação o servidor NÃO reserva Lead nem Schedule — a jornada de teste nunca
+ *   repete a conversão de agendamento já homologada.
+ */
+export type HomologationScope = 'conversions' | 'chronos'
+type GrantPayload = { v: 1; kind: 'meta_homologation'; iat: number; exp: number; ref: string; n: string; s?: 'chronos' }
 /** `nonce`: identificador aleatório da liberação (não pessoal), usado para limitar 1 Lead e 1 Schedule por liberação. */
-export type HomologationGrant = { actorRef: string; expiresAt: string; nonce: string }
+export type HomologationGrant = { actorRef: string; expiresAt: string; nonce: string; scope: HomologationScope }
 
 export function issueHomologationGrant(
   secretHex: string | undefined,
-  input: { minutes: number; actorRef: string; now?: Date },
+  input: { minutes: number; actorRef: string; now?: Date; scope?: HomologationScope },
 ): { token: string; maxAgeSeconds: number; grant: HomologationGrant } {
   const key = signingKey(secretHex)
   if (!key) throw new Error('META_HOMOLOGATION_NOT_CONFIGURED')
   if (!/^[a-f0-9]{8,64}$/.test(input.actorRef)) throw new Error('META_HOMOLOGATION_INVALID_ACTOR')
   const minutes = Math.min(HOMOLOGATION_MAX_MINUTES, Math.max(HOMOLOGATION_MIN_MINUTES, Math.floor(input.minutes) || HOMOLOGATION_MAX_MINUTES))
   const iat = Math.floor((input.now ?? new Date()).getTime() / 1000)
+  const scope: HomologationScope = input.scope === 'chronos' ? 'chronos' : 'conversions'
   const payload: GrantPayload = { v: 1, kind: 'meta_homologation', iat, exp: iat + minutes * 60, ref: input.actorRef, n: randomBytes(8).toString('hex') }
+  // O escopo padrão não altera o token original; só a liberação Chronos leva a marca `s`.
+  if (scope === 'chronos') payload.s = 'chronos'
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const token = encoded + '.' + createHmac('sha256', key).update(encoded).digest('base64url')
   return {
     token, maxAgeSeconds: minutes * 60,
-    grant: { actorRef: input.actorRef, expiresAt: new Date(payload.exp * 1000).toISOString(), nonce: payload.n },
+    grant: { actorRef: input.actorRef, expiresAt: new Date(payload.exp * 1000).toISOString(), nonce: payload.n, scope },
   }
 }
 
@@ -79,7 +90,9 @@ export function verifyHomologationGrant(token: string | null | undefined, secret
     if (data.v !== 1 || data.kind !== 'meta_homologation' || typeof data.iat !== 'number' || typeof data.exp !== 'number') return null
     if (typeof data.ref !== 'string' || data.exp <= t || data.iat > t + 30 || data.exp - data.iat > HOMOLOGATION_MAX_MINUTES * 60) return null
     if (typeof data.n !== 'string' || !/^[a-f0-9]{16}$/.test(data.n)) return null
-    return { actorRef: data.ref, expiresAt: new Date(data.exp * 1000).toISOString(), nonce: data.n }
+    if (data.s !== undefined && data.s !== 'chronos') return null
+    return { actorRef: data.ref, expiresAt: new Date(data.exp * 1000).toISOString(), nonce: data.n,
+      scope: data.s === 'chronos' ? 'chronos' : 'conversions' }
   } catch {
     return null
   }

@@ -63,3 +63,19 @@ describe('homologação do Meta Pixel — liberação temporária', () => {
     assert.deepEqual(Object.keys(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString())).sort(), ['exp', 'iat', 'kind', 'n', 'ref', 'v'])
   })
 })
+
+describe('homologação do Meta Pixel — escopo da liberação', () => {
+  it('padrão "conversions" mantém o token original; "chronos" é marcado e verificado', () => {
+    const conv = issueHomologationGrant(SECRET, { minutes: 30, actorRef: ACTOR, now })
+    assert.equal(conv.grant.scope, 'conversions')
+    assert.equal(verifyHomologationGrant(conv.token, SECRET, now)?.scope, 'conversions')
+    const chronos = issueHomologationGrant(SECRET, { minutes: 30, actorRef: ACTOR, now, scope: 'chronos' })
+    assert.equal(chronos.grant.scope, 'chronos')
+    assert.equal(verifyHomologationGrant(chronos.token, SECRET, now)?.scope, 'chronos')
+    const keys = Object.keys(JSON.parse(Buffer.from(chronos.token.split('.')[0], 'base64url').toString())).sort()
+    assert.deepEqual(keys, ['exp', 'iat', 'kind', 'n', 'ref', 's', 'v'], 'sem dado pessoal no token')
+    const header = homologationCookieName(ENV) + '=' + chronos.token
+    assert.equal(activeHomologation(header, ENV, now)?.scope, 'chronos')
+    assert.equal(activeHomologation(header, { ...ENV, META_HOMOLOGATION_ENABLED: 'false' }, now), null, 'chave desligada = modo inexistente')
+  })
+})

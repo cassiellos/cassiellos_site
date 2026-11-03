@@ -40,6 +40,34 @@ export function metaEventNameFor(internal: string): MetaEventName | null {
     ? META_EVENT_MAP[internal as InternalTrackedEvent] : null
 }
 
+/**
+ * Eventos PERSONALIZADOS da jornada do formulário (nomes exatos na Meta, enviados com `trackCustom`).
+ * Não são conversões padrão: o agendamento confirmado continua sendo o `Schedule` (Chronos_Scheduled).
+ * Enquanto não forem homologados, só saem numa liberação de homologação com escopo "chronos".
+ */
+export const CHRONOS_CUSTOM_EVENTS = ['ChronosView', 'ChronosFirstInteraction', 'ChronosSubmit', 'Chronos_View_Scheduled'] as const
+export type ChronosCustomEvent = (typeof CHRONOS_CUSTOM_EVENTS)[number]
+
+const CHRONOS_EVENT_ID_PREFIX: Record<ChronosCustomEvent, string> = {
+  ChronosView: 'chronos_view',
+  ChronosFirstInteraction: 'chronos_first_interaction',
+  ChronosSubmit: 'chronos_submit',
+  Chronos_View_Scheduled: 'chronos_view_scheduled',
+}
+
+export function isChronosCustomEvent(value: unknown): value is ChronosCustomEvent {
+  return typeof value === 'string' && (CHRONOS_CUSTOM_EVENTS as readonly string[]).includes(value)
+}
+
+/**
+ * event_id determinístico por EVENTO e SESSÃO do navegador (deduplicação: o mesmo evento da mesma sessão nunca
+ * conta duas vezes). Sem dado pessoal: só o nome do evento e um identificador aleatório da sessão.
+ */
+export function chronosEventId(event: ChronosCustomEvent, sessionId: string): string | null {
+  if (!isChronosCustomEvent(event) || !/^[a-f0-9]{32}$/.test(sessionId)) return null
+  return CHRONOS_EVENT_ID_PREFIX[event] + '_' + sessionId
+}
+
 /** event_id do Lead: um por lead (reenvios do mesmo contato não contam como nova conversão). */
 export function leadTrackingEventId(leadId: string): string {
   return 'lead_' + leadId.replaceAll('-', '').toLowerCase()

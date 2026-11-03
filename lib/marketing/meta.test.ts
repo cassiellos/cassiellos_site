@@ -98,3 +98,21 @@ describe('decisão G2 — consentimento validado no servidor ', () => {
     assert.deepEqual(resolveMarketingConsent({ consent: false, decided: true }, null), { consent: false, decided: true })
   })
 })
+
+describe('eventos personalizados Chronos — nomes e event_id', () => {
+  it('nomes exatos e event_id por evento+sessão, sem colidir com o Schedule', async () => {
+    const { CHRONOS_CUSTOM_EVENTS, chronosEventId, isChronosCustomEvent, metaEventNameFor } = await import('./meta')
+    assert.deepEqual([...CHRONOS_CUSTOM_EVENTS], ['ChronosView', 'ChronosFirstInteraction', 'ChronosSubmit', 'Chronos_View_Scheduled'])
+    const sid = 'f'.repeat(32)
+    assert.equal(chronosEventId('ChronosView', sid), 'chronos_view_' + sid)
+    assert.equal(chronosEventId('Chronos_View_Scheduled', sid), 'chronos_view_scheduled_' + sid)
+    assert.ok(!chronosEventId('Chronos_View_Scheduled', sid)!.startsWith('chronos_scheduled_'))
+    assert.equal(chronosEventId('ChronosView', 'curto'), null)
+    assert.equal(chronosEventId('ChronosView', 'maria@clinica.com'.padEnd(32, 'x')), null)
+    assert.equal(isChronosCustomEvent('Schedule'), false)
+    assert.equal(isChronosCustomEvent('Chronos_Scheduled'), false)
+    // O mapeamento padrão continua igual: Chronos_Scheduled -> Schedule; os personalizados não viram conversão padrão.
+    assert.equal(metaEventNameFor('Chronos_Scheduled'), 'Schedule')
+    assert.equal(metaEventNameFor('ChronosView'), null)
+  })
+})

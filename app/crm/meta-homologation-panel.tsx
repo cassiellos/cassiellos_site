@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
  * máximo 1 Lead e 1 Schedule de contatos de teste, marcados como homologação, depois da confirmação real do backend.
  * Os eventos podem aparecer nas métricas agregadas do conjunto de dados. Nada muda para outros visitantes.
  */
-type Status = { available: boolean; active: boolean; expiresAt: string | null; maxMinutes: number }
+type Status = { available: boolean; active: boolean; expiresAt: string | null; scope?: 'conversions' | 'chronos' | null; maxMinutes: number }
 const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' })
 const errors: Record<string, string> = {
   HOMOLOGATION_UNAVAILABLE: 'Homologação indisponível: a chave META_HOMOLOGATION_ENABLED ou o Pixel comercial não estão ligados no Preview.',
@@ -27,16 +27,20 @@ export default function MetaHomologationPanel() {
   }, [])
   useEffect(load, [load])
 
-  async function change(method: 'POST' | 'DELETE') {
-    if (method === 'POST' && !window.confirm('Ativar a homologação do Meta Pixel NESTE navegador por 30 minutos? '
+  async function change(method: 'POST' | 'DELETE', scope: 'conversions' | 'chronos' = 'conversions') {
+    if (method === 'POST' && scope === 'conversions' && !window.confirm('Ativar a homologação do Meta Pixel NESTE navegador por 30 minutos? '
       + 'No máximo 1 Lead e 1 Schedule de teste irão ao Pixel COMERCIAL (28992534033707610), marcados como homologação, '
       + 'e podem aparecer nas métricas do conjunto de dados. Use apenas o contato de teste.')) return
+    if (method === 'POST' && scope === 'chronos' && !window.confirm('Ativar a homologação dos eventos Chronos NESTE navegador por 30 minutos? '
+      + 'Somente ChronosView, ChronosFirstInteraction, ChronosSubmit e Chronos_View_Scheduled irão ao Pixel COMERCIAL '
+      + '(28992534033707610), marcados como homologação, uma vez por sessão. Lead e Schedule NÃO são enviados nesta liberação. '
+      + 'Use apenas o contato de teste.')) return
     setBusy(true); setError('')
     try {
       const r = await fetch('/api/crm/meta-homologation', {
         method, cache: 'no-store', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: method === 'POST' ? JSON.stringify({ confirmed: true }) : undefined,
+        body: method === 'POST' ? JSON.stringify({ confirmed: true, scope }) : undefined,
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) setError(errors[data?.error] || 'Não foi possível alterar.')
@@ -60,12 +64,15 @@ export default function MetaHomologationPanel() {
     {status?.available && <>
       <p style={{ color: '#a8b8cb', fontSize: 12 }}>
         {status.active && status.expiresAt
-          ? <>Ativa até <strong>{fmt.format(new Date(status.expiresAt))}</strong>. Abra o formulário pela aba "Testar eventos" da Meta, neste mesmo navegador.</>
+          ? <>Ativa até <strong>{fmt.format(new Date(status.expiresAt))}</strong>{status.scope === 'chronos' ? ' · somente eventos Chronos (sem Lead/Schedule)' : ''}. Abra o formulário pela aba "Testar eventos" da Meta, neste mesmo navegador.</>
           : 'Inativa. O formulário usa o Pixel comercial e nenhum evento de teste é enviado à Meta.'}
       </p>
       {status.active
         ? <button type="button" className="crm-btn" disabled={busy} onClick={() => change('DELETE')}>Encerrar homologação</button>
-        : <button type="button" className="crm-btn crm-btn-primary" disabled={busy} onClick={() => change('POST')}>Ativar por 30 minutos</button>}
+        : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="crm-btn crm-btn-primary" disabled={busy} onClick={() => change('POST')}>Ativar por 30 minutos</button>
+          <button type="button" className="crm-btn" disabled={busy} onClick={() => change('POST', 'chronos')}>Ativar eventos Chronos (30 min)</button>
+        </div>}
     </>}
     {error && <p role="alert" style={{ color: '#ffd4da', fontSize: 12 }}>{error}</p>}
   </section>

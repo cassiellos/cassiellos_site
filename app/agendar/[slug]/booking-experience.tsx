@@ -11,7 +11,8 @@ import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
 import ConsentNotice from '@/components/privacy/consent-notice'
-import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import { readMarketingConsent, trackChronosEvent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import type { ChronosCustomEvent } from '@/lib/marketing/meta'
 import MetaPixel from '@/components/marketing/meta-pixel'
 import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
 
@@ -136,8 +137,11 @@ export default function BookingExperience({
   form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null,
 }: {
   form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; invitesEnabled?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
-  /** Homologação do Meta Pixel ativa no Pixel comercial (1 Lead e 1 Schedule de teste; lib/marketing/homologation.ts). */
-  metaHomologation?: { expiresAt: string } | null
+  /**
+   * Homologação do Meta Pixel ativa no Pixel comercial (lib/marketing/homologation.ts): escopo "conversions" = 1 Lead e
+   * 1 Schedule de teste; escopo "chronos" = somente os eventos personalizados da jornada (sem Lead/Schedule).
+   */
+  metaHomologation?: { expiresAt: string; scope?: 'conversions' | 'chronos' } | null
 }) {
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
   const marketingEnabled = Boolean(metaPixelId)
@@ -197,6 +201,14 @@ export default function BookingExperience({
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
   }, [marketingEnabled, bookingToken])
 
+  // Eventos personalizados da jornada (ChronosView etc.): ainda NÃO liberados para visitantes reais. Só saem na
+  // liberação de homologação com escopo "chronos" (Pixel comercial carregado + consentimento de marketing).
+  const chronosHomologation = marketingEnabled && metaHomologation?.scope === 'chronos'
+  function chronos(event: ChronosCustomEvent) {
+    if (!chronosHomologation) return
+    trackChronosEvent(event, { content_name: form.slug, homologation: true })
+  }
+
   /** Marco do funil (lib/crm/funnel-events): só com consentimento, sem dados pessoais e sem duplicidade. */
   function funnel(name: FunnelEventName, extra: Record<string, unknown> = {}, ref?: string | null) {
     // Em modo real, um e-mail de domínio de teste nunca vira conversão (a marca final é do servidor: is_test).
@@ -217,6 +229,22 @@ export default function BookingExperience({
     window.addEventListener(CONSENT_CHANGE_EVENT, view)
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, view)
   }, [form.slug, analyticsMode])
+
+  // ChronosView: primeira visualização do formulário. O Pixel pode carregar logo depois (ou após o aceite de
+  // marketing): novas tentativas curtas; o event_id por evento+sessão impede envio duplicado.
+  useEffect(() => {
+    if (!chronosHomologation) return
+    const send = () => { trackChronosEvent('ChronosView', { content_name: form.slug, homologation: true }) }
+    send()
+    const timers = [1500, 4000].map(ms => window.setTimeout(send, ms))
+    window.addEventListener(CONSENT_CHANGE_EVENT, send)
+    return () => { timers.forEach(id => window.clearTimeout(id)); window.removeEventListener(CONSENT_CHANGE_EVENT, send) }
+  }, [chronosHomologation, form.slug])
+
+  // Chronos_View_Scheduled: a etapa de agendamento (calendário) ficou visível.
+  useEffect(() => {
+    if (step === 2) chronos('Chronos_View_Scheduled')
+  }, [step]) // chronos() só depende de props estáveis da página
 
   useEffect(() => {
     if (step !== 2) return
@@ -324,7 +352,10 @@ export default function BookingExperience({
     setAttendee(current => ({ ...current, [name]: name === 'whatsapp' ? nextPhoneInput(current.whatsapp, value) : value }))
     setSaveError('')
     setFieldError(current => current?.name === name ? null : current)
-    if (value) funnel('booking_form_start')
+    if (value) {
+      funnel('booking_form_start')
+      chronos('ChronosFirstInteraction')
+    }
   }
 
   /**
@@ -450,6 +481,8 @@ export default function BookingExperience({
         !result.bookingToken) throw new Error('INVALID_RESPONSE')
       syncedMarketingConsent.current = marketingChoice.consent
       setBookingToken(result.bookingToken)
+      // ChronosSubmit: envio aceito pelo backend (cadastro verificado e token de agendamento emitido).
+      chronos('ChronosSubmit')
       // Meta "Lead": só quando o backend registrou um lead NOVO e REAL (event_id do CRM); reenvio, reaproveitamento
       // e teste não recebem `tracking`. Nunca no modo de teste.
       // Na homologação, o lead de teste só recebe `tracking` do servidor com a liberação válida (uma vez por liberação);
