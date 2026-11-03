@@ -42,7 +42,7 @@ function LeadGraph({days}:{days:Data['days']}) {
           {isVisiblePeak(i)&&hovered!==i&&<text className="crm-live-point-label" x={p.x} y={Math.max(12,p.y-12)}
             textAnchor="middle" aria-hidden="true">{days[i].count}</text>}
           <circle className="crm-live-point-hit" cx={p.x} cy={p.y} r="12" fill="transparent"
-            tabIndex={0} role="button"
+            tabIndex={0} role="img"
             aria-label={formatDay.format(new Date(days[i].date+'T12:00:00Z'))+': '+days[i].count+' lead(s)'}
             onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
             onFocus={()=>setHovered(i)} onBlur={()=>setHovered(null)}/>
