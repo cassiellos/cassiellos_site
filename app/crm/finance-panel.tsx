@@ -451,12 +451,17 @@ function PartnerRateio({ month, values, onNavigate }: {
   </div>
 }
 
-function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void }) {
+function Kpis({ v, onNavigate, rateio }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void; rateio?: Overview['rateio'] }) {
   // Só projeções visuais: nenhuma retirada dos sócios é lançada no Financeiro.
   const result = v('resultCashCents')
   const distributable = Math.max(0, result)
   const daniel = Math.ceil(distributable / 2)
   const guilherme = distributable - daniel
+  const expenseSplit = rateio ? splitAgencyExpenseFunding({
+    expensesForecastCents: rateio.expensesForecastCents,
+    hostingForecastCents: rateio.hostingForecastCents,
+    hostingReceivedCents: rateio.hostingReceivedCents,
+  }) : null
   const allExpensesPaid = v('expensesForecastCents') > 0 && v('payableMonthCents') === 0
   type Tone = 'default' | 'green' | 'orange' | 'red'
   type Card = { label: string; cents: number; sub: string; extra?: string; tab?: Tab; mode?: DrilldownMode; tone: Tone }
@@ -477,10 +482,6 @@ function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab
       extra: 'A pagar vencido: ' + formatCents(v('overduePayableCents')),
       tab: v('overdueReceivableCents') > 0 || v('overduePayableCents') === 0 ? 'receber' : 'pagar',
       mode: 'overdue', tone: v('overdueReceivableCents') > 0 || v('overduePayableCents') > 0 ? 'red' : 'green' },
-    { label: 'Daniel Barcelos', cents: daniel, sub: '50% da sobra positiva de caixa',
-      extra: 'Simulação · não é retirada', tone: 'green' },
-    { label: 'Guilherme Cassim', cents: guilherme, sub: '50% da sobra positiva de caixa',
-      extra: 'Simulação · não é retirada', tone: 'green' },
   ]
   return <div className="crm-fin-kpis">
     {cards.map(card => {
@@ -497,6 +498,30 @@ function Kpis({ v, onNavigate }: { v: (key: string) => number; onNavigate?: (tab
         : <div key={card.label} className="crm-card crm-fin-kpi"
             data-tone={card.tone} data-negative={card.cents < 0 || undefined}>{body}</div>
     })}
+    <div className="crm-card crm-fin-kpi crm-fin-kpi-partner-combined" data-tone="green">
+      <span>Daniel + Guilherme · Distribuição</span>
+      <div className="crm-fin-kpi-partner-values">
+        <div><small>Daniel Barcelos · 50%</small><strong>{formatCents(daniel)}</strong></div>
+        <div><small>Guilherme Cassim · 50%</small><strong>{formatCents(guilherme)}</strong></div>
+      </div>
+      <small>50% da sobra positiva de caixa para cada um.</small>
+      <small className="crm-fin-kpi-extra">Simulação, não é pró-labore nem retirada registrada.</small>
+    </div>
+    {onNavigate
+      ? <button type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link" data-tone="orange"
+          onClick={() => onNavigate('rateio')}
+          aria-label={'Rateio das despesas dos sócios: ' + formatCents(expenseSplit?.projectedFundingCents ?? 0) + '. Abrir Rateio dos Sócios.'}>
+          <span>Rateio das despesas · Sócios</span>
+          <strong>{formatCents(expenseSplit?.projectedFundingCents ?? 0)}</strong>
+          <small>Daniel: {formatCents(expenseSplit?.danielProjectedCents ?? 0)} · Guilherme: {formatCents(expenseSplit?.guilhermeProjectedCents ?? 0)}</small>
+          <small className="crm-fin-kpi-extra">Despesas − hospedagens previstas · acerto dia 10</small>
+          <span className="crm-fin-kpi-open" aria-hidden="true">Ver rateio dos sócios <span>↗</span></span>
+        </button>
+      : <div className="crm-card crm-fin-kpi" data-tone="orange">
+          <span>Rateio das despesas · Sócios</span><strong>{formatCents(expenseSplit?.projectedFundingCents ?? 0)}</strong>
+          <small>Daniel: {formatCents(expenseSplit?.danielProjectedCents ?? 0)} · Guilherme: {formatCents(expenseSplit?.guilhermeProjectedCents ?? 0)}</small>
+          <small>Despesas − hospedagens previstas</small>
+        </div>}
     {onNavigate
       ? <button type="button" className="crm-card crm-fin-kpi crm-fin-kpi-link" onClick={() => onNavigate('contratos')}
           aria-label={'Contratos recorrentes ativos: ' + v('activeRecurringContracts') + '. Abrir clientes e contratos.'}>
@@ -516,7 +541,7 @@ function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) =>
   return <>
     {noData && <div className="crm-info-box"><strong>Ainda não há contratos nem despesas cadastrados.</strong> Os indicadores mostram R$ 0,00 até que
       você cadastre clientes, contratos e despesas reais. Nenhum valor é estimado ou inventado.</div>}
-    <Kpis v={v} onNavigate={onNavigate}/>
+    <Kpis v={v} onNavigate={onNavigate} rateio={data.rateio}/>
     <div className="crm-fin-actions"><button className="crm-btn" type="button" onClick={() => onNavigate('rateio')}>Ver rateio de despesas entre Daniel e Guilherme ↗</button></div>
     {v('clientAdBudgetCents') > 0 && <p className="crm-fin-note">Verbas de anúncio de clientes neste mês (fora do caixa da agência, não entram nos totais): {formatCents(v('clientAdBudgetCents'))}</p>}
     <div className="crm-fin-grid">
