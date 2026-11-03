@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import {
   FORMALIZATION_STATUS, SERVICE_STATUS, addMonths, competenceMonths, csvCell, dueDateFor, effectiveBusinessDueDate,
   overdueByBusinessDay, entryState, formatCents, formatChange, monthlyEquivalentCents, parseMoneyToCents,
-  percentChange, todayInBrazil, type GenerationSource,
+  percentChange, splitAgencyExpenseFunding, todayInBrazil, type GenerationSource,
 } from './model'
 import { parseFilters, validateAdminStatus, validateClient, validateInvoice, validateSettlement, validateSource } from './validation'
 import { handleFinanceAdmin, handleFinanceExport, type FinanceAdminRequest } from './admin-request'
@@ -272,5 +272,29 @@ describe('0012 — situação do serviço e do contrato (somente controle admini
     assert.deepEqual(await handleFinanceAdmin(deps, { ...req, rawBody: JSON.stringify({ action: 'source_admin_status', id: ENTRY, serviceStatus: 'x' }) }),
       { status: 400, body: { error: 'INVALID_SERVICE_STATUS', field: 'serviceStatus' } })
     assert.equal((await handleFinanceAdmin(deps, { ...req, rawBody: JSON.stringify({ action: 'source_admin_status', id: 'x' }) })).status, 400)
+  })
+})
+
+describe('rateio de despesas dos sócios — dados reais em centavos', () => {
+  it('subtrai apenas hospedagens recebidas; divide R$ 301,00 em 2', () => {
+    const r = splitAgencyExpenseFunding({ expensesForecastCents: 100000, hostingForecastCents: 69900, hostingReceivedCents: 69900 })
+    assert.equal(r.fundingNeededCents, 30100)
+    assert.equal(r.danielCents, 15050)
+    assert.equal(r.guilhermeCents, 15050)
+  })
+  it('não desconta hospedagem não quitada; projeta o recebimento à parte', () => {
+    const r = splitAgencyExpenseFunding({ expensesForecastCents: 194153, hostingForecastCents: 62910, hostingReceivedCents: 6990 })
+    assert.equal(r.fundingNeededCents, 187163)
+    assert.equal(r.danielCents, 93582)
+    assert.equal(r.guilhermeCents, 93581)
+    assert.equal(r.hostingPendingCents, 55920)
+    assert.equal(r.projectedFundingCents, 131243)
+    assert.equal(r.danielProjectedCents + r.guilhermeProjectedCents, 131243)
+  })
+  it('nunca gera aporte negativo nem distribui hospedagem excedente como lucro', () => {
+    const r = splitAgencyExpenseFunding({ expensesForecastCents: 5000, hostingForecastCents: 25000, hostingReceivedCents: 25000 })
+    assert.equal(r.fundingNeededCents, 0)
+    assert.equal(r.danielCents + r.guilhermeCents, 0)
+    assert.equal(r.hostingSurplusCents, 20000)
   })
 })

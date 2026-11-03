@@ -5,7 +5,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   EXPENSE_CATEGORIES, FORMALIZATION_STATUS, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SERVICE_STATUS, SOURCE_STATUS, addMonths, centsToInput, formatCents,
-  formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, todayInBrazil,
+  formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, splitAgencyExpenseFunding, todayInBrazil,
 } from '@/lib/crm/finance/model'
 import './finance-panel.css'
 
@@ -37,17 +37,18 @@ type Comparison = { label: string; currentLabel: string; previousLabel: string; 
 type Overview = {
   ok: true; migrationPending: false; month: string; today: string
   kpis: Record<string, number>
+  rateio: { expensesForecastCents: number; expensesPaidOfCompetenceCents: number; hostingForecastCents: number; hostingReceivedCents: number }
   charts: { year: number; yearMonths: MonthTotals[]; previousYearMonths: MonthTotals[]; last12: MonthTotals[]
     categories: Record<Dir, { category: string; label: string; competenceCents: number; cashCents: number }[]> }
   reports: Record<'monthVsPrevious' | 'monthVsSameMonthLastYear' | 'ytdVsPreviousYtd' | 'yearVsPreviousYear', Comparison>
   adminStatusAvailable: boolean; clients: Client[]; sources: Source[]; entries: Entry[]
   audit: { entity: string; entityId: string; action: string; actorRef: string; createdAt: string | null }[]
 }
-type Tab = 'geral' | 'contratos' | 'receitas' | 'despesas' | 'receber' | 'pagar' | 'notas' | 'relatorios'
+type Tab = 'geral' | 'contratos' | 'receitas' | 'despesas' | 'rateio' | 'receber' | 'pagar' | 'notas' | 'relatorios'
 type DrilldownMode = 'month' | 'cash' | 'overdue'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'geral', label: 'Visão Geral' }, { id: 'contratos', label: 'Clientes e Contratos' }, { id: 'receitas', label: 'Receitas' },
-  { id: 'despesas', label: 'Despesas' }, { id: 'receber', label: 'Contas a Receber' }, { id: 'pagar', label: 'Contas a Pagar' },
+  { id: 'despesas', label: 'Despesas' }, { id: 'rateio', label: 'Rateio dos Sócios' }, { id: 'receber', label: 'Contas a Receber' }, { id: 'pagar', label: 'Contas a Pagar' },
   { id: 'notas', label: 'Notas Fiscais' }, { id: 'relatorios', label: 'Relatórios' },
 ]
 
@@ -257,6 +258,7 @@ export default function FinancePanel() {
   const tabsRef = useRef<HTMLElement>(null)
   const navigateTo = (destination: Tab, mode: DrilldownMode = 'month') => {
     setTab(destination)
+    if (destination === 'rateio') setFilters({ client: '', category: '', source: '' })
     setDrilldown(mode)
     // O usuário permanece no mesmo Financeiro; posiciona a aba escolhida no início da tela.
     requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
@@ -382,6 +384,7 @@ export default function FinancePanel() {
       : <EntryList title={'Receitas de ' + monthLabel(month)} subtitle="Competência do mês selecionado. Previsão não é receita: só vira caixa com recebimento confirmado."
           list={byDir('in').filter(e => e.competenceMonth === month)} setDialog={setDialog} empty="Nenhuma receita com competência neste mês. Cadastre contratos em Clientes e Contratos."/>)}
     {data && tab === 'despesas' && <Expenses data={data} month={month} setDialog={setDialog} post={post} busy={busy}/>}
+    {data && tab === 'rateio' && <PartnerRateio month={month} values={data.rateio} onNavigate={navigateTo}/>}
     {data && tab === 'receber' && <MonthlyPending data={data} month={month} direction="in" setDialog={setDialog}
       onlyOverdue={drilldown === 'overdue'} onReset={() => setDrilldown('month')}/>}
     {data && tab === 'pagar' && (drilldown === 'cash'
@@ -398,6 +401,55 @@ export default function FinancePanel() {
     {dialog?.kind === 'invoice' && <InvoiceDialog entry={dialog.entry} today={today} onClose={() => setDialog(null)} post={post} busy={busy}/>}
     {dialog?.kind === 'end' && <EndDialog source={dialog.source} today={today} onClose={() => setDialog(null)} post={post} busy={busy}/>}
     {dialog?.kind === 'history' && <HistoryDialog entry={dialog.entry} onClose={() => setDialog(null)} post={post} busy={busy}/>}
+  </div>
+}
+
+
+/** Rateio apenas consultivo: não cria movimentos financeiros nem simula transferência bancária. */
+function PartnerRateio({ month, values, onNavigate }: {
+  month: string
+  values: Overview['rateio']
+  onNavigate: (destination: Tab, mode?: DrilldownMode) => void
+}) {
+  const split = splitAgencyExpenseFunding({
+    expensesForecastCents: values.expensesForecastCents,
+    hostingForecastCents: values.hostingForecastCents,
+    hostingReceivedCents: values.hostingReceivedCents,
+  })
+  const metrics = [
+    ['Despesas do mês', values.expensesForecastCents, 'Competência · contas previstas, incluindo as já pagas'],
+    ['Hospedagens quitadas', values.hostingReceivedCents, 'Competência · recebimentos confirmados, inclusive antecipados'],
+    ['Hospedagens pendentes', split.hostingPendingCents, 'Previsão, não reduz o aporte até ser recebida'],
+    ['Total a cobrir pelos sócios', split.fundingNeededCents, 'Despesas previstas menos hospedagens quitadas'],
+  ] as const
+  return <div className="crm-fin-rateio">
+    <section className="crm-card crm-panel">
+      <div className="crm-panel-title">Rateio de despesas dos sócios — {monthLabel(month)}</div>
+      <div className="crm-panel-subtitle">Somente hospedagens classificadas como receita de hospedagem abatem as despesas da agência. Outros contratos e serviços não entram neste cálculo.</div>
+      <div className="crm-fin-share-metrics">
+        {metrics.map(([label, amount, detail]) => <div key={label} className="crm-fin-share-metric">
+          <span>{label}</span><strong>{formatCents(amount)}</strong><small>{detail}</small>
+        </div>)}
+      </div>
+      <div className="crm-fin-share-equation" role="status">Despesas previstas ({formatCents(values.expensesForecastCents)}) − hospedagens quitadas ({formatCents(values.hostingReceivedCents)}) = <strong>{formatCents(split.fundingNeededCents)} a aportar</strong></div>
+      <div className="crm-fin-share-partners">
+        <div><span>Daniel Barcelos · 50%</span><strong>{formatCents(split.danielCents)}</strong><small>Aporte previsto para custeio</small></div>
+        <div><span>Guilherme Cassim · 50%</span><strong>{formatCents(split.guilhermeCents)}</strong><small>Aporte previsto para custeio</small></div>
+      </div>
+      {split.hostingPendingCents > 0 && <p className="crm-fin-share-note">
+        Se todas as hospedagens previstas forem quitadas, o aporte projetado cairá para <strong>{formatCents(split.projectedFundingCents)}</strong>:
+        Daniel {formatCents(split.danielProjectedCents)} e Guilherme {formatCents(split.guilhermeProjectedCents)}.
+        Essa projeção não é dinheiro recebido.
+      </p>}
+      {split.hostingSurplusCents > 0 && <p className="crm-fin-share-note">
+        As hospedagens quitadas excedem as despesas previstas em {formatCents(split.hostingSurplusCents)}. Não há aporte necessário neste mês. Isso não representa uma distribuição automática aos sócios.
+      </p>}
+      <p className="crm-fin-share-note">Despesas da competência já pagas: {formatCents(values.expensesPaidOfCompetenceCents)}. Os valores acima são uma necessidade de custeio do mês, não um saldo bancário nem controle de aportes já realizados. Pró-labore e retirada de lucro são operações distintas.</p>
+      <div className="crm-fin-actions">
+        <button type="button" className="crm-btn" onClick={() => onNavigate('receitas')}>Conferir receitas e hospedagens</button>
+        <button type="button" className="crm-btn" onClick={() => onNavigate('despesas')}>Conferir despesas</button>
+      </div>
+    </section>
   </div>
 }
 
@@ -467,6 +519,7 @@ function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) =>
     {noData && <div className="crm-info-box"><strong>Ainda não há contratos nem despesas cadastrados.</strong> Os indicadores mostram R$ 0,00 até que
       você cadastre clientes, contratos e despesas reais. Nenhum valor é estimado ou inventado.</div>}
     <Kpis v={v} onNavigate={onNavigate}/>
+    <div className="crm-fin-actions"><button className="crm-btn" type="button" onClick={() => onNavigate('rateio')}>Ver rateio de despesas entre Daniel e Guilherme ↗</button></div>
     {v('clientAdBudgetCents') > 0 && <p className="crm-fin-note">Verbas de anúncio de clientes neste mês (fora do caixa da agência, não entram nos totais): {formatCents(v('clientAdBudgetCents'))}</p>}
     <div className="crm-fin-grid">
       <section className="crm-card crm-panel"><div className="crm-panel-title">Entradas × saídas por mês — {c.year}</div>

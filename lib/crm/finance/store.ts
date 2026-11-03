@@ -614,6 +614,25 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
         WHERE ${FILTER_SQL} AND e.status = 'open' AND e.client_ad_budget AND e.competence_month = $4::date`, [...p, firstDay(M)])
     const pick = (res: { rows: Record<string, unknown>[] }, d: Direction, k: string) => num(res.rows.find(r => r.direction === d)?.[k])
 
+
+    // Rateio informativo sempre considera o TOTAL da agência no mês, independentemente de filtros de cliente/fonte.
+    // Hospedagens quitadas são associadas à sua competência, inclusive recebidas em meses anteriores.
+    const sharingQuery = await c.query(`
+      SELECT
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE e.direction = 'out'), 0) AS expenses_forecast,
+        COALESCE(SUM(COALESCE(st.paid, 0)) FILTER (WHERE e.direction = 'out'), 0) AS expenses_paid_of_competence,
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE e.direction = 'in' AND e.category = 'hosting'), 0) AS hosting_forecast,
+        COALESCE(SUM(COALESCE(st.paid, 0)) FILTER (WHERE e.direction = 'in' AND e.category = 'hosting'), 0) AS hosting_received
+      FROM crm.finance_entries e
+      LEFT JOIN LATERAL (
+        SELECT SUM(s.amount_cents) AS paid
+        FROM crm.finance_settlements s
+        WHERE s.entry_id = e.id AND s.reversed_at IS NULL
+      ) st ON TRUE
+      WHERE e.status = 'open' AND e.competence_month = $1::date AND NOT e.client_ad_budget
+    `, [firstDay(M)])
+    const share = sharingQuery.rows[0] ?? {}
+
     const clients = (await c.query(
       `SELECT cl.id, cl.name, cl.company, cl.notes, cl.archived_at, cl.created_at,
               (SELECT count(*) FROM crm.finance_sources s WHERE s.client_id = cl.id AND s.direction = 'in') AS contracts,
@@ -681,6 +700,12 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
     return {
       generated,
       month: M, today,
+      rateio: {
+        expensesForecastCents: num(share.expenses_forecast),
+        expensesPaidOfCompetenceCents: num(share.expenses_paid_of_competence),
+        hostingForecastCents: num(share.hosting_forecast),
+        hostingReceivedCents: num(share.hosting_received),
+      },
       kpis: {
         revenueForecastCents: cur.competenceIn,
         revenueReceivedCashCents: cur.cashIn,

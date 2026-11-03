@@ -110,6 +110,35 @@ export function centsToInput(cents: number): string {
   return (cents < 0 ? '-' : '') + Math.floor(abs / 100) + ',' + String(abs % 100).padStart(2, '0')
 }
 
+
+/** Rateio informativo de despesas entre Daniel e Guilherme, 50% para cada.
+ * Nunca confundir aporte dos sócios com pró-labore, receita operacional ou retirada de lucro.
+ * Hospedagens já recebidas são vinculadas ao mês de COMPETÊNCIA, mesmo se pagas antecipadamente.
+ */
+export function splitAgencyExpenseFunding(input: {
+  expensesForecastCents: number
+  hostingForecastCents: number
+  hostingReceivedCents: number
+}) {
+  const expenses = Math.max(0, input.expensesForecastCents)
+  const hostingExpected = Math.max(0, input.hostingForecastCents)
+  const hostingReceived = Math.max(0, input.hostingReceivedCents)
+  const fundingNeededCents = Math.max(0, expenses - hostingReceived)
+  const projectedFundingCents = Math.max(0, expenses - hostingExpected)
+  const danielCents = Math.ceil(fundingNeededCents / 2)
+  const guilhermeCents = fundingNeededCents - danielCents
+  return {
+    fundingNeededCents,
+    danielCents,
+    guilhermeCents,
+    hostingPendingCents: Math.max(0, hostingExpected - hostingReceived),
+    projectedFundingCents,
+    danielProjectedCents: Math.ceil(projectedFundingCents / 2),
+    guilhermeProjectedCents: Math.floor(projectedFundingCents / 2),
+    hostingSurplusCents: Math.max(0, hostingReceived - expenses),
+  }
+}
+
 // ───────────────────────── datas ─────────────────────────
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
