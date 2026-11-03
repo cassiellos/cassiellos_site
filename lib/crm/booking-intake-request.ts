@@ -139,7 +139,7 @@ export async function handleLeadIntake(
       newLeadIsTest: deps.classifyNewLeadAsTest(email), bookingMode: deps.bookingMode,
       protection: { turnstile: 'verified', action: check.action, hostname: check.hostname, challengeTs: check.challengeTs },
       marketing,
-      eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar/' + encodeURIComponent(form.slug) : null,
+      eventSourceUrl: deps.publicOrigin ? deps.publicOrigin + '/agendar' : null,
     })
     // Browser Lead event only for a NEW, REAL lead (never tests, reuses or resubmissions).
     const isNew = !result.reused && !result.resubmitted && Boolean(result.leadEventId)

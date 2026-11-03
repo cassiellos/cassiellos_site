@@ -2,12 +2,15 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { getBookingForm, REVENUE_RANGES, isValidWebPresence } from './booking-forms'
 
-describe('booking form odontologia — faturamento em faixas', () => {
+describe('formulário comercial geral — faturamento em faixas', () => {
   const form = getBookingForm('odontologia')
 
-  it('usa a versão odontologia-v4 (textos definitivos; mesmos campos e opções da v3)', () => {
+  it('usa a versão comercial geral mantendo o identificador legado', () => {
     assert.ok(form)
-    assert.equal(form.version, 'odontologia-v4')
+    assert.equal(form.version, 'geral-v1')
+    assert.equal(form.niche, 'Geral')
+    assert.equal(form.meetingName, 'Diagnóstico estratégico')
+    assert.equal(form.headline, 'Anúncios e marketing para [seu nicho] que querem atrair mais pacientes.')
   })
 
   it('textos públicos sem conteúdo provisório, depoimentos, resultados ou valores não comprovados', () => {
@@ -15,7 +18,8 @@ describe('booking form odontologia — faturamento em faixas', () => {
     const texts = [form.eyebrow, form.headline, form.description, form.cta, form.meetingName, ...form.highlights,
       ...form.fields.flatMap(field => [field.label, field.placeholder ?? '', ...(field.options ?? [])])]
     for (const text of texts) {
-      assert.equal(/[\[\]]/.test(text), false, 'colchetes provisórios: ' + text)
+      assert.equal(/[\[\]]/.test(text.replace('[seu nicho]', '')), false, 'colchetes não previstos: ' + text)
+      assert.equal(/odontolog|clínica|consultório|dentist/i.test(text), false, 'segmentação de nicho: ' + text)
       assert.equal(/\((depoimentos|perfil de cliente ideal|resultado ou diferencial comprovado)\)/i.test(text), false, text)
       assert.equal(/depoimento|garantid|comprovad/i.test(text), false, 'afirmação não comprovada: ' + text)
     }

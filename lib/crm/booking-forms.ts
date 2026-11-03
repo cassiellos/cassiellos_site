@@ -69,20 +69,21 @@ export function isValidWebPresence(input: unknown): boolean {
 const bookingForms: Record<string, BookingForm> = {
   odontologia: {
     slug: 'odontologia',
-    // v4 (03/11/2026): textos definitivos da página; a pergunta de orçamento deixou de citar um valor mínimo.
-    // Campos, opções e nomes salvos no CRM são os mesmos da v3.
-    version: 'odontologia-v4',
-    niche: 'Clínicas odontológicas',
-    eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
-    headline: 'Anúncios e marketing para clínicas odontológicas que querem atrair mais pacientes.',
+    // v5: formulário comercial único, público e independente de nicho.
+    // O identificador "odontologia" é legado e preservado por compatibilidade com agendamentos e métricas.
+    // Os nomes técnicos dos campos permanecem estáveis para não quebrar o CRM.
+    version: 'geral-v1',
+    niche: 'Geral',
+    eyebrow: 'DIAGNÓSTICO ESTRATÉGICO',
+    headline: 'Anúncios e marketing para [seu nicho] que querem atrair mais pacientes.',
     highlights: [
       'Análise do seu negócio, da sua presença digital e dos seus anúncios atuais',
-      'Prioridades definidas para a realidade da sua clínica',
+      'Prioridades definidas para a realidade do seu negócio',
       'Conversa de 30 minutos pelo Google Meet, no horário que você escolher',
     ],
     cta: 'Quero agendar meu diagnóstico',
     description: 'Uma conversa direta para entender o seu negócio e encontrar oportunidades de crescimento.',
-    meetingName: 'Diagnóstico estratégico • Odontologia',
+    meetingName: 'Diagnóstico estratégico',
     durationMinutes: 30,
     fields: [
       { name: 'instagram', label: 'Qual é o seu site ou o Instagram do seu negócio?', type: 'text', required: true, placeholder: 'Seu site ou usuário do Instagram' },
@@ -92,7 +93,7 @@ const bookingForms: Record<string, BookingForm> = {
   },
 }
 
-/** Uma configuração por nicho; novas versões podem ser adicionadas sem redesenhar a página. */
+/** Configuração comercial única; a chave legada preserva a compatibilidade com dados existentes. */
 export function getBookingForm(slug: string): BookingForm | null {
   return Object.prototype.hasOwnProperty.call(bookingForms, slug) ? bookingForms[slug] : null
 }

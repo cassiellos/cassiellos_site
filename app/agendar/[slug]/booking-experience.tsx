@@ -816,7 +816,7 @@ export default function BookingExperience({
               <div><small>DATA</small><strong>{date && humanDate(date)}</strong></div>
               <div><small>HORÁRIO</small><strong>{chosen?.localTime} · Brasília · {form.durationMinutes} minutos</strong></div>
               <div><small>PARTICIPANTE</small><strong>{attendee.name}</strong></div>
-              <div><small>CLÍNICA</small><strong>{attendee.clinic}</strong></div>
+              {attendee.clinic.trim() && <div><small>NEGÓCIO</small><strong>{attendee.clinic}</strong></div>}
             </div>
             <div className="booking-demo-confirm"><Icon name="shield"/>
               <span>{bookingEnabled
