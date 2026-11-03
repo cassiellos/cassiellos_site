@@ -2,12 +2,12 @@
 
 Estado: código pronto e **desligado por padrão**. Nada é enviado à Meta enquanto
 `META_PIXEL_ENABLED` não for `true` **e** `META_PIXEL_ID` não estiver configurado.
-A Conversions API **não** está ativa (sem token, sem rotina de envio).
+A Conversions API (Schedule) está implementada e **desligada por padrão** (`META_CAPI_MODE`); ver `docs/crm/meta-capi.md`.
 
 Situação em 29/10/2026:
 - dataset criado (passo 1) e domínio verificado (passo 2) — ver "Ativação";
 - **Pixel desligado**: nenhuma variável `META_PIXEL_*` configurada na Vercel, nenhum deploy com o Pixel;
-- **Meta CAPI desativada**: sem token, sem envio, fila `crm.meta_deliveries` sem uso;
+- **Meta CAPI desligada por padrão**: só envia Schedule com `META_CAPI_MODE=test|live` + token (ver `docs/crm/meta-capi.md`);
 - passos 3 a 5 dependem de autorização própria.
 - textos jurídicos v2 prontos **localmente** (decisões A–F de 29/10/2026), ainda **não publicados**:
   revisão das Políticas de Privacidade e de Cookies (pendente; páginas institucionais não alteradas nesta etapa).

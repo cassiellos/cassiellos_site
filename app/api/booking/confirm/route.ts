@@ -14,6 +14,7 @@ import { confirmedMeetingFrom, queueThenDeliver } from '@/lib/crm/push/hooks'
 import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/store'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
+import { clientIpFrom, clientUserAgentFrom, dispatchScheduleToMeta, pgCapiStore, readCapiConfig } from '@/lib/crm/meta-capi'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -87,5 +88,25 @@ export async function POST(request: NextRequest) {
     schedule: task => after(task),
     deliver: ids => deliverAfterEvent(pushRuntimeDeps(), ids),
   })
+  // Meta Conversions API (Schedule): DESLIGADA salvo META_CAPI_MODE=test|live + token. Roda só depois da resposta,
+  // nunca bloqueia nem desfaz a reunião; user agent/IP ficam só em memória (lib/crm/meta-capi.ts).
+  const scheduleEventId = scheduleEventIdFrom(result)
+  const capi = scheduleEventId ? readCapiConfig() : null
+  if (scheduleEventId && capi && capi.mode !== 'off') {
+    const clientIp = clientIpFrom(request.headers)
+    const userAgent = clientUserAgentFrom(request.headers)
+    after(() => dispatchScheduleToMeta({
+      config: capi, store: pgCapiStore(getCrmPool()), fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
+      log: entry => console.info(JSON.stringify(entry)),
+    }, { eventId: scheduleEventId, clientIp, userAgent }).then(() => undefined))
+  }
   return json(result.body, result.status)
+}
+
+/** event_id do Schedule só quando a confirmação criou uma reunião nova (201) para lead real ou homologação. */
+function scheduleEventIdFrom(result: { status: number; body: unknown }): string | null {
+  if (result.status !== 201 || !result.body || typeof result.body !== 'object') return null
+  const tracking = (result.body as { tracking?: { schedule?: { eventId?: unknown } } }).tracking
+  const id = tracking?.schedule?.eventId
+  return typeof id === 'string' && /^chronos_scheduled_[a-f0-9]{32}$/.test(id) ? id : null
 }

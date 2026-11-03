@@ -339,7 +339,7 @@ export async function finalizeBookingReservation(
         formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: 'preview', isTest,
       })],
     )
-    // Internal event only; Meta CAPI dispatch is a separate, not-yet-enabled pipeline.
+    // Internal event; the server Schedule (lib/crm/meta-capi.ts, OFF unless META_CAPI_MODE) reads it after the 201.
     // metadata.isTest is mandatory: only isTest === false may ever be sent to Meta
     // (see isMetaDispatchAllowed in lib/crm/booking-mode.ts).
     // Meta mapping: Chronos_Scheduled -> "Schedule" (lib/marketing/meta.ts). The same
