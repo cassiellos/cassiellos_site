@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './real-leads.css'
 import LeadManagement from './lead-management'
 import { attributionChannel, CHANNEL_LABELS } from '@/lib/crm/attribution'
@@ -52,6 +53,48 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
   const [state, setState] = useState<'loading' | 'ready' | 'error' | 'unauthorized'>('loading')
   const [refresh, setRefresh] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
+  // A ficha é exibida fora da tabela, em uma camada fixa acima de todo o CRM.
+  useEffect(() => { setPortalRoot(document.getElementById('cassiellos-crm')) }, [])
+  useEffect(() => {
+    if (!selected || !portalRoot) return
+    const dialog = detailRef.current
+    if (!dialog) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialog.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSelected(null)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const elements = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter(el => el.getClientRects().length > 0)
+      if (elements.length === 0) { event.preventDefault(); dialog.focus(); return }
+      const first = elements[0]
+      const last = elements[elements.length - 1]
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      previousFocus?.focus()
+    }
+  }, [selected, portalRoot])
+  useEffect(() => {
+    // Não exibe dados carregados anteriormente depois de uma sessão expirada.
+    if (state === 'unauthorized') setSelected(null)
+  }, [state])
 
   const load = useCallback(() => setRefresh(v => v + 1), [])
   const [focused, setFocused] = useState<string | null>(null)
@@ -61,11 +104,8 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     setFocused(focusLeadId)
     if (entries.some(lead => lead.id === focusLeadId)) {
       setSelected(focusLeadId)
-      // No celular a ficha fica abaixo da lista: leva o administrador direto até ela.
-      setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
     }
   }, [state, entries, focusLeadId, focused])
-  const detailRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const controller = new AbortController()
     setState('loading')
@@ -151,7 +191,9 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
         <td><span className="crm-status">{labelStatus[lead.status] || lead.status}</span></td>
         <td>{dateLabel(lead.createdAt)}</td>
         <td><button type="button" className="crm-btn crm-real-detail-btn"
+          aria-haspopup="dialog"
           aria-expanded={selected === lead.id}
+          aria-label={(selected === lead.id ? 'Fechar respostas de ' : 'Ver respostas de ') + (lead.company || lead.name)}
           onClick={() => setSelected(s => s === lead.id ? null : lead.id)}>
           {selected === lead.id ? 'Fechar' : 'Ver respostas'}
         </button></td>
@@ -160,33 +202,53 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     {state === 'ready' && total !== null && total > 100 ? <p className="crm-real-note">
       Exibindo os 100 cadastros mais recentes. Paginação será adicionada antes de operar com maior volume.
     </p> : null}
-    {state === 'ready' && active ? <div className="crm-real-detail" ref={detailRef}>
-      <div className="crm-real-detail-head">
-        <div><strong>Respostas do formulário</strong><small>{active.formVersion || 'Formulário sem versão'} · {active.submittedAt ? dateLabel(active.submittedAt) : 'Registro manual'}</small></div>
-        <button type="button" className="crm-btn" onClick={() => setSelected(null)}>Fechar</button>
-      </div>
-      <div className="crm-real-detail-grid">
-        <div><span>Contato cadastrado</span><strong>{active.name}</strong></div>
-        <div><span>Nome informado no último formulário</span><strong>{active.latestContactName || '—'}</strong></div>
-        <div><span>WhatsApp informado no último formulário</span><strong>{parseBrazilianWhatsapp(active.latestContactWhatsapp)?.display || active.latestContactWhatsapp || '—'}</strong></div>
-        <div><span>Empresa cadastrada</span><strong>{active.company || '—'}</strong></div>
-        <div><span>WhatsApp</span><strong>{parseBrazilianWhatsapp(active.whatsapp)?.display || active.whatsapp || '—'}</strong></div>
-        <div><span>Faturamento informado</span><strong>{active.revenue || '—'}</strong></div>
-        <div><span>Objetivo principal</span><strong>{active.objective || '—'}</strong></div>
-        <div><span>Fonte da campanha</span><strong>{active.source || 'Não identificada'}</strong></div>
-        <div><span>Campanha</span><strong>{active.campaign || 'Não identificada'}</strong></div>
-        <div><span>Meio</span><strong>{active.medium || 'Não identificado'}</strong></div>
-        <div><span>Canal (padrão de UTMs)</span><strong>{CHANNEL_LABELS[attributionChannel(active.source, active.medium)]}</strong></div>
-        <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
-      </div>
-      {(() => {
-        // Contato manual: o link só abre a conversa no WhatsApp do administrador (nada é enviado sozinho).
-        const chat = whatsappLink(parseBrazilianWhatsapp(active.whatsapp))
-        return chat
-          ? <a className="crm-btn crm-btn-primary crm-real-whatsapp" href={chat} target="_blank" rel="noopener noreferrer">Conversar no WhatsApp</a>
-          : <p className="crm-real-note">WhatsApp inválido ou ausente: confira o cadastro.</p>
-      })()}
-    </div> : null}
-    {state === 'ready' && active && <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)} onChanged={load}/>}
+    {active && portalRoot && state !== 'unauthorized' && state !== 'error' ? createPortal(
+      <div className="crm-real-modal-overlay" onMouseDown={event => {
+        if (event.target === event.currentTarget) setSelected(null)
+      }}>
+        <div className="crm-real-modal" ref={detailRef} role="dialog" aria-modal="true"
+          aria-labelledby="crm-real-modal-title" tabIndex={-1}>
+          <header className="crm-real-modal-header">
+            <div>
+              <span className="crm-real-modal-eyebrow">FICHA DO LEAD {active.isTest ? '· TESTE' : ''}</span>
+              <h2 id="crm-real-modal-title">{active.company || active.latestContactName || active.name}</h2>
+              <small>Respostas do formulário e histórico comercial em um só lugar.</small>
+            </div>
+            <button type="button" className="crm-btn" onClick={() => setSelected(null)} aria-label="Fechar ficha do lead">Fechar ×</button>
+          </header>
+          <div className="crm-real-modal-body">
+            <section className="crm-real-detail" aria-label="Respostas do formulário">
+              <div className="crm-real-detail-head">
+                <div>
+                  <strong>Respostas do formulário</strong>
+                  <small>{active.formVersion || 'Formulário sem versão'} · {active.submittedAt ? dateLabel(active.submittedAt) : 'Registro manual'}</small>
+                </div>
+              </div>
+              <div className="crm-real-detail-grid">
+                <div><span>Contato cadastrado</span><strong>{active.name}</strong></div>
+                <div><span>Nome informado no último formulário</span><strong>{active.latestContactName || '—'}</strong></div>
+                <div><span>WhatsApp informado no último formulário</span><strong>{parseBrazilianWhatsapp(active.latestContactWhatsapp)?.display || active.latestContactWhatsapp || '—'}</strong></div>
+                <div><span>Empresa cadastrada</span><strong>{active.company || '—'}</strong></div>
+                <div><span>WhatsApp</span><strong>{parseBrazilianWhatsapp(active.whatsapp)?.display || active.whatsapp || '—'}</strong></div>
+                <div><span>Faturamento informado</span><strong>{active.revenue || '—'}</strong></div>
+                <div><span>Objetivo principal</span><strong>{active.objective || '—'}</strong></div>
+                <div><span>Fonte da campanha</span><strong>{active.source || 'Não identificada'}</strong></div>
+                <div><span>Campanha</span><strong>{active.campaign || 'Não identificada'}</strong></div>
+                <div><span>Meio</span><strong>{active.medium || 'Não identificado'}</strong></div>
+                <div><span>Canal (padrão de UTMs)</span><strong>{CHANNEL_LABELS[attributionChannel(active.source, active.medium)]}</strong></div>
+                <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
+              </div>
+              {(() => {
+                const chat = whatsappLink(parseBrazilianWhatsapp(active.whatsapp))
+                return chat
+                  ? <a className="crm-btn crm-btn-primary crm-real-whatsapp" href={chat} target="_blank" rel="noopener noreferrer">Conversar no WhatsApp</a>
+                  : <p className="crm-real-note">WhatsApp inválido ou ausente: confira o cadastro.</p>
+              })()}
+            </section>
+            <LeadManagement key={active.id} leadId={active.id} onClose={() => setSelected(null)} onChanged={load}/>
+          </div>
+        </div>
+      </div>, portalRoot
+    ) : null}
   </section>
 }
