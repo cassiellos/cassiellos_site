@@ -13,11 +13,7 @@
 #cassiellos-crm .crm-live-event-note code{color:#83dcf5}
 #cassiellos-crm .crm-live-secondary{display:block;margin-top:5px;font-size:11px;color:#879bb5;font-weight:400}
 @media(max-width:650px){#cassiellos-crm .crm-live-state{align-items:flex-start;flex-direction:column}#cassiellos-crm .crm-live-state .crm-btn{margin-left:0}#cassiellos-crm .crm-live-dashboard .crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* Leitura imediata dos valores do gráfico, sem poluir os períodos mais longos. */
-#cassiellos-crm .crm-live-point-label{
-  fill:#e9b4bd;font-size:10px;font-weight:750;
-  font-variant-numeric:tabular-nums;pointer-events:none
-}
+/* Evolução limpa: valores só aparecem no hover do desktop (foco por teclado também acessível). */
 #cassiellos-crm .crm-live-point-hit{
   cursor:crosshair;outline:none
 }
@@ -30,4 +26,10 @@
 #cassiellos-crm .crm-live-point-tooltip text{
   fill:#fff;font-size:11px;font-weight:800;
   font-variant-numeric:tabular-nums
+}
+
+/* Sem números flutuantes em celulares e outros dispositivos sem cursor de mouse. */
+@media (hover: none), (pointer: coarse) {
+  #cassiellos-crm .crm-live-point-tooltip{display:none}
+  #cassiellos-crm .crm-live-point-hit{cursor:default}
 }
