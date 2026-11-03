@@ -54,6 +54,8 @@ const INITIAL_ATTENDEE: Attendee = {
   name: '', whatsapp: '', email: '', clinic: '', priority: '', units: '', revenue: '', instagram: '', budget: '',
 }
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+/** Ícones decorativos dos destaques da tela inicial (o texto vem da configuração do formulário). */
+const HIGHLIGHT_ICONS = ['🎯', '🧭', '📅'] as const
 
 function localToday(): string {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -639,14 +641,14 @@ export default function BookingExperience({
         <div className="booking-hero-copy">
           <h1>{form.headline}</h1>
           <ul className="booking-hero-points">
-            <li><span aria-hidden="true">🎯</span><span>Método testado e comprovado <em>(depoimentos)</em></span></li>
-            <li><span aria-hidden="true">🏆</span><span>Exclusivo para <em>(perfil de cliente ideal)</em></span></li>
-            <li><span aria-hidden="true">🌎</span><span><em>(resultado ou diferencial comprovado)</em></span></li>
+            {form.highlights.map((item, index) => <li key={item}>
+              <span aria-hidden="true">{HIGHLIGHT_ICONS[index % HIGHLIGHT_ICONS.length]}</span><span>{item}</span>
+            </li>)}
           </ul>
           <p>Uma conversa direta para entender seu negócio e as oportunidades de crescimento.</p>
         </div>
         <button type="button" className="booking-hero-cta" onClick={() => setStep(1)}>
-          Quero vender mais <span aria-hidden="true">→</span>
+          {form.cta} <span aria-hidden="true">→</span>
         </button>
       </section>}
       {step !== 0 &&       <section className="booking-card" aria-label="Formulário e calendário de agendamento">

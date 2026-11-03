@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Diagnóstico estratégico | Cassiellos',
-  description: 'Página de agendamento de diagnóstico Cassiellos — ambiente de testes.',
+  description: 'Agende um diagnóstico estratégico de 30 minutos com a Agência Cassiellos.',
   robots: { index: false, follow: false, nocache: true },
 }
 

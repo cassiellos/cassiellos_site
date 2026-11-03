@@ -13,6 +13,10 @@ export type BookingForm = {
   niche: string
   eyebrow: string
   headline: string
+  /** Destaques da tela inicial: somente fatos do serviço (sem depoimentos, resultados ou valores não comprovados). */
+  highlights: readonly string[]
+  /** Texto do botão que inicia o formulário. */
+  cta: string
   description: string
   meetingName: string
   durationMinutes: number
@@ -65,17 +69,25 @@ export function isValidWebPresence(input: unknown): boolean {
 const bookingForms: Record<string, BookingForm> = {
   odontologia: {
     slug: 'odontologia',
-    version: 'odontologia-v3',
+    // v4 (03/11/2026): textos definitivos da página; a pergunta de orçamento deixou de citar um valor mínimo.
+    // Campos, opções e nomes salvos no CRM são os mesmos da v3.
+    version: 'odontologia-v4',
     niche: 'Clínicas odontológicas',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO / ODONTOLOGIA',
-    headline: 'Tráfego pago para [seu nicho] que querem vender mais.',
+    headline: 'Anúncios e marketing para clínicas odontológicas que querem atrair mais pacientes.',
+    highlights: [
+      'Análise do seu negócio, da sua presença digital e dos seus anúncios atuais',
+      'Prioridades definidas para a realidade da sua clínica',
+      'Conversa de 30 minutos pelo Google Meet, no horário que você escolher',
+    ],
+    cta: 'Quero agendar meu diagnóstico',
     description: 'Uma conversa direta para entender o seu negócio e encontrar oportunidades de crescimento.',
     meetingName: 'Diagnóstico estratégico • Odontologia',
     durationMinutes: 30,
     fields: [
       { name: 'instagram', label: 'Qual é o seu site ou o Instagram do seu negócio?', type: 'text', required: true, placeholder: 'Seu site ou usuário do Instagram' },
       { name: 'revenue', label: 'Qual é o faturamento mensal do seu negócio?', type: 'select', required: true, options: REVENUE_RANGES },
-      { name: 'budget', label: 'Para escalar com segurança, recomendamos investir a partir de [valor]. Isso cabe no seu orçamento?', type: 'select', required: true, options: ['Sim', 'Não'] },
+      { name: 'budget', label: 'Você tem verba disponível para investir em anúncios todos os meses?', type: 'select', required: true, options: ['Sim', 'Não'] },
     ],
   },
 }

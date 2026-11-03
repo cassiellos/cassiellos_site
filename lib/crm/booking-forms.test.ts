@@ -5,9 +5,30 @@ import { getBookingForm, REVENUE_RANGES, isValidWebPresence } from './booking-fo
 describe('booking form odontologia — faturamento em faixas', () => {
   const form = getBookingForm('odontologia')
 
-  it('usa a versão odontologia-v2', () => {
+  it('usa a versão odontologia-v4 (textos definitivos; mesmos campos e opções da v3)', () => {
     assert.ok(form)
-    assert.equal(form.version, 'odontologia-v3')
+    assert.equal(form.version, 'odontologia-v4')
+  })
+
+  it('textos públicos sem conteúdo provisório, depoimentos, resultados ou valores não comprovados', () => {
+    assert.ok(form)
+    const texts = [form.eyebrow, form.headline, form.description, form.cta, form.meetingName, ...form.highlights,
+      ...form.fields.flatMap(field => [field.label, field.placeholder ?? '', ...(field.options ?? [])])]
+    for (const text of texts) {
+      assert.equal(/[\[\]]/.test(text), false, 'colchetes provisórios: ' + text)
+      assert.equal(/\((depoimentos|perfil de cliente ideal|resultado ou diferencial comprovado)\)/i.test(text), false, text)
+      assert.equal(/depoimento|garantid|comprovad/i.test(text), false, 'afirmação não comprovada: ' + text)
+    }
+    assert.equal(form.highlights.length, 3)
+    assert.ok(form.highlights.some(item => item.includes(form.durationMinutes + ' minutos')), 'duração coerente com a reunião')
+  })
+
+  it('pergunta de orçamento mantém as opções Sim/Não sem citar valor mínimo', () => {
+    const budget = form?.fields.find(field => field.name === 'budget')
+    assert.ok(budget)
+    assert.deepEqual(budget.options, ['Sim', 'Não'])
+    assert.equal(budget.required, true)
+    assert.equal(/R\$|\d/.test(budget.label), false, budget.label)
   })
 
   it('revenue é seleção obrigatória com as 7 faixas aprovadas, na ordem', () => {
