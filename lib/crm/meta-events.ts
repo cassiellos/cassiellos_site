@@ -2,7 +2,8 @@ import { isMetaDispatchAllowed } from './booking-mode'
 import { isValidFbc, isValidFbp, metaEventNameFor, type MetaEventName } from '../marketing/meta'
 
 /**
- * Preparação da Meta Conversions API (NÃO envia nada; não há token nem rotina de envio).
+ * Montagem do evento de servidor da Meta Conversions API (este arquivo NÃO envia nada; o envio
+ * controlado, desligado por padrão, fica em lib/crm/meta-capi.ts).
  *
  * Monta o evento de servidor a partir de um registro de crm.tracking_events, com as
  * mesmas regras que o futuro envio deverá respeitar:
@@ -32,7 +33,8 @@ export type MetaServerEvent = {
   action_source: 'website'
   event_source_url?: string
   user_data: { fbp?: string; fbc?: string }
-  custom_data: { content_name?: string }
+  /** cassiellos_teste só no envio de homologação (sempre com test_event_code). */
+  custom_data: { content_name?: string; cassiellos_teste?: 'homologacao' }
 }
 
 export type MetaEventDecision =
@@ -44,29 +46,40 @@ export function buildMetaServerEvent(
   consent: { granted: boolean } | null | undefined,
   browserIds: { fbp?: unknown; fbc?: unknown } = {},
 ): MetaEventDecision {
-  const eventName = metaEventNameFor(row.event_name)
-  if (!eventName) return { allowed: false, reason: 'unmapped_event' }
+  if (!metaEventNameFor(row.event_name)) return { allowed: false, reason: 'unmapped_event' }
   if (!isMetaDispatchAllowed(row.metadata)) return { allowed: false, reason: 'test_or_unclassified' }
   if (consent?.granted !== true) return { allowed: false, reason: 'no_marketing_consent' }
+  const payload = formatMetaServerEvent(row, browserIds)
+  return payload ? { allowed: true, payload } : { allowed: false, reason: 'invalid_event' }
+}
+
+/**
+ * Formatação pura do evento (SEM as travas de teste/consentimento): só para quem já aplicou as
+ * próprias travas — buildMetaServerEvent (leads reais) e o envio de homologação com test_event_code
+ * (lib/crm/meta-capi.ts). Devolve null para evento não mapeado, data inválida ou event_id fora do padrão.
+ */
+export function formatMetaServerEvent(
+  row: TrackingEventRow,
+  browserIds: { fbp?: unknown; fbc?: unknown } = {},
+): MetaServerEvent | null {
+  const eventName = metaEventNameFor(row.event_name)
+  if (!eventName) return null
   const occurred = new Date(row.occurred_at).getTime()
-  if (!Number.isFinite(occurred) || !/^[a-z0-9_]{6,120}$/.test(row.event_id)) return { allowed: false, reason: 'invalid_event' }
+  if (!Number.isFinite(occurred) || !/^[a-z0-9_]{6,120}$/.test(row.event_id)) return null
   const formSlug = row.metadata && typeof row.metadata === 'object' && 'formSlug' in row.metadata &&
     typeof (row.metadata as { formSlug: unknown }).formSlug === 'string'
     ? (row.metadata as { formSlug: string }).formSlug : undefined
   const sourceUrl = row.event_source_url && /^https:\/\/[^?#\s]+$/.test(row.event_source_url) ? row.event_source_url : undefined
   return {
-    allowed: true,
-    payload: {
-      event_name: eventName,
-      event_time: Math.floor(occurred / 1000),
-      event_id: row.event_id,
-      action_source: 'website',
-      ...(sourceUrl ? { event_source_url: sourceUrl } : {}),
-      user_data: {
-        ...(isValidFbp(browserIds.fbp) ? { fbp: browserIds.fbp } : {}),
-        ...(isValidFbc(browserIds.fbc) ? { fbc: browserIds.fbc } : {}),
-      },
-      custom_data: formSlug ? { content_name: formSlug } : {},
+    event_name: eventName,
+    event_time: Math.floor(occurred / 1000),
+    event_id: row.event_id,
+    action_source: 'website',
+    ...(sourceUrl ? { event_source_url: sourceUrl } : {}),
+    user_data: {
+      ...(isValidFbp(browserIds.fbp) ? { fbp: browserIds.fbp } : {}),
+      ...(isValidFbc(browserIds.fbc) ? { fbc: browserIds.fbc } : {}),
     },
+    custom_data: formSlug ? { content_name: formSlug } : {},
   }
 }
