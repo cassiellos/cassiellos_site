@@ -204,15 +204,16 @@ export default function MiniCrm() {
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do SHARK SCALE no celular: novos leads e reuniões confirmadas.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do Neon Preview.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do SHARK SCALE no celular: novos leads e reuniões confirmadas.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do Neon Preview.' : view === 'conversoes' ? 'Homologação do agendamento confirmada na Meta; acompanhamento de campanhas ainda não integrado.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
             <div className="crm-controls">
               {view === 'dashboard' && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
             </div>
           </div>
 
-          {view !== 'leads' && view !== 'agenda' && view !== 'dashboard' && view !== 'funil' && view !== 'disponibilidade' && view !== 'notificacoes' && view !== 'financeiro' && <div className="crm-demo-banner"><Icon name="shield" size={16}/><strong>MODO DEMONSTRAÇÃO</strong> Os dados desta tela são fictícios. A seção Leads consulta o Neon Preview separadamente; alterações desta visualização são temporárias.</div>}
+          {view !== 'leads' && view !== 'agenda' && view !== 'dashboard' && view !== 'funil' && view !== 'disponibilidade' && view !== 'notificacoes' && view !== 'financeiro' && view !== 'conversoes' && <div className="crm-demo-banner"><Icon name="shield" size={16}/><strong>MODO DEMONSTRAÇÃO</strong> Os dados desta tela são fictícios. A seção Leads consulta o Neon Preview separadamente; alterações desta visualização são temporárias.</div>}
 
+          {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>STATUS DA INTEGRAÇÃO</strong> O evento Schedule foi recebido pela Meta em homologação. Acompanhamento de campanhas e métricas em tempo real ainda não está conectado ao CRM.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
           {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
 
@@ -222,19 +223,45 @@ export default function MiniCrm() {
           {view === 'conversoes' && <MetaHomologationPanel/>}
           {view === 'notificacoes' && <NotificationsPanel/>}
           {view === 'financeiro' && <FinancePanel/>}
-          {view === 'conversoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-head"><div><div className="crm-panel-title">Eventos da jornada</div><div className="crm-panel-subtitle">Plano de mensuração — nomes da estratégia Shark Scale</div></div><Icon name="target"/></div>{[
-            ['ChronosView','Visualização do formulário'],
-            ['ChronosFirstInteraction','Primeira interação'],
-            ['ChronosSubmit','Envio de formulário'],
-            ['Chronos_View_Scheduled','Visualização do agendamento'],
-            ['Chronos_Scheduled','Agendamento confirmado']
-          ].map(([name,desc])=><div className="crm-event" key={name}><code>{name}</code><span className="crm-tag crm-tag-muted">Planejado</span><small>{desc}</small></div>)}</section><section className="crm-card crm-panel"><div className="crm-panel-title">Evento principal</div><div style={{fontSize:22,letterSpacing:'-.04em',fontWeight:800,color:'#f13c4b',margin:'18px 0'}}>Chronos_Scheduled</div><p style={{color:'#a8b8cb',fontSize:12}}>Será registrado apenas após a confirmação efetiva do agendamento. O processamento via Conversions API e a deduplicação serão implementados e testados separadamente.</p><div className="crm-info-box" style={{marginTop:23}}>Esta página <strong>não envia eventos à Meta</strong> e não apresenta métricas reais de campanhas.</div></section></div>}
+          {view === 'conversoes' && <div className="crm-section-grid">
+            <section className="crm-card crm-panel">
+              <div className="crm-panel-head"><div>
+                <div className="crm-panel-title">Eventos da jornada</div>
+                <div className="crm-panel-subtitle">Evento efetivamente homologado × próximos eventos da estratégia Shark Scale</div>
+              </div><Icon name="target"/></div>
+              <div className="crm-event crm-meta-event-verified">
+                <code>Schedule</code><span className="crm-tag">Validado</span><small>Agendamento confirmado · Meta Pixel (navegador)</small>
+              </div>
+              {([
+                ['ChronosView','Visualização do formulário'],
+                ['ChronosFirstInteraction','Primeira interação'],
+                ['ChronosSubmit','Envio do formulário'],
+                ['Chronos_View_Scheduled','Visualização da etapa de agendamento'],
+                ['Chronos_Scheduled','Evento personalizado da estratégia; distinto do Schedule validado'],
+              ] as const).map(([name, desc]) =>
+                <div className="crm-event" key={name}>
+                  <code>{name}</code><span className="crm-tag crm-tag-muted">Planejado</span><small>{desc}</small>
+                </div>
+              )}
+            </section>
+            <section className="crm-card crm-panel">
+              <div className="crm-panel-title">Evento de agendamento</div>
+              <div className="crm-meta-event-name">Schedule <span>(Programar)</span></div>
+              <span className="crm-tag">Homologação aprovada · 03/11/2026</span>
+              <p className="crm-meta-explainer">A Meta processou o evento enviado pelo navegador após a confirmação do agendamento no CRM. O evento foi identificado como teste de homologação.</p>
+              <div className="crm-meta-future">
+                <strong>Próxima etapa: acompanhamento de resultados reais</strong>
+                <p>O CRM ainda não importa métricas, atribuição de campanhas nem eventos pela API de Conversões (CAPI). Deduplicação navegador + CAPI continua pendente.</p>
+              </div>
+              <p className="crm-meta-source-note">Dados apresentados: verificação manual no Gerenciador de Eventos, não relatório em tempo real da Meta. Esta página não dispara eventos.</p>
+            </section>
+          </div>}
 
           {view === 'relatorios' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Relatório de captação</div><div className="crm-panel-subtitle">Gráfico ilustrativo de volume de leads</div><Chart period={period}/></section><section className="crm-card crm-panel"><div className="crm-panel-title">Indicadores comerciais</div><div className="crm-panel-subtitle">Resultados simulados, sem vínculo com campanhas</div>{[['Leads recebidos','124'],['Agendamentos confirmados','18'],['Reuniões realizadas','11'],['Contratos fechados','4']].map(([label,value]) => <div className="crm-appointment" key={label} style={{justifyContent:'space-between'}}><span>{label}</span><strong>{value}</strong></div>)}</section></div>}
 
           {view === 'configuracoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Identidade e segurança</div><div className="crm-panel-subtitle">Prévia de interface, sem alterações em infraestrutura</div><div className="crm-appointment"><Icon name="shield"/><div><strong>Branding Cassiellos</strong><small>Marinho #07101F · Vermelho #F13C4B · Inter</small></div></div><div className="crm-appointment"><Icon name="settings"/><div><strong>Ambiente Preview</strong><small>Funcionalidades reais serão liberadas somente após autenticação adequada.</small></div></div></section><section className="crm-card crm-panel"><div className="crm-panel-title">Integrações previstas</div>{[['Neon PostgreSQL','Backend validado — interface ainda não conectada'],['Meta Conversions API','Pendente'],['Calendário e e-mail','Pendente'],['Notificações no celular (PWA + Web Push)','Em homologação — aba Notificações']].map(([k,v]) => <div className="crm-appointment" key={k}><Icon name="pulse"/><div><strong>{k}</strong><small>{v}</small></div></div>)}</section></div>}
 
-          <div className="crm-footnote">Cassiellos Mini CRM · {view === 'leads' || view === 'agenda' || view === 'dashboard' || view === 'funil' || view === 'disponibilidade' || view === 'notificacoes' || view === 'financeiro' ? 'Leitura real do Neon Preview · acesso administrativo' : 'Prévia visual demonstrativa'} · Produção preservada</div>
+          <div className="crm-footnote">Cassiellos Mini CRM · {view === 'leads' || view === 'agenda' || view === 'dashboard' || view === 'funil' || view === 'disponibilidade' || view === 'notificacoes' || view === 'financeiro' ? 'Leitura real do Neon Preview · acesso administrativo' : view === 'conversoes' ? 'Homologação verificada manualmente · métricas Meta não integradas' : 'Prévia visual demonstrativa'} · Produção preservada</div>
         </div>
       </main>
     </div>

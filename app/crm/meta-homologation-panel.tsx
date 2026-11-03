@@ -44,9 +44,19 @@ export default function MetaHomologationPanel() {
   }
 
   return <section className="crm-card crm-panel" aria-labelledby="meta-homologation-title">
-    <div className="crm-panel-title" id="meta-homologation-title">Homologação do Meta Pixel</div>
-    <div className="crm-panel-subtitle">Somente Preview · Pixel comercial · 1 Lead e 1 Schedule de teste · até 30 minutos neste navegador</div>
-    {status && !status.available && <div className="crm-info-box">Indisponível: a homologação não está ligada neste Preview.</div>}
+    <div className="crm-panel-title" id="meta-homologation-title">Meta Pixel · Homologação</div>
+    <div className="crm-panel-subtitle">Validação técnica do agendamento · Pixel comercial · ambiente Preview</div>
+    <div className="crm-meta-validation" role="status">
+      <div className="crm-meta-validation-head"><span className="crm-meta-check" aria-hidden="true">✓</span>
+        <strong>Schedule validado na Meta</strong><span className="crm-tag">Teste aprovado</span>
+      </div>
+      <div className="crm-meta-validation-details">
+        <span>03/11/2026 · 09h43min10s (Brasília)</span>
+        <span>Programar (Schedule) · Navegador / Pixel</span>
+      </div>
+      <p>Comprovação registrada no Gerenciador de Eventos. Histórico verificado manualmente — esta tela não consulta eventos da Meta em tempo real.</p>
+    </div>
+    {status && !status.available && <p className="crm-meta-closed">Homologação encerrada. O modo de teste está desativado neste Preview; isso não desativa o Pixel comercial.</p>}
     {status?.available && <>
       <p style={{ color: '#a8b8cb', fontSize: 12 }}>
         {status.active && status.expiresAt
