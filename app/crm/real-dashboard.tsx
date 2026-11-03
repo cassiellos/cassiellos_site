@@ -18,15 +18,7 @@ function LeadGraph({days}:{days:Data['days']}) {
   const points = days.map((d,i)=>({x:32 + i*680/Math.max(1,days.length-1),y:196-d.count/max*170}))
   const line = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' ')
   const area = line + ' L 712 196 L 32 196 Z'
-  // Em 7 dias, números em todos os dias com captação; em 30 dias, só nos picos
-  // para manter o gráfico legível. O hover informa qualquer dia, inclusive zero.
-  const isVisiblePeak = (i:number) => {
-    if (days[i].count<=0) return false
-    if (days.length<=7) return true
-    const previous = i===0 ? -1 : days[i-1].count
-    const next = i===days.length-1 ? -1 : days[i+1].count
-    return days[i].count>=previous && days[i].count>=next && (days[i].count>previous || days[i].count>next)
-  }
+  // Nenhum número fixo: uma etiqueta discreta aparece somente no hover/foco de cada ponto.
   const activePoint = hovered!==null ? points[hovered] : null
   const activeDay = hovered!==null ? days[hovered] : null
   const badgeX = activePoint ? Math.max(5,Math.min(683,activePoint.x-28)) : 0
@@ -39,8 +31,6 @@ function LeadGraph({days}:{days:Data['days']}) {
         stroke="#f13c4b" strokeWidth="3.3" fill="none" strokeLinejoin="round" strokeLinecap="round"/>
         {points.map((p,i)=><g key={days[i].date}>
           {days[i].count>0&&<circle cx={p.x} cy={p.y} r="3.8" fill="#f13c4b" aria-hidden="true"/>}
-          {isVisiblePeak(i)&&hovered!==i&&<text className="crm-live-point-label" x={p.x} y={Math.max(12,p.y-12)}
-            textAnchor="middle" aria-hidden="true">{days[i].count}</text>}
           <circle className="crm-live-point-hit" cx={p.x} cy={p.y} r="12" fill="transparent"
             tabIndex={0} role="img"
             aria-label={formatDay.format(new Date(days[i].date+'T12:00:00Z'))+': '+days[i].count+' lead(s)'}
