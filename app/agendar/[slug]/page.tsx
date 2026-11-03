@@ -1,65 +1,21 @@
-import type { Metadata, Viewport } from 'next'
-import { cookies } from 'next/headers'
-import { notFound } from 'next/navigation'
-import { getBookingForm } from '@/lib/crm/booking-forms'
-import { getTurnstileConfig } from '@/lib/crm/turnstile'
-import { getCrmBookingMode } from '@/lib/crm/booking-mode'
-import { funnelModeFor } from '@/lib/crm/funnel-events'
-import { chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig } from '@/lib/marketing/meta'
-import { activeHomologation } from '@/lib/marketing/homologation'
-import { bookingAccessConfig } from '@/lib/crm/booking-access'
-import BookingExperience from './booking-experience'
-import './booking.css'
+import { notFound, permanentRedirect } from 'next/navigation'
 
-// Keep Safari/browser chrome white on the standalone booking experience.
-export const viewport: Viewport = { themeColor: '#ffffff' }
-
-export const dynamic = 'force-dynamic'
-
-export const metadata: Metadata = {
-  title: 'Diagnóstico estratégico | Cassiellos',
-  description: 'Agende um diagnóstico estratégico de 30 minutos com a Agência Cassiellos.',
-  robots: { index: false, follow: false, nocache: true },
-}
-
-export default async function NicheBookingPage({
+// Links antigos preservam parâmetros de atribuição e chegam ao único formulário oficial.
+export default async function LegacyBookingRedirect({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  // Form pages stay completely off the production domain until approval.
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
-    notFound()
-  }
   const { slug } = await params
-  const form = getBookingForm(slug)
-  if (!form) notFound()
-  const access = bookingAccessConfig()
-  const bookingEnabled = access.enabled
-  // Only the PUBLIC site key reaches the browser, and only when the server-side
-  // configuration is complete (otherwise the form stays blocked: fail closed).
-  const turnstile = getTurnstileConfig()
-  const turnstileSiteKey = turnstile.status === 'ready' ? turnstile.siteKey : null
-  // Métricas do funil: "test" no ambiente de testes (modo de teste ou allowlist ativa); só "live" conta como real.
-  const analyticsMode = funnelModeFor({
-    bookingMode: getCrmBookingMode(),
-    allowlistActive: access.restrictedToAllowedEmail,
-  })
-  // Meta Pixel: desligado salvo META_PIXEL_ENABLED=true + META_PIXEL_ID válido (o ID do Pixel é público).
-  const pixel = getMetaPixelConfig()
-  // Homologação (só Preview, liberada pelo administrador NESTE navegador): mesmo Pixel COMERCIAL; o backend libera
-  // no máximo 1 Lead e 1 Schedule de teste, marcados (lib/marketing/homologation.ts).
-  const homologation = activeHomologation((await cookies()).toString())
-  const metaPixelId = homologation ? homologation.pixelId : pixel.enabled ? pixel.pixelId : null
-  // Liberação futura, DESATIVADA por padrão: somente visitantes reais, Pixel disponível
-  // e consentimento de marketing no navegador. A liberação de homologação prevalece.
-  const chronosMode = chronosDispatchMode({
-    pixelReady: Boolean(metaPixelId),
-    bookingMode: analyticsMode,
-    liveEnabled: getChronosLiveEnabled(),
-    homologationScope: homologation?.scope ?? null,
-  })
-  return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} invitesEnabled={access.sendInvites} turnstileSiteKey={turnstileSiteKey}
-    analyticsMode={analyticsMode} metaPixelId={metaPixelId} chronosMode={chronosMode}
-    metaHomologation={homologation ? { expiresAt: homologation.expiresAt, scope: homologation.scope } : null} />
+  if (slug !== 'odontologia') notFound()
+  const incoming = await searchParams
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(incoming)) {
+    if (Array.isArray(value)) value.forEach(item => query.append(key, item))
+    else if (typeof value === 'string') query.append(key, value)
+  }
+  const suffix = query.toString()
+  permanentRedirect('/agendar' + (suffix ? '?' + suffix : ''))
 }
