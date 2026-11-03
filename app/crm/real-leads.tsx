@@ -55,6 +55,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
   const [selected, setSelected] = useState<string | null>(null)
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
+  const scrollBodyRef = useRef<HTMLDivElement>(null)
   // A ficha é exibida fora da tabela, em uma camada fixa acima de todo o CRM.
   useEffect(() => { setPortalRoot(document.getElementById('cassiellos-crm')) }, [])
   useEffect(() => {
@@ -62,9 +63,47 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     const dialog = detailRef.current
     if (!dialog) return
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    dialog.focus()
+    const scrollY = window.scrollY
+    const html = document.documentElement
+    const body = document.body
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyOverscroll: body.style.overscrollBehavior,
+    }
+    // Trava o documento inteiro, inclusive em Safari e trackpads.
+    // "overflow:hidden" no body sozinho não impede o scroll do <html>.
+    html.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+    body.style.position = 'fixed'
+    body.style.top = '-' + scrollY + 'px'
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    const scrollArea = scrollBodyRef.current
+    if (scrollArea) scrollArea.scrollTop = 0
+
+    // Direciona o wheel/trackpad para o painel, impedindo que a página atrás role.
+    // O listener nativo não-passivo é necessário para poder cancelar o scroll padrão.
+    const handleDialogWheel = (event: WheelEvent) => {
+      const target = scrollBodyRef.current
+      event.preventDefault()
+      event.stopPropagation()
+      if (!target) return
+      const multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? target.clientHeight : 1
+      target.scrollTop += event.deltaY * multiplier
+      if (event.deltaX) target.scrollLeft += event.deltaX * multiplier
+    }
+    dialog.addEventListener('wheel', handleDialogWheel, { passive: false, capture: true })
+    dialog.focus({ preventScroll: true })
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -86,9 +125,19 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => {
+      dialog.removeEventListener('wheel', handleDialogWheel, true)
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      previousFocus?.focus()
+      html.style.overflow = previous.htmlOverflow
+      html.style.overscrollBehavior = previous.htmlOverscroll
+      body.style.overflow = previous.bodyOverflow
+      body.style.overscrollBehavior = previous.bodyOverscroll
+      body.style.position = previous.bodyPosition
+      body.style.top = previous.bodyTop
+      body.style.left = previous.bodyLeft
+      body.style.right = previous.bodyRight
+      body.style.width = previous.bodyWidth
+      window.scrollTo(0, scrollY)
+      previousFocus?.focus({ preventScroll: true })
     }
   }, [selected, portalRoot])
   useEffect(() => {
@@ -216,7 +265,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
             </div>
             <button type="button" className="crm-btn" onClick={() => setSelected(null)} aria-label="Fechar ficha do lead">Fechar ×</button>
           </header>
-          <div className="crm-real-modal-body">
+          <div className="crm-real-modal-body" ref={scrollBodyRef} tabIndex={0} aria-label="Conteúdo rolável da ficha do lead">
             <section className="crm-real-detail" aria-label="Respostas do formulário">
               <div className="crm-real-detail-head">
                 <div>
