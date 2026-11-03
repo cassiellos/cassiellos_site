@@ -418,33 +418,31 @@ function PartnerRateio({ month, values, onNavigate }: {
   })
   const metrics = [
     ['Despesas do mês', values.expensesForecastCents, 'Competência · contas previstas, incluindo as já pagas'],
-    ['Hospedagens quitadas', values.hostingReceivedCents, 'Competência · recebimentos confirmados, inclusive antecipados'],
-    ['Hospedagens pendentes', split.hostingPendingCents, 'Previsão, não reduz o aporte até ser recebida'],
-    ['Total a cobrir pelos sócios', split.fundingNeededCents, 'Despesas previstas menos hospedagens quitadas'],
+    ['Hospedagens consideradas no rateio', values.hostingForecastCents, 'Previsão integral de hospedagens · descontada mesmo antes do recebimento'],
+    ['Hospedagens já recebidas', values.hostingReceivedCents, 'Apenas informativo · não muda o rateio projetado'],
+    ['Total a dividir entre os sócios', split.projectedFundingCents, 'Despesas previstas menos todas as hospedagens previstas'],
   ] as const
   return <div className="crm-fin-rateio">
     <section className="crm-card crm-panel">
       <div className="crm-panel-title">Rateio de despesas dos sócios — {monthLabel(month)}</div>
-      <div className="crm-panel-subtitle">Somente hospedagens classificadas como receita de hospedagem abatem as despesas da agência. Outros contratos e serviços não entram neste cálculo.</div>
+      <div className="crm-panel-subtitle">Fechamento projetado · acerto de referência no dia 10. Consideramos todas as hospedagens previstas como recebidas para calcular o rateio, mesmo que ainda estejam pendentes. Outras receitas não entram neste abatimento.</div>
       <div className="crm-fin-share-metrics">
         {metrics.map(([label, amount, detail]) => <div key={label} className="crm-fin-share-metric">
           <span>{label}</span><strong>{formatCents(amount)}</strong><small>{detail}</small>
         </div>)}
       </div>
-      <div className="crm-fin-share-equation" role="status">Despesas previstas ({formatCents(values.expensesForecastCents)}) − hospedagens quitadas ({formatCents(values.hostingReceivedCents)}) = <strong>{formatCents(split.fundingNeededCents)} a aportar</strong></div>
+      <div className="crm-fin-share-equation" role="status">Despesas previstas ({formatCents(values.expensesForecastCents)}) − todas as hospedagens previstas ({formatCents(values.hostingForecastCents)}) = <strong>{formatCents(split.projectedFundingCents)} a dividir</strong></div>
       <div className="crm-fin-share-partners">
-        <div><span>Daniel Barcelos · 50%</span><strong>{formatCents(split.danielCents)}</strong><small>Aporte previsto para custeio</small></div>
-        <div><span>Guilherme Cassim · 50%</span><strong>{formatCents(split.guilhermeCents)}</strong><small>Aporte previsto para custeio</small></div>
+        <div><span>Daniel Barcelos · 50%</span><strong>{formatCents(split.danielProjectedCents)}</strong><small>Contribuição projetada para o acerto do dia 10</small></div>
+        <div><span>Guilherme Cassim · 50%</span><strong>{formatCents(split.guilhermeProjectedCents)}</strong><small>Contribuição projetada para o acerto do dia 10</small></div>
       </div>
       {split.hostingPendingCents > 0 && <p className="crm-fin-share-note">
-        Se todas as hospedagens previstas forem quitadas, o aporte projetado cairá para <strong>{formatCents(split.projectedFundingCents)}</strong>:
-        Daniel {formatCents(split.danielProjectedCents)} e Guilherme {formatCents(split.guilhermeProjectedCents)}.
-        Essa projeção não é dinheiro recebido.
+        Hospedagens ainda não recebidas: {formatCents(split.hostingPendingCents)}. Esse valor já foi descontado no rateio acima, por escolha dos sócios; ele continua pendente nas contas a receber e não entrou automaticamente no caixa.
       </p>}
-      {split.hostingSurplusCents > 0 && <p className="crm-fin-share-note">
-        As hospedagens quitadas excedem as despesas previstas em {formatCents(split.hostingSurplusCents)}. Não há aporte necessário neste mês. Isso não representa uma distribuição automática aos sócios.
+      {values.hostingForecastCents > values.expensesForecastCents && <p className="crm-fin-share-note">
+        As hospedagens previstas excedem as despesas em {formatCents(values.hostingForecastCents - values.expensesForecastCents)}. O rateio projetado é zero, sem representar lucro distribuído ou recebimento confirmado.
       </p>}
-      <p className="crm-fin-share-note">Despesas da competência já pagas: {formatCents(values.expensesPaidOfCompetenceCents)}. Os valores acima são uma necessidade de custeio do mês, não um saldo bancário nem controle de aportes já realizados. Pró-labore e retirada de lucro são operações distintas.</p>
+      <p className="crm-fin-share-note">Despesas da competência já pagas: {formatCents(values.expensesPaidOfCompetenceCents)}. Lorena e contabilidade, quando cadastradas, já integram as despesas previstas e não são somadas em duplicidade. Este rateio é uma simulação de fechamento, não um saldo de caixa nem um registro de aportes realizados. Remuneração de prestadores, pró-labore e distribuição de lucro são conceitos diferentes.</p>
       <div className="crm-fin-actions">
         <button type="button" className="crm-btn" onClick={() => onNavigate('receitas')}>Conferir receitas e hospedagens</button>
         <button type="button" className="crm-btn" onClick={() => onNavigate('despesas')}>Conferir despesas</button>
