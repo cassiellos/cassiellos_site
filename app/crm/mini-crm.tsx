@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import './crm.css'
 import RealLeadsPanel from './real-leads'
@@ -15,16 +15,6 @@ import FinancePanel from './finance-panel'
 import NeonUsageMonitor from './neon-usage-monitor'
 
 type View = 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'notificacoes' | 'relatorios' | 'configuracoes' | 'financeiro'
-type Lead = { id: string; company: string; contact: string; origin: string; status: string; date: string; amount: string; initials: string }
-
-const initialLeads: Lead[] = [
-  { id: '01', company: 'Empresa Exemplo A', contact: 'Contato ilustrativo 01', origin: 'Meta Ads', status: 'Agendado', date: '28 out, 14:30', amount: 'R$ 3.500', initials: 'EA' },
-  { id: '02', company: 'Empresa Exemplo B', contact: 'Contato ilustrativo 02', origin: 'Instagram', status: 'Qualificado', date: '28 out, 11:45', amount: 'R$ 2.800', initials: 'EB' },
-  { id: '03', company: 'Empresa Exemplo C', contact: 'Contato ilustrativo 03', origin: 'Site', status: 'Novo', date: '27 out, 17:10', amount: 'R$ 4.000', initials: 'EC' },
-  { id: '04', company: 'Empresa Exemplo D', contact: 'Contato ilustrativo 04', origin: 'Indicação', status: 'Cliente', date: '27 out, 09:20', amount: 'R$ 5.200', initials: 'ED' },
-  { id: '05', company: 'Empresa Exemplo E', contact: 'Contato ilustrativo 05', origin: 'Meta Ads', status: 'Novo', date: '26 out, 16:15', amount: 'R$ 2.500', initials: 'EE' },
-]
-
 const navigation: { id: View; label: string; icon: string; count?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
   { id: 'leads', label: 'Leads', icon: 'users' },
@@ -35,20 +25,6 @@ const navigation: { id: View; label: string; icon: string; count?: string }[] = 
   { id: 'notificacoes', label: 'Notificações', icon: 'bell' },
   { id: 'relatorios', label: 'Relatórios', icon: 'chart' },
   { id: 'configuracoes', label: 'Configurações', icon: 'settings' },
-]
-
-const funnel = [
-  { label: 'Novos leads', value: 124, width: 100 },
-  { label: 'Qualificados', value: 72, width: 58 },
-  { label: 'Agendados', value: 18, width: 23 },
-  { label: 'Contratos', value: 4, width: 9 },
-]
-
-const meetings = [
-  { hour: '09:00', day: '29', month: 'OUT', title: 'Diagnóstico comercial', with: 'Empresa Exemplo A', type: 'Confirmado' },
-  { hour: '11:30', day: '29', month: 'OUT', title: 'Reunião estratégica', with: 'Empresa Exemplo B', type: 'Pendente' },
-  { hour: '15:00', day: '30', month: 'OUT', title: 'Apresentação de proposta', with: 'Empresa Exemplo C', type: 'Confirmado' },
-  { hour: '10:00', day: '31', month: 'OUT', title: 'Follow-up', with: 'Empresa Exemplo E', type: 'Pendente' },
 ]
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -75,37 +51,6 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{shapes[name] || shapes.grid}</svg>
 }
 
-function Chart({ period }: { period: '7d' | '30d' }) {
-  const values = period === '7d' ? [12, 19, 16, 29, 23, 34, 43] : [8, 12, 15, 11, 20, 18, 24, 20, 32, 29, 35, 42]
-  const max = 50
-  const points = values.map((value, i) => [26 + (700 * i) / (values.length - 1), 210 - (value / max) * 178])
-  const line = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')
-  const area = line + ' L 726 210 L 26 210 Z'
-  const labels = period === '7d' ? ['Qui', 'Sex', 'Sáb', 'Dom', 'Seg', 'Ter', 'Qua'] : ['1 out', '5 out', '10 out', '15 out', '20 out', '25 out', '28 out']
-  return <>
-    <svg className="crm-graph" viewBox="0 0 752 239" role="img" aria-label="Gráfico ilustrativo de evolução de leads">
-      <defs><linearGradient id="crm-chart-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f13c4b" stopOpacity=".32"/><stop offset="100%" stopColor="#f13c4b" stopOpacity="0"/></linearGradient></defs>
-      {[32,76,121,166,210].map((y, i) => <g key={y}><line x1="26" y1={y} x2="726" y2={y} stroke="#334058" strokeOpacity=".47" strokeDasharray="4 6"/><text x="5" y={y + 4} fontSize="11" fill="#8195ac">{50 - i * 12}</text></g>)}
-      <path d={area} fill="url(#crm-chart-gradient)"/>
-      <path d={line} fill="none" stroke="#f13c4b" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round"/>
-      {points.map((p, i) => i === points.length - 1 ? <g key={i}><circle cx={p[0]} cy={p[1]} r="8" fill="#f13c4b" fillOpacity=".2"/><circle cx={p[0]} cy={p[1]} r="4" fill="#f13c4b" stroke="#ffd4d8" strokeWidth="1.4"/></g> : null)}
-    </svg>
-    <div className="crm-graph-labels">{labels.map(label => <span key={label}>{label}</span>)}</div>
-    <div className="crm-graph-legend"><span><i/>Leads recebidos</span><span><i style={{ background: '#22c7f2' }}/>Período ilustrativo</span></div>
-  </>
-}
-
-function Status({ name }: { name: string }) { return <span className="crm-status" data-status={name}>{name}</span> }
-
-function LeadTable({ leads, limit }: { leads: Lead[]; limit?: number }) {
-  const displayed = typeof limit === 'number' ? leads.slice(0, limit) : leads
-  if (!displayed.length) return <div className="crm-empty">Nenhum lead demonstrativo encontrado para essa busca.</div>
-  return <div className="crm-table-wrap"><table>
-    <thead><tr><th>Empresa / contato</th><th>Origem</th><th>Status</th><th>Valor potencial</th><th>Entrada</th></tr></thead>
-    <tbody>{displayed.map(lead => <tr key={lead.id}><td><div className="crm-company"><span className="crm-company-logo">{lead.initials}</span><span>{lead.company}<span style={{ display: 'block', fontSize: 10, fontWeight: 400, marginTop: 3, color: '#8397b0' }}>{lead.contact}</span></span></div></td><td>{lead.origin}</td><td><Status name={lead.status}/></td><td style={{ color: '#ebf1fb' }}>{lead.amount}</td><td>{lead.date}</td></tr>)}</tbody>
-  </table></div>
-}
-
 const sectionNames: Record<View, string> = {
   dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações', financeiro: 'Financeiro',
 }
@@ -114,8 +59,6 @@ export default function MiniCrm() {
   const [view, setView] = useState<View>('dashboard')
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [search, setSearch] = useState('')
-  const [leads, setLeads] = useState<Lead[]>(initialLeads)
-  const [modal, setModal] = useState(false)
   const [focusLead, setFocusLead] = useState<string | null>(null)
   // Links diretos (avisos do PWA): /crm?lead=<id> abre a ficha do lead; /crm?view=notificacoes abre o painel.
   // Também registra o service worker do PWA (sem pedir permissão) e reprocessa a fila de avisos pendentes.
@@ -129,67 +72,18 @@ export default function MiniCrm() {
     fetch('/api/crm/push', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'process_due' }) }).catch(() => undefined)
   }, [])
-  const modalRef = useRef<HTMLDivElement>(null)
-  const newLeadButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Mantém o teclado dentro da janela e devolve o foco ao botão após fechar.
-  useEffect(() => {
-    if (!modal) return
-    const oldOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    function onDialogKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        setModal(false)
-        return
-      }
-      if (event.key !== 'Tab') return
-
-      const focusables = Array.from(
-        modalRef.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      )
-      const first = focusables[0]
-      const last = focusables[focusables.length - 1]
-      if (!first || !last) return
-      if (event.shiftKey && (document.activeElement === first || !modalRef.current?.contains(document.activeElement))) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && (document.activeElement === last || !modalRef.current?.contains(document.activeElement))) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', onDialogKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onDialogKeyDown)
-      document.body.style.overflow = oldOverflow
-      newLeadButtonRef.current?.focus()
-    }
-  }, [modal])
-  const [company, setCompany] = useState('')
-  const [contact, setContact] = useState('')
   const openView = (next: View) => { setView(next); setSearch('') }
-  const createLead = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!company.trim() || !contact.trim()) return
-    setLeads(current => [{ id: String(Date.now()), company: company.trim(), contact: contact.trim(), origin: 'Manual', status: 'Novo', date: 'Agora (demo)', amount: '—', initials: company.trim().slice(0, 2).toUpperCase() }, ...current])
-    setCompany(''); setContact(''); setModal(false); setView('dashboard')
-  }
   return <div id="cassiellos-crm" data-crm-root>
     <div className="crm-layout">
-      <aside className="crm-sidebar" aria-label="Navegação do Mini CRM">
-        <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">Mini CRM / Operações</span></div></div>
+      <aside className="crm-sidebar" aria-label="Navegação do CRM">
+        <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">CRM | Cassiellos</span></div></div>
         <nav className="crm-nav-wrap" aria-label="Seções">
           <div className="crm-nav-label">Workspace</div>
           {navigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}{item.count && <span className="crm-nav-count">{item.count}</span>}</button>)}
           <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
           <button type="button" className="crm-nav-btn" data-active={view === 'financeiro'} onClick={() => openView('financeiro')} aria-current={view === 'financeiro' ? 'page' : undefined}><Icon name="wallet"/>Financeiro</button>
         </nav>
-        <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>Ambiente de demonstração</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
+        <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>Ambiente Preview · operacional</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
       </aside>
 
       <main className="crm-main">
@@ -204,16 +98,14 @@ export default function MiniCrm() {
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do SHARK SCALE no celular: novos leads e reuniões confirmadas.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do Neon Preview.' : view === 'conversoes' ? 'Homologação do agendamento confirmada na Meta; acompanhamento de campanhas ainda não integrado.' : 'Explore esta visualização demonstrativa do Mini CRM Cassiellos.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do Neon Preview.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no Preview. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no Neon Preview.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
             <div className="crm-controls">
-              {view === 'dashboard' && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
+              {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
             </div>
           </div>
 
-          {view !== 'leads' && view !== 'agenda' && view !== 'dashboard' && view !== 'funil' && view !== 'disponibilidade' && view !== 'notificacoes' && view !== 'financeiro' && view !== 'conversoes' && <div className="crm-demo-banner"><Icon name="shield" size={16}/><strong>MODO DEMONSTRAÇÃO</strong> Os dados desta tela são fictícios. A seção Leads consulta o Neon Preview separadamente; alterações desta visualização são temporárias.</div>}
-
-          {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>STATUS DA INTEGRAÇÃO</strong> O evento Schedule foi recebido pela Meta em homologação. Acompanhamento de campanhas e métricas em tempo real ainda não está conectado ao CRM.</div></div>}
+          {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>INTEGRAÇÃO COMERCIAL HABILITADA</strong> Pixel, eventos Chronos e CAPI foram ativados na Preview em 03/11/2026. Esta tela não consulta a Meta nem as variáveis da Vercel em tempo real; a deduplicação e as conversões reais ainda dependem de verificação externa.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
           {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
 
@@ -245,8 +137,8 @@ export default function MiniCrm() {
                 <code>Chronos_Scheduled</code><span className="crm-tag crm-tag-muted">Mapeado</span><small>Nome interno do agendamento; enviado à Meta como Schedule (não é um evento separado)</small>
               </div>
               <p style={{ color: '#a8b8cb', fontSize: 12, margin: '10px 0 0' }}>
-                Os quatro eventos Chronos foram validados em homologação (marcados <code>cassiellos_teste=homologacao</code>) e ainda
-                não são enviados para visitantes reais: essa liberação exige uma nova etapa.
+                Os quatro eventos Chronos foram validados em homologação (marcados <code>cassiellos_teste=homologacao</code>) e agora
+                estão habilitados para visitantes reais com consentimento de marketing. Ainda não há comprovação de eventos comerciais reais nesta tela.
               </p>
             </section>
             <section className="crm-card crm-panel">
@@ -256,20 +148,42 @@ export default function MiniCrm() {
               <p className="crm-meta-explainer">A Meta processou o evento enviado pelo navegador após a confirmação do agendamento no CRM. O evento foi identificado como teste de homologação.</p>
               <div className="crm-meta-future">
                 <strong>Próxima etapa: acompanhamento de resultados reais</strong>
-                <p>O CRM ainda não importa métricas, atribuição de campanhas nem eventos pela API de Conversões (CAPI). Deduplicação navegador + CAPI continua pendente.</p>
+                <p>A CAPI está habilitada para reuniões reais elegíveis, com consentimento de marketing. A Meta aceitou um envio de teste pelo servidor; o CRM não importa métricas de campanhas em tempo real, e a deduplicação efetiva ainda depende de conferência na Meta.</p>
               </div>
               <p className="crm-meta-source-note">Dados apresentados: verificação manual no Gerenciador de Eventos, não relatório em tempo real da Meta. Esta página não dispara eventos.</p>
             </section>
           </div>}
 
-          {view === 'relatorios' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Relatório de captação</div><div className="crm-panel-subtitle">Gráfico ilustrativo de volume de leads</div><Chart period={period}/></section><section className="crm-card crm-panel"><div className="crm-panel-title">Indicadores comerciais</div><div className="crm-panel-subtitle">Resultados simulados, sem vínculo com campanhas</div>{[['Leads recebidos','124'],['Agendamentos confirmados','18'],['Reuniões realizadas','11'],['Contratos fechados','4']].map(([label,value]) => <div className="crm-appointment" key={label} style={{justifyContent:'space-between'}}><span>{label}</span><strong>{value}</strong></div>)}</section></div>}
+          {view === 'relatorios' && <>
+            <div className="crm-meta-context-banner"><Icon name="chart"/><div><strong>RELATÓRIO OPERACIONAL</strong> Todos os indicadores abaixo são consultados no Neon Preview e distinguem registros operacionais de testes. Não representam métricas de anúncios da Meta.</div></div>
+            <RealDashboard period={period} openView={openView}/>
+          </>}
 
-          {view === 'configuracoes' && <div className="crm-section-grid"><section className="crm-card crm-panel"><div className="crm-panel-title">Identidade e segurança</div><div className="crm-panel-subtitle">Prévia de interface, sem alterações em infraestrutura</div><div className="crm-appointment"><Icon name="shield"/><div><strong>Branding Cassiellos</strong><small>Marinho #07101F · Vermelho #F13C4B · Inter</small></div></div><div className="crm-appointment"><Icon name="settings"/><div><strong>Ambiente Preview</strong><small>Funcionalidades reais serão liberadas somente após autenticação adequada.</small></div></div></section><section className="crm-card crm-panel"><div className="crm-panel-title">Integrações previstas</div>{[['Neon PostgreSQL','Backend validado — interface ainda não conectada'],['Meta Conversions API','Pendente'],['Calendário e e-mail','Pendente'],['Notificações no celular (PWA + Web Push)','Em homologação — aba Notificações']].map(([k,v]) => <div className="crm-appointment" key={k}><Icon name="pulse"/><div><strong>{k}</strong><small>{v}</small></div></div>)}</section></div>}
+          {view === 'configuracoes' && <div className="crm-section-grid">
+            <section className="crm-card crm-panel">
+              <div className="crm-panel-title">Operação do CRM</div>
+              <div className="crm-panel-subtitle">Acesse os controles funcionais sem criar configurações fictícias.</div>
+              <p>Gerencie dispositivos, mensagens e avisos na aba Notificações; horários, bloqueios e exceções na aba Disponibilidade.</p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:16}}>
+                <button type="button" className="crm-btn" onClick={() => openView('notificacoes')}>Abrir Notificações</button>
+                <button type="button" className="crm-btn" onClick={() => openView('disponibilidade')}>Abrir Disponibilidade</button>
+              </div>
+            </section>
+            <section className="crm-card crm-panel">
+              <div className="crm-panel-title">Privacidade e integrações</div>
+              <div className="crm-panel-subtitle">A versão legal vigente é a de 03/11/2026.</div>
+              <p>O painel de Conversões Meta registra o histórico de homologação, sem importar métricas ou estados das integrações em tempo real. Configurações de infraestrutura permanecem na Vercel.</p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:16}}>
+                <button type="button" className="crm-btn" onClick={() => openView('conversoes')}>Ver Conversões Meta</button>
+                <a className="crm-btn" href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
+                <a className="crm-btn" href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Política de Cookies</a>
+              </div>
+            </section>
+          </div>}
 
-          <div className="crm-footnote">Cassiellos Mini CRM · {view === 'leads' || view === 'agenda' || view === 'dashboard' || view === 'funil' || view === 'disponibilidade' || view === 'notificacoes' || view === 'financeiro' ? 'Leitura real do Neon Preview · acesso administrativo' : view === 'conversoes' ? 'Homologação verificada manualmente · métricas Meta não integradas' : 'Prévia visual demonstrativa'} · Produção preservada</div>
+          <div className="crm-footnote">CRM | Cassiellos · {view === 'conversoes' ? 'Histórico de homologação · métricas de campanhas não integradas' : view === 'configuracoes' ? 'Acesso às configurações operacionais' : 'Neon Preview · acesso administrativo'} · Ambiente Preview</div>
         </div>
       </main>
     </div>
-    {modal && <div className="crm-modal-backdrop" onMouseDown={e => {if(e.target === e.currentTarget) setModal(false)}}><div ref={modalRef} className="crm-modal" role="dialog" aria-modal="true" aria-labelledby="crm-modal-title" aria-describedby="crm-modal-description"><h2 id="crm-modal-title">Novo lead de demonstração</h2><p id="crm-modal-description">Esse registro aparecerá apenas nesta sessão do navegador e não será salvo no Neon.</p><form onSubmit={createLead}><label className="crm-field">Empresa<input autoFocus required maxLength={90} placeholder="Ex.: Empresa Exemplo F" value={company} onChange={e=>setCompany(e.target.value)}/></label><label className="crm-field">Nome do contato<input required maxLength={90} placeholder="Ex.: Contato ilustrativo" value={contact} onChange={e=>setContact(e.target.value)}/></label><div className="crm-modal-actions"><button className="crm-btn" type="button" onClick={()=>setModal(false)}>Cancelar</button><button className="crm-btn crm-btn-primary" type="submit"><Icon name="plus" size={16}/>Adicionar na demo</button></div></form></div></div>}
   </div>
 }
