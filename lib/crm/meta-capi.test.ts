@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   CAPI_MAX_ATTEMPTS, DEFAULT_GRAPH_API_VERSION, clientIpFrom, clientUserAgentFrom, dispatchScheduleToMeta, readCapiConfig,
-  type CapiConfig, type CapiStore, type DeliveryUpdate, type FetchLike, type ScheduleContext, type ScheduleGate,
+  type CapiConfig, type CapiOutcome, type CapiStore, type DeliveryUpdate, type FetchLike, type ScheduleContext, type ScheduleGate,
 } from './meta-capi'
 
 // Valores sintéticos: nenhum token, IP ou user agent real.
@@ -89,8 +89,8 @@ describe('CAPI Schedule — configuração (falha fechada)', () => {
       { mode: 'off', reason: 'invalid_version' })
     const live = readCapiConfig({ META_CAPI_MODE: 'live', META_PIXEL_ID: PIXEL, META_CAPI_ACCESS_TOKEN: TOKEN })
     assert.equal(live.mode, 'live')
-    assert.equal(live.mode !== 'off' && live.apiVersion, DEFAULT_GRAPH_API_VERSION)
-    assert.equal(live.mode !== 'off' && live.testEventCode, null)
+    assert.equal(live.apiVersion, DEFAULT_GRAPH_API_VERSION) // assert.equal(live.mode, 'live') acima já estreita o tipo
+    assert.equal(live.testEventCode, null)
     const test = readCapiConfig({ META_CAPI_MODE: 'test', META_PIXEL_ID: PIXEL, META_CAPI_ACCESS_TOKEN: TOKEN, META_CAPI_TEST_EVENT_CODE: 'TEST93849' })
     assert.equal(test.mode !== 'off' && test.testEventCode, 'TEST93849')
     const badCode = readCapiConfig({ META_CAPI_MODE: 'test', META_PIXEL_ID: PIXEL, META_CAPI_ACCESS_TOKEN: TOKEN, META_CAPI_TEST_EVENT_CODE: 'x y' })
@@ -178,7 +178,7 @@ describe('CAPI Schedule — envio, deduplicação e falhas (Meta simulada)', () 
     for (const failure of [{ status: 500 }, 'timeout', 'network'] as const) {
       const m = memoryStore(context())
       const f = fakeFetch([failure])
-      const outcome = await run(LIVE, m.store, f.fetch).done
+      const outcome: CapiOutcome = await run(LIVE, m.store, f.fetch).done
       assert.equal(outcome.status, 'abandoned')
       assert.equal(f.calls.length, CAPI_MAX_ATTEMPTS)
       const expected = failure === 'timeout' ? 'timeout' : failure === 'network' ? 'network_error' : 'http_500'
@@ -223,7 +223,7 @@ describe('CAPI Schedule — envio, deduplicação e falhas (Meta simulada)', () 
   it('reunião cancelada, pendente ou evento antigo (> 7 dias): nada sai', async () => {
     for (const status of ['cancelled', 'pending', 'rescheduled', null]) {
       const f = fakeFetch([OK])
-      const outcome = await run(LIVE, memoryStore(context(), [{ appointmentStatus: status, consentGranted: true }]).store, f.fetch).done
+      const outcome: CapiOutcome = await run(LIVE, memoryStore(context(), [{ appointmentStatus: status, consentGranted: true }]).store, f.fetch).done
       assert.deepEqual(outcome, { status: 'skipped', reason: 'appointment_not_confirmed' })
       assert.equal(f.calls.length, 0)
     }
