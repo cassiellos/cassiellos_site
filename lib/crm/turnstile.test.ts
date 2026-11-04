@@ -7,8 +7,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   TURNSTILE_BOOKING_ACTION, TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS as K,
-  getTurnstileConfig, isTurnstileTestKey, publicTurnstileError, verifyTurnstileToken,
-  type FetchLike, type VerifyTurnstileInput,
+  bookingActionPolicy, getTurnstileConfig, isTurnstileTestKey, publicTurnstileError, verifyTurnstileToken,
+  type FetchLike, type TurnstileConfig, type VerifyTurnstileInput,
 } from './turnstile'
 
 const HOST = 'crm.cassiellos.com.br'
@@ -221,5 +221,88 @@ describe('getTurnstileConfig — chaves e ambiente', () => {
       assert.equal(isTurnstileTestKey(key), true, key)
     }
     assert.equal(isTurnstileTestKey('0x4AAAAAAFrhpHqMd6acN05s'), false)
+  })
+})
+
+/**
+ * Formato observado no Siteverify REAL com as chaves de teste (deployment de homologação): success=true, `action`
+ * ausente e metadata.result_with_testing_key=true. Simulado aqui sem rede.
+ */
+function testingKeyResponse(o: Record<string, unknown> = {}, drop: string[] = ['action']): FetchLike {
+  return async () => {
+    const data: Record<string, unknown> = { success: true, challenge_ts: '2026-10-29T17:59:00.000Z', hostname: 'example.com',
+      'error-codes': [], action: TURNSTILE_BOOKING_ACTION, cdata: '', metadata: { result_with_testing_key: true }, ...o }
+    for (const k of drop) delete data[k]
+    return { ok: true, status: 200, json: async () => data }
+  }
+}
+const HOMOLOG_HOSTS = ['crm-homolog.example.vercel.app', 'example.com']
+const TEST_READY: TurnstileConfig = { status: 'ready', siteKey: K.siteAlwaysPasses, secretKey: K.secretAlwaysPasses, usingTestKeys: true }
+
+describe('Turnstile — homologação com chaves de teste (action do Siteverify de teste)', () => {
+  const homolog = (over: Partial<VerifyTurnstileInput> = {}) => input({ expectedHostnames: HOMOLOG_HOSTS, ...bookingActionPolicy(true, TEST_READY), ...over })
+
+  it('resposta de teste com action="test": aceita (alias preservado)', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ action: 'test' }, []) }))
+    assert.deepEqual(r, { ok: true, hostname: 'example.com', action: TURNSTILE_BOOKING_ACTION, challengeTs: '2026-10-29T17:59:00.000Z' })
+  })
+  it('resposta de teste SEM action, com metadata.result_with_testing_key=true: aceita', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse() }))
+    assert.equal(r.ok, true)
+    if (r.ok) assert.equal(r.action, TURNSTILE_BOOKING_ACTION)
+    // action vazia ("") tem o mesmo tratamento que ausente
+    assert.equal((await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ action: '' }, []) }))).ok, true)
+  })
+  it('sem action e SEM evidência de chave de teste (metadata ausente, false, "true", não-objeto): rejeitada', async () => {
+    for (const metadata of [undefined, false, 'true', 1, [], {}, { result_with_testing_key: false }, { result_with_testing_key: 'true' }]) {
+      const fetchImpl = metadata === undefined ? testingKeyResponse({}, ['action', 'metadata']) : testingKeyResponse({ metadata })
+      const r = await verifyTurnstileToken(homolog({ fetchImpl }))
+      assert.deepEqual(r, { ok: false, reason: 'action_mismatch', codes: [] }, JSON.stringify(metadata))
+    }
+  })
+  it('sem action FORA da homologação (Production, outros Previews, local): rejeitada mesmo com metadata de teste', async () => {
+    for (const policy of [bookingActionPolicy(false, TEST_READY), {}]) {
+      const r = await verifyTurnstileToken(input({ expectedHostnames: HOMOLOG_HOSTS, fetchImpl: testingKeyResponse(), ...policy }))
+      assert.deepEqual(r, { ok: false, reason: 'action_mismatch', codes: [] })
+    }
+  })
+  it('chave secreta REAL com a opção ligada indevidamente: action ausente continua rejeitada', async () => {
+    const r = await verifyTurnstileToken(homolog({ secretKey: '0x4AAAAAAAREALSECRETxxxxxxxxxxxx', fetchImpl: testingKeyResponse() }))
+    assert.deepEqual(r, { ok: false, reason: 'action_mismatch', codes: [] })
+  })
+  it('action DIFERENTE (não ausente) continua rejeitada na homologação', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ action: 'outro_formulario' }, []) }))
+    assert.deepEqual(r, { ok: false, reason: 'action_mismatch', codes: [] })
+  })
+  it('token inválido (success=false) é rejeitado mesmo com metadata de teste', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ success: false, 'error-codes': ['invalid-input-response'] }) }))
+    assert.deepEqual(r, { ok: false, reason: 'invalid', codes: ['invalid-input-response'] })
+    const r2 = await verifyTurnstileToken(homolog({ secretKey: K.secretAlwaysFails, fetchImpl: cloudflare() }))
+    assert.equal(r2.ok, false)
+  })
+  it('hostname não autorizado é rejeitado antes da exceção de action', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ hostname: 'evil.example' }) }))
+    assert.deepEqual(r, { ok: false, reason: 'hostname_mismatch', codes: [] })
+  })
+  it('token vencido continua rejeitado com a exceção ligada', async () => {
+    const r = await verifyTurnstileToken(homolog({ fetchImpl: testingKeyResponse({ challenge_ts: '2026-10-29T17:00:00.000Z' }) }))
+    assert.deepEqual(r, { ok: false, reason: 'expired_or_reused', codes: ['stale-challenge'] })
+  })
+  it('política: só homologação ativa + configuração pronta com AMBAS as chaves de teste liga a exceção', () => {
+    assert.deepEqual(bookingActionPolicy(true, TEST_READY), { acceptedActionAliases: ['test'], allowMissingActionWithTestingKey: true })
+    assert.deepEqual(bookingActionPolicy(false, TEST_READY), {})
+    for (const cfg of [
+      { status: 'ready', siteKey: '0x4AAAAAAFrhpHqMd6acN05s', secretKey: '0x4AAAAAAAREALSECRETxxxxxxxxxxxx', usingTestKeys: false },
+      { status: 'ready', siteKey: K.siteAlwaysPasses, secretKey: '0x4AAAAAAAREALSECRETxxxxxxxxxxxx', usingTestKeys: true },
+      { status: 'missing' }, { status: 'invalid' }, { status: 'test_keys_in_deployment' },
+    ] as TurnstileConfig[]) assert.deepEqual(bookingActionPolicy(true, cfg), {}, JSON.stringify(cfg))
+  })
+  it('fluxo Production preservado: action do widget exigida, alias "test" recusado', async () => {
+    const prod = bookingActionPolicy(false, { status: 'ready', siteKey: '0x4AAAAAAFrhpHqMd6acN05s', secretKey: '0x4AAAAAAAREALSECRETxxxxxxxxxxxx', usingTestKeys: false })
+    assert.deepEqual(prod, {})
+    const ok = await verifyTurnstileToken(input({ ...prod }))
+    assert.equal(ok.ok, true)
+    const alias = await verifyTurnstileToken(input({ ...prod, fetchImpl: cloudflare({ action: 'test' }) }))
+    assert.deepEqual(alias, { ok: false, reason: 'action_mismatch', codes: [] })
   })
 })

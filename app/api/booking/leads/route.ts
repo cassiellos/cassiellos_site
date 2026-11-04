@@ -7,7 +7,7 @@ import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode
 import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { CRM_CANONICAL_ORIGIN, CRM_FORM_DESIGN_PREVIEW_ORIGIN, isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm/request-limits'
-import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
+import { TURNSTILE_BOOKING_ACTION, bookingActionPolicy, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
 import { crmRuntime, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
@@ -81,8 +81,10 @@ export async function POST(request: NextRequest) {
     expectedHostnames: hostnames,
     verifyTurnstile: ({ token, secretKey, remoteIp }) => verifyTurnstileToken({
       token, secretKey, remoteIp, expectedAction: TURNSTILE_BOOKING_ACTION, expectedHostnames: hostnames,
-      // Siteverify de teste devolve action "test": aceito só com as chaves de teste da homologação.
-      acceptedActionAliases: homologMode().active ? ['test'] : undefined,
+      // Siteverify de teste devolve action "test" ou action AUSENTE (com metadata.result_with_testing_key=true):
+      // aceitos só na homologação ativa e com as chaves oficiais de teste (lib/crm/turnstile.ts › bookingActionPolicy).
+      // Production e outros Previews continuam exigindo a action do widget.
+      ...bookingActionPolicy(homologMode().active, turnstileConfig),
     }),
     consumeIpQuota: async () => {
       const fingerprint = requestFingerprint(INTAKE_LIMIT, forwardedFor)

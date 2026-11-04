@@ -93,6 +93,13 @@ export type VerifyTurnstileInput = {
    * teste da Cloudflare responde com action "test" (documentação Turnstile > Testing), não com a action do widget.
    */
   acceptedActionAliases?: readonly string[]
+  /**
+   * SOMENTE homologação isolada com chaves de TESTE: aceita `action` ausente/vazia quando a própria resposta do
+   * Siteverify comprova que foi validada com chave de teste (`metadata.result_with_testing_key === true`) e a chave
+   * secreta usada é uma das chaves oficiais de teste. success, hostname e validade continuam obrigatórios.
+   * Nunca deve ser ligado em Production ou em outros Previews (a rota só liga com homologMode().active).
+   */
+  allowMissingActionWithTestingKey?: boolean
   expectedHostnames: readonly string[]
   remoteIp?: string | null
   now?: Date
@@ -143,6 +150,18 @@ async function callSiteverify(input: VerifyTurnstileInput, token: string, key: s
   }
 }
 
+/**
+ * Exceção estreita para `action` ausente: exige (1) opção ligada pelo chamador (só homologação), (2) chave secreta
+ * oficial de TESTE e (3) a própria resposta confirmando `metadata.result_with_testing_key === true`. Qualquer outra
+ * combinação mantém a exigência normal de action.
+ */
+function isTestingKeyResponse(input: VerifyTurnstileInput, data: Record<string, unknown>): boolean {
+  if (input.allowMissingActionWithTestingKey !== true || !isTurnstileTestKey(input.secretKey)) return false
+  const metadata = data.metadata
+  return !!metadata && typeof metadata === 'object' && !Array.isArray(metadata) &&
+    (metadata as Record<string, unknown>).result_with_testing_key === true
+}
+
 /** Valida o token no Siteverify. Nunca lança exceção; nunca devolve token ou segredo. */
 export async function verifyTurnstileToken(input: VerifyTurnstileInput): Promise<TurnstileResult> {
   const token = typeof input.token === 'string' ? input.token.trim() : ''
@@ -177,7 +196,8 @@ export async function verifyTurnstileToken(input: VerifyTurnstileInput): Promise
     return { ok: false, reason: 'hostname_mismatch', codes: [] }
   }
   const action = typeof data.action === 'string' ? data.action : ''
-  const actionOk = action === input.expectedAction || (input.acceptedActionAliases ?? []).includes(action)
+  const actionOk = action === input.expectedAction || (input.acceptedActionAliases ?? []).includes(action) ||
+    (action === '' && isTestingKeyResponse(input, data))
   if (!actionOk) return { ok: false, reason: 'action_mismatch', codes: [] }
 
   // Defense in depth: Cloudflare already enforces the 300 s validity.
@@ -191,6 +211,18 @@ export async function verifyTurnstileToken(input: VerifyTurnstileInput): Promise
     }
   }
   return { ok: true, hostname, action: input.expectedAction, challengeTs }
+}
+
+/**
+ * Política de action para a validação do formulário de agendamento. Fora da homologação ativa (Production, outros
+ * Previews, desenvolvimento local) NADA é relaxado: a action do widget é exigida. Na homologação ativa, com as chaves
+ * oficiais de teste: aceita o alias "test" e a action ausente comprovada por metadata.result_with_testing_key.
+ */
+export function bookingActionPolicy(homologActive: boolean, config: TurnstileConfig):
+  Pick<VerifyTurnstileInput, 'acceptedActionAliases' | 'allowMissingActionWithTestingKey'> {
+  const testing = homologActive && config.status === 'ready' && config.usingTestKeys &&
+    isTurnstileTestKey(config.siteKey) && isTurnstileTestKey(config.secretKey)
+  return testing ? { acceptedActionAliases: ['test'], allowMissingActionWithTestingKey: true } : {}
 }
 
 /** Código público (sem detalhes internos) para cada falha. */
