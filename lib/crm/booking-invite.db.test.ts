@@ -86,7 +86,7 @@ describe('convite do Google Agenda ao lead (PostgreSQL descartável, Google simu
     const { path, body } = g.inserts[0]
     assert.equal(path, 'calendars/agenda-cassiellos/events?sendUpdates=all&conferenceDataVersion=1')
     assert.deepEqual(body.attendees, [{ email: email.toLowerCase() }])
-    assert.equal(body.summary, 'Diagnóstico estratégico • Odontologia | Cassiellos')
+    assert.equal(body.summary, 'Diagnóstico estratégico | Cassiellos')
     assert.equal(body.conferenceData.createRequest.conferenceSolutionKey.type, 'hangoutsMeet')
     assert.match(body.description, /\(horário de Brasília\)/)
     assert.match(body.description, /Duração: 30 minutos/)
