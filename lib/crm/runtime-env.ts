@@ -11,16 +11,21 @@
  * somente no projeto cassiellos-crm (ambiente Production). Qualquer outro caso — development, variável
  * ausente, valor inesperado — devolve null e as rotas do CRM continuam respondendo 404, como antes.
  */
+import { HOMOLOG_BRANCH, homologEnvFromProcess, homologMode } from './homolog-mode'
+
 export type CrmRuntime = 'preview' | 'production'
 
 type Env = Record<string, string | undefined>
 
 /** Leitura explícita das duas chaves (funciona em qualquer runtime do Next.js). */
 function defaultEnv(): Env {
-  return { VERCEL_ENV: process.env.VERCEL_ENV, CRM_PRODUCTION_ENABLED: process.env.CRM_PRODUCTION_ENABLED }
+  return { ...homologEnvFromProcess(), VERCEL_ENV: process.env.VERCEL_ENV, CRM_PRODUCTION_ENABLED: process.env.CRM_PRODUCTION_ENABLED }
 }
 
 export function crmRuntime(env: Env = defaultEnv()): CrmRuntime | null {
+  // Branch de homologação isolada (lib/crm/homolog-mode.ts): só liga com TODAS as condições do modo; do contrário o CRM
+  // inteiro responde 404 — a branch nunca cai no Preview normal (que usaria o banco do CRM) nem em Production.
+  if (env.VERCEL_GIT_COMMIT_REF === HOMOLOG_BRANCH) return homologMode(env).active ? 'preview' : null
   // Comparações exatas, como as demais chaves do CRM (ex.: PWA_PUSH_ENABLED === 'true').
   if (env.VERCEL_ENV === 'preview') return 'preview'
   if (env.VERCEL_ENV === 'production' && env.CRM_PRODUCTION_ENABLED === 'true') return 'production'
@@ -37,14 +42,18 @@ export function isCrmRuntimeEnabled(env: Env = defaultEnv()): boolean {
  * do ambiente na própria requisição e aplicam a MESMA política: `vercelEnv` (VERCEL_ENV) e
  * `crmProductionEnabled` (CRM_PRODUCTION_ENABLED). VERCEL_ENV=production sem a confirmação continua 404.
  */
-export type CrmRuntimeRequestEnv = { vercelEnv: string | undefined; crmProductionEnabled?: string | undefined }
+export type CrmRuntimeRequestEnv = {
+  vercelEnv: string | undefined; crmProductionEnabled?: string | undefined
+  /** Chaves do modo de homologação (lib/crm/homolog-mode.ts), repassadas junto com o ambiente da requisição. */
+  homologEnv?: Env
+}
 
 export function crmRuntimeRequestEnv(): CrmRuntimeRequestEnv {
-  return { vercelEnv: process.env.VERCEL_ENV, crmProductionEnabled: process.env.CRM_PRODUCTION_ENABLED }
+  return { vercelEnv: process.env.VERCEL_ENV, crmProductionEnabled: process.env.CRM_PRODUCTION_ENABLED, homologEnv: homologEnvFromProcess() }
 }
 
 export function isCrmRuntimeRequest(req: CrmRuntimeRequestEnv): boolean {
-  return crmRuntime({ VERCEL_ENV: req.vercelEnv, CRM_PRODUCTION_ENABLED: req.crmProductionEnabled }) !== null
+  return crmRuntime({ ...req.homologEnv, VERCEL_ENV: req.vercelEnv, CRM_PRODUCTION_ENABLED: req.crmProductionEnabled }) !== null
 }
 
 /** Rótulo gravado nos metadados de leads/eventos. Fora da Vercel mantém o rótulo histórico 'preview'. */

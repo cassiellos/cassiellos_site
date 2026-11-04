@@ -11,6 +11,7 @@ import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } fr
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
 import { crmRuntime, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { homologMode } from '@/lib/crm/homolog-mode'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Lead da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -41,6 +42,9 @@ function response(body: unknown, status: number) {
 
 /** Turnstile tokens are accepted only for the CRM host (local test keys also allow localhost). */
 function expectedHostnames(usingTestKeys: boolean): string[] {
+  // Homologação isolada: só os hosts confirmados pela Vercel (+ os hosts que o Siteverify de teste devolve).
+  const homolog = homologMode()
+  if (homolog.active) return [...homolog.hostnames, 'localhost', '127.0.0.1', 'example.com']
   const hosts = [new URL(CRM_CANONICAL_ORIGIN).hostname, ...(crmRuntime() === 'preview' ? [new URL(CRM_FORM_DESIGN_PREVIEW_ORIGIN).hostname] : [])]
   return usingTestKeys ? [...hosts, 'localhost', '127.0.0.1', 'example.com'] : hosts
 }
@@ -77,6 +81,8 @@ export async function POST(request: NextRequest) {
     expectedHostnames: hostnames,
     verifyTurnstile: ({ token, secretKey, remoteIp }) => verifyTurnstileToken({
       token, secretKey, remoteIp, expectedAction: TURNSTILE_BOOKING_ACTION, expectedHostnames: hostnames,
+      // Siteverify de teste devolve action "test": aceito só com as chaves de teste da homologação.
+      acceptedActionAliases: homologMode().active ? ['test'] : undefined,
     }),
     consumeIpQuota: async () => {
       const fingerprint = requestFingerprint(INTAKE_LIMIT, forwardedFor)

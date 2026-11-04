@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createHmac, pbkdf2, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
+import { crmDatabaseUrl } from '@/lib/crm/homolog-mode'
 
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
 type SessionPayload = { v: 1; sub: 'admin'; iat: number; exp: number; pwv: string }
@@ -12,7 +13,7 @@ export function isCrmAuthConfigured(): boolean {
   return Boolean(
     secret && /^[a-f0-9]{64,}$/i.test(secret) && secret.length % 2 === 0 &&
     passwordHash && /^(?:scrypt\$16384\$8\$1|pbkdf2_sha256\$600000)\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(passwordHash) &&
-    process.env.CRM_DATABASE_URL?.trim()
+    crmDatabaseUrl()?.trim()
   )
 }
 

@@ -7,6 +7,8 @@ import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/cr
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { isHomologActive } from '@/lib/crm/homolog-mode'
+import { simulatedBusyIntervals } from '@/lib/crm/homolog-calendar'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,7 +63,8 @@ export async function GET(request: NextRequest) {
   if (!allowed) return json({ error: 'TOO_MANY_REQUESTS' }, 429)
 
   try {
-    const busy = await readGoogleBusyIntervals(date)
+    // Homologação isolada: agenda simulada, sem Google (lib/crm/homolog-mode.ts).
+    const busy = isHomologActive() ? await simulatedBusyIntervals() : await readGoogleBusyIntervals(date)
     // Include reservations in progress in Neon: they may not yet appear in Google.
     const midnight = new Date(date + 'T00:00:00-03:00')
     const endOfDay = new Date(midnight.getTime() + 86_400_000)

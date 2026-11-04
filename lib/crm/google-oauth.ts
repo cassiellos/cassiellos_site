@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
+import { isHomologActive } from '@/lib/crm/homolog-mode'
 import { isAllowedOAuthRedirectHost } from '@/lib/crm/preview-origins'
 
 export const GOOGLE_OAUTH_SCOPES = [
@@ -26,6 +27,8 @@ function encryptionKey(): Buffer | null {
 }
 
 export function googleOAuthConfig(): GoogleOAuthConfig | null {
+  // Homologação isolada: o Google real NUNCA é usado (nem OAuth, nem agenda), mesmo que haja credenciais no ambiente.
+  if (isHomologActive()) return null
   const clientId = process.env.CRM_GOOGLE_CLIENT_ID?.trim()
   const clientSecret = process.env.CRM_GOOGLE_CLIENT_SECRET?.trim()
   const redirectUri = process.env.CRM_GOOGLE_REDIRECT_URI?.trim()

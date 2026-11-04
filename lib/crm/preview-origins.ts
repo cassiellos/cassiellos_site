@@ -1,3 +1,4 @@
+import { homologMode } from './homolog-mode'
 import { crmRuntime, type CrmRuntime } from './runtime-env'
 
 /**
@@ -22,6 +23,10 @@ export const CRM_PREVIEW_ORIGINS: readonly string[] = [CRM_CANONICAL_ORIGIN, CRM
 export const CRM_PRODUCTION_ORIGINS: readonly string[] = [CRM_CANONICAL_ORIGIN]
 
 export function crmAllowedOrigins(runtime: CrmRuntime | null = crmRuntime()): readonly string[] {
+  // Homologação isolada: SOMENTE as origens confirmadas pela Vercel neste deploy (VERCEL_BRANCH_URL / VERCEL_URL).
+  // Nenhuma origem do CRM real vale aqui e nenhuma URL é presumida (lib/crm/homolog-mode.ts).
+  const homolog = homologMode()
+  if (homolog.active) return homolog.origins
   return runtime === 'production' ? CRM_PRODUCTION_ORIGINS : CRM_PREVIEW_ORIGINS
 }
 

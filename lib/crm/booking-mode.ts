@@ -1,3 +1,5 @@
+import { isHomologActive } from './homolog-mode'
+
 /**
  * Classificação de leads reais x testes do Mini CRM Cassiellos.
  *
@@ -25,7 +27,8 @@ export const TEST_EMAIL_DOMAINS: readonly string[] = [
 /** TLDs reservados que nunca recebem e-mail real. */
 export const TEST_EMAIL_TLDS: readonly string[] = ['test', 'example', 'invalid', 'localhost']
 
-export function getCrmBookingMode(raw: string | undefined = process.env.CRM_BOOKING_MODE): CrmBookingMode {
+export function getCrmBookingMode(raw: string | undefined = isHomologActive() ? 'test' : process.env.CRM_BOOKING_MODE): CrmBookingMode {
+  // Homologação isolada: todo lead novo é de teste (lib/crm/homolog-mode.ts).
   return raw?.trim().toLowerCase() === 'live' ? 'live' : 'test'
 }
 

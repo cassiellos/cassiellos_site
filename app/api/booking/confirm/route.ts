@@ -7,6 +7,8 @@ import { getCrmPool } from '@/lib/crm/db'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { createGoogleBooking, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { isHomologActive } from '@/lib/crm/homolog-mode'
+import { simulatedBusyIntervals, simulatedCreateEvent } from '@/lib/crm/homolog-calendar'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
 import { readPushEnv } from '@/lib/crm/push/config'
@@ -72,8 +74,9 @@ export async function POST(request: NextRequest) {
     pool: getCrmPool(),
     verifySession: verifyBookingGrant,
     getForm: getBookingForm,
-    readBusy: readGoogleBusyIntervals,
-    createEvent: createGoogleBooking,
+    // Homologação isolada: agenda simulada, sem Google nem convite (lib/crm/homolog-mode.ts).
+    readBusy: isHomologActive() ? simulatedBusyIntervals : readGoogleBusyIntervals,
+    createEvent: isHomologActive() ? simulatedCreateEvent : createGoogleBooking,
     calendarId: process.env.CRM_GOOGLE_CALENDAR_ID?.trim() || 'primary',
     // Público: qualquer e-mail válido. Só restringe ao e-mail de homologação se CRM_BOOKING_RESTRICT_TO_ALLOWED_EMAIL=true.
     allowedEmail: access.allowedEmail, restrictToAllowedEmail: access.restrictedToAllowedEmail,

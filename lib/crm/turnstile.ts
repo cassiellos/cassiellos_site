@@ -6,10 +6,13 @@
  * - Tokens inválidos, expirados ou reutilizados são rejeitados (o Siteverify aceita
  *   cada token uma única vez; validade de 300 s).
  * - Falha fechada: sem configuração válida ou com o serviço indisponível, nada é gravado.
- * - Chaves oficiais de TESTE nunca são aceitas em ambiente publicado (Vercel).
+ * - Chaves oficiais de TESTE nunca são aceitas em ambiente publicado (Vercel), EXCETO no Preview da branch
+ *   `crm-homolog` com o modo de homologação ativo (lib/crm/homolog-mode.ts) — e nele SÓ elas são aceitas.
  * - Nenhum token, segredo, IP ou e-mail é devolvido nos resultados ou escrito em logs.
  * - Turnstile NÃO comprova a titularidade do e-mail (ver allowlist / confirmação futura).
  */
+
+import { isHomologActive } from './homolog-mode'
 
 export const TURNSTILE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 /** Action enviada pelo widget do formulário de diagnóstico e exigida no servidor. */
@@ -51,6 +54,12 @@ export function getTurnstileConfig(env: Env = process.env): TurnstileConfig {
   if (!shape.test(siteKey) || !shape.test(secretKey)) return { status: 'invalid' }
   const usingTestKeys = isTurnstileTestKey(siteKey) || isTurnstileTestKey(secretKey)
   const deployed = Boolean(env.VERCEL) || Boolean(env.VERCEL_ENV)
+  if (deployed && isHomologActive(env)) {
+    // Homologação isolada: exclusivamente as chaves oficiais de teste (nenhuma chave real).
+    return isTurnstileTestKey(siteKey) && isTurnstileTestKey(secretKey)
+      ? { status: 'ready', siteKey, secretKey, usingTestKeys: true }
+      : { status: 'invalid' }
+  }
   if (usingTestKeys && deployed) return { status: 'test_keys_in_deployment' }
   return { status: 'ready', siteKey, secretKey, usingTestKeys }
 }
@@ -79,6 +88,11 @@ export type VerifyTurnstileInput = {
   token: unknown
   secretKey: string
   expectedAction: string
+  /**
+   * Valores de `action` também aceitos (devolvidos como `expectedAction`). Só para as chaves de TESTE: o Siteverify de
+   * teste da Cloudflare responde com action "test" (documentação Turnstile > Testing), não com a action do widget.
+   */
+  acceptedActionAliases?: readonly string[]
   expectedHostnames: readonly string[]
   remoteIp?: string | null
   now?: Date
@@ -163,7 +177,8 @@ export async function verifyTurnstileToken(input: VerifyTurnstileInput): Promise
     return { ok: false, reason: 'hostname_mismatch', codes: [] }
   }
   const action = typeof data.action === 'string' ? data.action : ''
-  if (action !== input.expectedAction) return { ok: false, reason: 'action_mismatch', codes: [] }
+  const actionOk = action === input.expectedAction || (input.acceptedActionAliases ?? []).includes(action)
+  if (!actionOk) return { ok: false, reason: 'action_mismatch', codes: [] }
 
   // Defense in depth: Cloudflare already enforces the 300 s validity.
   const challengeTs = typeof data.challenge_ts === 'string' ? data.challenge_ts : null
@@ -175,7 +190,7 @@ export async function verifyTurnstileToken(input: VerifyTurnstileInput): Promise
       return { ok: false, reason: 'expired_or_reused', codes: ['stale-challenge'] }
     }
   }
-  return { ok: true, hostname, action, challengeTs }
+  return { ok: true, hostname, action: input.expectedAction, challengeTs }
 }
 
 /** Código público (sem detalhes internos) para cada falha. */

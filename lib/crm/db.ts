@@ -1,9 +1,11 @@
 import { Pool, type PoolClient, type PoolConfig } from 'pg'
+import { crmDatabaseUrl } from './homolog-mode'
 
 /**
  * Conexão PostgreSQL (Neon) do Mini CRM Cassiellos — uso exclusivo no servidor.
  *
- * - Lê a connection string de CRM_DATABASE_URL (nunca registrada nem retornada).
+ * - Lê a connection string de CRM_DATABASE_URL (nunca registrada nem retornada). No modo de homologação isolada
+ *   (lib/crm/homolog-mode.ts) lê SOMENTE CRM_HOMOLOG_DATABASE_URL e nunca CRM_DATABASE_URL.
  * - TLS sempre com validação de certificado (rejectUnauthorized: true).
  *   Parâmetros SSL da URL (sslmode, uselibpqcompat, ...) são removidos porque,
  *   no driver "pg", eles sobrescrevem a opção `ssl` e poderiam desativar a validação.
@@ -45,7 +47,7 @@ export class CrmDatabaseConfigError extends Error {
   }
 }
 
-export function isCrmDatabaseConfigured(rawUrl: string | undefined = process.env.CRM_DATABASE_URL): boolean {
+export function isCrmDatabaseConfigured(rawUrl: string | undefined = crmDatabaseUrl()): boolean {
   return Boolean(rawUrl?.trim())
 }
 
@@ -83,7 +85,7 @@ const globalForCrm = globalThis as typeof globalThis & { __cassiellosCrmPool?: P
 /** Pool reutilizado entre invocações da mesma instância (criado sob demanda). */
 export function getCrmPool(): Pool {
   if (!globalForCrm.__cassiellosCrmPool) {
-    const pool = new Pool(buildCrmPoolConfig(process.env.CRM_DATABASE_URL))
+    const pool = new Pool(buildCrmPoolConfig(crmDatabaseUrl()))
     pool.on('error', () => {
       // Erro em conexão ociosa (ex.: encerrada pelo servidor). Não derruba a função
       // e não registra detalhes para não expor dados de conexão.
