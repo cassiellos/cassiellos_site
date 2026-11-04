@@ -5,6 +5,7 @@ import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { adminActorFromSession } from '@/lib/crm/admin-actions'
 import { availabilityOverview, handleAvailabilityAction, type MeetingInterval } from '@/lib/crm/availability/admin'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,9 +14,9 @@ const headers = { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex
 function send(value: unknown, status = 200) { return NextResponse.json(value, { status, headers }) }
 function session(req: NextRequest) { return req.cookies.get(crmSessionCookieName())?.value }
 
-/** Seção DISPONIBILIDADE (somente Preview, sessão administrativa). */
+/** Seção DISPONIBILIDADE (somente nos ambientes do CRM, sessão administrativa). */
 export async function GET(req: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return send({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return send({ error: 'NOT_FOUND' }, 404)
   if (!verifyCrmSession(session(req))) return send({ error: 'UNAUTHORIZED' }, 401)
   try {
     const pool = getCrmPool()
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return send({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return send({ error: 'NOT_FOUND' }, 404)
   if (!verifyCrmSession(session(req))) return send({ error: 'UNAUTHORIZED' }, 401)
   if (!isCrmPreviewOrigin(req.headers.get('origin'))) return send({ error: 'FORBIDDEN' }, 403)
   if (!req.headers.get('content-type')?.startsWith('application/json')) return send({ error: 'INVALID_REQUEST' }, 400)

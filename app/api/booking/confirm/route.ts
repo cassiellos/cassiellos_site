@@ -15,6 +15,7 @@ import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/store'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { clientIpFrom, clientUserAgentFrom, dispatchScheduleToMeta, pgCapiStore, readCapiConfig } from '@/lib/crm/meta-capi'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -51,7 +52,7 @@ function json(data: unknown, status: number) {
  * in /api/booking/leads; the submission must also be marked as verified.
  */
 export async function POST(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return json({ error: 'NOT_FOUND' }, 404)
   const access = bookingAccessConfig()
   if (!access.enabled) return json({ error: 'BOOKING_DISABLED' }, 423)
   const origin = request.headers.get('origin')

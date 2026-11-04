@@ -344,16 +344,7 @@ describe('Web Push — fila, ordem, aparelhos e privacidade (PostgreSQL descart�
     const tables = JSON.stringify([await q('SELECT * FROM crm.push_notifications'), await q('SELECT * FROM crm.push_deliveries'), await q('SELECT * FROM crm.push_settings'),
       await listHistory(pool), await listDevices(pool)])
     assert.ok(payloads.includes('Beatriz'), 'notificação deve mostrar apenas o primeiro nome')
-    for (const secret of [NAME, PHONE, '99123-4567', 'Clínica Fictícia', MEET, 'meet.google.com', '@exemplo.com', 'Até R
-      assert.ok(!payloads.includes(secret), 'aviso contém ' + secret)
-      assert.ok(!tables.includes(secret), 'tabelas de push contêm ' + secret)
-      assert.ok(!logs.join('\n').includes(secret), 'log contém ' + secret)
-    }
-    for (const s of svc.sent) assert.deepEqual(Object.keys(s.payload).sort(), ['b', 'd', 'g', 'k', 'r', 't', 'u', 'v'])
-    assert.ok(!JSON.stringify(await listDevices(pool)).includes('fcm.googleapis.com/fcm/send/'), 'painel não expõe o endpoint completo')
-  })
-})
-, VAPID.privateKey, SECRET]) {
+    for (const secret of [NAME, PHONE, '99123-4567', 'Clínica Fictícia', MEET, 'meet.google.com', '@exemplo.com', 'Até R$', VAPID.privateKey, SECRET]) {
       assert.ok(!payloads.includes(secret), 'aviso contém ' + secret)
       assert.ok(!tables.includes(secret), 'tabelas de push contêm ' + secret)
       assert.ok(!logs.join('\n').includes(secret), 'log contém ' + secret)

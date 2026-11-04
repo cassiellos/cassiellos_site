@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { cassiellosCrmIconSvg, type CassiellosIconVariant } from '@/lib/crm/cassiellos-icon'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ variant: string }> },
 ) {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     return new Response(null, { status: 404 })
   }
   const { variant } = await context.params

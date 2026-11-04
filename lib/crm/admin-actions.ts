@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { isCrmRuntimeRequest } from './runtime-env'
 import type { PoolClient } from 'pg'
 import type { ConnectablePool } from './booking-reservation'
 import { bookingEventId, type GoogleCancelResult, type GoogleEventState } from './google-event-ops'
@@ -292,11 +293,12 @@ export async function resolveStuckReservation(deps: ReconcileDeps, input: {
 
 /* --------------------------------------------------------------- permissões */
 
-/** Regras comuns das rotas administrativas que alteram dados. */
+/** Regras comuns das rotas administrativas que alteram dados (ambiente: lib/crm/runtime-env.ts). */
 export function authorizeAdminMutation(input: {
-  vercelEnv: string | undefined; sessionValid: boolean; originAllowed: boolean; contentType: string | null
+  vercelEnv: string | undefined; crmProductionEnabled?: string | undefined
+  sessionValid: boolean; originAllowed: boolean; contentType: string | null
 }): { status: number; error: string } | null {
-  if (input.vercelEnv !== 'preview') return { status: 404, error: 'NOT_FOUND' }
+  if (!isCrmRuntimeRequest(input)) return { status: 404, error: 'NOT_FOUND' }
   if (!input.sessionValid) return { status: 401, error: 'UNAUTHORIZED' }
   if (!input.originAllowed) return { status: 403, error: 'FORBIDDEN' }
   if (!input.contentType?.startsWith('application/json')) return { status: 400, error: 'INVALID_REQUEST' }

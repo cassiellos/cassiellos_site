@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const dynamic = 'force-static'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-static'
  * não referenciam este manifesto e não viram aplicativo.
  */
 export function GET() {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') return new NextResponse(null, { status: 404 })
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') return new NextResponse(null, { status: 404 })
   return NextResponse.json({
     id: '/crm',
     name: 'CRM',

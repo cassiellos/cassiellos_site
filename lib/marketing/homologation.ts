@@ -1,12 +1,14 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { isCrmRuntimeEnabled } from '../crm/runtime-env'
 import { getMetaPixelConfig } from './meta'
 
 /**
- * Homologação do Meta Pixel (Lead/Schedule) no Pixel COMERCIAL — SOMENTE no Preview.
+ * Homologação do Meta Pixel (Lead/Schedule) no Pixel COMERCIAL — somente nos ambientes do CRM
+ * (Preview da branch do CRM ou Production do cassiellos-crm: lib/crm/runtime-env.ts).
  *
  * - Não há dataset separado: os eventos vão ao Pixel comercial (META_PIXEL_ID), marcados com
  *   `cassiellos_teste=homologacao`, e PODEM aparecer nas métricas agregadas do conjunto de dados.
- * - O modo só existe com META_HOMOLOGATION_ENABLED=true no Preview e o Pixel comercial ligado. Desligar a chave
+ * - O modo só existe com META_HOMOLOGATION_ENABLED=true num ambiente do CRM e o Pixel comercial ligado. Desligar a chave
  *   (e publicar) elimina o modo por completo.
  * - Liberação administrativa explícita (sessão do CRM) e temporária (no máximo 30 min), num cookie assinado e
  *   HttpOnly do navegador do administrador. Ninguém mais é afetado.
@@ -28,9 +30,9 @@ export function homologationCookieName(env: Record<string, string | undefined> =
 
 export type HomologationConfig = { pixelId: string }
 
-/** Disponível só no Preview, com a chave explícita e o Pixel COMERCIAL ligado (é nele que os eventos chegam). */
+/** Disponível só nos ambientes do CRM, com a chave explícita e o Pixel COMERCIAL ligado (é nele que os eventos chegam). */
 export function getHomologationConfig(env: Record<string, string | undefined> = process.env): HomologationConfig | null {
-  if (env.VERCEL_ENV?.trim() !== 'preview') return null
+  if (!isCrmRuntimeEnabled(env)) return null
   if (env.META_HOMOLOGATION_ENABLED?.trim() !== 'true') return null
   const pixel = getMetaPixelConfig(env)
   if (!pixel.enabled || !PIXEL_ID.test(pixel.pixelId)) return null

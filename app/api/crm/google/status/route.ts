@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { getGoogleOAuthConnectionStatus } from '@/lib/crm/google-oauth'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
 
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     return new NextResponse(null, { status: 404 })
   }
   if (!verifyCrmSession(request.cookies.get(crmSessionCookieName())?.value)) {

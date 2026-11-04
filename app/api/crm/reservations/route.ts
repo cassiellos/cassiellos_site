@@ -6,6 +6,7 @@ import {
 import { getCrmPool } from '@/lib/crm/db'
 import { readBookingEventState } from '@/lib/crm/google-calendar'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { crmRuntimeRequestEnv, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ function send(value: unknown, status = 200) { return NextResponse.json(value, { 
 
 /** Fase 3.4 — reservas em processamento há mais de 15 minutos (somente administradores). */
 export async function GET(req: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return send({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return send({ error: 'NOT_FOUND' }, 404)
   if (!verifyCrmSession(req.cookies.get(crmSessionCookieName())?.value)) return send({ error: 'UNAUTHORIZED' }, 401)
   try {
     return send({ ok: true, reservations: await listStuckReservations(getCrmPool()) })
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = req.cookies.get(crmSessionCookieName())?.value
   const denied = authorizeAdminMutation({
-    vercelEnv: process.env.VERCEL_ENV, sessionValid: verifyCrmSession(session),
+    ...crmRuntimeRequestEnv(), sessionValid: verifyCrmSession(session),
     originAllowed: isCrmPreviewOrigin(req.headers.get('origin')), contentType: req.headers.get('content-type'),
   })
   if (denied) return send({ error: denied.error }, denied.status)

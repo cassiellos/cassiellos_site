@@ -3,6 +3,7 @@ import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { handleMarketingConsentChange } from '@/lib/crm/booking-consent-request'
 import { getCrmPool } from '@/lib/crm/db'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,7 +25,7 @@ function json(data: unknown, status: number) {
  * Não ativa o Meta Pixel nem envia nada à Meta.
  */
 export async function POST(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return json({ error: 'NOT_FOUND' }, 404)
   if (!isCrmPreviewOrigin(request.headers.get('origin'))) return json({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return json({ error: 'INVALID_REQUEST' }, 400)

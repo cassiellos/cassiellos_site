@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { getCrmPool, withCrmReadOnlyTransaction } from '@/lib/crm/db'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,7 @@ type Row = {id:string;full_name:string;company:string|null;segment:string|null;s
 function auth(req:NextRequest){return verifyCrmSession(req.cookies.get(crmSessionCookieName())?.value)}
 function reply(value:unknown,status=200){return NextResponse.json(value,{status,headers})}
 export async function GET(req:NextRequest){
- if(process.env.VERCEL_ENV!=='preview')return reply({error:'NOT_FOUND'},404)
+ if(!isCrmRuntimeEnabled())return reply({error:'NOT_FOUND'},404)
  if(!auth(req))return reply({error:'UNAUTHORIZED'},401)
  try{
   const rows=await withCrmReadOnlyTransaction(async client=>(await client.query<Row>(
@@ -32,7 +33,7 @@ export async function GET(req:NextRequest){
  }catch{return reply({error:'FUNNEL_UNAVAILABLE'},503)}
 }
 export async function PATCH(req:NextRequest){
- if(process.env.VERCEL_ENV!=='preview')return reply({error:'NOT_FOUND'},404)
+ if(!isCrmRuntimeEnabled())return reply({error:'NOT_FOUND'},404)
  if(!auth(req))return reply({error:'UNAUTHORIZED'},401)
  if(!isCrmPreviewOrigin(req.headers.get('origin')))
    return reply({error:'FORBIDDEN'},403)

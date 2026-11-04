@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { readNeonUsage } from '@/lib/crm/neon-usage-server'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,8 +15,8 @@ const headers = {
 }
 
 export async function GET(request: NextRequest) {
-  // Never enable the administrative Neon API integration on the main production branch.
-  if (process.env.VERCEL_ENV !== 'preview') {
+  // Only in the CRM environments (lib/crm/runtime-env.ts); never on the institutional site's production (main).
+  if (!isCrmRuntimeEnabled()) {
     return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404, headers })
   }
   const session = request.cookies.get(crmSessionCookieName())?.value

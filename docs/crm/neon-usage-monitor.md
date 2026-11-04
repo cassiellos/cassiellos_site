@@ -3,7 +3,11 @@
 ## Escopo
 - Local: sidebar de /crm, acima de Encerrar sessão, acesso administrativo.
 - Branch Git: feature/mini-crm-shark-scale. Nunca aplicar a main por esta tarefa.
-- API: GET /api/crm/neon-usage autenticado, somente VERCEL_ENV=preview.
+- API: GET /api/crm/neon-usage autenticado, somente nos ambientes do CRM (lib/crm/runtime-env.ts):
+  Preview da branch do CRM ou Production do projeto cassiellos-crm (CRM_PRODUCTION_ENABLED=true).
+- Production: definir `NEON_USAGE_BRANCH_ID` com o ID da branch usada pelo CRM
+  (crm-production-live-2026-11-04 = `br-polished-art-b61qd87e`). Sem ela, o monitor fica "não configurado"
+  em Production (nunca mede a branch preview por engano). No Preview o padrão antigo continua valendo.
 - Sem novas tabelas/migrações/Asaas; sem chave mostra Conexão pendente, não um uso inventado.
 
 ## Ativação humana necessária

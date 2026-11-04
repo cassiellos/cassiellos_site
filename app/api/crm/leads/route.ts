@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { withCrmReadOnlyTransaction } from '@/lib/crm/db'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ type RealLeadRow = {
 }
 
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') {
+  if (!isCrmRuntimeEnabled()) {
     return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404, headers })
   }
   if (!verifyCrmSession(request.cookies.get(crmSessionCookieName())?.value)) {

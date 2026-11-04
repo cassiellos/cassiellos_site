@@ -184,19 +184,37 @@ export async function saveGoogleRefreshToken(token: string, scopes: string, expi
   )
 }
 
-export async function getGoogleRefreshToken(): Promise<string | null> {
-  if (!googleOAuthConfig()) return null
+type StoredRefreshToken = { token: string | null; reconnectRequired: boolean }
+
+/**
+ * Credencial gravada que NÃO abre com a CRM_GOOGLE_ENCRYPTION_KEY atual (ex.: banco copiado de outro ambiente,
+ * cifrado com a chave antiga) é tratada como desconectada: nada é migrado, apagado ou registrado em log.
+ * A reconexão pelo titular (/api/crm/google/oauth/start) grava uma credencial nova por cima (ON CONFLICT).
+ */
+async function readStoredRefreshToken(): Promise<StoredRefreshToken> {
+  if (!googleOAuthConfig()) return { token: null, reconnectRequired: false }
   const result = await getCrmPool().query<{ encrypted_refresh_token: string; token_expires_at: Date | null }>(
     'SELECT encrypted_refresh_token, token_expires_at FROM crm.integration_credentials WHERE provider = $1',
     [OAUTH_PROVIDER],
   )
-  if (!result.rows.length) return null
+  if (!result.rows.length) return { token: null, reconnectRequired: false }
   const row = result.rows[0]
-  if (row.token_expires_at && new Date(row.token_expires_at).getTime() <= Date.now()) return null
-  return decrypt(row.encrypted_refresh_token)
+  if (row.token_expires_at && new Date(row.token_expires_at).getTime() <= Date.now()) {
+    return { token: null, reconnectRequired: true }
+  }
+  try {
+    return { token: decrypt(row.encrypted_refresh_token), reconnectRequired: false }
+  } catch {
+    return { token: null, reconnectRequired: true }
+  }
 }
 
-export async function getGoogleOAuthConnectionStatus(): Promise<{ configured: boolean; connected: boolean }> {
-  if (!googleOAuthConfig()) return { configured: false, connected: false }
-  return { configured: true, connected: Boolean(await getGoogleRefreshToken()) }
+export async function getGoogleRefreshToken(): Promise<string | null> {
+  return (await readStoredRefreshToken()).token
+}
+
+export async function getGoogleOAuthConnectionStatus(): Promise<{ configured: boolean; connected: boolean; reconnectRequired: boolean }> {
+  if (!googleOAuthConfig()) return { configured: false, connected: false, reconnectRequired: false }
+  const stored = await readStoredRefreshToken()
+  return { configured: true, connected: Boolean(stored.token), reconnectRequired: stored.reconnectRequired }
 }

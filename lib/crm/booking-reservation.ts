@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg'
+import { crmEnvironmentLabel } from './runtime-env'
 
 /**
  * Reserva e confirmação de horários do agendamento público (Mini CRM Cassiellos).
@@ -336,7 +337,7 @@ export async function finalizeBookingReservation(
          (lead_id, appointment_id, activity_kind, performed_by, details)
          VALUES ($1, $2, 'meeting_scheduled', 'public_booking', $3::jsonb)`,
       [input.leadId, appointmentId, JSON.stringify({
-        formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: 'preview', isTest,
+        formSlug: input.formSlug, bookingRequestId: input.bookingId, environment: crmEnvironmentLabel(), isTest,
       })],
     )
     // Internal event; the server Schedule (lib/crm/meta-capi.ts, OFF unless META_CAPI_MODE) reads it after the 201.
@@ -353,7 +354,7 @@ export async function finalizeBookingReservation(
       [input.leadId, appointmentId,
         scheduleEventId,
         input.pageOrigin + '/agendar/' + encodeURIComponent(input.formSlug),
-        JSON.stringify({ formSlug: input.formSlug, environment: 'preview', isTest })],
+        JSON.stringify({ formSlug: input.formSlug, environment: crmEnvironmentLabel(), isTest })],
     )
     await client.query('COMMIT')
     committed = true

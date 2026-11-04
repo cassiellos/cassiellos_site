@@ -27,7 +27,7 @@ const when = (iso: string | null) => iso ? fmt.format(new Date(iso)) : '—'
 const KIND: Record<string, string> = { lead_created: 'Novo lead', meeting_confirmed: 'Novo agendamento', meeting_whatsapp_ready: 'Enviar WhatsApp', test: 'Teste' }
 const DEVICE_STATUS: Record<string, string> = { active: 'Ativo', revoked: 'Revogado', expired: 'Expirado', rejected: 'Precisa autorizar de novo' }
 const ISSUES: Record<string, string> = {
-  NOT_PREVIEW: 'fora do Preview', SWITCH_OFF: 'avisos automáticos desligados (PWA_PUSH_ENABLED)',
+  ENV_NOT_SUPPORTED: 'ambiente não autorizado para o CRM', SWITCH_OFF: 'avisos automáticos desligados (PWA_PUSH_ENABLED)',
   VAPID_MISSING: 'chaves VAPID ainda não configuradas na Vercel', VAPID_INVALID: 'chaves VAPID inválidas', SUBJECT_INVALID: 'VAPID_SUBJECT inválido',
 }
 const ERRORS: Record<string, string> = {
@@ -199,7 +199,7 @@ export default function NotificationsPanel() {
         <div><span>Aplicativo</span><strong>{device.standalone ? 'Instalado (tela inicial)' : 'Navegador'}</strong></div>
         <div><span>Último teste</span><strong>{when(status.settings.lastTestAt)}</strong></div>
       </div>
-      {env.issues.filter(i => i !== 'NOT_PREVIEW' || !env.vapidReady).length > 0 &&
+      {env.issues.filter(i => i !== 'ENV_NOT_SUPPORTED' || !env.vapidReady).length > 0 &&
         <div className="crm-info-box">Pendências: {env.issues.map(i => ISSUES[i] || i).join(' · ')}.</div>}
       {status.migrationPending && <div className="crm-info-box">Dispositivos, fila e histórico dependem da migração 0010, aplicada no Neon Preview só com autorização.</div>}
       {device.ios && !device.standalone && <div className="crm-info-box crm-push-ios">

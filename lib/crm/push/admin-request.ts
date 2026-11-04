@@ -1,4 +1,5 @@
 import type { HandlerResponse } from '../booking-intake-request'
+import { isCrmRuntimeRequest } from '../runtime-env'
 import {
   DEFAULT_WHATSAPP_TEMPLATE, WHATSAPP_TEMPLATE_LIMIT, WHATSAPP_VARIABLES, renderWhatsappMessage, validateWhatsappTemplate,
 } from '../whatsapp-message'
@@ -10,7 +11,7 @@ import {
 
 /**
  * API do painel "Notificações" (sem dependências de framework). Mesmas regras das demais rotas do CRM:
- * somente Preview, sessão administrativa válida; alterações exigem origem do próprio CRM + JSON (CSRF).
+ * somente nos ambientes do CRM (lib/crm/runtime-env.ts), sessão administrativa válida; alterações exigem origem do próprio CRM + JSON (CSRF).
  * Visitantes nunca conseguem inscrever aparelhos: não há rota pública de inscrição.
  * A chave VAPID privada e os endpoints completos dos aparelhos nunca saem do servidor.
  */
@@ -18,6 +19,8 @@ import {
 export type PushAdminRequest = {
   method: 'GET' | 'POST'
   vercelEnv: string | undefined
+  /** CRM_PRODUCTION_ENABLED (lib/crm/runtime-env.ts). */
+  crmProductionEnabled?: string | undefined
   sessionValid: boolean
   originAllowed: boolean
   contentType: string | null
@@ -40,7 +43,7 @@ function sampleMeeting() {
 }
 
 export async function handlePushAdmin(deps: PushAdminDeps, req: PushAdminRequest): Promise<HandlerResponse> {
-  if (req.vercelEnv !== 'preview') return bad('NOT_FOUND', 404)
+  if (!isCrmRuntimeRequest(req)) return bad('NOT_FOUND', 404)
   if (!req.sessionValid) return bad('UNAUTHORIZED', 401)
   if (req.method === 'GET') return status(deps)
   if (!req.originAllowed) return bad('FORBIDDEN', 403)

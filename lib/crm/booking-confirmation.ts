@@ -10,6 +10,7 @@ import {
 import type { HandlerResponse } from './booking-intake-request'
 import type { BookingEventInput } from './booking-event'
 import { bookingEventTitle, isGoogleMeetUrl, isInvitableEmail } from './booking-event'
+import { crmEnvironmentLabel } from './runtime-env'
 
 /** Grade de horários: 30 min (decisão D3). Como o fuso é -03:00, a grade local coincide com a UTC. */
 const SLOT_GRID_MS = 30 * 60_000
@@ -225,7 +226,7 @@ export async function confirmBookingRequest(
         // conhecidos aqui: invitationSent continua false de propósito.
         invitationRequested: event.invitationRequested === true,
         invitationSent: false,
-        environment: 'preview',
+        environment: crmEnvironmentLabel(),
         // Browser "Schedule" only after the backend confirmed a REAL lead's meeting.
         ...(saved.isTest === false
           ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId } } }

@@ -6,6 +6,7 @@ import { CRM_BOOKING_TIME_ZONE, isValidBookingDate } from '@/lib/crm/booking-slo
 import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/crm/availability/engine'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,8 +30,8 @@ async function allowAvailabilityLookup(request: NextRequest): Promise<boolean> {
 }
 
 export async function GET(request: NextRequest) {
-  // This endpoint can be made public only in the isolated Preview deployment.
-  if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
+  // Public only in the CRM environments (lib/crm/runtime-env.ts).
+  if (!isCrmRuntimeEnabled()) return json({ error: 'NOT_FOUND' }, 404)
 
   const form = request.nextUrl.searchParams.get('form') ?? ''
   const date = request.nextUrl.searchParams.get('date') ?? ''

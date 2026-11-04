@@ -6,17 +6,19 @@ import {
   googleAuthorizationUrl,
   googleOAuthConfig,
 } from '@/lib/crm/google-oauth'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
 
 /**
- * Somente admin autenticado e apenas no hostname estável do Preview.
+ * Somente admin autenticado, num ambiente do CRM (lib/crm/runtime-env.ts), e apenas no mesmo host do
+ * CRM_GOOGLE_REDIRECT_URI (em Production: somente crm.cassiellos.com.br).
  * Uma autorização por vez por navegador; expira em 10 minutos.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     return new NextResponse(null, { status: 404 })
   }
   const session = request.cookies.get(crmSessionCookieName())?.value
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
   )
   if (new URL(request.url).origin !== new URL(config.redirectUri).origin) {
     return NextResponse.json(
-      { error: 'USE_STABLE_PREVIEW_BRANCH_HOSTNAME' },
+      { error: 'USE_CONFIGURED_REDIRECT_HOSTNAME' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     )
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { withCrmReadOnlyTransaction } from '@/lib/crm/db'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ const headers = {
 }
 
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404, headers })
+  if (!isCrmRuntimeEnabled()) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404, headers })
   if (!verifyCrmSession(request.cookies.get(crmSessionCookieName())?.value))
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401, headers })
 

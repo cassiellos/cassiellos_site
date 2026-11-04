@@ -1,3 +1,4 @@
+import { crmRuntime } from '../runtime-env'
 import { validVapidKeys, type VapidKeys } from './web-push'
 
 /**
@@ -8,15 +9,17 @@ import { validVapidKeys, type VapidKeys } from './web-push'
  * - VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY: par P-256 em base64url. A pública vai ao navegador para a inscrição;
  *   a privada nunca sai do servidor (variável Sensitive na Vercel).
  * - VAPID_SUBJECT: contato do servidor para os serviços de push (padrão: o endereço do CRM).
- * - Somente Preview (VERCEL_ENV=preview), como todo o Mini CRM nesta etapa.
+ * - Ambientes suportados (lib/crm/runtime-env.ts): Preview da branch do CRM e Production do projeto cassiellos-crm
+ *   (VERCEL_ENV=production + CRM_PRODUCTION_ENABLED=true). Em qualquer outro ambiente: ENV_NOT_SUPPORTED, nenhuma
+ *   inscrição nem envio. Cada projeto Vercel usa o SEU par VAPID (as variáveis são por projeto/ambiente).
  */
 
-export type PushEnvIssue = 'NOT_PREVIEW' | 'SWITCH_OFF' | 'VAPID_MISSING' | 'VAPID_INVALID' | 'SUBJECT_INVALID'
+export type PushEnvIssue = 'ENV_NOT_SUPPORTED' | 'SWITCH_OFF' | 'VAPID_MISSING' | 'VAPID_INVALID' | 'SUBJECT_INVALID'
 
 export type PushEnvStatus = {
   /** PWA_PUSH_ENABLED === 'true' */
   switchOn: boolean
-  /** VAPID válido no Preview: inscrever aparelhos e enviar o teste. */
+  /** Ambiente suportado + VAPID válido: inscrever aparelhos e enviar o teste. */
   vapidReady: boolean
   /** vapidReady + chave geral ligada: avisos automáticos de leads e reuniões. */
   ready: boolean
@@ -33,7 +36,7 @@ export function readPushEnv(env: Env = process.env): PushEnvStatus & { vapid: { 
   const switchOn = env.PWA_PUSH_ENABLED === 'true'
   const keys = { publicKey: env.VAPID_PUBLIC_KEY?.trim() || '', privateKey: env.VAPID_PRIVATE_KEY?.trim() || '' }
   const subject = env.VAPID_SUBJECT?.trim() || DEFAULT_VAPID_SUBJECT
-  if (env.VERCEL_ENV !== 'preview') issues.push('NOT_PREVIEW')
+  if (!crmRuntime(env)) issues.push('ENV_NOT_SUPPORTED')
   if (!switchOn) issues.push('SWITCH_OFF')
   if (!keys.publicKey || !keys.privateKey) issues.push('VAPID_MISSING')
   else if (!validVapidKeys(keys)) issues.push('VAPID_INVALID')

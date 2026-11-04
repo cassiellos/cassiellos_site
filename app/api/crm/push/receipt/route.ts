@@ -3,6 +3,7 @@ import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { validReceipt } from '@/lib/crm/push/messages'
 import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { recordReceipt } from '@/lib/crm/push/store'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req: NextRequest) {
   const none = new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store' } })
-  if (process.env.VERCEL_ENV !== 'preview') return new NextResponse(null, { status: 404 })
+  if (!isCrmRuntimeEnabled()) return new NextResponse(null, { status: 404 })
   if (!isCrmPreviewOrigin(req.headers.get('origin'))) return new NextResponse(null, { status: 403 })
   let data: { d?: unknown; r?: unknown; e?: unknown }
   try {

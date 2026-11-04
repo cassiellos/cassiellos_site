@@ -7,6 +7,7 @@ import {
 } from './turnstile'
 import { sanitizeAttribution } from './attribution'
 import { validateBrazilianPhone, validateEmailAddress } from './contact-validation'
+import { crmEnvironmentLabel } from './runtime-env'
 
 /**
  * Cadastro do formulário público (POST /api/booking/leads), sem dependências de
@@ -160,7 +161,7 @@ export async function handleLeadIntake(
         bookingToken: deps.createGrant({
           leadId: result.leadId, submissionId: result.submissionId, formSlug: form.slug,
         }),
-        reused: result.reused, environment: 'preview',
+        reused: result.reused, environment: crmEnvironmentLabel(),
         ...(leadEvent ? { tracking: leadEvent } : {}),
       },
     }

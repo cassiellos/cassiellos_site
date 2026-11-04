@@ -51,3 +51,28 @@ describe('isAllowedOAuthRedirectHost', () => {
     }
   })
 })
+
+describe('origens por ambiente (Preview x Production)', () => {
+  it('Preview mantém exatamente a lista original', () => {
+    for (const origin of [CRM_CANONICAL_ORIGIN, CRM_LEGACY_PREVIEW_ORIGIN, CRM_FORM_DESIGN_PREVIEW_ORIGIN]) {
+      assert.equal(isCrmPreviewOrigin(origin, 'preview'), true, origin)
+    }
+    assert.equal(isCrmPreviewOrigin('https://cassiellos-crm.vercel.app', 'preview'), false)
+  })
+
+  it('Production aceita somente o domínio definitivo (nenhum alias *.vercel.app)', () => {
+    assert.equal(isCrmPreviewOrigin(CRM_CANONICAL_ORIGIN, 'production'), true)
+    for (const origin of [CRM_LEGACY_PREVIEW_ORIGIN, CRM_FORM_DESIGN_PREVIEW_ORIGIN, 'https://cassiellos-crm.vercel.app',
+      'https://cassiellos-crm-cassiellos-projects.vercel.app', 'http://crm.cassiellos.com.br', 'https://crm.cassiellos.com.br/', null]) {
+      assert.equal(isCrmPreviewOrigin(origin, 'production'), false, String(origin))
+    }
+  })
+
+  it('callback OAuth em Production: somente crm.cassiellos.com.br', () => {
+    assert.equal(isAllowedOAuthRedirectHost('crm.cassiellos.com.br', 'production'), true)
+    for (const host of ['cassiellos-crm.vercel.app', new URL(CRM_LEGACY_PREVIEW_ORIGIN).hostname, 'cassiellos.com.br']) {
+      assert.equal(isAllowedOAuthRedirectHost(host, 'production'), false, host)
+    }
+    assert.equal(isAllowedOAuthRedirectHost(new URL(CRM_LEGACY_PREVIEW_ORIGIN).hostname, 'preview'), true)
+  })
+})

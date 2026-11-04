@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg'
 import { CRM_POLICY_VERSION } from './policy-version'
 import { META_CLICK_ID_PARAM, leadTrackingEventId, type MarketingConsentInput } from '../marketing/meta'
 import { applyMarketingConsentChange } from './marketing-consent'
+import { crmEnvironmentLabel } from './runtime-env'
 
 /**
  * Gravação dos envios do formulário público de diagnóstico (Mini CRM Cassiellos).
@@ -234,14 +235,14 @@ export async function saveLeadSubmission(
          VALUES ($1, $2, 'Lead', 'server', $3, 'website', $4::jsonb)
          ON CONFLICT (event_id) DO NOTHING`,
         [leadId, leadEventId, input.eventSourceUrl ?? null, JSON.stringify({
-          formSlug: input.formSlug, environment: 'preview', isTest,
+          formSlug: input.formSlug, environment: crmEnvironmentLabel(), isTest,
           marketingConsent: input.marketing?.consent === true,
         })],
       )
     }
     const baseDetails = {
       submissionId, formSlug: input.formSlug, formVersion: input.formVersion,
-      environment: 'preview', bookingMode: input.bookingMode, isTest,
+      environment: crmEnvironmentLabel(), bookingMode: input.bookingMode, isTest,
       requestBasis: 'pre_contractual_request', policyVersion: LEAD_POLICY_VERSION,
     }
     await client.query(

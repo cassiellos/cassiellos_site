@@ -5,6 +5,7 @@ import { adminActorFromSession } from '@/lib/crm/admin-actions'
 import {
   HOMOLOGATION_MAX_MINUTES, activeHomologation, getHomologationConfig, homologationCookieName, issueHomologationGrant,
 } from '@/lib/marketing/homologation'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,7 @@ function audit(event: string, details: Record<string, unknown>) {
 }
 
 function guard(req: NextRequest, mutating: boolean): NextResponse | null {
-  if (process.env.VERCEL_ENV !== 'preview') return send({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return send({ error: 'NOT_FOUND' }, 404)
   if (!verifyCrmSession(session(req))) return send({ error: 'UNAUTHORIZED' }, 401)
   if (mutating && !isCrmPreviewOrigin(req.headers.get('origin'))) return send({ error: 'FORBIDDEN' }, 403)
   return null

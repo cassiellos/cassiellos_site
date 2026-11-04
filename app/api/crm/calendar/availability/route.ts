@@ -5,6 +5,7 @@ import { getCrmPool } from '@/lib/crm/db'
 import { isOpenDate, listAvailableSlots, type AvailabilityRules } from '@/lib/crm/availability/engine'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { isGoogleCalendarConfigured, readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,7 @@ function json(body: unknown, status: number) {
  * de captação estiver pronta. Nenhum dado privado do Google é retornado.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     return json({ error: 'NOT_FOUND' }, 404)
   }
   const session = request.cookies.get(crmSessionCookieName())?.value

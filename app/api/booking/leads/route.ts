@@ -10,6 +10,7 @@ import { INTAKE_LIMIT, consumeRequestQuota, requestFingerprint } from '@/lib/crm
 import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
+import { crmRuntime, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Lead da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -40,17 +41,17 @@ function response(body: unknown, status: number) {
 
 /** Turnstile tokens are accepted only for the CRM host (local test keys also allow localhost). */
 function expectedHostnames(usingTestKeys: boolean): string[] {
-  const hosts = [new URL(CRM_CANONICAL_ORIGIN).hostname, ...(process.env.VERCEL_ENV === 'preview' ? [new URL(CRM_FORM_DESIGN_PREVIEW_ORIGIN).hostname] : [])]
+  const hosts = [new URL(CRM_CANONICAL_ORIGIN).hostname, ...(crmRuntime() === 'preview' ? [new URL(CRM_FORM_DESIGN_PREVIEW_ORIGIN).hostname] : [])]
   return usingTestKeys ? [...hosts, 'localhost', '127.0.0.1', 'example.com'] : hosts
 }
 
 export async function POST(request: NextRequest) {
-  // Preview only: no production intake before integration review and approval.
-  if (process.env.VERCEL_ENV !== 'preview') return response({ error: 'NOT_FOUND' }, 404)
+  // CRM environments only (lib/crm/runtime-env.ts): Preview of the CRM branch or Production of cassiellos-crm.
+  if (!isCrmRuntimeEnabled()) return response({ error: 'NOT_FOUND' }, 404)
   const origin = request.headers.get('origin')
   // Vercel may use the deployment hostname internally even when the browser uses
   // the stable Git branch alias or crm.cassiellos.com.br. Check against the allowlisted
-  // Preview origins, not NextRequest.nextUrl.origin, without weakening the same-origin requirement.
+  // origins of the current environment, not NextRequest.nextUrl.origin, without weakening the same-origin requirement.
   if (!isCrmPreviewOrigin(origin)) return response({ error: 'FORBIDDEN' }, 403)
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return response({ error: 'INVALID_CONTENT_TYPE' }, 415)

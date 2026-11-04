@@ -4,6 +4,7 @@ import { adminActorFromSession } from '@/lib/crm/admin-actions'
 import { getCrmPool, isCrmDatabaseConfigured } from '@/lib/crm/db'
 import { handleFinanceAdmin } from '@/lib/crm/finance/admin-request'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
+import { crmRuntimeRequestEnv, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,11 +21,11 @@ const headers = { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex
 async function handle(req: NextRequest, method: 'GET' | 'POST') {
   const session = req.cookies.get(crmSessionCookieName())?.value
   const sessionValid = verifyCrmSession(session)
-  if (process.env.VERCEL_ENV === 'preview' && sessionValid && !isCrmDatabaseConfigured()) {
+  if (isCrmRuntimeEnabled() && sessionValid && !isCrmDatabaseConfigured()) {
     return NextResponse.json({ error: 'DATABASE_NOT_CONFIGURED' }, { status: 503, headers })
   }
   const result = await handleFinanceAdmin({ pool: { connect: () => getCrmPool().connect() } }, {
-    method, vercelEnv: process.env.VERCEL_ENV, sessionValid,
+    method, ...crmRuntimeRequestEnv(), sessionValid,
     originAllowed: isCrmPreviewOrigin(req.headers.get('origin')), contentType: req.headers.get('content-type'),
     rawBody: method === 'POST' ? await req.text().catch(() => '') : undefined,
     searchParams: req.nextUrl.searchParams,

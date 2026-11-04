@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { projectUsageFromNeon, shouldRefetch, type NeonUsageResult, type NeonUsageSnapshot } from './neon-usage'
+import { crmRuntime } from './runtime-env'
 
 const NEON_API = 'https://console.neon.tech/api/v2'
 const PROJECT_DEFAULT = 'rough-cloud-13370615'
@@ -32,7 +33,13 @@ export async function readNeonUsage(opts: { manual?: boolean } = {}): Promise<Ne
   const key = process.env.NEON_USAGE_API_KEY?.trim()
   if (!key) return { status: 'not_configured' }
   const projectId = process.env.NEON_USAGE_PROJECT_ID?.trim() || PROJECT_DEFAULT
-  const previewId = process.env.NEON_USAGE_PREVIEW_BRANCH_ID?.trim() || PREVIEW_BRANCH_DEFAULT
+  // Branch monitorada. Production: SOMENTE NEON_USAGE_BRANCH_ID (sem padrão e sem o nome antigo, que poderia vir
+  // copiado do Preview) — sem ela o monitor fica "não configurado" em vez de medir a branch errada.
+  // Demais ambientes: comportamento anterior (NEON_USAGE_PREVIEW_BRANCH_ID ou a branch preview padrão).
+  const previewId = crmRuntime() === 'production'
+    ? process.env.NEON_USAGE_BRANCH_ID?.trim() || ''
+    : process.env.NEON_USAGE_BRANCH_ID?.trim() || process.env.NEON_USAGE_PREVIEW_BRANCH_ID?.trim() || PREVIEW_BRANCH_DEFAULT
+  if (!previewId) return { status: 'not_configured' }
   if (!/^[-a-z0-9]{5,80}$/.test(projectId) || !/^br-[-a-z0-9]{5,80}$/.test(previewId)) {
     return { status: 'unavailable' }
   }

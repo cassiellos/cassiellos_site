@@ -5,14 +5,15 @@ import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
 import { adminActorFromSession,cancelMeeting,markNoShow,setLeadClassification } from '@/lib/crm/admin-actions'
 import { cancelBookingEvent } from '@/lib/crm/google-calendar'
 import { changeMarketingConsent,readMarketingConsentState } from '@/lib/crm/marketing-consent'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
 function send(value:unknown,status=200){return NextResponse.json(value,{status,headers})}
-function allowed(req:NextRequest){return process.env.VERCEL_ENV==='preview'&&verifyCrmSession(req.cookies.get(crmSessionCookieName())?.value)}
+function allowed(req:NextRequest){return isCrmRuntimeEnabled()&&verifyCrmSession(req.cookies.get(crmSessionCookieName())?.value)}
 export async function GET(req:NextRequest){
- if(process.env.VERCEL_ENV!=='preview')return send({error:'NOT_FOUND'},404)
+ if(!isCrmRuntimeEnabled())return send({error:'NOT_FOUND'},404)
  if(!allowed(req))return send({error:'UNAUTHORIZED'},401)
  const id=req.nextUrl.searchParams.get('leadId')
  if(!id||!uuid.test(id))return send({error:'INVALID_LEAD'},400)
@@ -36,7 +37,7 @@ export async function GET(req:NextRequest){
  }catch{return send({error:'HISTORY_UNAVAILABLE'},503)}
 }
 export async function POST(req:NextRequest){
- if(process.env.VERCEL_ENV!=='preview')return send({error:'NOT_FOUND'},404)
+ if(!isCrmRuntimeEnabled())return send({error:'NOT_FOUND'},404)
  if(!allowed(req))return send({error:'UNAUTHORIZED'},401)
  if(!isCrmPreviewOrigin(req.headers.get('origin')))return send({error:'FORBIDDEN'},403)
  if(!req.headers.get('content-type')?.startsWith('application/json'))return send({error:'INVALID_REQUEST'},400)

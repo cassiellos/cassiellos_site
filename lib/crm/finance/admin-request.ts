@@ -1,4 +1,5 @@
 import type { HandlerResponse } from '../booking-intake-request'
+import { isCrmRuntimeRequest } from '../runtime-env'
 import { isCategoryOf, isValidDate, isValidMonth, parseMoneyToCents, todayInBrazil } from './model'
 import {
   FinanceMigrationPendingError, FinanceRuleError, cancelEntry, createClient, createSource, exportFinanceCsv, loadFinanceOverview,
@@ -11,7 +12,7 @@ import {
 
 /**
  * API do FINANCEIRO (sem dependências de framework, testável). Mesmas regras das demais rotas administrativas do CRM:
- * somente Preview; sessão administrativa válida; alterações exigem origem do próprio CRM + JSON (CSRF) e corpo
+ * somente nos ambientes do CRM (lib/crm/runtime-env.ts); sessão administrativa válida; alterações exigem origem do próprio CRM + JSON (CSRF) e corpo
  * pequeno. Não há rota pública: visitante sem sessão recebe 401 e nenhum dado. Valores e nomes financeiros nunca vão
  * para os logs — só o tipo do evento e identificadores.
  */
@@ -19,6 +20,8 @@ import {
 export type FinanceAdminRequest = {
   method: 'GET' | 'POST'
   vercelEnv: string | undefined
+  /** CRM_PRODUCTION_ENABLED (lib/crm/runtime-env.ts). */
+  crmProductionEnabled?: string | undefined
   sessionValid: boolean
   originAllowed: boolean
   contentType: string | null
@@ -36,7 +39,7 @@ const bad = (error: string, status = 400, extra: Record<string, unknown> = {}): 
 export const MAX_FINANCE_BODY = 8_000
 
 function guard(req: FinanceAdminRequest): HandlerResponse | null {
-  if (req.vercelEnv !== 'preview') return bad('NOT_FOUND', 404)
+  if (!isCrmRuntimeRequest(req)) return bad('NOT_FOUND', 404)
   if (!req.sessionValid) return bad('UNAUTHORIZED', 401)
   return null
 }
@@ -199,7 +202,7 @@ export async function handleFinanceAdmin(deps: FinanceAdminDeps, req: FinanceAdm
   }
 }
 
-/** Exportação CSV — também só Preview + sessão administrativa. GET sem efeito colateral. */
+/** Exportação CSV — também só nos ambientes do CRM + sessão administrativa. GET sem efeito colateral. */
 export async function handleFinanceExport(deps: FinanceAdminDeps, req: FinanceAdminRequest): Promise<
   { status: number; body: Record<string, unknown> } | { status: 200; csv: string; filename: string }> {
   const denied = guard(req)

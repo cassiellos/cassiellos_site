@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName } from '@/lib/crm/auth'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV !== 'development') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV !== 'development') {
     return new NextResponse(null, { status: 404 })
   }
   if (request.headers.get('origin') !== new URL(request.url).origin) {

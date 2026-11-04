@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeCrmReturnPath } from '@/lib/crm/return-path'
 import { CRM_SESSION_MAX_AGE, crmSessionCookieName, getCrmClientIp, isCrmAuthConfigured, issueCrmSession, reserveCrmLoginAttempt, resetCrmLoginAttempts, verifyAdminCredentials } from '@/lib/crm/auth'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ function loginRedirect(request: NextRequest, error: string, next: string | null 
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV !== 'development') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV !== 'development') {
     return new NextResponse(null, { status: 404 })
   }
 

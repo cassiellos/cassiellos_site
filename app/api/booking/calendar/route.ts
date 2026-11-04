@@ -4,6 +4,7 @@ import { getBookingForm } from '@/lib/crm/booking-forms'
 import { addDays } from '@/lib/crm/availability/holidays'
 import { closedDates, localDate } from '@/lib/crm/availability/engine'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ function json(body: unknown, status: number) {
  * Exibe apenas datas públicas, sem dados privados nem criação de sessão.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview') return json({ error: 'NOT_FOUND' }, 404)
+  if (!isCrmRuntimeEnabled()) return json({ error: 'NOT_FOUND' }, 404)
   const form = request.nextUrl.searchParams.get('form') ?? ''
   if (!getBookingForm(form)) return json({ error: 'INVALID_REQUEST' }, 400)
   try {

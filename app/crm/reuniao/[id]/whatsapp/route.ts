@@ -7,6 +7,7 @@ import { pushRuntimeDeps } from '@/lib/crm/push/runtime'
 import { loadPushSettings } from '@/lib/crm/push/store'
 import { DEFAULT_WHATSAPP_TEMPLATE, renderWhatsappMessage, whatsappSendLink } from '@/lib/crm/whatsapp-message'
 import { safeCrmReturnPath } from '@/lib/crm/return-path'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,7 +26,7 @@ const headers = {
  * Com telefone inválido, reunião inativa ou link pendente, abre a ficha.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.VERCEL_ENV !== 'preview') {
+  if (!isCrmRuntimeEnabled()) {
     return new NextResponse(null, { status: 404, headers })
   }
 

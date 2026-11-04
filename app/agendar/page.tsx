@@ -10,6 +10,7 @@ import { activeHomologation } from '@/lib/marketing/homologation'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import BookingExperience from './[slug]/booking-experience'
 import './[slug]/booking.css'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 // Keep Safari/browser chrome white on the standalone booking experience.
 export const viewport: Viewport = { themeColor: '#ffffff' }
@@ -23,8 +24,8 @@ export const metadata: Metadata = {
 }
 
 export default async function PublicBookingPage() {
-  // Form pages stay completely off the production domain until approval.
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  // Form pages exist only in the CRM environments (lib/crm/runtime-env.ts), never on the institutional site.
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     notFound()
   }
   // A chave interna é mantida para compatibilidade com registros e métricas anteriores.

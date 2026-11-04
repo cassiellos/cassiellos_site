@@ -6,6 +6,7 @@ import {
   parseGoogleOAuthFlow,
   saveGoogleRefreshToken,
 } from '@/lib/crm/google-oauth'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export const maxDuration = 20
  * o cookie temporario assinado, o state e o PKCE.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV === 'production') {
+  if (!isCrmRuntimeEnabled() && process.env.NODE_ENV === 'production') {
     return new NextResponse(null, { status: 404 })
   }
   const config = googleOAuthConfig()
