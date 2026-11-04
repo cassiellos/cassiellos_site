@@ -92,8 +92,8 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     // The consent cookie of the request confirms the choice (server-side validation, G2).
     const r = await handleLeadIntake(intakeDeps(), { remoteIp: null, cookieHeader: 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: true }), value: {
       formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead C2', email: address, whatsapp: '(31) 90000-0071',
-      answers: { clinic: 'Clínica C2', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
-      attribution: {}, privacyAccepted: true, turnstileToken: K.dummyToken,
+      answers: { instagram: '@clinicac2', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
+      attribution: {}, privacyAccepted: true, contactRequest: true, turnstileToken: K.dummyToken,
       marketing: { consent: true, decided: true, fbp: FBP, fbc: FBC },
     } })
     assert.equal(r.status, 201)
@@ -195,8 +195,8 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
     const nonce = newNonce()
     const leadBody = (address: string) => ({
       formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead Homologação', email: address,
-      whatsapp: '(31) 90000-0072', answers: { clinic: 'Clínica H', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
-      attribution: {}, privacyAccepted: true, turnstileToken: K.dummyToken, marketing: GRANT,
+      whatsapp: '(31) 90000-0072', answers: { instagram: '@clinicah', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
+      attribution: {}, privacyAccepted: true, contactRequest: true, turnstileToken: K.dummyToken, marketing: GRANT,
     })
     const cookieHeader = 'cassiellos_consent=' + serializeConsent({ analytics: null, marketing: true })
     const a = email('homolog.lead.a')
@@ -314,9 +314,9 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
   async function intake(address: string, opts: { marketing?: Record<string, unknown>; cookie?: string | null; isTest?: boolean } = {}) {
     const r = await handleLeadIntake(intakeDeps({ isTest: opts.isTest }), { remoteIp: null, cookieHeader: opts.cookie ?? null, value: {
       formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead G2', email: address, whatsapp: '(31) 90000-0072',
-      answers: { clinic: 'Clínica G2', revenue: 'Até R$ 10 mil/mês', priority: 'Atrair mais pacientes' },
+      answers: { instagram: '@clinicag2', revenue: 'Até R$ 10 mil/mês', budget: 'Sim' },
       attribution: { utm_source: 'meta', utm_campaign: 'g2', fbclid: CLICK },
-      privacyAccepted: true, turnstileToken: K.dummyToken, marketing: opts.marketing ?? {},
+      privacyAccepted: true, contactRequest: true, turnstileToken: K.dummyToken, marketing: opts.marketing ?? {},
     } })
     assert.equal(r.status, 201)
     const [lead] = await q<{ id: string }>('SELECT id FROM crm.leads WHERE email = $1', [address])
@@ -366,7 +366,7 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
       { utm_source: 'meta', utm_campaign: 'g2' }, { utm_source: 'meta', utm_campaign: 'g2' }])
     const [answers] = await q<{ q: Record<string, string> }>(
       "SELECT answers->'questions' AS q FROM crm.form_submissions WHERE lead_id = $1 LIMIT 1", [first.leadId])
-    assert.equal(answers.q.clinic, 'Clínica G2', 'respostas do formulário preservadas')
+    assert.equal(answers.q.instagram, '@clinicag2', 'respostas do formulário preservadas')
     assert.deepEqual(await leadSnapshot(first.leadId), leadBefore, 'cadastro do lead não muda')
     const after = await counts()
     assert.equal(after.s, before.s, 'nenhum envio apagado')

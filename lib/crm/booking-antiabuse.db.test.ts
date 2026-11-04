@@ -401,8 +401,8 @@ describe('Fase 3 / item 4 — antiabuso (PostgreSQL descartável)', { skip }, ()
     }
     const form = (address: string, token: string) => ({
       formSlug: 'odontologia', idempotencyKey: randomUUID(), name: 'Lead Fluxo', email: address, whatsapp: '31900000040',
-      answers: { clinic: 'Clínica Fluxo', revenue: 'Ainda não faturo', priority: 'Atrair mais pacientes' },
-      attribution: {}, privacyAccepted: true, turnstileToken: token,
+      answers: { instagram: '@clinicafluxo', revenue: 'Ainda não faturo', budget: 'Sim' },
+      attribution: {}, privacyAccepted: true, contactRequest: true, turnstileToken: token,
     })
 
     it('token rejeitado não grava nada; token válido grava envio verificado e permite confirmar', async () => {
