@@ -119,8 +119,8 @@ describe('Meta — eventos, consentimento e revogação (PostgreSQL descartável
       metadata: { formSlug: 'odontologia', environment: 'preview', isTest: false, marketingConsent: true } })
     const consents = await q<{ purpose: string; granted: boolean; policy_version: string }>(
       'SELECT purpose, granted, policy_version FROM crm.consents WHERE lead_id = $1 ORDER BY purpose', [r.leadId])
+    // Pedir o diagnóstico não gera consentimento próprio (lib/crm/lead-intake.ts, commit c12f2ca): só a escolha de marketing.
     assert.deepEqual(consents, [
-      { purpose: 'diagnostic_contact', granted: true, policy_version: MARKETING_POLICY_VERSION },
       { purpose: 'marketing_measurement', granted: true, policy_version: MARKETING_POLICY_VERSION },
     ])
     assert.equal((await readMarketingConsentState(pool, r.leadId)).granted, true)

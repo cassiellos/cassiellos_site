@@ -40,7 +40,7 @@ describe('saveLeadSubmission (PostgreSQL descartável)', { skip }, () => {
   const q = async <T extends Record<string, unknown>>(sql: string, params: unknown[] = []) =>
     (await pool.query<T>(sql, params)).rows
 
-  it('cria lead novo com histórico, consentimento e atividade form_completed', async () => {
+  it('cria lead novo com histórico e atividade form_completed, sem fabricar consentimento', async () => {
     const r = await saveLeadSubmission(pool, input({ email: 'novo.lead@exemplo.com', newLeadIsTest: false, bookingMode: 'live' }))
     assert.equal(r.reused, false)
     assert.equal(r.resubmitted, false)
@@ -56,13 +56,14 @@ describe('saveLeadSubmission (PostgreSQL descartável)', { skip }, () => {
     assert.equal(sub.answers.formSlug, 'odontologia')
     const acts = await q<{ activity_kind: string }>('SELECT activity_kind FROM crm.lead_activities WHERE lead_id=$1', [r.leadId])
     assert.deepEqual(acts.map(a => a.activity_kind), ['form_completed'])
+    // Sem escolha de marketing, nenhum consentimento é criado (lib/crm/lead-intake.ts, commit c12f2ca).
     const consents = await q('SELECT 1 FROM crm.consents WHERE lead_id=$1', [r.leadId])
-    assert.equal(consents.length, 1)
+    assert.equal(consents.length, 0)
   })
 
   it('reenvio preserva cadastro, classificação, etapa, reuniões, contratos e consentimentos', async () => {
     const email = 'preservar.lead@exemplo.com'
-    const first = await saveLeadSubmission(pool, input({ email, newLeadIsTest: false }))
+    const first = await saveLeadSubmission(pool, input({ email, newLeadIsTest: false, marketing: { consent: true, decided: true } }))
     // Simula histórico comercial já existente.
     await pool.query("UPDATE crm.leads SET stage='qualified', notes='nota comercial' WHERE id=$1", [first.leadId])
     const [appt] = await q<{ id: string }>(`INSERT INTO crm.appointments
@@ -83,7 +84,8 @@ describe('saveLeadSubmission (PostgreSQL descartável)', { skip }, () => {
     assert.equal((await q('SELECT 1 FROM crm.leads WHERE lower(email)=$1', [email])).length, 1)
     assert.equal((await q("SELECT 1 FROM crm.appointments WHERE lead_id=$1 AND status='completed'", [first.leadId])).length, 1)
     assert.equal((await q("SELECT 1 FROM crm.deals WHERE lead_id=$1 AND status='won'", [first.leadId])).length, 1)
-    assert.equal((await q('SELECT 1 FROM crm.consents WHERE lead_id=$1', [first.leadId])).length, 2)
+    // O reenvio sem escolha de marketing preserva o consentimento já registrado e não cria outro.
+    assert.equal((await q('SELECT 1 FROM crm.consents WHERE lead_id=$1', [first.leadId])).length, 1)
     const subs = await q<{ answers: Record<string, any> }>(
       'SELECT answers FROM crm.form_submissions WHERE lead_id=$1 ORDER BY submitted_at, id', [first.leadId])
     assert.equal(subs.length, 2)
