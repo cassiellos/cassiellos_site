@@ -20,6 +20,16 @@ describe('rótulos públicos e do CRM', () => {
       assert.equal(/Ambiente Preview|Neon Preview|NEON PREVIEW|banco Preview/.test(src), false, f)
     }
   })
+  it('painel de homologação Meta e monitor Neon não afirmam que o ambiente atual é Preview', () => {
+    const meta = readFileSync(join(root, 'app', 'crm', 'meta-homologation-panel.tsx'), 'utf8')
+    assert.equal(/ambiente Preview|neste Preview|ligados no Preview/.test(meta), false)
+    assert.ok(meta.includes('recurso exclusivo do Preview'))
+    const neon = readFileSync(join(root, 'app', 'crm', 'neon-usage-monitor.tsx'), 'utf8')
+    assert.ok(neon.includes('Armazenamento · Branch monitorada') && neon.includes('tamanho lógico da branch monitorada'))
+    assert.equal(/Armazenamento · Preview|branch Preview|lógico da Preview/.test(neon), false)
+    const mini = readFileSync(join(root, 'app', 'crm', 'mini-crm.tsx'), 'utf8')
+    assert.ok(mini.includes('ativados na Preview em 03/11/2026'), 'texto histórico preservado')
+  })
   it('/agendar: CTA "Confirmar minha reunião", subtítulo vindo do formulário e sem "pacientes"', () => {
     const src = readFileSync(join(root, 'app', 'agendar', '[slug]', 'booking-experience.tsx'), 'utf8')
     assert.ok(src.includes("'Confirmar minha reunião'"))

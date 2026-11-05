@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 type Status = { available: boolean; active: boolean; expiresAt: string | null; scope?: 'conversions' | 'chronos' | null; maxMinutes: number }
 const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' })
 const errors: Record<string, string> = {
-  HOMOLOGATION_UNAVAILABLE: 'Homologação indisponível: a chave META_HOMOLOGATION_ENABLED ou o Pixel comercial não estão ligados no Preview.',
+  HOMOLOGATION_UNAVAILABLE: 'Homologação indisponível neste ambiente: é um recurso exclusivo do Preview e exige META_HOMOLOGATION_ENABLED e o Pixel comercial ligados.',
   UNAUTHORIZED: 'Sua sessão administrativa expirou. Entre novamente.',
 }
 
@@ -49,7 +49,7 @@ export default function MetaHomologationPanel() {
 
   return <section className="crm-card crm-panel" aria-labelledby="meta-homologation-title">
     <div className="crm-panel-title" id="meta-homologation-title">Meta Pixel · Homologação</div>
-    <div className="crm-panel-subtitle">Validação técnica do agendamento · Pixel comercial · ambiente Preview</div>
+    <div className="crm-panel-subtitle">Validação técnica do agendamento · Pixel comercial · recurso exclusivo do Preview</div>
     <div className="crm-meta-validation" role="status">
       <div className="crm-meta-validation-head"><span className="crm-meta-check" aria-hidden="true">✓</span>
         <strong>Schedule validado na Meta</strong><span className="crm-tag">Teste aprovado</span>
@@ -60,7 +60,7 @@ export default function MetaHomologationPanel() {
       </div>
       <p>Comprovação registrada no Gerenciador de Eventos. Histórico verificado manualmente — esta tela não consulta eventos da Meta em tempo real.</p>
     </div>
-    {status && !status.available && <p className="crm-meta-closed">Homologação encerrada. O modo de teste está desativado neste Preview; isso não desativa o Pixel comercial.</p>}
+    {status && !status.available && <p className="crm-meta-closed">Homologação encerrada ou indisponível neste ambiente (recurso exclusivo do Preview); isso não desativa o Pixel comercial.</p>}
     {status?.available && <>
       <p style={{ color: '#a8b8cb', fontSize: 12 }}>
         {status.active && status.expiresAt

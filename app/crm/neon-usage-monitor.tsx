@@ -118,14 +118,14 @@ export default function NeonUsageMonitor() {
       </p>}
       <UsageBar label="Processamento" value={ready.compute} kind="cu"
         help="CU-horas consumidas no projeto durante o ciclo mensal da Neon (compute_time_seconds ÷ 3600)."/>
-      <UsageBar label="Armazenamento · Preview" value={ready.storagePreview} kind="bytes"
-        help="Tamanho lógico da branch Preview frente ao limite lógico por branch; não é o armazenamento faturável do projeto."/>
+      <UsageBar label="Armazenamento · Branch monitorada" value={ready.storagePreview} kind="bytes"
+        help="Tamanho lógico da branch monitorada frente ao limite lógico por branch; não é o armazenamento faturável do projeto."/>
       <UsageBar label="Transferência" value={ready.outboundTransfer} kind="bytes"
         help="Transferência de saída (egress) do projeto no ciclo mensal da Neon."/>
       <details className="crm-neon-info">
         <summary>Sobre armazenamento e ciclo</summary>
         <p className="crm-neon-footnote">
-          Armazenamento: tamanho lógico da Preview (limite por branch), não o total faturável do projeto.
+          Armazenamento: tamanho lógico da branch monitorada (limite por branch), não o total faturável do projeto.
           {cycleStart && cycleEnd ? ' Ciclo ' + cycleStart + '–' + cycleEnd + '.' : ''}
         </p>
       </details>
