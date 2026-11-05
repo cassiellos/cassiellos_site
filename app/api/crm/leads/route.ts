@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { withCrmReadOnlyTransaction } from '@/lib/crm/db'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { attributionFields, LEAD_ATTRIBUTION_COLUMNS, LEAD_ATTRIBUTION_JOINS, type LeadAttributionRow } from '@/lib/crm/lead-attribution'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ const headers = {
   'X-Content-Type-Options': 'nosniff',
 }
 
-type RealLeadRow = {
+type RealLeadRow = LeadAttributionRow & {
   id: string
   full_name: string
   email: string | null
@@ -29,9 +30,6 @@ type RealLeadRow = {
   latest_contact_whatsapp: string | null
   revenue: string | null
   objective: string | null
-  utm_source: string | null
-  utm_campaign: string | null
-  utm_medium: string | null
   latest_submission_at: Date | null
   meeting_count: string
 }
@@ -54,9 +52,8 @@ export async function GET(request: NextRequest) {
              s.answers #>> '{contact,whatsapp}' AS latest_contact_whatsapp,
              s.answers #>> '{questions,revenue}' AS revenue,
              s.answers #>> '{questions,priority}' AS objective,
-             s.answers #>> '{attribution,utm_source}' AS utm_source,
-             s.answers #>> '{attribution,utm_campaign}' AS utm_campaign,
-             s.answers #>> '{attribution,utm_medium}' AS utm_medium,
+             -- Origem: a PRIMEIRA válida é a principal; a mais recente fica separada (lib/crm/lead-attribution.ts).
+             ${LEAD_ATTRIBUTION_COLUMNS},
              (SELECT count(*)::text FROM crm.appointments a WHERE a.lead_id = l.id
                AND a.status NOT IN ('cancelled')) AS meeting_count
            FROM crm.leads l
@@ -66,6 +63,7 @@ export async function GET(request: NextRequest) {
              WHERE f.lead_id = l.id
              ORDER BY f.submitted_at DESC, f.id DESC LIMIT 1
            ) s ON true
+           ${LEAD_ATTRIBUTION_JOINS}
            ORDER BY l.created_at DESC, l.id DESC
            LIMIT 100`,
         ),
@@ -87,9 +85,7 @@ export async function GET(request: NextRequest) {
           formVersion: row.form_version,
           latestContactName: row.latest_contact_name,
           latestContactWhatsapp: row.latest_contact_whatsapp,
-          source: row.utm_source,
-          campaign: row.utm_campaign,
-          medium: row.utm_medium,
+          ...attributionFields(row),
           createdAt: new Date(row.created_at).toISOString(),
           submittedAt: row.latest_submission_at
             ? new Date(row.latest_submission_at).toISOString() : null,

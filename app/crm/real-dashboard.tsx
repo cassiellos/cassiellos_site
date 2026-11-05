@@ -5,7 +5,7 @@ import './real-dashboard.css'
 type Data = {
   metrics: { leads:number; qualified:number; scheduled:number; completed:number; contracts:number }
   days: {date:string; count:number}[]
-  recent: {id:string; name:string; company:string|null; stage:string; source:string|null; createdAt:string}[]
+  recent: {id:string; name:string; company:string|null; stage:string; source:string|null; latestSource?:string|null; createdAt:string}[]
 }
 const zone = 'America/Sao_Paulo'
 const formatDay = new Intl.DateTimeFormat('pt-BR', {day:'2-digit',month:'2-digit',timeZone:'UTC'})
@@ -79,7 +79,7 @@ export default function RealDashboard({period,openView}:{period:'7d'|'30d';openV
     ['Agendados',data.metrics.scheduled],['Contratos',data.metrics.contracts],
   ] as const:[],[data])
   return <div className="crm-live-dashboard">
-    <div className="crm-live-state"><strong>{showTests ? "DADOS DE TESTE · NEON PREVIEW" : "DADOS OPERACIONAIS · NEON PREVIEW"}</strong><span>Período: últimos {period==='7d'?'7':'30'} dias. {showTests ? 'Exibindo exclusivamente registros marcados como teste.' : 'Excluindo registros de teste de todas as métricas.'}</span>
+    <div className="crm-live-state"><strong>{showTests ? "DADOS DE TESTE" : "DADOS OPERACIONAIS"}</strong><span>Período: últimos {period==='7d'?'7':'30'} dias. {showTests ? 'Exibindo exclusivamente registros marcados como teste.' : 'Excluindo registros de teste de todas as métricas.'}</span>
       <button type="button" className="crm-btn" onClick={()=>setShowTests(v=>!v)} disabled={state==='loading'}>{showTests ? "Ver operação" : "Ver testes"}</button><button type="button" className="crm-btn" onClick={()=>setRefresh(v=>v+1)} disabled={state==='loading'}>Atualizar</button></div>
     {state==='loading'&&<div className="crm-card crm-live-message">Consultando dados reais do Neon…</div>}
     {state==='unauthorized'&&<div className="crm-card crm-live-message" role="alert">Sua sessão expirou. <a href="/crm/login">Entrar novamente.</a></div>}

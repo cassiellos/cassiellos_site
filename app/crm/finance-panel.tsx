@@ -339,7 +339,7 @@ export default function FinancePanel() {
 
   if (pending) return <section className="crm-card crm-panel crm-fin">
     <div className="crm-info-box"><strong>Financeiro aguardando a migração 0011.</strong> O código já está publicado, mas as tabelas do Financeiro
-      ainda não existem neste banco (Neon Preview). Nenhum dado foi criado nem alterado. Depois da aplicação autorizada da migração
+      ainda não existem neste banco. Nenhum dado foi criado nem alterado. Depois da aplicação autorizada da migração
       <code> db/migrations/0011_finance.sql</code>, esta tela passa a funcionar sem nova publicação.</div>
     <Kpis v={() => 0}/>
   </section>

@@ -31,7 +31,7 @@ export default function RealFunnel(){
    }finally{setBusy(null)}
  }
  return <section className="crm-real-funnel">
-   <div className="crm-real-funnel-intro"><strong>FUNIL REAL · NEON PREVIEW</strong><span>Um cadastro por lead. Etapas de reunião e contrato dependem de eventos reais, sem movimentações artificiais.</span><button className="crm-btn" type="button" onClick={()=>setReload(x=>x+1)}>Atualizar</button></div>
+   <div className="crm-real-funnel-intro"><strong>FUNIL REAL</strong><span>Um cadastro por lead. Etapas de reunião e contrato dependem de eventos reais, sem movimentações artificiais.</span><button className="crm-btn" type="button" onClick={()=>setReload(x=>x+1)}>Atualizar</button></div>
    {status==='loading'&&<div className="crm-card crm-real-funnel-message">Carregando oportunidades…</div>}
    {status==='error'&&<div className="crm-card crm-real-funnel-message" role="alert">Não foi possível consultar o funil. Tente atualizar.</div>}
    {status==='unauthorized'&&<div className="crm-card crm-real-funnel-message" role="alert">Sessão expirada. <a href="/crm/login">Entre novamente.</a></div>}

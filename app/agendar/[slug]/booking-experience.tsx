@@ -645,7 +645,7 @@ export default function BookingExperience({
               <span aria-hidden="true">{HIGHLIGHT_ICONS[index % HIGHLIGHT_ICONS.length]}</span><span>{item}</span>
             </li>)}
           </ul>
-          <p>Uma conversa direta para entender seu negócio e as oportunidades de crescimento.</p>
+          <p>{form.description}</p>
         </div>
         <button type="button" className="booking-hero-cta" onClick={() => setStep(1)}>
           {form.cta} <span aria-hidden="true">→</span>
@@ -793,7 +793,7 @@ export default function BookingExperience({
               </>}
               {!turnstileSiteKey && <p className="booking-security-status" data-state="error" role="alert">A confirmação está indisponível nesta prévia até configurar a verificação de segurança.</p>}
               <button type="submit" className="booking-primary" disabled={savingLead || confirming || !bookingEnabled || !attendee.email.trim()}>
-                {savingLead ? 'Confirmando sua reunião…' : 'Confirmar agendamento'} <Icon name="check"/>
+                {savingLead ? 'Confirmando sua reunião…' : 'Confirmar minha reunião'} <Icon name="check"/>
               </button>
               {saveError && <p className="booking-save-error" role="alert">{saveError}</p>}
             </form> : <div className="booking-calendar-contact">
@@ -831,7 +831,7 @@ export default function BookingExperience({
             <button className="booking-primary" type="button" disabled={!bookingEnabled || confirming || !bookingToken}
               onClick={() => void confirmBooking()}>
               {confirming ? 'Confirmando no Google Calendar…' :
-                bookingEnabled ? (bookingRestricted ? 'Confirmar reunião de teste' : 'Confirmar reunião') : 'Confirmar reunião (em desenvolvimento)'}
+                bookingEnabled ? (bookingRestricted ? 'Confirmar reunião de teste' : 'Confirmar minha reunião') : 'Confirmar reunião (em desenvolvimento)'}
               <Icon name="check"/>
             </button>
           </div>}

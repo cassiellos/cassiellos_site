@@ -201,7 +201,7 @@ export default function NotificationsPanel() {
       </div>
       {env.issues.filter(i => i !== 'ENV_NOT_SUPPORTED' || !env.vapidReady).length > 0 &&
         <div className="crm-info-box">Pendências: {env.issues.map(i => ISSUES[i] || i).join(' · ')}.</div>}
-      {status.migrationPending && <div className="crm-info-box">Dispositivos, fila e histórico dependem da migração 0010, aplicada no Neon Preview só com autorização.</div>}
+      {status.migrationPending && <div className="crm-info-box">Dispositivos, fila e histórico dependem da migração 0010, aplicada no banco do CRM só com autorização.</div>}
       {device.ios && !device.standalone && <div className="crm-info-box crm-push-ios">
         <strong>iPhone:</strong> as notificações só funcionam com o app instalado. No Safari, toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>, abra o app CRM pelo ícone e volte a esta tela.
       </div>}

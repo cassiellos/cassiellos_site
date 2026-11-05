@@ -83,7 +83,7 @@ export default function MiniCrm() {
           <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
           <button type="button" className="crm-nav-btn" data-active={view === 'financeiro'} onClick={() => openView('financeiro')} aria-current={view === 'financeiro' ? 'page' : undefined}><Icon name="wallet"/>Financeiro</button>
         </nav>
-        <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>Ambiente Preview · operacional</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
+        <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>CRM · operacional</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
       </aside>
 
       <main className="crm-main">
@@ -98,7 +98,7 @@ export default function MiniCrm() {
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do Neon Preview.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o Neon Preview.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do Neon Preview.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no Preview. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no Neon Preview.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
             <div className="crm-controls">
               {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
@@ -155,7 +155,7 @@ export default function MiniCrm() {
           </div>}
 
           {view === 'relatorios' && <>
-            <div className="crm-meta-context-banner"><Icon name="chart"/><div><strong>RELATÓRIO OPERACIONAL</strong> Todos os indicadores abaixo são consultados no Neon Preview e distinguem registros operacionais de testes. Não representam métricas de anúncios da Meta.</div></div>
+            <div className="crm-meta-context-banner"><Icon name="chart"/><div><strong>RELATÓRIO OPERACIONAL</strong> Todos os indicadores abaixo são consultados no banco do CRM e distinguem registros operacionais de testes. Não representam métricas de anúncios da Meta.</div></div>
             <RealDashboard period={period} openView={openView}/>
           </>}
 
@@ -181,7 +181,7 @@ export default function MiniCrm() {
             </section>
           </div>}
 
-          <div className="crm-footnote">CRM | Cassiellos · {view === 'conversoes' ? 'Histórico de homologação · métricas de campanhas não integradas' : view === 'configuracoes' ? 'Acesso às configurações operacionais' : 'Neon Preview · acesso administrativo'} · Ambiente Preview</div>
+          <div className="crm-footnote">CRM | Cassiellos · {view === 'conversoes' ? 'Histórico de homologação · métricas de campanhas não integradas' : view === 'configuracoes' ? 'Acesso às configurações operacionais' : 'Acesso administrativo'}</div>
         </div>
       </main>
     </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { withCrmReadOnlyTransaction } from '@/lib/crm/db'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { LEAD_ATTRIBUTION_JOINS } from '@/lib/crm/lead-attribution'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,14 +46,13 @@ export async function GET(request: NextRequest) {
            ON (l.created_at AT TIME ZONE 'America/Sao_Paulo')::date = d.day AND l.is_test = $2
          GROUP BY d.day ORDER BY d.day`, [period, showTests])
       const recent = await client.query<{
-        id: string; name: string; company: string | null; stage: string; source: string | null; created_at: Date
+        id: string; name: string; company: string | null; stage: string; source: string | null; latest_source: string | null; created_at: Date
       }>(`SELECT l.id, l.full_name AS name, l.company, l.stage,
-           f.answers #>> '{attribution,utm_source}' AS source, l.created_at
+           -- Origem principal = primeira origem válida; envio posterior sem UTM não a apaga (lib/crm/lead-attribution.ts).
+           nullif(btrim(first_attr.attribution ->> 'utm_source'), '') AS source,
+           nullif(btrim(latest_attr.attribution ->> 'utm_source'), '') AS latest_source, l.created_at
          FROM crm.leads l
-         LEFT JOIN LATERAL (
-           SELECT answers FROM crm.form_submissions WHERE lead_id = l.id
-           ORDER BY submitted_at DESC, id DESC LIMIT 1
-          ) f ON true
+         ${LEAD_ATTRIBUTION_JOINS}
          WHERE l.is_test = $1
          ORDER BY l.created_at DESC, l.id DESC LIMIT 5`, [showTests])
       const m = metrics.rows[0]
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         days: history.rows.map(r => ({ date: r.date, count: Number(r.leads) })),
         recent: recent.rows.map(r => ({
           id: r.id, name: r.name, company: r.company, stage: r.stage,
-          source: r.source, createdAt: new Date(r.created_at).toISOString(),
+          source: r.source, latestSource: r.latest_source, createdAt: new Date(r.created_at).toISOString(),
         })),
       }
     })

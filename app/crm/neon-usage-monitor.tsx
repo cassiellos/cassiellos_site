@@ -106,7 +106,7 @@ export default function NeonUsageMonitor() {
     <div id="crm-neon-details" className="crm-neon-details" hidden={!expanded}>
     {!result && <p className="crm-neon-status" role="status">Carregando uso da Neon…</p>}
     {result?.status === 'not_configured' && <p className="crm-neon-status" role="status">
-      <strong>Conexão pendente.</strong> Configure a chave privada Neon no ambiente Preview da Vercel.
+      <strong>Conexão pendente.</strong> Configure a chave privada Neon nas variáveis do projeto na Vercel.
     </p>}
     {result?.status === 'unavailable' && <p className="crm-neon-status" role="status">
       <strong>Dados indisponíveis.</strong> Confira a conexão ou tente atualizar.

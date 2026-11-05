@@ -24,6 +24,12 @@ type StoredLead = {
   source: string | null
   campaign: string | null
   medium: string | null
+  /** Origem mais recente com UTM (a principal, acima, é a PRIMEIRA válida). */
+  latestSource?: string | null
+  latestCampaign?: string | null
+  latestMedium?: string | null
+  attributedAt?: string | null
+  latestAttributedAt?: string | null
   createdAt: string
   submittedAt: string | null
   hasMeeting: boolean
@@ -185,7 +191,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     if (!term) return entries
     return entries.filter(lead => [
       lead.name, lead.company, lead.email, lead.whatsapp, lead.niche,
-      lead.status, lead.revenue, lead.objective, lead.source, lead.campaign,
+      lead.status, lead.revenue, lead.objective, lead.source, lead.campaign, lead.latestSource, lead.latestCampaign,
     ].some(value => (value || '').toLocaleLowerCase('pt-BR').includes(term)))
   }, [entries, search])
 
@@ -196,7 +202,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
         <div className="crm-panel-title">Leads cadastrados no Neon</div>
         <div className="crm-panel-subtitle">
           {state === 'ready'
-            ? String(total ?? 0) + ' lead(s) no banco Preview · ' + String(filtered.length) + ' exibido(s)'
+            ? String(total ?? 0) + ' lead(s) no CRM · ' + String(filtered.length) + ' exibido(s)'
             : 'Registros reais do ambiente de testes'}
         </div>
       </div>
@@ -205,7 +211,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
       </button>
     </div>
     <div className="crm-real-info" role="status">
-      <strong>NEON PREVIEW</strong> Leads reais no Neon Preview. A ficha do lead permite registrar ações administrativas com histórico.
+      <strong>LEADS REAIS</strong> Leads reais registrados no CRM. A ficha do lead permite registrar ações administrativas com histórico.
     </div>
     {state === 'loading' ? <div className="crm-real-message">Carregando leads do banco…</div> : null}
     {state === 'unauthorized' ? <div className="crm-real-message" role="alert">
@@ -285,6 +291,10 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
                 <div><span>Campanha</span><strong>{active.campaign || 'Não identificada'}</strong></div>
                 <div><span>Meio</span><strong>{active.medium || 'Não identificado'}</strong></div>
                 <div><span>Canal (padrão de UTMs)</span><strong>{CHANNEL_LABELS[attributionChannel(active.source, active.medium)]}</strong></div>
+                {active.latestAttributedAt && active.latestAttributedAt !== active.attributedAt && <>
+                  <div><span>Origem mais recente</span><strong>{[active.latestSource, active.latestMedium].filter(Boolean).join(' / ') || 'Não identificada'}</strong></div>
+                  <div><span>Campanha mais recente</span><strong>{active.latestCampaign || 'Não identificada'}</strong></div>
+                </>}
                 <div><span>Reunião no CRM</span><strong>{active.hasMeeting ? 'Existe registro' : 'Ainda não agendada'}</strong></div>
               </div>
               {(() => {

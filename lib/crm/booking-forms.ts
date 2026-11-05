@@ -75,14 +75,14 @@ const bookingForms: Record<string, BookingForm> = {
     version: 'geral-v1',
     niche: 'Geral',
     eyebrow: 'DIAGNÓSTICO ESTRATÉGICO',
-    headline: 'Anúncios e marketing para [seu nicho] que querem atrair mais pacientes.',
+    headline: 'Agende seu diagnóstico estratégico com a Cassiellos',
     highlights: [
       'Análise do seu negócio, da sua presença digital e dos seus anúncios atuais',
       'Prioridades definidas para a realidade do seu negócio',
       'Conversa de 30 minutos pelo Google Meet, no horário que você escolher',
     ],
     cta: 'Quero agendar meu diagnóstico',
-    description: 'Uma conversa direta para entender o seu negócio e encontrar oportunidades de crescimento.',
+    description: 'Escolha o melhor horário para conversar com nossa equipe sobre os desafios e as oportunidades do seu negócio.',
     meetingName: 'Diagnóstico estratégico',
     durationMinutes: 30,
     fields: [

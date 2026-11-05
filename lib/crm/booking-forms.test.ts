@@ -10,7 +10,15 @@ describe('formulário comercial geral — faturamento em faixas', () => {
     assert.equal(form.version, 'geral-v1')
     assert.equal(form.niche, 'Geral')
     assert.equal(form.meetingName, 'Diagnóstico estratégico')
-    assert.equal(form.headline, 'Anúncios e marketing para [seu nicho] que querem atrair mais pacientes.')
+    assert.equal(form.headline, 'Agende seu diagnóstico estratégico com a Cassiellos')
+    assert.equal(form.description, 'Escolha o melhor horário para conversar com nossa equipe sobre os desafios e as oportunidades do seu negócio.')
+  })
+
+  it('formulário comercial genérico sem marcador de nicho e sem "pacientes"', () => {
+    assert.ok(form)
+    const all = JSON.stringify(form)
+    assert.equal(all.includes('[seu nicho]'), false)
+    assert.equal(/pacient/i.test(all), false)
   })
 
   it('textos públicos sem conteúdo provisório, depoimentos, resultados ou valores não comprovados', () => {
@@ -18,7 +26,7 @@ describe('formulário comercial geral — faturamento em faixas', () => {
     const texts = [form.eyebrow, form.headline, form.description, form.cta, form.meetingName, ...form.highlights,
       ...form.fields.flatMap(field => [field.label, field.placeholder ?? '', ...(field.options ?? [])])]
     for (const text of texts) {
-      assert.equal(/[\[\]]/.test(text.replace('[seu nicho]', '')), false, 'colchetes não previstos: ' + text)
+      assert.equal(/[\[\]]/.test(text), false, 'colchetes não previstos: ' + text)
       assert.equal(/odontolog|clínica|consultório|dentist/i.test(text), false, 'segmentação de nicho: ' + text)
       assert.equal(/\((depoimentos|perfil de cliente ideal|resultado ou diferencial comprovado)\)/i.test(text), false, text)
       assert.equal(/depoimento|garantid|comprovad/i.test(text), false, 'afirmação não comprovada: ' + text)

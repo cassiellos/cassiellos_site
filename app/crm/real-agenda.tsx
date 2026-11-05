@@ -67,13 +67,13 @@ export default function RealAgendaPanel() {
     <div className="crm-real-agenda-title">
       <div>
         <div className="crm-panel-title">Agenda de reuniões</div>
-        <p>Compromissos registrados no Neon Preview · Fuso horário de Brasília</p>
+        <p>Compromissos registrados no CRM · Fuso horário de Brasília</p>
       </div>
       <button className="crm-btn" type="button" onClick={() => setRefresh(r => r + 1)} disabled={state === 'loading'}>
         {state === 'loading' ? 'Carregando…' : 'Atualizar agenda'}
       </button>
     </div>
-    <div className="crm-real-agenda-notice"><strong>DADOS REAIS · NEON PREVIEW</strong> Somente leitura. Para cancelar ou marcar falta, abra a ficha do lead em Leads.</div>
+    <div className="crm-real-agenda-notice"><strong>DADOS REAIS</strong> Somente leitura. Para cancelar ou marcar falta, abra a ficha do lead em Leads.</div>
     {state === 'ready' && totals && <div className="crm-real-agenda-stats">
       {[
         ['Total de reuniões', totals.total],

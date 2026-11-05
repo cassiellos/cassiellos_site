@@ -38,7 +38,7 @@ export default async function CrmLoginPage({ searchParams }: LoginProps) {
         <p className="crm-auth-description">Entre para acompanhar leads, agendamentos e resultados da Cassiellos.</p>
 
         {!configured && <div className="crm-auth-alert" role="status">
-          <strong>Configuração pendente.</strong> O acesso será liberado depois que as credenciais administrativas forem configuradas no ambiente Preview.
+          <strong>Configuração pendente.</strong> O acesso será liberado depois que as credenciais administrativas forem configuradas no ambiente do CRM.
         </div>}
         {configured && error && errorText[error] && <div className="crm-auth-alert" role="alert">{errorText[error]}</div>}
 
@@ -50,7 +50,7 @@ export default async function CrmLoginPage({ searchParams }: LoginProps) {
           <input id="crm-password" name="password" type="password" required minLength={12} maxLength={256} autoComplete="current-password" placeholder="Sua senha de acesso" disabled={!configured} />
           <button className="crm-btn crm-btn-primary crm-auth-submit" type="submit" disabled={!configured}>Acessar meu CRM <span aria-hidden="true">→</span></button>
         </form>
-        <p className="crm-auth-footer">Sessão protegida · Expira após 8 horas · Ambiente Preview</p>
+        <p className="crm-auth-footer">Sessão protegida · Expira após 8 horas</p>
       </section>
       <div className="crm-auth-bottom">© Cassiellos · Identidade oficial preservada</div>
     </main>
