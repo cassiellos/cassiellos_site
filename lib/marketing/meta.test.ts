@@ -44,9 +44,12 @@ describe('Meta Pixel — configuração e rotas', () => {
       { enabled: true, pixelId: '1234567890123456' })
   })
   it('somente páginas públicas do funil; nunca CRM ou API', () => {
+    // Página pública ATUAL (o antigo /agendar/odontologia redireciona para ela).
+    assert.equal(isMetaTrackedPath('/agendar'), true)
     assert.equal(isMetaTrackedPath('/agendar/odontologia'), true)
     assert.equal(isMetaTrackedPath('/agendar/outro-nicho'), true)
-    for (const path of ['/crm', '/crm/login', '/api/booking/leads', '/', '/sobre', '/politica-de-privacidade', '/mini-crm', null]) {
+    for (const path of ['/crm', '/crm/login', '/api/booking/leads', '/', '/sobre', '/politica-de-privacidade', '/mini-crm', null,
+      '/agendarx', '/agendar-falso', '/api/agendar', '/crm/agendar']) {
       assert.equal(isMetaTrackedPath(path), false, String(path))
     }
   })

@@ -11,11 +11,16 @@ import { CONSENT_COOKIE, parseConsent, readCookie } from '../privacy/consent'
 
 /** Páginas públicas do funil (prefixos). Ajuste aqui, não espalhe pelo código. */
 export const META_TRACKED_PATH_PREFIXES: readonly string[] = ['/agendar/']
+/**
+ * Páginas públicas do funil (caminho exato). A página pública atual é `/agendar`: o antigo `/agendar/odontologia`
+ * redireciona permanentemente para ela (app/agendar/[slug]/page.tsx), então o caminho exato precisa ser aceito.
+ */
+export const META_TRACKED_EXACT_PATHS: readonly string[] = ['/agendar']
 
 export function isMetaTrackedPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false
   if (pathname.startsWith('/crm') || pathname.startsWith('/api')) return false
-  return META_TRACKED_PATH_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  return META_TRACKED_EXACT_PATHS.includes(pathname) || META_TRACKED_PATH_PREFIXES.some(prefix => pathname.startsWith(prefix))
 }
 
 export type MetaPixelConfig = { enabled: true; pixelId: string } | { enabled: false }
