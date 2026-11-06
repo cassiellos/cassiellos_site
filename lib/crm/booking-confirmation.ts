@@ -193,7 +193,7 @@ export async function confirmBookingRequest(
     const attendeeEmail = deps.sendInvites === true && isInvitableEmail(reservation.email.trim().toLowerCase())
       ? reservation.email.trim().toLowerCase() : null
     const event = await deps.createEvent({
-      title: bookingEventTitle(form.meetingName),
+      title: bookingEventTitle(normalizedStart),
       attendeeEmail,
       startAt: normalizedStart,
       endAt: finishAt,

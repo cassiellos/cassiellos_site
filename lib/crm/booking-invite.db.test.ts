@@ -86,9 +86,10 @@ describe('convite do Google Agenda ao lead (PostgreSQL descartável, Google simu
     const { path, body } = g.inserts[0]
     assert.equal(path, 'calendars/agenda-cassiellos/events?sendUpdates=all&conferenceDataVersion=1')
     assert.deepEqual(body.attendees, [{ email: email.toLowerCase() }])
-    assert.equal(body.summary, 'Diagnóstico estratégico | Cassiellos')
+    assert.match(body.summary, /^Agência Cassiellos \| Reunião confirmada — \d{2}\/\d{2} às \d{2}h(\d{2})?$/)
     assert.equal(body.conferenceData.createRequest.conferenceSolutionKey.type, 'hangoutsMeet')
-    assert.match(body.description, /\(horário de Brasília\)/)
+    assert.match(body.description, / — Brasília$/m)
+    assert.doesNotMatch(body.description, /Referência do agendamento/, 'convidado não recebe dado interno')
     assert.match(body.description, /Duração: 30 minutos/)
     assert.equal((Date.parse(body.end.dateTime) - Date.parse(body.start.dateTime)) / 60_000, 30)
     // nada digitado pelo visitante (nome, clínica) entra no convite

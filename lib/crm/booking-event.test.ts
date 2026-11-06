@@ -7,7 +7,7 @@ import { cancelGoogleEvent, insertBookingEvent } from './google-event-ops'
 
 // 03/11/2026 09:00–09:30 em Brasília (UTC−3). Endereços fictícios.
 const INPUT = {
-  title: 'Diagnóstico estratégico • Odontologia | Cassiellos', startAt: '2026-11-03T12:00:00.000Z', endAt: '2026-11-03T12:30:00.000Z',
+  title: 'Agência Cassiellos | Reunião confirmada — 03/11 às 09h', startAt: '2026-11-03T12:00:00.000Z', endAt: '2026-11-03T12:30:00.000Z',
   requestId: '6f1d2c3b-1111-4222-8333-444455556666', googleEventId: 'c6f1d2c3b111142228333444455556666', reference: '6f1d2c3b',
 }
 const LEAD = 'maria+agenda@gmail.com'
@@ -22,16 +22,20 @@ describe('evento do agendamento público — convite ao lead', () => {
     assert.equal(body.guestsCanModify, false)
   })
 
-  it('convite: título, data e horário de Brasília, duração, Cassiellos e referência; nenhum outro dado pessoal', () => {
+  it('convite: descrição curta em português, data e horário de Brasília, duração; sem dados internos nem pessoais', () => {
     const { body } = buildBookingEventRequest('primary', { ...INPUT, attendeeEmail: LEAD })
     const d = String(body.description)
     assert.equal(body.summary, INPUT.title)
-    assert.match(d, /Cassiellos/)
-    assert.match(d, /Data: terça-feira, 03\/11\/2026/)
-    assert.match(d, /Horário: 09:00 às 09:30 \(horário de Brasília\)/)
-    assert.match(d, /Duração: 30 minutos/)
-    assert.match(d, /Google Meet/)
-    assert.match(d, /Referência do agendamento: 6f1d2c3b/)
+    assert.equal(d, [
+      'Reunião confirmada com a Agência Cassiellos.',
+      '',
+      'Data: terça-feira, 03/11/2026',
+      'Horário: 09h às 09h30 — Brasília',
+      'Duração: 30 minutos',
+      '',
+      'Acesse a reunião pelo link do Google Meet disponível neste convite.',
+    ].join('\n'))
+    assert.doesNotMatch(d, /Referência|WhatsApp|Test Event|Invitation|\b(the|meeting|event)\b/i, 'sem dado interno nem inglês')
     // o e-mail aparece só como participante; nada mais do visitante vai ao Google
     assert.equal(JSON.stringify({ ...body, attendees: undefined }).includes('@'), false)
     assert.deepEqual(Object.keys(body.start as object), ['dateTime', 'timeZone'])
@@ -60,9 +64,26 @@ describe('evento do agendamento público — convite ao lead', () => {
     assert.equal(body.id, INPUT.googleEventId)
   })
 
-  it('título leva o nome da Cassiellos sem duplicar', () => {
-    assert.equal(bookingEventTitle('Diagnóstico estratégico • Odontologia'), 'Diagnóstico estratégico • Odontologia | Cassiellos')
-    assert.equal(bookingEventTitle('Diagnóstico Cassiellos'), 'Diagnóstico Cassiellos')
+  it('título: "Agência Cassiellos | Reunião confirmada — DD/MM às HHh", data e hora reais em Brasília', () => {
+    assert.equal(bookingEventTitle('2026-11-06T12:00:00.000Z'), 'Agência Cassiellos | Reunião confirmada — 06/11 às 09h')
+    assert.equal(bookingEventTitle('2026-11-06T17:30:00.000Z'), 'Agência Cassiellos | Reunião confirmada — 06/11 às 14h30')
+    // fuso de Brasília (UTC−3): 01h UTC do dia 07 ainda é dia 06 em Brasília
+    assert.equal(bookingEventTitle('2026-11-07T01:05:00.000Z'), 'Agência Cassiellos | Reunião confirmada — 06/11 às 22h05')
+    assert.equal(bookingEventTitle('2027-01-01T02:59:00.000Z'), 'Agência Cassiellos | Reunião confirmada — 31/12 às 23h59')
+    assert.throws(() => bookingEventTitle('não é data'), /TIME_INVALID/)
+  })
+
+  it('título curto e legível: marca e data/hora nos primeiros caracteres, sem inglês', () => {
+    const t = bookingEventTitle('2026-11-06T12:00:00.000Z')
+    assert.ok(t.length <= 60, String(t.length))
+    assert.ok(t.startsWith('Agência Cassiellos | Reunião confirmada'))
+    assert.doesNotMatch(t, /Test|Event|Invitation|Meeting/i)
+  })
+
+  it('evento SEM convidado (interno) mantém a referência para conciliação', () => {
+    const d = bookingEventDescription({ reference: '6f1d2c3b', startAt: INPUT.startAt, endAt: INPUT.endAt, invited: false })
+    assert.match(d, /Referência do agendamento: 6f1d2c3b$/)
+    assert.match(d, /^Reunião confirmada com a Agência Cassiellos\./)
   })
 
   it('descrição recusa referência que não seja interna e horários inválidos', () => {

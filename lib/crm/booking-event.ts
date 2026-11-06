@@ -9,7 +9,8 @@ import { CRM_BOOKING_TIME_ZONE } from './booking-slots'
  *   sendUpdates=all — o próprio Google envia o convite (com o botão do Meet) e, depois, avisos de alteração/cancelamento.
  *   Desligado (attendeeEmail ausente) = comportamento anterior: sem participantes e sendUpdates=none.
  * - Conteúdo fixo, sem texto digitado pelo visitante (nome, clínica, respostas): o convite não pode ser usado para
- *   levar conteúdo arbitrário a terceiros. Só título, data/horário de Brasília, duração, Cassiellos e referência.
+ *   levar conteúdo arbitrário a terceiros. Só título, data/horário de Brasília, duração e Agência Cassiellos (a
+ *   referência do agendamento só aparece em evento SEM convidado, interno).
  * - Participante não vê outros convidados, não convida outros e não altera o evento.
  */
 
@@ -29,34 +30,54 @@ const MEET_URL = /^https:\/\/meet\.google\.com\/[a-z0-9-]{3,64}(?:\?[^\s]*)?$/i
 const REFERENCE = /^[a-z0-9]{4,32}$/i
 const EMAIL = /^[^\s@<>"(),;:]{1,64}@[a-z0-9.-]{1,253}\.[a-z]{2,}$/i
 
-export const BOOKING_ORGANIZER_NAME = 'Cassiellos'
+export const BOOKING_ORGANIZER_NAME = 'Agência Cassiellos'
 
 const dateFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: CRM_BOOKING_TIME_ZONE, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
-const timeFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: CRM_BOOKING_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+const shortDateFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: CRM_BOOKING_TIME_ZONE, day: '2-digit', month: '2-digit' })
+const timePartsFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: CRM_BOOKING_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 
-/** Título do convite: nome da reunião + Cassiellos (sem duplicar quando o nome já contém a marca). */
-export function bookingEventTitle(meetingName: string): string {
-  return /cassiellos/i.test(meetingName) ? meetingName : meetingName + ' | ' + BOOKING_ORGANIZER_NAME
-}
-
-export function bookingEventDescription(input: { reference: string; startAt: string; endAt: string; invited: boolean }): string {
-  if (!REFERENCE.test(input.reference)) throw new Error('CRM_BOOKING_REFERENCE_INVALID')
-  const start = new Date(input.startAt)
-  const end = new Date(input.endAt)
+function validTimes(startAt: string, endAt: string): { start: Date; end: Date; minutes: number } {
+  const start = new Date(startAt)
+  const end = new Date(endAt)
   const minutes = Math.round((end.getTime() - start.getTime()) / 60_000)
   if (!Number.isFinite(minutes) || minutes <= 0) throw new Error('CRM_BOOKING_TIME_INVALID')
+  return { start, end, minutes }
+}
+
+/** Hora no formato brasileiro curto, em Brasília: 09h, 09h30, 14h05. */
+export function bookingHour(date: Date): string {
+  const parts = timePartsFmt.formatToParts(date)
+  const hour = parts.find(p => p.type === 'hour')?.value ?? '00'
+  const minute = parts.find(p => p.type === 'minute')?.value ?? '00'
+  return hour + 'h' + (minute === '00' ? '' : minute)
+}
+
+/**
+ * Título do convite (aparece primeiro nas notificações do celular): marca + confirmação + data/hora reais em
+ * Brasília. Ex.: "Agência Cassiellos | Reunião confirmada — 06/11 às 09h".
+ */
+export function bookingEventTitle(startAt: string): string {
+  const start = new Date(startAt)
+  if (!Number.isFinite(start.getTime())) throw new Error('CRM_BOOKING_TIME_INVALID')
+  return BOOKING_ORGANIZER_NAME + ' | Reunião confirmada — ' + shortDateFmt.format(start) + ' às ' + bookingHour(start)
+}
+
+/**
+ * Descrição curta, só em português e sem dados internos para o convidado. A referência do agendamento só entra
+ * quando NÃO há convidado (evento interno da agenda da Cassiellos, usado na conciliação).
+ */
+export function bookingEventDescription(input: { reference: string; startAt: string; endAt: string; invited: boolean }): string {
+  if (!REFERENCE.test(input.reference)) throw new Error('CRM_BOOKING_REFERENCE_INVALID')
+  const { start, end, minutes } = validTimes(input.startAt, input.endAt)
   return [
-    'Diagnóstico estratégico com a ' + BOOKING_ORGANIZER_NAME + ' — reunião online pelo Google Meet.',
+    'Reunião confirmada com a ' + BOOKING_ORGANIZER_NAME + '.',
     '',
     'Data: ' + dateFmt.format(start),
-    'Horário: ' + timeFmt.format(start) + ' às ' + timeFmt.format(end) + ' (horário de Brasília)',
+    'Horário: ' + bookingHour(start) + ' às ' + bookingHour(end) + ' — Brasília',
     'Duração: ' + minutes + ' minutos',
-    'Acesso: use o botão "Participar com o Google Meet" deste convite.',
     '',
-    input.invited
-      ? 'Precisa remarcar ou cancelar? Fale com a equipe ' + BOOKING_ORGANIZER_NAME + ' pelo WhatsApp informado no agendamento.'
-      : 'Sem convidados no evento: o link do Google Meet foi exibido ao visitante na confirmação.',
-    'Referência do agendamento: ' + input.reference,
+    'Acesse a reunião pelo link do Google Meet disponível neste convite.',
+    ...(input.invited ? [] : ['', 'Referência do agendamento: ' + input.reference]),
   ].join('\n')
 }
 
