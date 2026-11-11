@@ -7,6 +7,7 @@ import {
   EXPENSE_CATEGORIES, FORMALIZATION_STATUS, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SERVICE_STATUS, SOURCE_STATUS, addMonths, centsToInput, formatCents,
   formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, splitAgencyExpenseFunding, todayInBrazil,
 } from '@/lib/crm/finance/model'
+import { MONTH_BASIS_LABEL, entriesForMonth, monthListTotals, type MonthBasis } from '@/lib/crm/finance/month-filter'
 import './finance-panel.css'
 
 /**
@@ -255,6 +256,8 @@ type Dialog =
 export default function FinancePanel() {
   const [tab, setTab] = useState<Tab>('geral')
   const [drilldown, setDrilldown] = useState<DrilldownMode>('month')
+  // Receitas: recorte mensal por Vencimento (padrão) ou Competência — só apresentação (lib/crm/finance/month-filter.ts).
+  const [revenueBasis, setRevenueBasis] = useState<MonthBasis>('due')
   const tabsRef = useRef<HTMLElement>(null)
   const navigateTo = (destination: Tab, mode: DrilldownMode = 'month') => {
     setTab(destination)
@@ -381,8 +384,7 @@ export default function FinancePanel() {
     {data && tab === 'contratos' && <Contracts data={data} month={month} setDialog={setDialog} post={post} busy={busy}/>}
     {data && tab === 'receitas' && (drilldown === 'cash'
       ? <CashActivity data={data} direction="in" month={month} setDialog={setDialog} onBack={() => setDrilldown('month')}/>
-      : <EntryList title={'Receitas de ' + monthLabel(month)} subtitle="Competência do mês selecionado. Previsão não é receita: só vira caixa com recebimento confirmado."
-          list={byDir('in').filter(e => e.competenceMonth === month)} setDialog={setDialog} empty="Nenhuma receita com competência neste mês. Cadastre contratos em Clientes e Contratos."/>)}
+      : <RevenueMonth list={byDir('in')} month={month} basis={revenueBasis} onBasis={setRevenueBasis} setDialog={setDialog}/>)}
     {data && tab === 'despesas' && <Expenses data={data} month={month} setDialog={setDialog} post={post} busy={busy}/>}
     {data && tab === 'rateio' && <PartnerRateio month={month} values={data.rateio} onNavigate={navigateTo}/>}
     {data && tab === 'receber' && <MonthlyPending data={data} month={month} direction="in" setDialog={setDialog}
@@ -599,6 +601,31 @@ function EntryList({ title, subtitle, list, setDialog, empty, totals }: { title:
     {totals && <div className="crm-fin-totals">{totals.map(([l, c]) => <div key={l}><span>{l}</span><strong>{formatCents(c)}</strong></div>)}</div>}
     {list.length ? list.map(e => <EntryRow key={e.id} e={e} setDialog={setDialog}/>) : <p className="crm-fin-empty">{empty}</p>}
   </section>
+}
+
+/** Receitas do mês por Vencimento (padrão, ordem cronológica) ou Competência; totais seguem o critério exibido. */
+function RevenueMonth({ list, month, basis, onBasis, setDialog }: {
+  list: Entry[]; month: string; basis: MonthBasis; onBasis: (b: MonthBasis) => void; setDialog: (d: Dialog) => void
+}) {
+  const shown = entriesForMonth(list, month, basis)
+  const totals = monthListTotals(shown)
+  const criterion = MONTH_BASIS_LABEL[basis].toLowerCase()
+  return <>
+    <div className="crm-fin-view-switch" role="group" aria-label="Critério do mês nas receitas">
+      <span><strong>Critério:</strong> {basis === 'due' ? 'vencimento no mês selecionado' : 'competência do mês selecionado'}</span>
+      <span style={{ display: 'flex', gap: 8 }}>
+        {(['due', 'competence'] as const).map(b => <button key={b} type="button" className={'crm-btn' + (basis === b ? ' crm-btn-primary' : '')}
+          aria-pressed={basis === b} onClick={() => onBasis(b)}>Por {MONTH_BASIS_LABEL[b].toLowerCase()}</button>)}
+      </span>
+    </div>
+    <EntryList title={'Receitas de ' + monthLabel(month) + ' · por ' + criterion}
+      subtitle={basis === 'due'
+        ? 'Cobranças com vencimento neste mês, em ordem de vencimento. A competência de cada cobrança aparece na linha e continua valendo para o DRE e os relatórios.'
+        : 'Competência do mês selecionado (base contábil). Previsão não é receita: só vira caixa com recebimento confirmado.'}
+      list={shown} setDialog={setDialog}
+      empty={basis === 'due' ? 'Nenhuma receita com vencimento neste mês.' : 'Nenhuma receita com competência neste mês. Cadastre contratos em Clientes e Contratos.'}
+      totals={[['Previsto (por ' + criterion + ')', totals.expectedCents], ['Recebido', totals.receivedCents], ['Em aberto', totals.openCents]]}/>
+  </>
 }
 
 function CashActivity({ data, month, direction, setDialog, onBack }: {

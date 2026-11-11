@@ -664,9 +664,11 @@ export async function loadFinanceOverview(pool: FinancePool, f: Filters, today: 
     const recurring = sources.filter(s => s.direction === 'in' && s.status === 'active' && s.periodicity !== 'one_time'
       && (!f.clientId || s.clientId === f.clientId) && (!f.category || s.category === f.category) && (!f.sourceId || s.id === f.sourceId))
 
-    // Lançamentos relevantes para o mês: competência do mês, tudo com saldo em aberto até o horizonte, movimentos de
-    // caixa no mês e recebidos com nota pendente.
+    // Lançamentos relevantes para o mês: competência do mês, vencimento no mês (recorte "por vencimento" das Receitas),
+    // tudo com saldo em aberto até o horizonte, movimentos de caixa no mês e recebidos com nota pendente.
+    // Só amplia o que é CARREGADO para as listas; KPIs, DRE e relatórios têm consultas próprias e não mudam.
     const entries = await loadEntries(c, f, today, `e.competence_month = $4::date
+        OR (e.due_date BETWEEN $4::date AND $6::date)
         OR (e.project_source_id IS NOT NULL)
         OR (e.competence_month BETWEEN DATE '2026-10-01' AND $4::date)
         OR (e.status = 'open' AND e.competence_month <= $5::date AND COALESCE(st.total, 0) < e.amount_cents)
