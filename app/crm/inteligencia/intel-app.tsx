@@ -5,7 +5,7 @@ import '../crm.css'
 import './inteligencia.css'
 import {
   EMPTY_CLIENT_LISTS, absorbClientLists, acceptFailure, acceptResponse, adoptEffectiveFilters, beginRequest, chooseClient, initialState, navigateArea,
-  prefsFromFilters, requestKey, resolveFilters,
+  omitArchivedClient, prefsFromFilters, requestKey, resolveFilters,
   type ClientLists, type FetchState, type FilterPrefs,
 } from '@/lib/crm/intel/client-state'
 import { PERIOD_LABEL, PERIOD_PRESETS, type PeriodPreset } from '@/lib/crm/intel/dates'
@@ -33,7 +33,7 @@ function filtersFromUrl(area: IntelArea): IntelFilters {
   return { area, period, platform, status, client, campaign }
 }
 
-export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedArea: IntelArea; onNavigateArea: (area: IntelArea) => void }) {
+export default function IntelApp({ embeddedArea, onNavigateArea, initialMode }: { embeddedArea: IntelArea; onNavigateArea: (area: IntelArea) => void; initialMode: 'demo' | 'real' }) {
   const [prefs, setPrefs] = useState<FilterPrefs>(() => prefsFromFilters(DEFAULT))
   const [ready, setReady] = useState(false)
   const [state, setState] = useState<FetchState<Loaded>>(initialState)
@@ -98,7 +98,14 @@ export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedAre
         if (controller.signal.aborted) return
         const mode = body.mode === 'real' ? 'real' : 'demo'
         if (body.view === null) {
-          // Modo real sem cliente (área Cliente) ou sem agência (Prospecção): só o cadastro, nenhum número.
+          // No modo real sem clientes, limpa IDs arquivados e listas antigas para
+          // não manter uma seleção fantasma nem travar o formulário de cadastro.
+          if (body.area === 'cliente') {
+            const available = (body.admin?.clients ?? []).filter(c => c.kind === 'client' && c.status !== 'archived')
+              .map(c => ({ id: c.id, name: c.name, kind: c.kind }))
+            setLists(prev => absorbClientLists(prev, 'cliente', available))
+            setPrefs(p => p.client || p.lastClient ? { ...p, client: '', lastClient: null } : p)
+          }
           setNow(new Date())
           setState(s => acceptResponse(s, fk, { area: body.area, payload: null, mode, admin: body.admin ?? null, needsAgency: !!body.needsAgency }))
           return
@@ -125,6 +132,11 @@ export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedAre
   const set = (patch: Partial<IntelFilters>) => setPrefs(p => ({ ...p, ...patch }))
   const openClient = (id: string) => { setSearch(''); setPrefs(p => chooseClient(navigateArea(p, 'cliente'), id, externalIds)); onNavigateArea('cliente') }
   const pickClient = (id: string) => { setSearch(''); setPrefs(p => chooseClient(p, id, externalIds)) }
+  const onArchived = (id: string) => {
+    setLists(prev => omitArchivedClient(prev, id))
+    setPrefs(p => p.client === id || p.lastClient === id
+      ? { ...p, client: p.client === id ? '' : p.client, lastClient: p.lastClient === id ? null : p.lastClient } : p)
+  }
 
   const act: Act = async (action, extra = {}) => {
     const res = await fetch('/api/crm/intel', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...extra }) })
@@ -160,7 +172,7 @@ export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedAre
   // (mensagens de confirmação e formulários não somem a cada atualização).
   const lastAdmin = useRef<{ mode: 'demo' | 'real'; admin: AdminBlock | null; area: IntelArea } | null>(null)
   if (loaded) lastAdmin.current = { mode: loaded.mode, admin: loaded.admin, area: loaded.area }
-  const mode = loaded?.mode ?? lastAdmin.current?.mode ?? 'demo'
+  const mode = loaded?.mode ?? lastAdmin.current?.mode ?? initialMode
   const admin = loaded?.admin ?? (lastAdmin.current?.area === filters.area ? lastAdmin.current.admin : null)
   const meta = payload?.view.meta
   const showStatus = STATUS_AREAS.includes(filters.area)
@@ -182,7 +194,7 @@ export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedAre
             {showClient && <label className="mi-field"><span>Cliente</span>
               <select value={filters.client} onChange={e => pickClient(e.target.value)} disabled={!clientChoices.length}>
                 {filters.area !== 'cliente' && <option value="all">Todos os clientes</option>}
-                {filters.area === 'cliente' && !filters.client && <option value="">Carregando…</option>}
+                {filters.area === 'cliente' && !filters.client && <option value="">{clientChoices.length ? 'Selecione um cliente' : 'Nenhum cliente cadastrado'}</option>}
                 {clientChoices.map(c => <option key={c.id} value={c.id}>{c.name}{c.kind === 'agency' ? ' (agência)' : ''}</option>)}
               </select></label>}
             <div className="mi-field"><span>Plataforma</span><div className="mi-seg" role="group" aria-label="Plataforma">
@@ -217,7 +229,7 @@ export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedAre
               {payload.area === 'conexoes' && <ConnectionsArea v={payload.view} now={now}/>}
             </div></DataModeContext.Provider>}
             {mode === 'real' && admin && state.status !== 'unauthorized' && <DataModeContext.Provider value={mode}><div className="mi-admin">
-              {filters.area === 'cliente' && <ClientAdmin admin={admin} selectedClientId={payload?.area === 'cliente' ? payload.view.client.id : filters.client || null} act={act} onChanged={reload} onSelect={pickClient}/>}
+              {filters.area === 'cliente' && <ClientAdmin admin={admin} selectedClientId={payload?.area === 'cliente' ? payload.view.client.id : filters.client || null} act={act} onChanged={reload} onSelect={pickClient} onArchived={onArchived}/>}
               {filters.area === 'conexoes' && <ConnectionsAdmin admin={admin} act={act} onChanged={reload} oauthResult={oauthResult}/>}
             </div></DataModeContext.Provider>}
           </div>
