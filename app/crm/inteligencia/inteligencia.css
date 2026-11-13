@@ -1,206 +1,209 @@
 /* Central de Inteligência — estilos próprios (escopo .mi-root). Reaproveita tokens e componentes de crm.css sem alterá-los. */
-#cassiellos-crm.mi-root .mi-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-#cassiellos-crm.mi-root .mi-nav-link{text-decoration:none}
-#cassiellos-crm.mi-root .mi-sidebar-note{display:grid;gap:4px;padding:11px 12px;margin-bottom:12px;border:1px solid rgba(245,184,75,.25);background:rgba(245,184,75,.06);border-radius:11px;font-size:11px;color:#d9c48f}
-#cassiellos-crm.mi-root .mi-sidebar-note strong{color:#f5c76b;font-size:11px;letter-spacing:.02em}
-#cassiellos-crm.mi-root .mi-sim-pill{font-size:10px;font-weight:800;letter-spacing:.12em;color:#f5c76b;border:1px solid rgba(245,184,75,.35);background:rgba(245,184,75,.08);border-radius:99px;padding:7px 12px;white-space:nowrap}
-#cassiellos-crm.mi-root .mi-banner,#cassiellos-crm.mi-root .mi-callout{border:1px solid rgba(245,184,75,.28);background:rgba(245,184,75,.06);color:#e3d3a8;padding:12px 16px;border-radius:10px;font-size:12px;line-height:1.55;margin-bottom:18px}
-#cassiellos-crm.mi-root .mi-banner strong,#cassiellos-crm.mi-root .mi-callout strong{color:#f5c76b}
-#cassiellos-crm.mi-root .mi-callout{border-color:rgba(34,199,242,.22);background:rgba(34,199,242,.055);color:#b4cbdb}
-#cassiellos-crm.mi-root .mi-callout strong{color:#7fdcf5}
-#cassiellos-crm.mi-root .mi-sim-tag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#f5c76b;border:1px solid rgba(245,184,75,.3);border-radius:99px;padding:2px 7px;margin-left:2px}
+#cassiellos-crm .mi-root .mi-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#cassiellos-crm .mi-root .mi-nav-link{text-decoration:none}
+#cassiellos-crm .mi-root .mi-sidebar-note{display:grid;gap:4px;padding:11px 12px;margin-bottom:12px;border:1px solid rgba(245,184,75,.25);background:rgba(245,184,75,.06);border-radius:11px;font-size:11px;color:#d9c48f}
+#cassiellos-crm .mi-root .mi-sidebar-note strong{color:#f5c76b;font-size:11px;letter-spacing:.02em}
+#cassiellos-crm .mi-root .mi-sim-pill{font-size:10px;font-weight:800;letter-spacing:.12em;color:#f5c76b;border:1px solid rgba(245,184,75,.35);background:rgba(245,184,75,.08);border-radius:99px;padding:7px 12px;white-space:nowrap}
+#cassiellos-crm .mi-root .mi-banner,#cassiellos-crm .mi-root .mi-callout{border:1px solid rgba(245,184,75,.28);background:rgba(245,184,75,.06);color:#e3d3a8;padding:12px 16px;border-radius:10px;font-size:12px;line-height:1.55;margin-bottom:18px}
+#cassiellos-crm .mi-root .mi-banner strong,#cassiellos-crm .mi-root .mi-callout strong{color:#f5c76b}
+#cassiellos-crm .mi-root .mi-callout{border-color:rgba(34,199,242,.22);background:rgba(34,199,242,.055);color:#b4cbdb}
+#cassiellos-crm .mi-root .mi-callout strong{color:#7fdcf5}
+#cassiellos-crm .mi-root .mi-sim-tag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#f5c76b;border:1px solid rgba(245,184,75,.3);border-radius:99px;padding:2px 7px;margin-left:2px}
 
 /* filtros */
-#cassiellos-crm.mi-root .mi-filters{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;padding:14px 16px;border:1px solid var(--crm-border);background:#0c1828;border-radius:13px;margin-bottom:10px}
-#cassiellos-crm.mi-root .mi-field{display:grid;gap:6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#7f93ad;font-weight:800}
-#cassiellos-crm.mi-root .mi-field-grow{flex:1;min-width:180px}
-#cassiellos-crm.mi-root .mi-field select,#cassiellos-crm.mi-root .mi-field input{min-height:38px;border:1px solid var(--crm-border);background:#111d2f;color:#e8f0ff;border-radius:9px;padding:0 11px;font-size:13px;letter-spacing:0;text-transform:none;font-weight:600;min-width:150px}
-#cassiellos-crm.mi-root .mi-field select:focus-visible,#cassiellos-crm.mi-root .mi-field input:focus-visible,#cassiellos-crm.mi-root .mi-seg button:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:1px}
-#cassiellos-crm.mi-root .mi-seg{display:inline-flex;border:1px solid var(--crm-border);border-radius:9px;overflow:hidden;background:#111d2f}
-#cassiellos-crm.mi-root .mi-seg button{min-height:36px;border:0;background:transparent;color:#a9b9cc;padding:0 12px;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;white-space:nowrap}
-#cassiellos-crm.mi-root .mi-seg button+button{border-left:1px solid var(--crm-border)}
-#cassiellos-crm.mi-root .mi-seg button[aria-pressed=true]{background:rgba(241,60,75,.16);color:#fff;box-shadow:inset 0 -2px 0 var(--crm-red)}
-#cassiellos-crm.mi-root .mi-refresh{margin-left:auto}
-#cassiellos-crm.mi-root .mi-stamp{font-size:11px;color:#8ea3bc;margin:0 2px 20px;line-height:1.6}
-#cassiellos-crm.mi-root .mi-stamp strong{color:#dbe6f6}
+#cassiellos-crm .mi-root .mi-filters{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;padding:14px 16px;border:1px solid var(--crm-border);background:#0c1828;border-radius:13px;margin-bottom:10px}
+#cassiellos-crm .mi-root .mi-field{display:grid;gap:6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#7f93ad;font-weight:800}
+#cassiellos-crm .mi-root .mi-field-grow{flex:1;min-width:180px}
+#cassiellos-crm .mi-root .mi-field select,#cassiellos-crm .mi-root .mi-field input{min-height:38px;border:1px solid var(--crm-border);background:#111d2f;color:#e8f0ff;border-radius:9px;padding:0 11px;font-size:13px;letter-spacing:0;text-transform:none;font-weight:600;min-width:150px}
+#cassiellos-crm .mi-root .mi-field select:focus-visible,#cassiellos-crm .mi-root .mi-field input:focus-visible,#cassiellos-crm .mi-root .mi-seg button:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:1px}
+#cassiellos-crm .mi-root .mi-seg{display:inline-flex;border:1px solid var(--crm-border);border-radius:9px;overflow:hidden;background:#111d2f}
+#cassiellos-crm .mi-root .mi-seg button{min-height:36px;border:0;background:transparent;color:#a9b9cc;padding:0 12px;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;white-space:nowrap}
+#cassiellos-crm .mi-root .mi-seg button+button{border-left:1px solid var(--crm-border)}
+#cassiellos-crm .mi-root .mi-seg button[aria-pressed=true]{background:rgba(241,60,75,.16);color:#fff;box-shadow:inset 0 -2px 0 var(--crm-red)}
+#cassiellos-crm .mi-root .mi-refresh{margin-left:auto}
+#cassiellos-crm .mi-root .mi-stamp{font-size:11px;color:#8ea3bc;margin:0 2px 20px;line-height:1.6}
+#cassiellos-crm .mi-root .mi-stamp strong{color:#dbe6f6}
 
 /* estados */
-#cassiellos-crm.mi-root .mi-state{padding:24px;color:#aabbd0;font-size:13px;display:flex;gap:12px;align-items:center;margin-bottom:16px;line-height:1.55}
-#cassiellos-crm.mi-root .mi-state[data-kind=error],#cassiellos-crm.mi-root .mi-state[data-kind=unauthorized]{border-color:rgba(241,60,75,.35)}
-#cassiellos-crm.mi-root .mi-state a{color:#81def7;text-decoration:underline}
-#cassiellos-crm.mi-root .mi-spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(34,199,242,.25);border-top-color:var(--crm-cyan);animation:mi-spin .8s linear infinite;flex:0 0 auto}
+#cassiellos-crm .mi-root .mi-state{padding:24px;color:#aabbd0;font-size:13px;display:flex;gap:12px;align-items:center;margin-bottom:16px;line-height:1.55}
+#cassiellos-crm .mi-root .mi-state[data-kind=error],#cassiellos-crm .mi-root .mi-state[data-kind=unauthorized]{border-color:rgba(241,60,75,.35)}
+#cassiellos-crm .mi-root .mi-state a{color:#81def7;text-decoration:underline}
+#cassiellos-crm .mi-root .mi-spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(34,199,242,.25);border-top-color:var(--crm-cyan);animation:mi-spin .8s linear infinite;flex:0 0 auto}
 @keyframes mi-spin{to{transform:rotate(360deg)}}
-#cassiellos-crm.mi-root .mi-area[data-loading=true]{opacity:.55;transition:opacity .15s;pointer-events:none}
-#cassiellos-crm.mi-root .mi-empty{color:#8ea3bc;font-size:12px;padding:6px 0;margin:0}
-#cassiellos-crm.mi-root .mi-muted{color:#8193ab}
-#cassiellos-crm.mi-root .mi-note{font-size:11px;color:#93a8bf;margin:12px 0 0;line-height:1.55}
-#cassiellos-crm.mi-root .mi-link{background:none;border:0;padding:0;color:#8fdcf6;font-weight:700;text-align:left;text-decoration:underline;text-underline-offset:3px}
+#cassiellos-crm .mi-root .mi-area[data-loading=true]{opacity:.55;transition:opacity .15s;pointer-events:none}
+#cassiellos-crm .mi-root .mi-empty{color:#8ea3bc;font-size:12px;padding:6px 0;margin:0}
+#cassiellos-crm .mi-root .mi-muted{color:#8193ab}
+#cassiellos-crm .mi-root .mi-note{font-size:11px;color:#93a8bf;margin:12px 0 0;line-height:1.55}
+#cassiellos-crm .mi-root .mi-link{background:none;border:0;padding:0;color:#8fdcf6;font-weight:700;text-align:left;text-decoration:underline;text-underline-offset:3px}
 
 /* KPIs */
-#cassiellos-crm.mi-root .mi-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-kpi{padding:16px 17px;min-height:118px;display:flex;flex-direction:column}
-#cassiellos-crm.mi-root .mi-kpi[data-tone=sim]{border-color:rgba(245,184,75,.22)}
-#cassiellos-crm.mi-root .mi-kpi-label{font-size:11px;color:#a9b9cc;font-weight:600}
-#cassiellos-crm.mi-root .mi-kpi-value{font-size:25px;font-weight:800;letter-spacing:-.04em;margin:9px 0 6px;font-variant-numeric:tabular-nums;line-height:1.15;word-break:break-word}
-#cassiellos-crm.mi-root .mi-kpi-foot{margin-top:auto;font-size:10.5px;color:#8197b1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-#cassiellos-crm.mi-root .mi-delta{font-weight:700}
-#cassiellos-crm.mi-root .mi-delta[data-dir=up]{color:#72e6bb}
-#cassiellos-crm.mi-root .mi-delta[data-dir=down]{color:#ff8f99}
-#cassiellos-crm.mi-root .mi-ccy-title{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7fdcf5;margin:4px 2px 8px}
-#cassiellos-crm.mi-root .mi-mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-mini-kpis div{border:1px solid var(--crm-border);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.02);display:grid;gap:4px}
-#cassiellos-crm.mi-root .mi-mini-kpis span{font-size:10.5px;color:#8ea3bc}
-#cassiellos-crm.mi-root .mi-mini-kpis strong{font-size:18px;font-variant-numeric:tabular-nums}
+#cassiellos-crm .mi-root .mi-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-kpi{padding:16px 17px;min-height:118px;display:flex;flex-direction:column}
+#cassiellos-crm .mi-root .mi-kpi[data-tone=sim]{border-color:rgba(245,184,75,.22)}
+#cassiellos-crm .mi-root .mi-kpi-label{font-size:11px;color:#a9b9cc;font-weight:600}
+#cassiellos-crm .mi-root .mi-kpi-value{font-size:25px;font-weight:800;letter-spacing:-.04em;margin:9px 0 6px;font-variant-numeric:tabular-nums;line-height:1.15;word-break:break-word}
+#cassiellos-crm .mi-root .mi-kpi-foot{margin-top:auto;font-size:10.5px;color:#8197b1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#cassiellos-crm .mi-root .mi-delta{font-weight:700}
+#cassiellos-crm .mi-root .mi-delta[data-dir=up]{color:#72e6bb}
+#cassiellos-crm .mi-root .mi-delta[data-dir=down]{color:#ff8f99}
+#cassiellos-crm .mi-root .mi-ccy-title{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7fdcf5;margin:4px 2px 8px}
+#cassiellos-crm .mi-root .mi-mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-mini-kpis div{border:1px solid var(--crm-border);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.02);display:grid;gap:4px}
+#cassiellos-crm .mi-root .mi-mini-kpis span{font-size:10.5px;color:#8ea3bc}
+#cassiellos-crm .mi-root .mi-mini-kpis strong{font-size:18px;font-variant-numeric:tabular-nums}
 
 /* layout */
-#cassiellos-crm.mi-root .mi-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-grid-2>.mi-panel{margin-bottom:0}
-#cassiellos-crm.mi-root .mi-panel{margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-panel .crm-panel-head{flex-wrap:wrap;align-items:flex-start}
-#cassiellos-crm.mi-root .mi-panel .crm-panel-head>div:first-child{flex:1 1 220px;min-width:0}
-#cassiellos-crm.mi-root .mi-client-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 22px;margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-client-head h2{margin:0 0 4px;font-size:22px;letter-spacing:-.03em}
-#cassiellos-crm.mi-root .mi-client-head p{margin:0;font-size:12px}
+#cassiellos-crm .mi-root .mi-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-grid-2>.mi-panel{margin-bottom:0}
+#cassiellos-crm .mi-root .mi-panel{margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-panel .crm-panel-head{flex-wrap:wrap;align-items:flex-start}
+#cassiellos-crm .mi-root .mi-panel .crm-panel-head>div:first-child{flex:1 1 220px;min-width:0}
+#cassiellos-crm .mi-root .mi-client-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 22px;margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-client-head h2{margin:0 0 4px;font-size:22px;letter-spacing:-.03em}
+#cassiellos-crm .mi-root .mi-client-head p{margin:0;font-size:12px}
 
 /* badges */
-#cassiellos-crm.mi-root .mi-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:99px;padding:4px 9px;border:1px solid var(--crm-border);white-space:nowrap;color:#b9c7d9;background:#17253a}
-#cassiellos-crm.mi-root .mi-badge[data-tone=ok]{color:#72e6bb;border-color:rgba(52,214,160,.28);background:rgba(52,214,160,.08)}
-#cassiellos-crm.mi-root .mi-badge[data-tone=warn]{color:#f5c76b;border-color:rgba(245,184,75,.32);background:rgba(245,184,75,.08)}
-#cassiellos-crm.mi-root .mi-badge[data-tone=bad]{color:#ff8f99;border-color:rgba(241,60,75,.35);background:rgba(241,60,75,.1)}
-#cassiellos-crm.mi-root .mi-platform{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;margin:0 4px 2px 0;background:#17253a;color:#c8d5e6;white-space:nowrap}
-#cassiellos-crm.mi-root .mi-platform[data-platform=google_ads]{background:rgba(77,141,255,.14);color:#9fc0ff}
-#cassiellos-crm.mi-root .mi-platform[data-platform=meta_ads]{background:rgba(34,199,242,.12);color:#86def6}
-#cassiellos-crm.mi-root .mi-platform[data-platform=ga4]{background:rgba(167,139,250,.14);color:#c7b6ff}
-#cassiellos-crm.mi-root .mi-platform[data-platform=gtm]{background:rgba(148,163,184,.14);color:#cbd5e1}
+#cassiellos-crm .mi-root .mi-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:99px;padding:4px 9px;border:1px solid var(--crm-border);white-space:nowrap;color:#b9c7d9;background:#17253a}
+#cassiellos-crm .mi-root .mi-badge[data-tone=ok]{color:#72e6bb;border-color:rgba(52,214,160,.28);background:rgba(52,214,160,.08)}
+#cassiellos-crm .mi-root .mi-badge[data-tone=warn]{color:#f5c76b;border-color:rgba(245,184,75,.32);background:rgba(245,184,75,.08)}
+#cassiellos-crm .mi-root .mi-badge[data-tone=bad]{color:#ff8f99;border-color:rgba(241,60,75,.35);background:rgba(241,60,75,.1)}
+#cassiellos-crm .mi-root .mi-platform{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;margin:0 4px 2px 0;background:#17253a;color:#c8d5e6;white-space:nowrap}
+#cassiellos-crm .mi-root .mi-platform[data-platform=google_ads]{background:rgba(77,141,255,.14);color:#9fc0ff}
+#cassiellos-crm .mi-root .mi-platform[data-platform=meta_ads]{background:rgba(34,199,242,.12);color:#86def6}
+#cassiellos-crm .mi-root .mi-platform[data-platform=ga4]{background:rgba(167,139,250,.14);color:#c7b6ff}
+#cassiellos-crm .mi-root .mi-platform[data-platform=gtm]{background:rgba(148,163,184,.14);color:#cbd5e1}
 
 /* tabelas */
-#cassiellos-crm.mi-root .mi-table{width:100%;border-collapse:collapse;font-size:12px;min-width:720px}
-#cassiellos-crm.mi-root .mi-table th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7f93ad;font-weight:800;padding:10px 10px;border-bottom:1px solid var(--crm-border);white-space:nowrap}
-#cassiellos-crm.mi-root .mi-table td{padding:11px 10px;border-bottom:1px solid rgba(220,227,238,.06);vertical-align:top;color:#dbe5f3}
-#cassiellos-crm.mi-root .mi-table tr:hover td{background:rgba(255,255,255,.018)}
-#cassiellos-crm.mi-root .mi-table .mi-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-#cassiellos-crm.mi-root .mi-sub{display:block;margin-top:4px;font-size:10.5px;color:#8197b1}
-#cassiellos-crm.mi-root [data-empty=true]{color:#8193ab}
-#cassiellos-crm.mi-root .mi-err{color:#ff9aa3}
+#cassiellos-crm .mi-root .mi-table{width:100%;border-collapse:collapse;font-size:12px;min-width:720px}
+#cassiellos-crm .mi-root .mi-table th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7f93ad;font-weight:800;padding:10px 10px;border-bottom:1px solid var(--crm-border);white-space:nowrap}
+#cassiellos-crm .mi-root .mi-table td{padding:11px 10px;border-bottom:1px solid rgba(220,227,238,.06);vertical-align:top;color:#dbe5f3}
+#cassiellos-crm .mi-root .mi-table tr:hover td{background:rgba(255,255,255,.018)}
+#cassiellos-crm .mi-root .mi-table .mi-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+#cassiellos-crm .mi-root .mi-sub{display:block;margin-top:4px;font-size:10.5px;color:#8197b1}
+#cassiellos-crm .mi-root [data-empty=true]{color:#8193ab}
+#cassiellos-crm .mi-root .mi-err{color:#ff9aa3}
 
 /* gráficos */
-#cassiellos-crm.mi-root .mi-chart{margin:0}
-#cassiellos-crm.mi-root .mi-chart-box{position:relative}
-#cassiellos-crm.mi-root .mi-chart svg{display:block;max-width:100%;overflow:visible}
-#cassiellos-crm.mi-root .mi-grid{stroke:rgba(220,227,238,.07)}
-#cassiellos-crm.mi-root .mi-axis{fill:#8fa2bb;font-size:12px;font-variant-numeric:tabular-nums}
-#cassiellos-crm.mi-root .mi-hover-line{stroke:rgba(220,227,238,.25);stroke-dasharray:3 4}
-#cassiellos-crm.mi-root .mi-hit{cursor:crosshair;outline:none}
-#cassiellos-crm.mi-root .mi-hit:focus-visible{fill:rgba(34,199,242,.08)}
-#cassiellos-crm.mi-root .mi-chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:#a9b9cc;margin-bottom:8px}
-#cassiellos-crm.mi-root .mi-chart-legend i,#cassiellos-crm.mi-root .mi-tooltip i,#cassiellos-crm.mi-root .mi-share-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
-#cassiellos-crm.mi-root .mi-tooltip{position:absolute;top:0;transform:translateX(-50%);background:#0a1524;border:1px solid rgba(220,227,238,.18);border-radius:9px;padding:8px 10px;font-size:11px;display:grid;gap:3px;pointer-events:none;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:3}
-#cassiellos-crm.mi-root .mi-chart-empty{display:grid;place-items:center;min-height:150px;border:1px dashed var(--crm-border);border-radius:12px;color:#8ea3bc;font-size:12px;text-align:center;padding:16px}
-#cassiellos-crm.mi-root .mi-dist{display:grid;grid-template-columns:54px 1fr;gap:12px;align-items:start;margin-bottom:14px}
-#cassiellos-crm.mi-root .mi-dist-ccy{font-size:11px;font-weight:800;letter-spacing:.1em;color:#7fdcf5;padding-top:4px}
-#cassiellos-crm.mi-root .mi-share-bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:#17253a}
-#cassiellos-crm.mi-root .mi-share-legend{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;font-size:12px}
-#cassiellos-crm.mi-root .mi-share-legend li{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center}
-#cassiellos-crm.mi-root .mi-share-legend em{font-style:normal;color:#8ea3bc;min-width:46px;text-align:right}
-#cassiellos-crm.mi-root .mi-compare{list-style:none;margin:0;padding:0;display:grid;gap:9px}
-#cassiellos-crm.mi-root .mi-compare li{display:grid;grid-template-columns:minmax(110px,170px) 1fr auto;gap:12px;align-items:center;font-size:12px}
-#cassiellos-crm.mi-root .mi-compare button{background:none;border:0;padding:0;color:#dbe6f6;text-align:left;font-weight:600}
-#cassiellos-crm.mi-root .mi-compare button:hover{color:#8fdcf6;text-decoration:underline}
-#cassiellos-crm.mi-root .mi-compare-track{height:9px;border-radius:99px;background:#17253a;overflow:hidden}
-#cassiellos-crm.mi-root .mi-compare-track div{height:100%;border-radius:99px;background:linear-gradient(90deg,#246bff,#22c7f2)}
-#cassiellos-crm.mi-root .mi-compare strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+#cassiellos-crm .mi-root .mi-chart{margin:0}
+#cassiellos-crm .mi-root .mi-chart-box{position:relative}
+#cassiellos-crm .mi-root .mi-chart svg{display:block;max-width:100%;overflow:visible}
+#cassiellos-crm .mi-root .mi-grid{stroke:rgba(220,227,238,.07)}
+#cassiellos-crm .mi-root .mi-axis{fill:#8fa2bb;font-size:12px;font-variant-numeric:tabular-nums}
+#cassiellos-crm .mi-root .mi-hover-line{stroke:rgba(220,227,238,.25);stroke-dasharray:3 4}
+#cassiellos-crm .mi-root .mi-hit{cursor:crosshair;outline:none}
+#cassiellos-crm .mi-root .mi-hit:focus-visible{fill:rgba(34,199,242,.08)}
+#cassiellos-crm .mi-root .mi-chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:#a9b9cc;margin-bottom:8px}
+#cassiellos-crm .mi-root .mi-chart-legend i,#cassiellos-crm .mi-root .mi-tooltip i,#cassiellos-crm .mi-root .mi-share-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+#cassiellos-crm .mi-root .mi-tooltip{position:absolute;top:0;transform:translateX(-50%);background:#0a1524;border:1px solid rgba(220,227,238,.18);border-radius:9px;padding:8px 10px;font-size:11px;display:grid;gap:3px;pointer-events:none;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:3}
+#cassiellos-crm .mi-root .mi-chart-empty{display:grid;place-items:center;min-height:150px;border:1px dashed var(--crm-border);border-radius:12px;color:#8ea3bc;font-size:12px;text-align:center;padding:16px}
+#cassiellos-crm .mi-root .mi-dist{display:grid;grid-template-columns:54px 1fr;gap:12px;align-items:start;margin-bottom:14px}
+#cassiellos-crm .mi-root .mi-dist-ccy{font-size:11px;font-weight:800;letter-spacing:.1em;color:#7fdcf5;padding-top:4px}
+#cassiellos-crm .mi-root .mi-share-bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:#17253a}
+#cassiellos-crm .mi-root .mi-share-legend{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;font-size:12px}
+#cassiellos-crm .mi-root .mi-share-legend li{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center}
+#cassiellos-crm .mi-root .mi-share-legend em{font-style:normal;color:#8ea3bc;min-width:46px;text-align:right}
+#cassiellos-crm .mi-root .mi-compare{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+#cassiellos-crm .mi-root .mi-compare li{display:grid;grid-template-columns:minmax(110px,170px) 1fr auto;gap:12px;align-items:center;font-size:12px}
+#cassiellos-crm .mi-root .mi-compare button{background:none;border:0;padding:0;color:#dbe6f6;text-align:left;font-weight:600}
+#cassiellos-crm .mi-root .mi-compare button:hover{color:#8fdcf6;text-decoration:underline}
+#cassiellos-crm .mi-root .mi-compare-track{height:9px;border-radius:99px;background:#17253a;overflow:hidden}
+#cassiellos-crm .mi-root .mi-compare-track div{height:100%;border-radius:99px;background:linear-gradient(90deg,#246bff,#22c7f2)}
+#cassiellos-crm .mi-root .mi-compare strong{font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ativos e conexões */
-#cassiellos-crm.mi-root .mi-assets,#cassiellos-crm.mi-root .mi-conn-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
-#cassiellos-crm.mi-root .mi-conn-cards{margin-bottom:16px}
-#cassiellos-crm.mi-root .mi-asset,#cassiellos-crm.mi-root .mi-conn{border:1px solid var(--crm-border);border-radius:12px;padding:14px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:9px;min-width:0}
-#cassiellos-crm.mi-root .mi-asset[data-state=auth_expired],#cassiellos-crm.mi-root .mi-asset[data-state=suspended],#cassiellos-crm.mi-root .mi-asset[data-state=sync_error]{border-color:rgba(241,60,75,.3)}
-#cassiellos-crm.mi-root .mi-asset[data-state=stale],#cassiellos-crm.mi-root .mi-asset[data-state=pending_validation]{border-color:rgba(245,184,75,.3)}
-#cassiellos-crm.mi-root .mi-asset-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
-#cassiellos-crm.mi-root .mi-asset-name{font-size:13.5px}
-#cassiellos-crm.mi-root .mi-asset-meta{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:11px}
-#cassiellos-crm.mi-root .mi-asset-meta dt{color:#7f93ad;font-size:10px}
-#cassiellos-crm.mi-root .mi-asset-meta dd{margin:2px 0 0;color:#dbe5f3;word-break:break-word}
-#cassiellos-crm.mi-root .mi-asset-note{margin:0;font-size:11px;color:#a9b9cc}
-#cassiellos-crm.mi-root .mi-asset-alerts{margin:0;padding-left:16px;font-size:11px;color:#ff9aa3}
-#cassiellos-crm.mi-root .mi-asset-actions{display:grid;gap:6px;margin-top:auto}
-#cassiellos-crm.mi-root .mi-asset-actions small{font-size:10.5px;color:#9fd8ea}
-#cassiellos-crm.mi-root .mi-conn .crm-btn{margin-top:auto}
-#cassiellos-crm.mi-root .crm-btn:disabled{opacity:.55;cursor:not-allowed}
-#cassiellos-crm.mi-root .mi-conn-new{border-style:dashed}
-#cassiellos-crm.mi-root .mi-conn-new p{margin:0;font-size:12px}
-#cassiellos-crm.mi-root .mi-alerts{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-#cassiellos-crm.mi-root .mi-alerts li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--crm-border);border-radius:10px;font-size:12px}
-#cassiellos-crm.mi-root .mi-alerts li div{display:grid;gap:2px}
-#cassiellos-crm.mi-root .mi-alerts li span{color:#a9b9cc}
-#cassiellos-crm.mi-root .mi-checks{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:12px}
-#cassiellos-crm.mi-root .mi-checks li::before{content:'●';margin-right:8px;color:#72e6bb}
-#cassiellos-crm.mi-root .mi-checks li[data-ok=false]::before{color:#f5c76b}
+#cassiellos-crm .mi-root .mi-assets,#cassiellos-crm .mi-root .mi-conn-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+#cassiellos-crm .mi-root .mi-conn-cards{margin-bottom:16px}
+#cassiellos-crm .mi-root .mi-asset,#cassiellos-crm .mi-root .mi-conn{border:1px solid var(--crm-border);border-radius:12px;padding:14px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:9px;min-width:0}
+#cassiellos-crm .mi-root .mi-asset[data-state=auth_expired],#cassiellos-crm .mi-root .mi-asset[data-state=suspended],#cassiellos-crm .mi-root .mi-asset[data-state=sync_error]{border-color:rgba(241,60,75,.3)}
+#cassiellos-crm .mi-root .mi-asset[data-state=stale],#cassiellos-crm .mi-root .mi-asset[data-state=pending_validation]{border-color:rgba(245,184,75,.3)}
+#cassiellos-crm .mi-root .mi-asset-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+#cassiellos-crm .mi-root .mi-asset-name{font-size:13.5px}
+#cassiellos-crm .mi-root .mi-asset-meta{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:11px}
+#cassiellos-crm .mi-root .mi-asset-meta dt{color:#7f93ad;font-size:10px}
+#cassiellos-crm .mi-root .mi-asset-meta dd{margin:2px 0 0;color:#dbe5f3;word-break:break-word}
+#cassiellos-crm .mi-root .mi-asset-note{margin:0;font-size:11px;color:#a9b9cc}
+#cassiellos-crm .mi-root .mi-asset-alerts{margin:0;padding-left:16px;font-size:11px;color:#ff9aa3}
+#cassiellos-crm .mi-root .mi-asset-actions{display:grid;gap:6px;margin-top:auto}
+#cassiellos-crm .mi-root .mi-asset-actions small{font-size:10.5px;color:#9fd8ea}
+#cassiellos-crm .mi-root .mi-conn .crm-btn{margin-top:auto}
+#cassiellos-crm .mi-root .crm-btn:disabled{opacity:.55;cursor:not-allowed}
+#cassiellos-crm .mi-root .mi-conn-new{border-style:dashed}
+#cassiellos-crm .mi-root .mi-conn-new p{margin:0;font-size:12px}
+#cassiellos-crm .mi-root .mi-alerts{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#cassiellos-crm .mi-root .mi-alerts li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--crm-border);border-radius:10px;font-size:12px}
+#cassiellos-crm .mi-root .mi-alerts li div{display:grid;gap:2px}
+#cassiellos-crm .mi-root .mi-alerts li span{color:#a9b9cc}
+#cassiellos-crm .mi-root .mi-checks{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:12px}
+#cassiellos-crm .mi-root .mi-checks li::before{content:'●';margin-right:8px;color:#72e6bb}
+#cassiellos-crm .mi-root .mi-checks li[data-ok=false]::before{color:#f5c76b}
 
-@media(max-width:1100px){#cassiellos-crm.mi-root .mi-grid-2{grid-template-columns:1fr}}
-@media(max-width:830px){#cassiellos-crm.mi-root .mi-sidebar-note{display:none}#cassiellos-crm.mi-root .mi-filters{padding:12px}#cassiellos-crm.mi-root .mi-refresh{margin-left:0}#cassiellos-crm.mi-root .mi-mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:540px){#cassiellos-crm.mi-root .mi-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}#cassiellos-crm.mi-root .mi-kpi{padding:13px;min-height:108px}#cassiellos-crm.mi-root .mi-kpi-value{font-size:19px}
-  #cassiellos-crm.mi-root .mi-field,#cassiellos-crm.mi-root .mi-field select{width:100%}#cassiellos-crm.mi-root .mi-seg{width:100%;overflow-x:auto}#cassiellos-crm.mi-root .mi-seg button{flex:1}
-  #cassiellos-crm.mi-root .mi-compare li{grid-template-columns:1fr auto}#cassiellos-crm.mi-root .mi-compare-track{grid-column:1/-1;grid-row:2}#cassiellos-crm.mi-root .mi-client-head{align-items:flex-start;flex-direction:column}
-  #cassiellos-crm.mi-root .mi-dist{grid-template-columns:1fr}#cassiellos-crm.mi-root .mi-sim-pill{font-size:9px;padding:6px 9px}}
-@media(prefers-reduced-motion:reduce){#cassiellos-crm.mi-root .mi-spinner{animation:none}}
+@media(max-width:1100px){#cassiellos-crm .mi-root .mi-grid-2{grid-template-columns:1fr}}
+@media(max-width:830px){#cassiellos-crm .mi-root .mi-sidebar-note{display:none}#cassiellos-crm .mi-root .mi-filters{padding:12px}#cassiellos-crm .mi-root .mi-refresh{margin-left:0}#cassiellos-crm .mi-root .mi-mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){#cassiellos-crm .mi-root .mi-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}#cassiellos-crm .mi-root .mi-kpi{padding:13px;min-height:108px}#cassiellos-crm .mi-root .mi-kpi-value{font-size:19px}
+  #cassiellos-crm .mi-root .mi-field,#cassiellos-crm .mi-root .mi-field select{width:100%}#cassiellos-crm .mi-root .mi-seg{width:100%;overflow-x:auto}#cassiellos-crm .mi-root .mi-seg button{flex:1}
+  #cassiellos-crm .mi-root .mi-compare li{grid-template-columns:1fr auto}#cassiellos-crm .mi-root .mi-compare-track{grid-column:1/-1;grid-row:2}#cassiellos-crm .mi-root .mi-client-head{align-items:flex-start;flex-direction:column}
+  #cassiellos-crm .mi-root .mi-dist{grid-template-columns:1fr}#cassiellos-crm .mi-root .mi-sim-pill{font-size:9px;padding:6px 9px}}
+@media(prefers-reduced-motion:reduce){#cassiellos-crm .mi-root .mi-spinner{animation:none}}
 
 /* ===== Missão 07 — escopo, confiança do ativo, tabelas responsivas e navegação mobile ===== */
-#cassiellos-crm.mi-root .mi-scope{border:1px solid rgba(77,141,255,.35);background:rgba(77,141,255,.08);color:#c9d8f2;padding:12px 16px;border-radius:10px;font-size:12px;line-height:1.6;margin:-8px 0 18px}
-#cassiellos-crm.mi-root .mi-scope strong{color:#a9c6ff}
-#cassiellos-crm.mi-root .mi-scope .mi-link{margin-left:4px}
-#cassiellos-crm.mi-root .mi-callout-memory{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07);color:#d6ccf7}
-#cassiellos-crm.mi-root .mi-callout-memory strong{color:#c7b6ff}
-#cassiellos-crm.mi-root .mi-kpi-scope{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9c6ff;border:1px solid rgba(77,141,255,.35);border-radius:99px;padding:1px 6px;vertical-align:1px}
-#cassiellos-crm.mi-root .mi-kpi[data-tone=structural] .mi-kpi-scope{color:#b9c7d9;border-color:var(--crm-border)}
-#cassiellos-crm.mi-root .mi-unit{color:#8193ab;font-size:10.5px}
-#cassiellos-crm.mi-root .mi-badge-data{margin-top:5px;display:inline-block;white-space:normal}
-#cassiellos-crm.mi-root .mi-alert-scope{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9b9cc;border:1px solid var(--crm-border);border-radius:5px;padding:1px 5px;margin-right:4px}
-#cassiellos-crm.mi-root .mi-trust{list-style:none;margin:0;padding:8px 10px;display:grid;gap:5px;border:1px solid var(--crm-border);border-radius:9px;background:rgba(255,255,255,.015);font-size:11px}
-#cassiellos-crm.mi-root .mi-trust li{display:flex;justify-content:space-between;gap:10px}
-#cassiellos-crm.mi-root .mi-trust span{color:#8ea3bc}
-#cassiellos-crm.mi-root .mi-trust strong{font-weight:700;text-align:right;color:#72e6bb}
-#cassiellos-crm.mi-root .mi-trust li[data-ok=false] strong{color:#f5c76b}
-#cassiellos-crm.mi-root .mi-asset-wide{grid-column:1/-1}
-#cassiellos-crm.mi-root .mi-asset-block{margin:0;font-size:11px;color:#f5c76b}
-#cassiellos-crm.mi-root .mi-asset-why{color:#f5c76b!important}
-#cassiellos-crm.mi-root .mi-tooltip[data-side=left]{transform:translateX(-100%)}
-#cassiellos-crm.mi-root .mi-tooltip[data-side=right]{transform:none}
+#cassiellos-crm .mi-root .mi-scope{border:1px solid rgba(77,141,255,.35);background:rgba(77,141,255,.08);color:#c9d8f2;padding:12px 16px;border-radius:10px;font-size:12px;line-height:1.6;margin:-8px 0 18px}
+#cassiellos-crm .mi-root .mi-scope strong{color:#a9c6ff}
+#cassiellos-crm .mi-root .mi-scope .mi-link{margin-left:4px}
+#cassiellos-crm .mi-root .mi-callout-memory{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07);color:#d6ccf7}
+#cassiellos-crm .mi-root .mi-callout-memory strong{color:#c7b6ff}
+#cassiellos-crm .mi-root .mi-kpi-scope{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9c6ff;border:1px solid rgba(77,141,255,.35);border-radius:99px;padding:1px 6px;vertical-align:1px}
+#cassiellos-crm .mi-root .mi-kpi[data-tone=structural] .mi-kpi-scope{color:#b9c7d9;border-color:var(--crm-border)}
+#cassiellos-crm .mi-root .mi-unit{color:#8193ab;font-size:10.5px}
+#cassiellos-crm .mi-root .mi-badge-data{margin-top:5px;display:inline-block;white-space:normal}
+#cassiellos-crm .mi-root .mi-alert-scope{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9b9cc;border:1px solid var(--crm-border);border-radius:5px;padding:1px 5px;margin-right:4px}
+#cassiellos-crm .mi-root .mi-trust{list-style:none;margin:0;padding:8px 10px;display:grid;gap:5px;border:1px solid var(--crm-border);border-radius:9px;background:rgba(255,255,255,.015);font-size:11px}
+#cassiellos-crm .mi-root .mi-trust li{display:flex;justify-content:space-between;gap:10px}
+#cassiellos-crm .mi-root .mi-trust span{color:#8ea3bc}
+#cassiellos-crm .mi-root .mi-trust strong{font-weight:700;text-align:right;color:#72e6bb}
+#cassiellos-crm .mi-root .mi-trust li[data-ok=false] strong{color:#f5c76b}
+#cassiellos-crm .mi-root .mi-asset-wide{grid-column:1/-1}
+#cassiellos-crm .mi-root .mi-asset-block{margin:0;font-size:11px;color:#f5c76b}
+#cassiellos-crm .mi-root .mi-asset-why{color:#f5c76b!important}
+#cassiellos-crm .mi-root .mi-tooltip[data-side=left]{transform:translateX(-100%)}
+#cassiellos-crm .mi-root .mi-tooltip[data-side=right]{transform:none}
 /* rolagem horizontal sinalizada */
-#cassiellos-crm.mi-root .mi-scroll{position:relative}
-#cassiellos-crm.mi-root .mi-scroll-hint{display:none;font-size:11px;font-weight:700;color:#8fdcf6;margin:0 0 6px;text-align:right}
-#cassiellos-crm.mi-root .mi-scroll[data-overflow=true] .mi-scroll-hint{display:block}
-#cassiellos-crm.mi-root .mi-scroll[data-overflow=true]::after{content:'';position:absolute;top:22px;right:0;bottom:0;width:28px;pointer-events:none;background:linear-gradient(90deg,rgba(13,25,41,0),rgba(13,25,41,.95))}
-#cassiellos-crm.mi-root .mi-scroll[data-end=true]::after{display:none}
-#cassiellos-crm.mi-root .mi-scroll-box:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
+#cassiellos-crm .mi-root .mi-scroll{position:relative}
+#cassiellos-crm .mi-root .mi-scroll-hint{display:none;font-size:11px;font-weight:700;color:#8fdcf6;margin:0 0 6px;text-align:right}
+#cassiellos-crm .mi-root .mi-scroll[data-overflow=true] .mi-scroll-hint{display:block}
+#cassiellos-crm .mi-root .mi-scroll[data-overflow=true]::after{content:'';position:absolute;top:22px;right:0;bottom:0;width:28px;pointer-events:none;background:linear-gradient(90deg,rgba(13,25,41,0),rgba(13,25,41,.95))}
+#cassiellos-crm .mi-root .mi-scroll[data-end=true]::after{display:none}
+#cassiellos-crm .mi-root .mi-scroll-box:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
 /* navegação: botão de áreas só no mobile */
-#cassiellos-crm.mi-root .mi-nav-toggle{display:none}
+#cassiellos-crm .mi-root .mi-nav-toggle{display:none}
 @media(max-width:830px){
-  #cassiellos-crm.mi-root .crm-brand{flex-wrap:wrap}
-  #cassiellos-crm.mi-root .mi-nav-toggle{display:inline-flex;align-items:center;gap:8px;margin-left:auto;min-height:40px;padding:0 14px;border:1px solid var(--crm-border);border-radius:9px;background:#111d2f;color:#e8f0ff;font-weight:700;font-size:13px}
-  #cassiellos-crm.mi-root .mi-nav-toggle:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
-  #cassiellos-crm.mi-root .mi-nav-current{color:#f5a3aa}
-  #cassiellos-crm.mi-root .mi-nav[data-open=false]{display:none}
-  #cassiellos-crm.mi-root .mi-nav[data-open=true]{display:grid;grid-template-columns:1fr;gap:6px;overflow:visible;padding:4px 14px 14px}
-  #cassiellos-crm.mi-root .mi-nav[data-open=true] .crm-nav-btn{width:100%;min-width:0;white-space:normal}
-  #cassiellos-crm.mi-root .mi-nav[data-open=true] .crm-nav-label{display:block;margin:6px 0 2px}
+  #cassiellos-crm .mi-root .crm-brand{flex-wrap:wrap}
+  #cassiellos-crm .mi-root .mi-nav-toggle{display:inline-flex;align-items:center;gap:8px;margin-left:auto;min-height:40px;padding:0 14px;border:1px solid var(--crm-border);border-radius:9px;background:#111d2f;color:#e8f0ff;font-weight:700;font-size:13px}
+  #cassiellos-crm .mi-root .mi-nav-toggle:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
+  #cassiellos-crm .mi-root .mi-nav-current{color:#f5a3aa}
+  #cassiellos-crm .mi-root .mi-nav[data-open=false]{display:none}
+  #cassiellos-crm .mi-root .mi-nav[data-open=true]{display:grid;grid-template-columns:1fr;gap:6px;overflow:visible;padding:4px 14px 14px}
+  #cassiellos-crm .mi-root .mi-nav[data-open=true] .crm-nav-btn{width:100%;min-width:0;white-space:normal}
+  #cassiellos-crm .mi-root .mi-nav[data-open=true] .crm-nav-label{display:block;margin:6px 0 2px}
 }
 /* tabelas como cartões em telas estreitas (tabela completa permanece no desktop) */
 @media(max-width:640px){
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-scroll-hint,#cassiellos-crm.mi-root .mi-scroll[data-cards=true]::after{display:none}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table{min-width:0;display:block}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table thead{display:none}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tr{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;border:1px solid var(--crm-border);border-radius:11px;padding:10px 12px;background:rgba(255,255,255,.02)}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td{display:flow-root;padding:7px 0;border-bottom:1px solid rgba(220,227,238,.06);text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge{white-space:normal;margin:0 0 3px 4px}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge-data{border-radius:7px;text-align:center}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td:last-child{border-bottom:0}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td::before{content:attr(data-label);float:left;width:44%;padding-right:10px;color:#7f93ad;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:left;line-height:1.5}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title{display:block;text-align:left;font-size:13px}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title::before{display:none}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]{display:block;text-align:left}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]::before{display:none}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tr:hover td{background:none}
-  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .crm-table-wrap{overflow:visible}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-scroll-hint,#cassiellos-crm .mi-root .mi-scroll[data-cards=true]::after{display:none}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table{min-width:0;display:block}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table thead{display:none}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table tr{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;border:1px solid var(--crm-border);border-radius:11px;padding:10px 12px;background:rgba(255,255,255,.02)}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td{display:flow-root;padding:7px 0;border-bottom:1px solid rgba(220,227,238,.06);text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge{white-space:normal;margin:0 0 3px 4px}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge-data{border-radius:7px;text-align:center}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td:last-child{border-bottom:0}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td::before{content:attr(data-label);float:left;width:44%;padding-right:10px;color:#7f93ad;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:left;line-height:1.5}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title{display:block;text-align:left;font-size:13px}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title::before{display:none}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]{display:block;text-align:left}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]::before{display:none}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .mi-table tr:hover td{background:none}
+  #cassiellos-crm .mi-root .mi-scroll[data-cards=true] .crm-table-wrap{overflow:visible}
 }
+
+/* O conteúdo da Inteligência ocupa a área nativa do CRM, sem layout próprio. */
+#cassiellos-crm .mi-embedded{min-width:0;width:100%}
