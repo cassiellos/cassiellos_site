@@ -97,6 +97,57 @@ export function getCrmPool(): Pool {
 }
 
 /**
+ * Central de Inteligência, durante a homologação no MESMO domínio do CRM.
+ *
+ * Em Production + MI_DATA_MODE=real, NUNCA consulta o banco principal sem
+ * uma migração e habilitação específicas. A fase provisória usa um banco Neon
+ * separado (mi_preview), com a autenticação da própria Production.
+ *
+ * As demais rotas do CRM continuam usando getCrmPool() sem qualquer mudança.
+ * Um URL inválido ou ausente interrompe somente a API da Inteligência.
+ */
+const globalForIntel = globalThis as typeof globalThis & { __cassiellosIntelSandboxPool?: Pool }
+
+export function getIntelPool(): Pool {
+  if (process.env.VERCEL_ENV !== 'production' || process.env.MI_DATA_MODE !== 'real') {
+    return getCrmPool()
+  }
+
+  if (process.env.MI_SANDBOX_ENABLED !== 'true') {
+    throw new CrmDatabaseConfigError('MISSING')
+  }
+  const raw = process.env.MI_SANDBOX_DATABASE_URL?.trim()
+  if (!raw) throw new CrmDatabaseConfigError('MISSING')
+
+  let candidate: URL
+  try { candidate = new URL(raw) } catch { throw new CrmDatabaseConfigError('INVALID') }
+  if (!['postgres:', 'postgresql:'].includes(candidate.protocol) ||
+      !candidate.hostname.endsWith('.neon.tech') ||
+      candidate.pathname !== '/mi_preview' ||
+      candidate.username !== 'mi_preview_owner') {
+    throw new CrmDatabaseConfigError('INVALID')
+  }
+
+  // Nunca permitir que a chave do sandbox aponte para o mesmo banco operacional.
+  try {
+    const main = new URL(process.env.CRM_DATABASE_URL ?? '')
+    if (main.host === candidate.host && main.pathname === candidate.pathname) {
+      throw new CrmDatabaseConfigError('INVALID')
+    }
+  } catch (error) {
+    if (error instanceof CrmDatabaseConfigError) throw error
+    // A ausência de CRM_DATABASE_URL já impediria o CRM principal de operar.
+  }
+
+  if (!globalForIntel.__cassiellosIntelSandboxPool) {
+    const pool = new Pool(buildCrmPoolConfig(raw))
+    pool.on('error', () => console.warn('[crm-intel] idle sandbox connection error'))
+    globalForIntel.__cassiellosIntelSandboxPool = pool
+  }
+  return globalForIntel.__cassiellosIntelSandboxPool
+}
+
+/**
  * Executa `fn` dentro de uma transação READ ONLY com statement_timeout local.
  * Qualquer tentativa de escrita dentro dela é rejeitada pelo PostgreSQL.
  */
