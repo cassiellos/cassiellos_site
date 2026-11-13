@@ -221,6 +221,7 @@ function ConnectionRowsPanel({ v, now }: { v: ConnectionsView; now: Date }) {
   void now
   return <>
     <Panel title="Contas por cliente" subtitle="Conexão técnica, acesso à plataforma e vínculo com o cliente são verificações diferentes — só o conjunto autoriza sincronizar">
+      {v.rows.length === 0 ? <p className="mi-muted">Nenhuma conta vinculada a clientes. Após conectar uma plataforma e confirmar os vínculos, as contas aparecerão aqui.</p> :
       <ScrollTable label="Contas por cliente"><table className="mi-table">
         <thead><tr><th>Conta externa</th><th>Cliente</th><th>Vínculo com o cliente</th><th>Sincronização</th><th>Conexão técnica</th><th>Acesso à plataforma</th><th>Última verificação</th><th>Última sincronização</th><th>Erro</th><th>Ação prevista</th></tr></thead>
         <tbody>{v.rows.map((r, i) => <tr key={i}>
@@ -235,7 +236,7 @@ function ConnectionRowsPanel({ v, now }: { v: ConnectionsView; now: Date }) {
           <td data-label="Erro">{r.lastError ? <span className="mi-err">{r.lastError}</span> : <span className="mi-muted">—</span>}</td>
           <td data-label="Ação prevista">{r.plannedAction}</td>
         </tr>)}</tbody>
-      </table></ScrollTable>
+      </table></ScrollTable>}
     </Panel>
   </>
 }
