@@ -26,7 +26,7 @@ export function buildRealRuntime(db: Queryable, env: Env, fetchImpl: FetchLike):
   try { ring = parseKeyRing(env) } catch { ring = null }
   const vault = ring ? new PgCredentialVault(db, ring) : null
   const googleTokens = vault && providerReady(googleStatus(env)) ? googleAccessTokenProvider({ db, vault, fetch: fetchImpl, env }) : null
-  const google = googleTokens ? createGoogleAdsConnector({ fetch: fetchImpl, apiVersion: env.MI_GOOGLE_ADS_API_VERSION, developerToken: env.MI_GOOGLE_ADS_DEVELOPER_TOKEN!, accessToken: id => googleTokens.get(id) }) : null
+  const google = googleTokens ? createGoogleAdsConnector({ fetch: fetchImpl, apiVersion: env.MI_GOOGLE_ADS_API_VERSION, developerToken: env.MI_GOOGLE_ADS_DEVELOPER_TOKEN, accessToken: id => googleTokens.get(id) }) : null
   const metaTokens = vault && providerReady(metaStatus(env)) ? metaAccessTokenProvider({ db, vault }) : null
   const meta = metaTokens ? createMetaAdsConnector({ fetch: fetchImpl, graphVersion: env.MI_META_GRAPH_VERSION, appSecret: env.MI_META_APP_SECRET, resultAction: env.MI_META_RESULT_ACTION, accessToken: id => metaTokens.get(id) }) : null
   return { db, env, fetch: fetchImpl, ring, vault, google, meta, googleTokens }
