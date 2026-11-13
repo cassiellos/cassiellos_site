@@ -4,7 +4,7 @@
  * Ao trocar de cliente, os dados anteriores são descartados imediatamente (nada do cliente anterior fica na tela).
  */
 import { normalizeForArea } from './filters'
-import type { IntelArea, IntelFilters } from './view-types'
+import type { ClientOption, IntelArea, IntelFilters } from './view-types'
 
 export type FetchStatus = 'loading' | 'ready' | 'error' | 'unauthorized'
 export type FetchState<T> = { key: string; scope: string; status: FetchStatus; data: T | null; error: string | null }
@@ -69,4 +69,51 @@ export function navigateArea(p: FilterPrefs, area: IntelArea): FilterPrefs {
 
 export function chooseClient(p: FilterPrefs, client: string, externalClients: readonly string[]): FilterPrefs {
   return { ...p, client, campaign: '', lastClient: externalClients.includes(client) ? client : p.lastClient }
+}
+
+/* ---------------- M09 (N1): identidade estável — sem laço de requisições ----------------
+ * Causa do N1 (provada por instrumentação local): cada resposta chamava `setClients(novoArray)`; a lista tinha o MESMO
+ * conteúdo, mas outra identidade; isso recriava os arrays derivados e o objeto de filtros, e o efeito que busca na API
+ * (dependente da IDENTIDADE do objeto) rodava de novo — indefinidamente, em Visão geral, Cliente e Conexões (as áreas
+ * cujas respostas trazem a lista de clientes). Prospecção não traz a lista e por isso não entrava no laço.
+ * Regra: o que dispara uma busca é a IDENTIDADE SEMÂNTICA dos filtros efetivos (`requestKey`), e as listas de clientes só
+ * mudam de referência quando o CONTEÚDO muda. As funções abaixo são puras e cobertas por testes.
+ */
+
+/** Listas de clientes conhecidas pela interface: `clients` = clientes externos; `connClients` = lista de Conexões (inclui a agência). */
+export type ClientLists = { clients: ClientOption[]; connClients: ClientOption[] }
+export const EMPTY_CLIENT_LISTS: ClientLists = { clients: [], connClients: [] }
+
+/** Mesmo conteúdo (id, nome e tipo, na mesma ordem), independentemente da identidade dos arrays/objetos. */
+export function sameClientList(a: readonly ClientOption[], b: readonly ClientOption[]): boolean {
+  return a.length === b.length && a.every((c, i) => c.id === b[i].id && c.name === b[i].name && c.kind === b[i].kind)
+}
+
+/**
+ * Incorpora a lista de clientes de uma resposta. Devolve o MESMO objeto (`prev`) quando nada mudou — o React descarta a
+ * atualização e nada é recalculado. `listed` é `undefined` nas áreas cuja resposta não traz a lista (Prospecção).
+ */
+export function absorbClientLists(prev: ClientLists, area: IntelArea, listed: readonly ClientOption[] | undefined): ClientLists {
+  if (!listed) return prev
+  if (area === 'conexoes') return sameClientList(prev.connClients, listed) ? prev : { ...prev, connClients: listed.map(c => ({ ...c })) }
+  const external = listed.filter(c => c.kind === 'client')
+  return sameClientList(prev.clients, external) ? prev : { ...prev, clients: external.map(c => ({ ...c })) }
+}
+
+/** Filtros efetivos a partir das preferências e das listas conhecidas (antes de conhecer clientes vale o pedido normalizado). */
+export function resolveFilters(prefs: FilterPrefs, lists: ClientLists): IntelFilters {
+  const externalIds = lists.clients.filter(c => c.kind === 'client').map(c => c.id)
+  if (!externalIds.length) return normalizeForArea({ area: prefs.area, period: prefs.period, platform: prefs.platform, status: prefs.status, campaign: prefs.campaign, client: prefs.client })
+  const allIds = (lists.connClients.length ? lists.connClients : lists.clients).map(c => c.id)
+  return effectiveFilters(prefs, externalIds, allIds)
+}
+
+/**
+ * A API devolve os filtros EFETIVOS. Se diferirem do pedido, a interface adota o cliente efetivo nas preferências e busca
+ * uma única vez mais (normalização). Devolve `p` (mesma referência) quando não há nada a adotar.
+ */
+export function adoptEffectiveFilters(p: FilterPrefs, eff: IntelFilters): FilterPrefs {
+  const client = eff.area === 'prospeccao' ? p.client : eff.client
+  const lastClient = eff.area === 'cliente' ? eff.client : p.lastClient
+  return client === p.client && lastClient === p.lastClient ? p : { ...p, client, lastClient }
 }

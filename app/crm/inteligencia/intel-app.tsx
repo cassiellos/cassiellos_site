@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import '../crm.css'
 import './inteligencia.css'
 import {
-  acceptFailure, acceptResponse, beginRequest, chooseClient, effectiveFilters, initialState, navigateArea, prefsFromFilters, requestKey,
-  type FetchState, type FilterPrefs,
+  EMPTY_CLIENT_LISTS, absorbClientLists, acceptFailure, acceptResponse, adoptEffectiveFilters, beginRequest, chooseClient, initialState, navigateArea,
+  prefsFromFilters, requestKey, resolveFilters,
+  type ClientLists, type FetchState, type FilterPrefs,
 } from '@/lib/crm/intel/client-state'
 import { PERIOD_LABEL, PERIOD_PRESETS, type PeriodPreset } from '@/lib/crm/intel/dates'
-import { CLIENT_AREAS, SEARCH_AREAS, STATUS_AREAS, normalizeForArea } from '@/lib/crm/intel/filters'
-import { INTEL_AREAS, type CampaignStatusFilter, type ClientOption, type IntelArea, type IntelFilters, type IntelPayload, type PlatformFilter } from '@/lib/crm/intel/view-types'
+import { CLIENT_AREAS, SEARCH_AREAS, STATUS_AREAS } from '@/lib/crm/intel/filters'
+import { INTEL_AREAS, type CampaignStatusFilter, type IntelArea, type IntelFilters, type IntelPayload, type PlatformFilter } from '@/lib/crm/intel/view-types'
 import { ClientArea, ConnectionsArea, OverviewArea, ProspectingArea } from './intel-areas'
 import { StateMessage } from './intel-ui'
 
@@ -48,20 +49,20 @@ export default function IntelApp() {
   const [state, setState] = useState<FetchState<IntelPayload>>(initialState)
   const [refresh, setRefresh] = useState(0)
   const [search, setSearch] = useState('')
-  const [clients, setClients] = useState<ClientOption[]>([])
-  const [connClients, setConnClients] = useState<ClientOption[]>([])
+  // Listas de clientes: só mudam de referência quando o CONTEÚDO muda (N1: ver lib/crm/intel/client-state.ts).
+  const [lists, setLists] = useState<ClientLists>(EMPTY_CLIENT_LISTS)
+  const { clients, connClients } = lists
   const [syncing, setSyncing] = useState<string | null>(null)
   const [syncNotes, setSyncNotes] = useState<Record<string, string>>({})
   const [now, setNow] = useState(() => new Date())
   const [navOpen, setNavOpen] = useState(false)
 
   const externalIds = useMemo(() => clients.filter(c => c.kind === 'client').map(c => c.id), [clients])
-  const allIds = useMemo(() => (connClients.length ? connClients : clients).map(c => c.id), [clients, connClients])
   // Filtros EFETIVOS: o que a tela mostra, o que vai na URL e o que a API recebe (uma única fonte de verdade).
   // Antes de conhecer a lista de clientes vale o pedido normalizado; a API valida e devolve o efetivo.
-  const filters = useMemo<IntelFilters>(() => externalIds.length ? effectiveFilters(prefs, externalIds, allIds)
-    : normalizeForArea({ area: prefs.area, period: prefs.period, platform: prefs.platform, status: prefs.status, campaign: prefs.campaign, client: prefs.client }),
-  [prefs, externalIds, allIds])
+  const filters = useMemo<IntelFilters>(() => resolveFilters(prefs, lists), [prefs, lists])
+  // Identidade SEMÂNTICA dos filtros: é ela — e não a referência do objeto — que dispara uma nova busca.
+  const filterKey = requestKey(filters)
 
   useEffect(() => { const f = filtersFromUrl(); setPrefs(prefsFromFilters(f)); setSearch(f.campaign); setReady(true) }, [])
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t) }, [])
@@ -74,7 +75,7 @@ export default function IntelApp() {
 
   useEffect(() => {
     if (!ready) return
-    const fk = requestKey(filters)
+    const fk = filterKey // a busca depende só da chave semântica; `filters` desta renderização tem exatamente essa chave
     setState(prev => beginRequest(prev, filters))
     const url = new URL(window.location.href)
     url.search = ''
@@ -89,22 +90,26 @@ export default function IntelApp() {
         if (res.status === 401) { setState(s => acceptFailure(s, fk, 'unauthorized', 'UNAUTHORIZED')); return }
         const body = await res.json().catch(() => null) as (IntelPayload & { ok?: boolean; error?: string }) | null
         if (!res.ok || !body || !body.ok) { setState(s => acceptFailure(s, fk, 'error', body?.error ?? 'HTTP_' + res.status)); return }
+        // Pedido substituído (outra seleção) enquanto a resposta chegava: descarta tudo — nada da resposta antiga é aplicado.
+        if (controller.signal.aborted) return
         const payload = { area: body.area, view: body.view } as IntelPayload
         setNow(new Date())
-        if (payload.area === 'conexoes') setConnClients(payload.view.clients)
-        else if ('clients' in payload.view) setClients(payload.view.clients.filter(c => c.kind === 'client'))
-        // A API devolve os filtros EFETIVOS. Se diferirem do pedido (ex.: cliente padrão), a tela adota os da API e
-        // busca de novo — nunca exibe um filtro diferente do aplicado.
+        setLists(prev => absorbClientLists(prev, payload.area, 'clients' in payload.view ? payload.view.clients : undefined))
+        // A API devolve os filtros EFETIVOS. Se o CLIENTE efetivo diferir do pedido (ex.: cliente padrão da área Cliente), a
+        // tela o adota e busca uma única vez mais (normalização que se estabiliza: o novo pedido já coincide com o efetivo).
+        // Qualquer outra divergência não é adotável pelas preferências: a resposta é aceita como está (nunca laço nem
+        // carregamento eterno).
         const eff = payload.view.meta.filters
-        if (requestKey(eff) !== fk) {
-          setPrefs(p => ({ ...p, client: eff.area === 'prospeccao' ? p.client : eff.client, lastClient: eff.area === 'cliente' ? eff.client : p.lastClient }))
+        if (requestKey(eff) !== fk && eff.client !== filters.client) {
+          setPrefs(p => adoptEffectiveFilters(p, eff))
           return
         }
         setState(s => acceptResponse(s, fk, payload))
       })
-      .catch(err => { if ((err as Error).name !== 'AbortError') setState(s => acceptFailure(s, fk, 'error', 'NETWORK')) })
+      .catch(err => { if ((err as Error).name !== 'AbortError' && !controller.signal.aborted) setState(s => acceptFailure(s, fk, 'error', 'NETWORK')) })
     return () => controller.abort()
-  }, [filters, refresh, ready])
+    // Dependência intencional: a CHAVE semântica dos filtros (string), nunca a referência do objeto `filters` (ver N1).
+  }, [filterKey, refresh, ready])
 
   const set = (patch: Partial<IntelFilters>) => setPrefs(p => ({ ...p, ...patch }))
   const openArea = (area: IntelArea) => { setSearch(''); setNavOpen(false); setPrefs(p => navigateArea(p, area)) }
