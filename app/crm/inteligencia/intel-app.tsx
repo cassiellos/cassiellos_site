@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import '../crm.css'
 import './inteligencia.css'
 import {
@@ -10,27 +10,17 @@ import {
 } from '@/lib/crm/intel/client-state'
 import { PERIOD_LABEL, PERIOD_PRESETS, type PeriodPreset } from '@/lib/crm/intel/dates'
 import { CLIENT_AREAS, SEARCH_AREAS, STATUS_AREAS } from '@/lib/crm/intel/filters'
-import { INTEL_AREAS, type CampaignStatusFilter, type IntelArea, type IntelFilters, type IntelPayload, type PlatformFilter } from '@/lib/crm/intel/view-types'
+import { type CampaignStatusFilter, type IntelArea, type IntelFilters, type IntelPayload, type PlatformFilter } from '@/lib/crm/intel/view-types'
 import { ClientArea, ConnectionsArea, OverviewArea, ProspectingArea } from './intel-areas'
 import { StateMessage } from './intel-ui'
 
-const AREA_LABEL: Record<IntelArea, string> = { prospeccao: 'Prospecção Cassiellos', agencia: 'Visão geral da agência', cliente: 'Visão do cliente', conexoes: 'Conexões e integrações' }
-const AREA_SHORT: Record<IntelArea, string> = { prospeccao: 'Prospecção', agencia: 'Visão geral', cliente: 'Cliente', conexoes: 'Conexões' }
-const AREA_DESC: Record<IntelArea, string> = {
-  prospeccao: 'Campanhas de aquisição da própria agência: investimento, leads, reuniões e custo por resultado.',
-  agencia: 'Todos os clientes monitorados: investimento, eficiência, conversões por origem, atualização e alertas.',
-  cliente: 'Desempenho de um cliente por vez, com todas as contas e propriedades confirmadas dele.',
-  conexoes: 'Conexão técnica, acesso à plataforma e vínculo com o cliente de cada conta, sincronizações e ações previstas.',
-}
-const AREA_ICON: Record<IntelArea, string> = { prospeccao: 'M3 12h4l3-7 4 14 3-7h4', agencia: 'M3 3v18h18M7 16l5-5 4 3 5-7', cliente: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', conexoes: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7' }
 const STATUS_LABEL: Record<CampaignStatusFilter, string> = { all: 'Todas', active: 'Ativas', paused: 'Pausadas' }
 
 const DEFAULT: IntelFilters = { area: 'agencia', period: '30d', platform: 'all', status: 'all', client: 'all', campaign: '' }
 
-function filtersFromUrl(): IntelFilters {
+function filtersFromUrl(area: IntelArea): IntelFilters {
   if (typeof window === 'undefined') return DEFAULT
   const p = new URLSearchParams(window.location.search)
-  const area = (INTEL_AREAS as readonly string[]).includes(p.get('area') ?? '') ? p.get('area') as IntelArea : DEFAULT.area
   const period = (PERIOD_PRESETS as readonly string[]).includes(p.get('period') ?? '') ? p.get('period') as PeriodPreset : DEFAULT.period
   const platform = (['all', 'google_ads', 'meta_ads'] as const).find(x => x === p.get('platform')) ?? 'all'
   const status = (['all', 'active', 'paused'] as const).find(x => x === p.get('status')) ?? 'all'
@@ -39,11 +29,7 @@ function filtersFromUrl(): IntelFilters {
   return { area, period, platform, status, client, campaign }
 }
 
-function Svg({ d }: { d: string }) {
-  return <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
-}
-
-export default function IntelApp() {
+export default function IntelApp({ embeddedArea, onNavigateArea }: { embeddedArea: IntelArea; onNavigateArea: (area: IntelArea) => void }) {
   const [prefs, setPrefs] = useState<FilterPrefs>(() => prefsFromFilters(DEFAULT))
   const [ready, setReady] = useState(false)
   const [state, setState] = useState<FetchState<IntelPayload>>(initialState)
@@ -55,7 +41,7 @@ export default function IntelApp() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [syncNotes, setSyncNotes] = useState<Record<string, string>>({})
   const [now, setNow] = useState(() => new Date())
-  const [navOpen, setNavOpen] = useState(false)
+  const lastArea = useRef(embeddedArea)
 
   const externalIds = useMemo(() => clients.filter(c => c.kind === 'client').map(c => c.id), [clients])
   // Filtros EFETIVOS: o que a tela mostra, o que vai na URL e o que a API recebe (uma única fonte de verdade).
@@ -64,7 +50,14 @@ export default function IntelApp() {
   // Identidade SEMÂNTICA dos filtros: é ela — e não a referência do objeto — que dispara uma nova busca.
   const filterKey = requestKey(filters)
 
-  useEffect(() => { const f = filtersFromUrl(); setPrefs(prefsFromFilters(f)); setSearch(f.campaign); setReady(true) }, [])
+  useEffect(() => { const f = filtersFromUrl(embeddedArea); setPrefs(prefsFromFilters(f)); setSearch(f.campaign); setReady(true) }, [])
+  // A área ativa é comandada pelo menu do CRM; os filtros sobrevivem à troca entre áreas.
+  useEffect(() => {
+    if (!ready || lastArea.current === embeddedArea) return
+    lastArea.current = embeddedArea
+    setSearch('')
+    setPrefs(p => navigateArea(p, embeddedArea))
+  }, [embeddedArea, ready])
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t) }, [])
   // Busca com espera curta (uma requisição por pausa de digitação, não por tecla).
   useEffect(() => {
@@ -79,6 +72,7 @@ export default function IntelApp() {
     setState(prev => beginRequest(prev, filters))
     const url = new URL(window.location.href)
     url.search = ''
+    url.searchParams.set('view', `intel-${filters.area}`)
     const shown: Record<string, string> = { area: filters.area, client: filters.client, period: filters.period, platform: filters.platform, status: filters.status, campaign: filters.campaign }
     for (const [k, val] of Object.entries(shown)) if (val && val !== 'all') url.searchParams.set(k, val)
     window.history.replaceState(null, '', url.pathname + url.search)
@@ -112,8 +106,7 @@ export default function IntelApp() {
   }, [filterKey, refresh, ready])
 
   const set = (patch: Partial<IntelFilters>) => setPrefs(p => ({ ...p, ...patch }))
-  const openArea = (area: IntelArea) => { setSearch(''); setNavOpen(false); setPrefs(p => navigateArea(p, area)) }
-  const openClient = (id: string) => { setSearch(''); setPrefs(p => chooseClient(navigateArea(p, 'cliente'), id, externalIds)) }
+  const openClient = (id: string) => { setSearch(''); setPrefs(p => chooseClient(navigateArea(p, 'cliente'), id, externalIds)); onNavigateArea('cliente') }
   const pickClient = (id: string) => { setSearch(''); setPrefs(p => chooseClient(p, id, externalIds)) }
 
   async function simulateSync(assetId: string) {
@@ -141,32 +134,8 @@ export default function IntelApp() {
   const showClient = CLIENT_AREAS.includes(filters.area)
   const clientChoices = filters.area === 'conexoes' ? (connClients.length ? connClients : clients) : clients
 
-  return <div id="cassiellos-crm" data-crm-root className="mi-root">
-    <div className="crm-layout">
-      <aside className="crm-sidebar" aria-label="Navegação da Central de Inteligência">
-        <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">Central de Inteligência</span></div>
-          <button type="button" className="mi-nav-toggle" aria-expanded={navOpen} aria-controls="mi-areas" onClick={() => setNavOpen(o => !o)}>
-            <span aria-hidden="true">{navOpen ? '✕' : '☰'}</span> {navOpen ? 'Fechar' : 'Áreas'}<span className="mi-nav-current"> · {AREA_SHORT[filters.area]}</span></button>
-        </div>
-        <nav id="mi-areas" className="crm-nav-wrap mi-nav" data-open={navOpen ? 'true' : 'false'} aria-label="Áreas">
-          <div className="crm-nav-label">Inteligência</div>
-          {INTEL_AREAS.map(a => <button key={a} type="button" className="crm-nav-btn" data-active={filters.area === a} aria-current={filters.area === a ? 'page' : undefined} onClick={() => openArea(a)}><Svg d={AREA_ICON[a]}/>{AREA_LABEL[a]}</button>)}
-          <div className="crm-nav-label crm-nav-label-section">CRM</div>
-          <a className="crm-nav-btn mi-nav-link" href="/crm"><Svg d="M15 18l-6-6 6-6"/>Voltar ao CRM</a>
-        </nav>
-        <div className="crm-sidebar-footer"><div className="mi-sidebar-note"><strong>Fundação · dados simulados</strong><span>Nenhuma conta real conectada. Registros mantidos em memória, sem banco.</span></div>
-          <form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout">Encerrar sessão</button></form></div>
-      </aside>
-
-      <main className="crm-main">
-        <header className="crm-topbar">
-          <div className="crm-breadcrumb"><span>Inteligência</span><span style={{ opacity: .45 }}>/</span><strong>{AREA_LABEL[filters.area]}</strong></div>
-          <div className="crm-top-actions"><span className="mi-sim-pill" role="note">DADOS SIMULADOS</span></div>
-        </header>
-        <div className="crm-content">
-          <div className="crm-hero">
-            <div><div className="crm-eyebrow">Central de Inteligência de Marketing</div><h1>{AREA_LABEL[filters.area]}.</h1><p className="crm-description">{AREA_DESC[filters.area]}</p></div>
-          </div>
+  // Renderiza dentro da área de conteúdo do CRM: sem segunda barra lateral, topbar ou login.
+  return <div className="mi-root mi-embedded">
           <div className="mi-banner" role="note"><strong>Dados simulados.</strong> {meta?.dataNotice ?? 'Demonstração da fundação: nenhuma conta real foi consultada.'}</div>
 
           <div className="mi-filters" role="search" aria-label="Filtros">
@@ -196,7 +165,7 @@ export default function IntelApp() {
           </div>}
 
           <div aria-live="polite" aria-busy={state.status === 'loading'}>
-            {state.status === 'unauthorized' && <StateMessage kind="unauthorized">Sua sessão expirou. <a href="/crm/login?next=%2Fcrm%2Finteligencia">Entrar novamente.</a></StateMessage>}
+            {state.status === 'unauthorized' && <StateMessage kind="unauthorized">Sua sessão expirou. <a href={"/crm/login?next=" + encodeURIComponent("/crm?view=intel-" + filters.area)}>Entrar novamente.</a></StateMessage>}
             {state.status === 'error' && <StateMessage kind="error">Não foi possível carregar a Central ({state.error}). <button type="button" className="mi-link" onClick={() => setRefresh(r => r + 1)}>Tentar novamente</button></StateMessage>}
             {state.status === 'loading' && !payload && <StateMessage kind="loading">Carregando dados simulados…</StateMessage>}
             {payload && state.status !== 'unauthorized' && <div className="mi-area" data-loading={state.status === 'loading' ? 'true' : undefined} key={payload.area + (payload.area === 'cliente' ? payload.view.client.id : '')}>
@@ -206,8 +175,5 @@ export default function IntelApp() {
               {payload.area === 'conexoes' && <ConnectionsArea v={payload.view} now={now}/>}
             </div>}
           </div>
-        </div>
-      </main>
-    </div>
   </div>
 }
