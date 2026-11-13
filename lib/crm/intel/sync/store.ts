@@ -10,7 +10,7 @@ import type { CivilDate, DateRange } from '../dates'
 import type { CampaignInfo, ConnectorErrorKind, ExternalAccountStatus, Ga4DailyRow, GtmDiagnostics } from '../connectors/contracts'
 
 export type SyncKind = 'ads_daily' | 'ga4_daily' | 'gtm_snapshot'
-export type SyncTrigger = 'schedule' | 'manual' | 'backfill'
+export type SyncTrigger = 'schedule' | 'manual' | 'backfill' | 'reprocess'
 export type SyncStatus = 'succeeded' | 'partial' | 'failed' | 'skipped_locked'
 
 export type SyncRun = {

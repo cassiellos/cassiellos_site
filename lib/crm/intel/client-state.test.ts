@@ -38,3 +38,39 @@ describe('Central — estado da interface na troca de cliente', () => {
     assert.equal(s.data, null)
   })
 })
+
+import { chooseClient, effectiveFilters, navigateArea, prefsFromFilters } from './client-state'
+
+describe('M5 — política de filtros na navegação entre áreas', () => {
+  const EXT = ['cli_demo_a', 'cli_demo_b', 'cli_demo_c', 'cli_demo_d']
+  const ALL = ['cli_demo_cassiellos', ...EXT]
+  const start = prefsFromFilters({ area: 'agencia', period: '7d', platform: 'meta_ads', status: 'paused', client: 'all', campaign: '' })
+  it('período e plataforma preservados; situação preservada onde se aplica e neutra em Conexões', () => {
+    const conn = effectiveFilters(navigateArea(start, 'conexoes'), EXT, ALL)
+    assert.deepEqual([conn.period, conn.platform, conn.status, conn.campaign], ['7d', 'meta_ads', 'all', ''])
+    const back = effectiveFilters(navigateArea(navigateArea(start, 'conexoes'), 'agencia'), EXT, ALL)
+    assert.equal(back.status, 'paused', 'volta a valer ao retornar')
+    const p = effectiveFilters(navigateArea(start, 'prospeccao'), EXT, ALL)
+    assert.deepEqual([p.status, p.client, p.platform], ['paused', 'all', 'meta_ads'])
+  })
+  it('cliente só muda quando a área exige; busca limpa ao trocar de área ou cliente', () => {
+    let p = navigateArea(start, 'cliente')
+    assert.equal(effectiveFilters(p, EXT, ALL).client, 'cli_demo_a', 'Cliente exige um cliente: o primeiro')
+    p = chooseClient(p, 'cli_demo_c', EXT)
+    p = { ...p, campaign: 'leads' }
+    assert.equal(effectiveFilters(p, EXT, ALL).campaign, 'leads')
+    const ag = effectiveFilters(navigateArea(p, 'agencia'), EXT, ALL)
+    assert.deepEqual([ag.client, ag.campaign], ['cli_demo_c', ''], 'contexto do cliente mantido; busca limpa')
+    const pr = navigateArea(navigateArea(p, 'prospeccao'), 'cliente')
+    assert.equal(effectiveFilters(pr, EXT, ALL).client, 'cli_demo_c', 'retorna ao último cliente')
+    assert.equal(chooseClient(p, 'cli_demo_a', EXT).campaign, '')
+  })
+  it('valores inválidos para a área nunca ficam escondidos', () => {
+    const agencyInOverview = effectiveFilters({ ...start, client: 'cli_demo_cassiellos' }, EXT, ALL)
+    assert.equal(agencyInOverview.client, 'all')
+    const agencyInConn = effectiveFilters({ ...start, area: 'conexoes', client: 'cli_demo_cassiellos' }, EXT, ALL)
+    assert.equal(agencyInConn.client, 'cli_demo_cassiellos')
+    const unknown = effectiveFilters({ ...start, area: 'cliente', client: 'cli_x', lastClient: null }, EXT, ALL)
+    assert.equal(unknown.client, 'cli_demo_a')
+  })
+})

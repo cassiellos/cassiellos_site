@@ -29,7 +29,12 @@ export type ViewMeta = {
   reportTimeZone: string
   period: { preset: PeriodPreset; label: string; start: string; end: string; includesToday: boolean }
   previous: { start: string; end: string } | null
+  /** Filtros EFETIVOS (normalizados para a área): a interface exibe exatamente estes valores. */
   filters: IntelFilters
+  /** Recorte por campanha ativo (situação e/ou busca) e o que ele afeta. */
+  campaignScope: { active: boolean; status: CampaignStatusFilter; search: string }
+  /** Onde ficam os registros desta Central nesta fase. */
+  storage: 'memory'
 }
 
 export type AssetState =
@@ -53,6 +58,14 @@ export type AssetCard = {
   lastRunStatus: string | null
   alerts: { kind: string; message: string }[]
   note: string
+  /** Conexão técnica (existência e situação da autorização), separada do vínculo com o cliente. */
+  connectionLabel: string | null
+  /** Permissão de leitura da conta na plataforma, pelo que se sabe nesta fase. */
+  platformAccess: 'yes' | 'no' | 'unknown'
+  /** O vínculo e a conexão autorizam sincronizar este ativo? (regra de sync/eligibility.ts) */
+  syncAuthorized: boolean
+  syncBlockReason: string | null
+  manualSync: { allowed: boolean; reason: string | null; retryAt: string | null }
 }
 
 export type CurrencyKpis = {
@@ -97,6 +110,8 @@ export type CampaignRow = {
   conversions: number | null
   costPerConversionMicros: MetricValue
   hasData: boolean
+  /** Situação da INTEGRAÇÃO/dados da conta (independente do status publicitário da campanha). */
+  dataState: AssetState
 }
 
 export type ClientOption = { id: string; name: string; kind: ClientKind }
@@ -139,7 +154,8 @@ export type OverviewView = {
   trend: Trend
   rows: OverviewClientRow[]
   comparison: { currency: string; items: { clientId: string; name: string; costMicros: number }[] }[]
-  alerts: { clientName: string; assetName: string; platform: IntelPlatform; kind: string; message: string; since: string }[]
+  /** scope: association/security nunca são ocultados pelos filtros; data segue o filtro de plataforma. */
+  alerts: { clientName: string; assetName: string; platform: IntelPlatform; kind: string; message: string; since: string; scope: 'association' | 'security' | 'data' }[]
 }
 
 export type ProspectingView = {
@@ -148,6 +164,9 @@ export type ProspectingView = {
   kpis: AdsKpis
   funnel: {
     simulated: true
+    /** Leads/reuniões são atribuídos por CANAL (UTM), não por campanha: com recorte de campanhas, ficam indisponíveis. */
+    available: boolean
+    scopeNote: string
     leads: number; meetings: number; unattributedLeads: number
     byChannel: { platform: 'google_ads' | 'meta_ads'; currency: string; costMicros: number; leads: number; meetings: number
       cplMicros: MetricValue; costPerMeetingMicros: MetricValue; platformConversions: number | null }[]
@@ -171,10 +190,14 @@ export type ConnectionRow = {
   lastRunStatus: string | null
   lastError: string | null
   plannedAction: string
+  platformAccess: 'yes' | 'no' | 'unknown'
+  syncAuthorized: boolean
+  syncBlockReason: string | null
 }
 
 export type ConnectionsView = {
   meta: ViewMeta
+  storageNotice: string
   /** Inclui o cliente interno da agência (as conexões dele também são administradas aqui). */
   clients: ClientOption[]
   rows: ConnectionRow[]

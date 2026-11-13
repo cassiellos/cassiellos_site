@@ -29,7 +29,10 @@ describe('Central — visões (dados simulados)', () => {
     assert.deepEqual(a.assets.map(x => x.platform).sort(), ['ga4', 'google_ads', 'google_ads', 'gtm'])
     assert.deepEqual(a.pendingAssets.map(x => [x.name, x.association, x.state]), [['Exemplo A · Conta encontrada pela busca', 'probable', 'pending_validation']])
     assert.ok(!a.campaigns.some(c => c.name === 'Campanha não validada'), 'campanha da conta provável não entra')
-    assert.ok(snap.store.ads.size > 0 && [...snap.store.ads.values()].some(r => r.assetId === 'ast_demo_g_a3'), 'a conta provável foi sincronizada, mas não é exibida')
+    assert.ok(![...snap.store.ads.values()].some(r => r.assetId === 'ast_demo_g_a3'), 'a conta provável NÃO é sincronizada')
+    assert.equal(snap.store.runs.some(r => r.assetId === 'ast_demo_g_a3'), false, 'nenhuma execução para a conta provável')
+    const pending = a.pendingAssets[0]
+    assert.deepEqual([pending.lastSyncAt, pending.lastSuccessAt, pending.syncAuthorized, pending.manualSync.allowed], [null, null, false, false])
     assert.equal(a.ga4.length, 1); assert.equal(a.gtm.length, 1)
     assert.equal(a.assets.find(x => x.assetId === 'ast_demo_g_a2')?.accessPath, 'manager')
   })

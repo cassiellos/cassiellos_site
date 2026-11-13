@@ -10,10 +10,13 @@
  *   autorização expirada/revogada ou sem permissão PARA imediatamente e abre alerta.
  * - Progresso por página: o que já foi gravado fica; falha no meio = `partial` (retomada segura reexecutando a janela).
  * - NADA aqui agenda execuções (sem cron): quem chama decide quando. Atualização manual tem intervalo mínimo.
+ * - Só aceita `AuthorizedSyncTarget` (sync/eligibility.ts): vínculo confirmado + conexão ativa. Ativos prováveis,
+ *   não encontrados, sem acesso ou com autorização expirada/revogada nunca chegam ao conector.
  */
 import { civilDateInZone, syncWindow, type DateRange } from '../dates'
 import { ConnectorError, RETRYABLE_KINDS, type AdsReadConnector, type ConnectorContext, type ConnectorErrorKind, type Ga4ReadConnector, type GtmReadConnector } from '../connectors/contracts'
 import type { Asset } from '../model'
+import type { AuthorizedSyncTarget } from './eligibility'
 import type { AlertKind, SyncKind, SyncRun, SyncStore, SyncTrigger } from './store'
 
 export const DAILY_LOOKBACK_DAYS = 7
@@ -117,7 +120,7 @@ export function dailyRange(asset: Asset, now: Date, fallbackTimeZone: string, lo
   return syncWindow(civilDateInZone(now, asset.timeZone ?? fallbackTimeZone), lookback)
 }
 
-export async function syncAdsAsset(deps: SyncDeps, connector: AdsReadConnector, asset: Asset, range: DateRange, trigger: SyncTrigger): Promise<SyncRun> {
+export async function syncAdsAsset(deps: SyncDeps, connector: AdsReadConnector, asset: AuthorizedSyncTarget, range: DateRange, trigger: SyncTrigger): Promise<SyncRun> {
   return runGuarded(deps, asset, 'ads_daily', trigger, range, async (state, runId) => {
     const ctx = contextFor(asset)
     const account = await withRetry(deps, state, () => connector.getAccount(ctx, asset.externalId))
@@ -149,7 +152,7 @@ export async function syncAdsAsset(deps: SyncDeps, connector: AdsReadConnector, 
   })
 }
 
-export async function syncGa4Asset(deps: SyncDeps, connector: Ga4ReadConnector, asset: Asset, range: DateRange, trigger: SyncTrigger): Promise<SyncRun> {
+export async function syncGa4Asset(deps: SyncDeps, connector: Ga4ReadConnector, asset: AuthorizedSyncTarget, range: DateRange, trigger: SyncTrigger): Promise<SyncRun> {
   return runGuarded(deps, asset, 'ga4_daily', trigger, range, async (state, runId) => {
     const ctx = contextFor(asset)
     let token: string | null = null
@@ -165,7 +168,7 @@ export async function syncGa4Asset(deps: SyncDeps, connector: Ga4ReadConnector, 
   })
 }
 
-export async function syncGtmAsset(deps: SyncDeps, connector: GtmReadConnector, asset: Asset, trigger: SyncTrigger): Promise<SyncRun> {
+export async function syncGtmAsset(deps: SyncDeps, connector: GtmReadConnector, asset: AuthorizedSyncTarget, trigger: SyncTrigger): Promise<SyncRun> {
   return runGuarded(deps, asset, 'gtm_snapshot', trigger, null, async (state, runId) => {
     const ctx = contextFor(asset)
     const diag = await withRetry(deps, state, () => connector.getDiagnostics(ctx, asset.externalId))

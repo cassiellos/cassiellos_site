@@ -12,11 +12,16 @@ function moneyFormatter(currency: string, digits: number) {
   return f
 }
 
-/** Micros → moeda. Valores altos sem centavos (legibilidade); CPC/CPL sempre com centavos. */
-export function formatMoney(micros: number, currency: string, opts: { cents?: boolean } = {}): string {
+/** Micros → moeda em pt-BR, SEMPRE com centavos (ex.: "R$ 43.392,00", "US$ 4.491,57"). Valores internos seguem em micros. */
+export function formatMoney(micros: number, currency: string): string {
   const value = micros / 1_000_000
-  const digits = opts.cents || Math.abs(value) < 10_000 ? 2 : 0
-  try { return moneyFormatter(currency, digits).format(value) } catch { return currency + ' ' + value.toFixed(digits) }
+  try { return moneyFormatter(currency, 2).format(value) } catch { return currency + ' ' + value.toFixed(2) }
+}
+
+/** Rótulo compacto para EIXOS de gráfico (ex.: "R$ 1,5 mil"), para evitar colisão de textos em telas pequenas. */
+export function formatMoneyAxis(micros: number, currency: string): string {
+  try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(micros / 1_000_000) }
+  catch { return formatMoney(micros, currency) }
 }
 
 const intFmt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
@@ -29,7 +34,7 @@ export function formatPercent(n: number): string { return decFmt.format(n) + '%'
 export function formatMetric(v: MetricValue, kind: 'money' | 'percent' | 'number', currency = 'BRL'): string {
   if (v.kind === 'no_data') return 'Sem dados'
   if (v.kind === 'zero_denominator') return '—'
-  if (kind === 'money') return formatMoney(v.value, currency, { cents: true })
+  if (kind === 'money') return formatMoney(v.value, currency)
   if (kind === 'percent') return formatPercent(v.value)
   return formatDecimal(v.value)
 }

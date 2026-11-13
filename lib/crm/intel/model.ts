@@ -55,9 +55,10 @@ export type Asset = {
   loginCustomerId: string | null
 }
 
-export type AssociationStatus = 'confirmed' | 'probable' | 'not_found' | 'no_access'
+/** Mesmos valores do CHECK de crm.mi_client_assets (0017). `ended` = vínculo encerrado (histórico). */
+export type AssociationStatus = 'confirmed' | 'probable' | 'not_found' | 'no_access' | 'ended'
 export const ASSOCIATION_LABEL: Record<AssociationStatus, string> = {
-  confirmed: 'Confirmado', probable: 'Provável (aguardando validação)', not_found: 'Não encontrado', no_access: 'Sem acesso',
+  confirmed: 'Confirmado', probable: 'Provável (aguardando validação)', not_found: 'Não encontrado', no_access: 'Sem acesso', ended: 'Encerrado',
 }
 
 export type ClientAsset = {

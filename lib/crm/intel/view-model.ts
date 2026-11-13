@@ -14,7 +14,9 @@ import {
 } from './metrics'
 import { feedsMetrics, formatExternalId, type Asset, type ClientAsset, type MonitoredClient } from './model'
 import { isStale } from './sync/engine'
-import type { IntelSnapshot } from './demo/snapshot'
+import { authorizeSync, SYNC_BLOCK_LABEL } from './sync/eligibility'
+import { checkManualSync, type IntelSnapshot } from './demo/snapshot'
+import { normalizeForArea } from './filters'
 import type { SyncRun } from './sync/store'
 import {
   INTEL_AREAS, type AdsKpis, type AssetCard, type AssetState, type CampaignRow, type CampaignStatusFilter, type ClientOption, type ClientView,
@@ -23,6 +25,7 @@ import {
 } from './view-types'
 
 export const DATA_NOTICE = 'Demonstração da fundação. Nenhuma conta real foi consultada e nenhum número representa clientes reais.'
+export const STORAGE_NOTICE = 'Atualizações e registros de sincronização são simulados e mantidos temporariamente em memória. Nenhum dado desta Central é gravado no banco de produção nem em outro banco. Os registros podem desaparecer quando o servidor é reiniciado (novo deploy ou nova instância).'
 
 /* ---------------- filtros ---------------- */
 export class FilterError extends Error { constructor(readonly code: 'INVALID_FILTER' | 'CLIENT_NOT_FOUND', message: string) { super(message) } }
@@ -47,7 +50,7 @@ export function parseIntelFilters(params: URLSearchParams, clients: readonly Mon
   if (area === 'cliente' && client === 'all') client = external[0]?.id ?? ''
   if (client !== 'all' && !clients.some(c => c.id === client && c.status !== 'archived')) throw new FilterError('CLIENT_NOT_FOUND', 'client')
   if (area === 'cliente' && clients.find(c => c.id === client)?.kind !== 'client') throw new FilterError('CLIENT_NOT_FOUND', 'client')
-  return { area, period, platform, status, client, campaign }
+  return normalizeForArea({ area, period, platform, status, client, campaign })
 }
 
 /* ---------------- utilidades ---------------- */
@@ -60,7 +63,8 @@ function assetToday(ctx: Ctx, asset: Asset): CivilDate { return civilDateInZone(
 function assetRange(ctx: Ctx, asset: Asset): DateRange { return periodRange(ctx.filters.period, assetToday(ctx, asset)) }
 function previousOf(range: DateRange): DateRange { const len = diffDays(range.start, range.end) + 1; return { start: addDays(range.start, -len), end: addDays(range.start, -1) } }
 
-function linksOf(ctx: Ctx, clientId: string): ClientAsset[] { return ctx.snap.dataset.links.filter(l => l.clientId === clientId) }
+/** Vínculos VIGENTES do cliente (encerrados ficam só no histórico). */
+function linksOf(ctx: Ctx, clientId: string): ClientAsset[] { return ctx.snap.dataset.links.filter(l => l.clientId === clientId && l.status !== 'ended') }
 function assetById(ctx: Ctx, id: string): Asset {
   const a = ctx.snap.dataset.assets.find(x => x.id === id)
   if (!a) throw new Error('ativo inexistente: ' + id)
@@ -73,15 +77,36 @@ function confirmedAssets(ctx: Ctx, clientId: string): Asset[] {
 const isAds = (p: IntelPlatform): p is 'google_ads' | 'meta_ads' => p === 'google_ads' || p === 'meta_ads'
 function platformAllowed(ctx: Ctx, p: IntelPlatform) { return ctx.filters.platform === 'all' || ctx.filters.platform === p }
 
-/** Linhas de anúncios de um conjunto de ativos, cada ativo no SEU intervalo civil (fuso da conta). */
+function campaignScopeActive(ctx: Ctx) { return ctx.filters.status !== 'all' || ctx.filters.campaign !== '' }
+
+/** Campanhas do recorte (situação ATUAL + busca). null = sem recorte (todas). */
+function campaignKeysInScope(ctx: Ctx, assetIds: ReadonlySet<string>): Set<string> | null {
+  if (!campaignScopeActive(ctx)) return null
+  const q = normalizeText(ctx.filters.campaign)
+  const keys = new Set<string>()
+  for (const c of ctx.snap.store.campaignsFor(assetIds)) {
+    if (ctx.filters.status !== 'all' && c.status !== ctx.filters.status) continue
+    if (q && !normalizeText(c.name).includes(q)) continue
+    keys.add(c.assetId + '|' + c.externalId)
+  }
+  return keys
+}
+
+/**
+ * Linhas de anúncios de um conjunto de ativos, cada ativo no SEU intervalo civil (fuso da conta), já no recorte de
+ * plataforma e de campanhas (situação atual + busca). TODOS os indicadores, gráficos, comparações e listas de anúncios
+ * partem daqui — o filtro de campanhas afeta o relatório de anúncios inteiro, de forma coerente.
+ */
 function adsFacts(ctx: Ctx, assets: readonly Asset[], rangeOf: (a: Asset) => DateRange): AdsDailyFact[] {
   const out: AdsDailyFact[] = []
+  const scope = campaignKeysInScope(ctx, new Set(assets.map(a => a.id)))
   for (const a of assets) {
     if (!isAds(a.platform) || !platformAllowed(ctx, a.platform)) continue
     const range = rangeOf(a)
     const platform = a.platform
     for (const r of ctx.snap.store.adsRowsFor(new Set([a.id]))) {
       if (!inRange(r.day, range)) continue
+      if (scope && !scope.has(a.id + '|' + r.campaignExternalId)) continue
       out.push({ platform, assetId: a.id, campaignId: r.campaignExternalId, day: r.day, currency: r.currency, impressions: r.impressions,
         clicks: r.clicks, costMicros: r.costMicros, conversions: r.conversions, conversionBasis: r.conversionBasis, attribution: r.attribution })
     }
@@ -124,7 +149,7 @@ function reportDays(ctx: Ctx): { range: DateRange; days: CivilDate[] } {
 
 function normalizeText(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
 
-function campaignsOf(ctx: Ctx, assets: readonly Asset[], facts: readonly AdsDailyFact[]): CampaignRow[] {
+function campaignsOf(ctx: Ctx, assets: readonly Asset[], facts: readonly AdsDailyFact[], dataStateOf: (assetId: string) => AssetState = () => 'connected'): CampaignRow[] {
   const ids = new Set(assets.filter(a => isAds(a.platform) && platformAllowed(ctx, a.platform)).map(a => a.id))
   const q = normalizeText(ctx.filters.campaign)
   const rows: CampaignRow[] = []
@@ -144,6 +169,7 @@ function campaignsOf(ctx: Ctx, assets: readonly Asset[], facts: readonly AdsDail
       currency: ctx.snap.store.observations.get(asset.id)?.currencyCode ?? asset.currencyCode ?? '—', costMicros: cost, impressions, clicks,
       ctr: mine.length ? ctrOf(clicks, impressions) : { kind: 'no_data' }, cpcMicros: mine.length ? cpcMicros(cost, clicks) : { kind: 'no_data' },
       conversions, costPerConversionMicros: conversions === null ? { kind: 'no_data' } : costPerConversionMicros(cost, conversions), hasData: mine.length > 0,
+      dataState: dataStateOf(c.assetId),
     })
   }
   return rows.sort((a, b) => b.costMicros - a.costMicros || a.name.localeCompare(b.name))
@@ -161,7 +187,7 @@ function assetCard(ctx: Ctx, link: ClientAsset): AssetCard {
   const lastOk = lastRunOf(ctx, asset.id, r => r.status === 'succeeded')
   const alerts = ctx.snap.store.openAlertsFor(new Set([asset.id])).map(a => ({ kind: a.kind, message: a.message }))
   let hasPeriodData = true
-  if (isAds(asset.platform)) hasPeriodData = adsFacts({ ...ctx, filters: { ...ctx.filters, platform: 'all' } }, [asset], a => assetRange(ctx, a)).length > 0
+  if (isAds(asset.platform)) hasPeriodData = adsFacts({ ...ctx, filters: { ...ctx.filters, platform: 'all', status: 'all', campaign: '' } }, [asset], a => assetRange(ctx, a)).length > 0
   if (asset.platform === 'ga4') { const r = assetRange(ctx, asset); hasPeriodData = ctx.snap.store.ga4RowsFor(new Set([asset.id])).some(x => inRange(x.date, r)) }
   let state: AssetState
   if (link.status === 'not_found') state = 'not_found'
@@ -175,11 +201,27 @@ function assetCard(ctx: Ctx, link: ClientAsset): AssetCard {
   else if (accountStatus === 'paused') state = 'paused'
   else if (!hasPeriodData) state = 'no_data'
   else state = 'connected'
+  // Autorização de sincronização: mesma regra do motor (vínculo confirmado + conexão ativa).
+  const auth = authorizeSync(asset, ctx.snap.dataset.links, ctx.snap.dataset.connections, 'schedule')
+  const authorizedLink = link.status === 'confirmed' && auth.eligible
+  const manual = link.status === 'confirmed' ? checkManualSync(ctx.snap, link.clientId, asset.id, ctx.now) : null
+  const platformAccess: 'yes' | 'no' | 'unknown' = link.status === 'no_access' ? 'no' : link.status === 'not_found' ? 'unknown'
+    : conn && conn.status === 'active' && asset.accessPath ? 'yes' : conn ? 'unknown' : 'no'
   return {
     assetId: asset.id, platform: asset.platform, externalIdLabel: formatExternalId(asset.platform, asset.externalId), name: asset.name,
     currency: obs?.currencyCode ?? asset.currencyCode, timeZone: obs?.timeZone ?? asset.timeZone, association: link.status, accountStatus,
     connectionStatus: conn?.status ?? 'none', accessPath: asset.accessPath, state,
-    lastSyncAt: last?.finishedAt ?? null, lastSuccessAt: lastOk?.finishedAt ?? null, lastRunStatus: last?.status ?? null, alerts, note: link.note,
+    // Vínculo não confirmado: nenhum horário de sincronização (nada foi processado em nome deste cliente).
+    lastSyncAt: link.status === 'confirmed' ? last?.finishedAt ?? null : null,
+    lastSuccessAt: link.status === 'confirmed' ? lastOk?.finishedAt ?? null : null,
+    lastRunStatus: link.status === 'confirmed' ? last?.status ?? null : null,
+    alerts: link.status === 'confirmed' ? alerts : [], note: link.note,
+    connectionLabel: conn?.label ?? null, platformAccess,
+    syncAuthorized: authorizedLink,
+    syncBlockReason: link.status !== 'confirmed' ? SYNC_BLOCK_LABEL.not_confirmed : auth.eligible ? null : SYNC_BLOCK_LABEL[auth.reason],
+    manualSync: manual === null ? { allowed: false, reason: SYNC_BLOCK_LABEL.not_confirmed, retryAt: null }
+      : manual.allowed ? { allowed: true, reason: null, retryAt: null }
+      : { allowed: false, reason: manual.reason === 'too_soon' ? 'Limite de 1 atualização a cada 15 minutos por conta' : manual.reason === 'not_in_client' || manual.reason === 'unknown_asset' ? 'Conta não vinculada a este cliente' : SYNC_BLOCK_LABEL[manual.reason], retryAt: manual.retryAt },
   }
 }
 
@@ -201,7 +243,8 @@ function metaOf(ctx: Ctx): ViewMeta {
   const prev = previousOf(range)
   return { simulated: true, dataNotice: DATA_NOTICE, generatedAt: ctx.now.toISOString(), reportTimeZone: ctx.reportTz,
     period: { preset: ctx.filters.period, label: PERIOD_LABEL[ctx.filters.period], start: range.start, end: range.end, includesToday: range.end === today },
-    previous: prev, filters: ctx.filters }
+    previous: prev, filters: ctx.filters,
+    campaignScope: { active: campaignScopeActive(ctx), status: ctx.filters.status, search: ctx.filters.campaign }, storage: 'memory' }
 }
 
 const clientOptions = (ctx: Ctx): ClientOption[] => ctx.snap.dataset.clients.filter(c => c.kind === 'client' && c.status !== 'archived').map(c => ({ id: c.id, name: c.name, kind: c.kind }))
@@ -211,6 +254,7 @@ export function buildClientView(ctx: Ctx, clientId: string): ClientView {
   const client = ctx.snap.dataset.clients.find(c => c.id === clientId && c.kind === 'client')
   if (!client) throw new FilterError('CLIENT_NOT_FOUND', 'client')
   const cards = linksOf(ctx, client.id).map(l => assetCard(ctx, l))
+  const stateOf = (id: string) => cards.find(c => c.assetId === id)?.state ?? 'connected'
   const assets = confirmedAssets(ctx, client.id)
   const facts = adsFacts(ctx, assets, a => assetRange(ctx, a))
   const prevFacts = adsFacts(ctx, assets, a => previousOf(assetRange(ctx, a)))
@@ -234,7 +278,7 @@ export function buildClientView(ctx: Ctx, clientId: string): ClientView {
     meta: metaOf(ctx), clients: clientOptions(ctx),
     client: { id: client.id, name: client.name, kind: client.kind, financeLinked: client.financeClientId !== null, state: worstState(cards) },
     assets: cards.filter(c => c.association === 'confirmed'), pendingAssets: cards.filter(c => c.association !== 'confirmed'),
-    kpis: kpisOf(facts, prevFacts), trend: { days, series: spendTrend(days, facts) }, campaigns: campaignsOf(ctx, assets, facts), ga4, gtm,
+    kpis: kpisOf(facts, prevFacts), trend: { days, series: spendTrend(days, facts) }, campaigns: campaignsOf(ctx, assets, facts, stateOf), ga4, gtm,
   }
 }
 
@@ -249,7 +293,8 @@ export function buildOverviewView(ctx: Ctx): OverviewView {
     const facts = adsFacts(ctx, assets, a => assetRange(ctx, a))
     const prev = adsFacts(ctx, assets, a => previousOf(assetRange(ctx, a)))
     allFacts.push(...facts); allPrev.push(...prev)
-    const camps = campaignsOf({ ...ctx, filters: { ...ctx.filters, status: 'all', campaign: '' } }, assets, facts)
+    // Contagem de campanhas no MESMO recorte (situação atual/busca) das métricas.
+    const camps = campaignsOf(ctx, assets, facts)
     const k = kpisOf(facts, prev)
     const successes = cards.filter(c => c.association === 'confirmed').map(c => c.lastSuccessAt).filter((x): x is string => !!x).sort()
     return {
@@ -279,11 +324,19 @@ export function buildOverviewView(ctx: Ctx): OverviewView {
     currency, items: rows.map(r => ({ clientId: r.id, name: r.name, costMicros: r._facts.filter(f => f.currency === currency).reduce((s, f) => s + f.costMicros, 0) }))
       .filter(i => i.costMicros > 0).sort((a, b) => b.costMicros - a.costMicros),
   }))
+  // Alertas NÃO dependem do filtro de campanhas. Vínculo e autorização (segurança) sempre aparecem; alertas de dados
+  // seguem o filtro de plataforma.
+  const SECURITY = new Set(['auth_expired', 'auth_revoked', 'permission_denied'])
   const alerts: OverviewView['alerts'] = []
   for (const r of rows) for (const c of r._cards) {
-    for (const a of c.alerts) alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: a.kind, message: a.message, since: c.lastSyncAt ?? '' })
-    if (c.association !== 'confirmed') alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: 'association_' + c.association, message: c.note || 'vínculo não confirmado', since: '' })
-    else if (c.state === 'no_data' || c.state === 'stale') alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: c.state, message: c.state === 'stale' ? 'dados desatualizados' : 'sem dados no período', since: c.lastSuccessAt ?? '' })
+    const dataVisible = platformAllowed(ctx, c.platform) || !isAds(c.platform) && ctx.filters.platform === 'all'
+    for (const a of c.alerts) {
+      const scope = SECURITY.has(a.kind) ? 'security' as const : 'data' as const
+      if (scope === 'data' && !dataVisible) continue
+      alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: a.kind, message: a.message, since: c.lastSyncAt ?? '', scope })
+    }
+    if (c.association !== 'confirmed') alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: 'association_' + c.association, message: c.note || 'vínculo não confirmado', since: '', scope: 'association' })
+    else if ((c.state === 'no_data' || c.state === 'stale') && dataVisible) alerts.push({ clientName: r.name, assetName: c.name, platform: c.platform, kind: c.state, message: c.state === 'stale' ? 'dados desatualizados' : 'sem dados no período', since: c.lastSuccessAt ?? '', scope: 'data' })
   }
   const totalCamps = rows.reduce((s, r) => ({ active: s.active + r.activeCampaigns, paused: s.paused + r.pausedCampaigns }), { active: 0, paused: 0 })
   return {
@@ -315,8 +368,12 @@ export function buildProspectingView(ctx: Ctx): ProspectingView {
   const facts = adsFacts(ctx, assets, a => assetRange(ctx, a))
   const prev = adsFacts(ctx, assets, a => previousOf(assetRange(ctx, a)))
   const { days, range } = reportDays(ctx)
-  const funnelDays = simulateAgencyFunnel(facts)
-  const unattributed = days.filter(d => d <= range.end).reduce((s, d) => s + Math.round(unit('na' + d) * 2.4), 0)
+  // Leads e reuniões são atribuídos por CANAL (UTM), não por campanha: o funil usa todas as campanhas do canal e fica
+  // indisponível quando há recorte de campanhas (não se inventa atribuição de leads a campanhas).
+  const channelFacts = adsFacts({ ...ctx, filters: { ...ctx.filters, status: 'all', campaign: '' } }, assets, a => assetRange(ctx, a))
+  const funnelAvailable = !campaignScopeActive(ctx)
+  const funnelDays = funnelAvailable ? simulateAgencyFunnel(channelFacts) : []
+  const unattributed = funnelAvailable ? days.filter(d => d <= range.end).reduce((s, d) => s + Math.round(unit('na' + d) * 2.4), 0) : 0
   const kpis = kpisOf(facts, prev)
   const byChannel = (['google_ads', 'meta_ads'] as const).filter(p => platformAllowed(ctx, p)).flatMap(p => {
     const pf = facts.filter(f => f.platform === p)
@@ -327,7 +384,9 @@ export function buildProspectingView(ctx: Ctx): ProspectingView {
     const meetings = funnelDays.filter(x => x.platform === p).reduce((s, x) => s + x.meetings, 0)
     const conv = kpis.conversions.filter(c => c.platform === p && c.currency === currency)
     const platformConversions = conv.some(c => c.conversions !== null) ? conv.reduce((s, c) => s + (c.conversions ?? 0), 0) : null
-    return [{ platform: p, currency, costMicros: cost, leads, meetings, cplMicros: cplMicros(cost, leads), costPerMeetingMicros: costPerMeetingMicros(cost, meetings), platformConversions }]
+    const na: MetricValue = { kind: 'no_data' }
+    return [{ platform: p, currency, costMicros: cost, leads, meetings, cplMicros: funnelAvailable ? cplMicros(cost, leads) : na,
+      costPerMeetingMicros: funnelAvailable ? costPerMeetingMicros(cost, meetings) : na, platformConversions }]
   })
   const idx = new Map(days.map((d, i) => [d, i]))
   const count = (key: 'leads' | 'meetings', label: string): TrendSeries => {
@@ -335,12 +394,15 @@ export function buildProspectingView(ctx: Ctx): ProspectingView {
     for (const x of funnelDays) { const i = idx.get(x.day); if (i !== undefined) values[i] = (values[i] ?? 0) + x[key] }
     return { key: 'crm|' + key, label, platform: 'crm', currency: null, unit: 'count', values }
   }
-  const trend: Trend = { days, series: [...spendTrend(days, facts), count('leads', 'Leads (simulados)'), count('meetings', 'Reuniões (simuladas)')] }
+  const trend: Trend = { days, series: [...spendTrend(days, facts), ...(funnelAvailable ? [count('leads', 'Leads (simulados)'), count('meetings', 'Reuniões (simuladas)')] : [])] }
   return {
     meta: metaOf(ctx), assets: cards, kpis,
-    funnel: { simulated: true, leads: byChannel.reduce((s, c) => s + c.leads, 0) + (ctx.filters.platform === 'all' ? unattributed : 0),
+    funnel: { simulated: true, available: funnelAvailable,
+      scopeNote: funnelAvailable ? 'Leads e reuniões por canal (atribuição por UTM), considerando todas as campanhas do canal.'
+        : 'Indisponível com recorte de campanhas: leads e reuniões são atribuídos por canal, não por campanha.',
+      leads: byChannel.reduce((s, c) => s + c.leads, 0) + (ctx.filters.platform === 'all' ? unattributed : 0),
       meetings: byChannel.reduce((s, c) => s + c.meetings, 0), unattributedLeads: ctx.filters.platform === 'all' ? unattributed : 0, byChannel },
-    trend, campaigns: campaignsOf(ctx, assets, facts),
+    trend, campaigns: campaignsOf(ctx, assets, facts, id => cards.find(c => c.assetId === id)?.state ?? 'connected'),
   }
 }
 
@@ -367,7 +429,8 @@ export function buildConnectionsView(ctx: Ctx): ConnectionsView {
       rows.push({ clientId: client.id, clientName: client.name, platform: card.platform, assetName: card.name, externalIdLabel: card.externalIdLabel,
         association: link.status, connectionLabel: conn?.label ?? null, authStatus: conn?.status ?? 'none', accessPath: asset.accessPath,
         lastVerifiedAt: conn?.lastVerifiedAt ?? null, lastSyncAt: card.lastSyncAt, lastRunStatus: card.lastRunStatus,
-        lastError: last?.errorMessage ?? null, plannedAction: PLANNED[card.state] })
+        lastError: link.status === 'confirmed' ? last?.errorMessage ?? null : null, plannedAction: PLANNED[card.state],
+        platformAccess: card.platformAccess, syncAuthorized: card.syncAuthorized, syncBlockReason: card.syncBlockReason })
     }
   }
   const nameOf = (id: string) => ctx.snap.dataset.assets.find(a => a.id === id)
@@ -376,7 +439,7 @@ export function buildConnectionsView(ctx: Ctx): ConnectionsView {
     attempts: r.attempts, rows: r.rowsInserted + r.rowsUpdated + r.rowsUnchanged, startedAt: r.startedAt, error: r.errorMessage,
   }))
   return {
-    meta: metaOf(ctx), rows,
+    meta: metaOf(ctx), rows, storageNotice: STORAGE_NOTICE,
     clients: ctx.snap.dataset.clients.filter(c => c.status !== 'archived').map(c => ({ id: c.id, name: c.name, kind: c.kind })),
     connections: ctx.snap.dataset.connections.map(c => ({ id: c.id, label: c.label, provider: c.provider, authKind: c.authKind, status: c.status, lastVerifiedAt: c.lastVerifiedAt, scopes: c.scopes })),
     recentRuns,
