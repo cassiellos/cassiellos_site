@@ -76,6 +76,32 @@ describe('API do modo real (banco descartável + conectores falsos)', { skip: RE
     assert.deepEqual([meta.mode, meta.simulated, meta.hasImportedData], ['real', false, false])
   })
 
+  it('D2: client=all com zero clientes ativos mantém o cadastro acessível e retorna 200', async () => {
+    for (const client of ['', 'all']) {
+      const r = await get({ area: 'cliente', client })
+      assert.equal(r.status, 200)
+      const body = r.body as { simulated: boolean; mode: string; view: unknown; admin: { clients: unknown[] } }
+      assert.deepEqual([body.simulated, body.mode, body.view, body.admin.clients.length], [false, 'real', null, 0])
+    }
+  })
+
+  it('D1: URL de cliente arquivado seleciona outro ativo ou mostra estado vazio, sem 404', async () => {
+    const a = (await post({ action: 'create_client', name: 'Teste Arquivar A' })).body as { client: { id: string } }
+    const b = (await post({ action: 'create_client', name: 'Teste Arquivar B' })).body as { client: { id: string } }
+    assert.equal((await post({ action: 'archive_client', clientId: a.client.id })).status, 200)
+    const alternate = await get({ area: 'cliente', client: a.client.id })
+    assert.equal(alternate.status, 200)
+    const view = (alternate.body as { view: { client: { id: string }; meta: { filters: { client: string } } } }).view
+    assert.equal(view.client.id, b.client.id)
+    assert.equal(view.meta.filters.client, b.client.id)
+    assert.equal((await post({ action: 'archive_client', clientId: b.client.id })).status, 200)
+    const empty = await get({ area: 'cliente', client: a.client.id })
+    assert.equal(empty.status, 200)
+    const body = empty.body as { view: unknown; admin: { clients: { status: string }[] } }
+    assert.equal(body.view, null)
+    assert.equal(body.admin.clients.filter(c => c.status !== 'archived').length, 0)
+  })
+
   it('fluxo completo: cadastro → descoberta → proposta → confirmação → sincronização → dados reais; limites e isolamento', async () => {
     const a = (await post({ action: 'create_client', name: 'Clínica Sorriso', notes: 'cliente desde 2025' })).body as { client: { id: string } }
     const b = (await post({ action: 'create_client', name: 'Outra Marca' })).body as { client: { id: string } }
@@ -143,7 +169,9 @@ describe('API do modo real (banco descartável + conectores falsos)', { skip: RE
     await post({ action: 'revoke_connection', connectionId: conn.id })
     assert.equal((await post({ action: 'sync_now', clientId: a.client.id, assetId: asset.id })).status, 409)
     await post({ action: 'archive_client', clientId: a.client.id })
-    assert.equal((await get({ area: 'cliente', client: a.client.id })).status, 404)
+    const archived = await get({ area: 'cliente', client: a.client.id })
+    assert.equal(archived.status, 200, 'URL antiga deve voltar ao estado vazio')
+    assert.equal((archived.body as { view: unknown }).view, null)
     assert.equal((await repo.listAssociations(pool, { includeEnded: true }))[0].status, 'ended')
   })
 
