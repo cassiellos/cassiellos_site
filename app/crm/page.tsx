@@ -21,5 +21,7 @@ export default async function CrmPage({ searchParams }: CrmPageProps) {
     redirect(next ? '/crm/login?next=' + encodeURIComponent(next) : '/crm/login')
   }
   // Central de Inteligência: link no menu só com a flag própria MI_ENABLED=true (desligada por padrão).
-  return <MiniCrm intelEnabled={isIntelEnabled(process.env.MI_ENABLED)} intelMode={dataMode()} />
+  // Homologação dentro do mesmo CRM e mesma sessão, mas com banco de dados apartado.
+  const intelSandbox = process.env.VERCEL_ENV === 'production' && process.env.MI_SANDBOX_ENABLED === 'true' && dataMode() === 'real'
+  return <MiniCrm intelEnabled={isIntelEnabled(process.env.MI_ENABLED)} intelMode={dataMode()} intelSandbox={intelSandbox} />
 }
