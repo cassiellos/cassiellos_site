@@ -25,7 +25,7 @@ import {
 } from './view-types'
 
 export const DATA_NOTICE = 'Demonstração da fundação. Nenhuma conta real foi consultada e nenhum número representa clientes reais.'
-export const STORAGE_NOTICE = 'Atualizações e registros de sincronização são simulados e mantidos temporariamente em memória. Nenhum dado desta Central é gravado no banco de produção nem em outro banco. Os registros podem desaparecer quando o servidor é reiniciado (novo deploy ou nova instância).'
+export const STORAGE_NOTICE = 'Atualizações e registros de sincronização são simulados e mantidos temporariamente em memória. Nenhum dado desta Central é gravado no banco de produção nem em outro banco. Os registros podem desaparecer quando o servidor é reiniciado (novo deploy ou nova instância). O limite de 1 atualização a cada 15 minutos por conta e o limite por minuto valem apenas dentro de cada instância do servidor e são demonstrativos: não são um controle de segurança distribuído.'
 
 /* ---------------- filtros ---------------- */
 export class FilterError extends Error { constructor(readonly code: 'INVALID_FILTER' | 'CLIENT_NOT_FOUND', message: string) { super(message) } }

@@ -152,6 +152,7 @@ describe('M4/M5/m4/m5/m6', () => {
     const conn = buildIntelPayload(snap, f({ area: 'conexoes' }), NOW).view as ConnectionsView
     assert.equal(conn.storageNotice, STORAGE_NOTICE)
     assert.match(STORAGE_NOTICE, /memória/); assert.match(STORAGE_NOTICE, /reiniciado/)
+    assert.match(STORAGE_NOTICE, /instância do servidor/); assert.match(STORAGE_NOTICE, /demonstrativos/); assert.match(STORAGE_NOTICE, /não são um controle de segurança distribuído/) // N2
     assert.equal(conn.meta.storage, 'memory')
   })
   it('M5: filtros inválidos para a área são normalizados no servidor e devolvidos como efetivos', () => {

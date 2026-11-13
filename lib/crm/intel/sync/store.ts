@@ -5,6 +5,9 @@
  * - upsert idempotente por chave natural (ativo, campanha, dia, definição da conversão);
  * - lease por ativo (impede duas sincronizações simultâneas da mesma conta);
  * - registro de cada execução (tentativas, linhas, erro sanitizado) e alertas deduplicados.
+ *
+ * N2: a implementação em memória é POR INSTÂNCIA (nada é compartilhado entre instâncias serverless nem sobrevive a deploy/reinício).
+ * Lease, deduplicação e limites de taxa em memória são demonstrativos; a integração real exige controle persistente e distribuído.
  */
 import type { CivilDate, DateRange } from '../dates'
 import type { CampaignInfo, ConnectorErrorKind, ExternalAccountStatus, Ga4DailyRow, GtmDiagnostics } from '../connectors/contracts'

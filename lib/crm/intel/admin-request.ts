@@ -37,7 +37,15 @@ export const MAX_INTEL_BODY = 2_000
 const bad = (error: string, status = 400, extra: Record<string, unknown> = {}): HandlerResponse => ({ status, body: { error, ...extra } })
 
 
-/** Limite global por processo para a atualização manual simulada (além do intervalo por conta). */
+/**
+ * Limite global por processo para a atualização manual simulada (além do intervalo por conta).
+ *
+ * N2 — LIMITAÇÃO CONHECIDA E DEMONSTRATIVA: esta janela (e o `manualAt` do snapshot em memória, que sustenta o intervalo de
+ * 15 min por conta) vive na MEMÓRIA de cada instância serverless. Outra instância, um novo deploy ou uma reinicialização
+ * começam do zero; duas instâncias não compartilham contadores. Portanto NÃO é um controle de segurança distribuído nem
+ * serve como proteção de cota/custo em produção. REQUISITO OBRIGATÓRIO da futura integração real: deduplicação e limite de
+ * taxa PERSISTENTES e COMPARTILHADOS entre instâncias (decididos em fase própria; ver docs/marketing/central-inteligencia-limites-do-mock.md).
+ */
 const manualWindow: number[] = []
 const MANUAL_PER_MINUTE = 20
 

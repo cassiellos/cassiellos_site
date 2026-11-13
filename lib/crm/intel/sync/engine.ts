@@ -21,6 +21,7 @@ import type { AlertKind, SyncKind, SyncRun, SyncStore, SyncTrigger } from './sto
 
 export const DAILY_LOOKBACK_DAYS = 7
 export const REPROCESS_LOOKBACK_DAYS = 30
+/** N2: intervalo DEMONSTRATIVO — aplicado sobre estado em memória, por instância do servidor (não é controle distribuído). */
 export const MANUAL_MIN_INTERVAL_MS = 15 * 60_000
 export const LEASE_TTL_MS = 5 * 60_000
 export const MAX_ATTEMPTS = 4
