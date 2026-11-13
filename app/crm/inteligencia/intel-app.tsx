@@ -33,7 +33,7 @@ function filtersFromUrl(area: IntelArea): IntelFilters {
   return { area, period, platform, status, client, campaign }
 }
 
-export default function IntelApp({ embeddedArea, onNavigateArea, initialMode }: { embeddedArea: IntelArea; onNavigateArea: (area: IntelArea) => void; initialMode: 'demo' | 'real' }) {
+export default function IntelApp({ embeddedArea, onNavigateArea, initialMode, sandboxMode = false }: { embeddedArea: IntelArea; onNavigateArea: (area: IntelArea) => void; initialMode: 'demo' | 'real'; sandboxMode?: boolean }) {
   const [prefs, setPrefs] = useState<FilterPrefs>(() => prefsFromFilters(DEFAULT))
   const [ready, setReady] = useState(false)
   const [state, setState] = useState<FetchState<Loaded>>(initialState)
@@ -183,7 +183,8 @@ export default function IntelApp({ embeddedArea, onNavigateArea, initialMode }: 
   // Renderiza dentro da área de conteúdo do CRM: sem segunda barra lateral, topbar ou login.
   return <div className="mi-root mi-embedded">
           {mode === 'demo' && <div className="mi-banner" role="note"><strong>Dados simulados.</strong> {meta?.dataNotice ?? 'Demonstração da fundação: nenhuma conta real foi consultada.'}</div>}
-          {mode === 'real' && (meta?.hasImportedData
+          {sandboxMode && <div className="mi-banner mi-banner-wait" role="note"><strong>AMBIENTE DE TESTE INTEGRADO.</strong> Você está no CRM oficial com seu login habitual, mas os cadastros desta Central ficam em um banco Neon separado. Não são clientes do Financeiro oficial. Google Ads e Meta Ads continuam desligados e nenhuma métrica real foi importada.</div>}
+          {!sandboxMode && mode === 'real' && (meta?.hasImportedData
             ? <div className="mi-banner mi-banner-real" role="note"><span className="mi-real-pill">DADOS REAIS</span> {meta.dataNotice} Última importação: <strong>{new Date(meta.lastImportAt!).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</strong>.</div>
             : <div className="mi-banner mi-banner-wait" role="note"><strong>Modo real · aguardando dados.</strong> Nenhum número é exibido até a primeira importação de uma conta autorizada e confirmada para os clientes desta visão.</div>)}
           {banner && <div className="mi-callout mi-err" role="status">{banner}</div>}
