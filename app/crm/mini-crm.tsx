@@ -142,7 +142,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo' }: { 
             </div>
           </div>
 
-          {intelArea && <IntelApp embeddedArea={intelArea} onNavigateArea={area => openView(`intel-${area}`)}/>}
+          {intelArea && <IntelApp embeddedArea={intelArea} initialMode={intelMode} onNavigateArea={area => openView(`intel-${area}`)}/>}
           {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>INTEGRAÇÃO COMERCIAL HABILITADA</strong> Pixel, eventos Chronos e CAPI foram ativados na Preview em 03/11/2026. Esta tela não consulta a Meta nem as variáveis da Vercel em tempo real; a deduplicação e as conversões reais ainda dependem de verificação externa.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
           {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
