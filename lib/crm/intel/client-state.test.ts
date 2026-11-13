@@ -39,7 +39,7 @@ describe('Central — estado da interface na troca de cliente', () => {
   })
 })
 
-import { chooseClient, effectiveFilters, navigateArea, prefsFromFilters } from './client-state'
+import { chooseClient, effectiveFilters, navigateArea, omitArchivedClient, prefsFromFilters, resolveFilters } from './client-state'
 
 describe('M5 — política de filtros na navegação entre áreas', () => {
   const EXT = ['cli_demo_a', 'cli_demo_b', 'cli_demo_c', 'cli_demo_d']
@@ -72,5 +72,25 @@ describe('M5 — política de filtros na navegação entre áreas', () => {
     assert.equal(agencyInConn.client, 'cli_demo_cassiellos')
     const unknown = effectiveFilters({ ...start, area: 'cliente', client: 'cli_x', lastClient: null }, EXT, ALL)
     assert.equal(unknown.client, 'cli_demo_a')
+  })
+})
+
+describe('Etapa C — D1/D2: exclusão de seleção arquivada e cliente vazio', () => {
+  it('D2: área Cliente sem clientes transforma client=all em seleção vazia', () => {
+    const p = prefsFromFilters(f({ client: 'all' }))
+    assert.equal(resolveFilters(p, { clients: [], connClients: [] }).client, '')
+  })
+  it('D1: remove cliente arquivado de todas as listas sem mexer nos demais', () => {
+    const current = {
+      clients: [{ id: 'a', name: 'Cliente A', kind: 'client' as const }, { id: 'b', name: 'Cliente B', kind: 'client' as const }],
+      connClients: [{ id: 'a', name: 'Cliente A', kind: 'client' as const }, { id: 'b', name: 'Cliente B', kind: 'client' as const }],
+    }
+    const next = omitArchivedClient(current, 'a')
+    assert.deepEqual(next.clients.map(c => c.id), ['b'])
+    assert.deepEqual(next.connClients.map(c => c.id), ['b'])
+    assert.equal(omitArchivedClient(next, 'a'), next, 'sem mudanças a referência permanece estável')
+    const p = prefsFromFilters(f({ client: 'a' }))
+    const effective = resolveFilters(p, next)
+    assert.equal(effective.client, 'b', 'seleciona o cliente ativo restante')
   })
 })
