@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Lenis from 'lenis'
 import { registerLenis, scrollToId } from '@/lib/scroll'
 
@@ -9,7 +10,16 @@ import { registerLenis, scrollToId } from '@/lib/scroll'
  * Desliga por completo quando o sistema pede movimento reduzido.
  */
 export default function SmoothScroll() {
+  const pathname = usePathname()
   useEffect(() => {
+    // O CRM usa rolagem nativa e regiões independentes (menu/sidebar e conteúdo).
+    // Lenis, registrado no window para o site institucional, intercepta a roda
+    // do mouse e impede a .crm-nav-wrap de rolar. Não instanciar no backoffice.
+    // Ao navegar client-side entre site e CRM, o cleanup destrói a instância.
+    if (pathname === '/crm' || pathname?.startsWith('/crm/')) {
+      registerLenis(null)
+      return
+    }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let lenis: Lenis | null = null
@@ -56,7 +66,7 @@ export default function SmoothScroll() {
       lenis?.destroy()
       registerLenis(null)
     }
-  }, [])
+  }, [pathname])
 
   return null
 }
