@@ -22,6 +22,15 @@ const noHeaders = { get: () => null }
 
 describe('Google Ads — conector real (fetch falso)', () => {
   const ctx = { connectionId: 'c1' }
+  it('Google Ads após 09/09/2026: envio do token legado é opcional', async () => {
+    const { f, calls } = fakeFetch(() => ({ body: { resourceNames: [] } }))
+    const google = createGoogleAdsConnector({ fetch: f, accessToken: async () => 'oauth-token' })
+    const result = await google.listAccessibleAccounts(ctx)
+    assert.deepEqual(result.items, [])
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].headers.Authorization, 'Bearer oauth-token')
+    assert.equal('developer-token' in calls[0].headers, false)
+  })
   it('descoberta: conta direta + MCC com contas clientes (login-customer-id = gerente); cabeçalhos corretos', async () => {
     const { f, calls } = fakeFetch(c => {
       if (c.url.endsWith('customers:listAccessibleCustomers')) return { body: { resourceNames: ['customers/1111111111', 'customers/9999999999'] } }
