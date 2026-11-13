@@ -77,7 +77,7 @@ const sectionNames: Record<View, string> = {
   'intel-prospeccao': 'Prospecção Cassiellos', 'intel-agencia': 'Visão geral da agência', 'intel-cliente': 'Visão do cliente', 'intel-conexoes': 'Conexões e integrações',
 }
 
-export default function MiniCrm({ intelEnabled = false, intelMode = 'demo' }: { intelEnabled?: boolean; intelMode?: 'demo' | 'real' }) {
+export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', intelSandbox = false }: { intelEnabled?: boolean; intelMode?: 'demo' | 'real'; intelSandbox?: boolean }) {
   const [view, setView] = useState<View>('dashboard')
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [search, setSearch] = useState('')
@@ -127,7 +127,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo' }: { 
         <header className="crm-topbar" data-intel={intelArea ? 'true' : undefined}>
           <div className="crm-breadcrumb"><span>Workspace</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
           <div className="crm-top-actions">
-            {intelArea ? <span className="crm-tag" role="note">{intelMode === 'real' ? 'MODO REAL' : 'DADOS SIMULADOS'}</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
+            {intelArea ? <span className="crm-tag" role="note">{intelSandbox ? 'TESTE ISOLADO' : intelMode === 'real' ? 'MODO REAL' : 'DADOS SIMULADOS'}</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
             <button className="crm-icon-btn" type="button" aria-label="Visualizar eventos" title="Eventos de conversão" onClick={() => openView('conversoes')}><Icon name="bell" size={18}/></button><form action="/api/crm/auth/logout" method="POST" className="crm-top-logout"><button type="submit" className="crm-icon-btn" aria-label="Encerrar sessão" title="Encerrar sessão"><Icon name="shield" size={17}/></button></form>
             <span className="crm-avatar" aria-label="Perfil da equipe">C</span>
           </div>
@@ -142,7 +142,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo' }: { 
             </div>
           </div>
 
-          {intelArea && <IntelApp embeddedArea={intelArea} initialMode={intelMode} onNavigateArea={area => openView(`intel-${area}`)}/>}
+          {intelArea && <IntelApp embeddedArea={intelArea} initialMode={intelMode} sandboxMode={intelSandbox} onNavigateArea={area => openView(`intel-${area}`)}/>}
           {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>INTEGRAÇÃO COMERCIAL HABILITADA</strong> Pixel, eventos Chronos e CAPI foram ativados na Preview em 03/11/2026. Esta tela não consulta a Meta nem as variáveis da Vercel em tempo real; a deduplicação e as conversões reais ainda dependem de verificação externa.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
           {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
