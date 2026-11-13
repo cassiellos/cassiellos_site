@@ -14,6 +14,8 @@ import { MemorySyncStore, type SyncRun, type SyncTrigger } from '../sync/store'
 import { buildDemoDataset, DEMO_HISTORY_DAYS, DEMO_REPORT_TZ, type DemoDataset } from './dataset'
 
 export type IntelSnapshot = {
+  /** demo (padrão) = dados fictícios; real = carregado do banco do CRM (lib/crm/intel/real/snapshot.ts). */
+  mode?: 'demo' | 'real'
   builtAt: string
   today: string
   dataset: DemoDataset

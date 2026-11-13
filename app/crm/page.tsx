@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { crmSessionCookieName, verifyCrmSession } from '@/lib/crm/auth'
 import { safeCrmReturnPath } from '@/lib/crm/return-path'
 import { isIntelEnabled } from '@/lib/crm/intel/feature'
+import { dataMode } from '@/lib/crm/intel/real/config'
 import MiniCrm from './mini-crm'
 
 export const dynamic = 'force-dynamic'
@@ -20,5 +21,5 @@ export default async function CrmPage({ searchParams }: CrmPageProps) {
     redirect(next ? '/crm/login?next=' + encodeURIComponent(next) : '/crm/login')
   }
   // Central de Inteligência: link no menu só com a flag própria MI_ENABLED=true (desligada por padrão).
-  return <MiniCrm intelEnabled={isIntelEnabled(process.env.MI_ENABLED)} />
+  return <MiniCrm intelEnabled={isIntelEnabled(process.env.MI_ENABLED)} intelMode={dataMode()} />
 }

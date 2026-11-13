@@ -634,3 +634,6 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
     border-radius:8px;
   }
 }
+/* Áreas da Central no celular: o selo da Central ocupa o lugar da busca; a barra superior quebra em duas linhas em vez de
+   ultrapassar a largura da tela (o restante do CRM não muda). */
+@media(max-width:640px){#cassiellos-crm .crm-topbar[data-intel]{height:auto;min-height:66px;flex-wrap:wrap;row-gap:8px;padding-top:10px;padding-bottom:10px}#cassiellos-crm .crm-topbar[data-intel] .crm-breadcrumb{min-width:0;flex:1 1 100%}#cassiellos-crm .crm-topbar[data-intel] .crm-top-actions{margin-left:auto}}

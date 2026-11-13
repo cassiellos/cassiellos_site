@@ -207,3 +207,20 @@
 
 /* O conteúdo da Inteligência ocupa a área nativa do CRM, sem layout próprio. */
 #cassiellos-crm .mi-embedded{min-width:0;width:100%}
+
+/* ---------- Modo real: banners e painéis administrativos (Fase 2) ---------- */
+#cassiellos-crm .mi-root .mi-banner-real{border-color:rgba(52,211,153,.45);background:rgba(16,185,129,.08)}
+#cassiellos-crm .mi-root .mi-banner-wait{border-color:rgba(148,163,184,.35);background:rgba(148,163,184,.07)}
+#cassiellos-crm .mi-root .mi-real-pill{display:inline-block;margin-right:6px;padding:2px 9px;border-radius:999px;border:1px solid rgba(52,211,153,.6);color:#6ee7b7;font-size:11px;font-weight:800;letter-spacing:.08em}
+#cassiellos-crm .mi-root .mi-src-tag{border-color:rgba(52,211,153,.4);color:#a7f3d0}
+#cassiellos-crm .mi-root .mi-admin{display:grid;gap:18px;margin-top:18px}
+#cassiellos-crm .mi-root .mi-admin-form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:10px}
+#cassiellos-crm .mi-root .mi-admin-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#cassiellos-crm .mi-root .mi-admin-actions .crm-btn{min-height:32px;padding:0 10px;font-size:12px}
+#cassiellos-crm .mi-root .mi-admin-input{min-height:32px;max-width:100%;border:1px solid var(--crm-border);background:#111d2f;color:#e8f0ff;border-radius:8px;padding:0 9px;font-size:13px}
+#cassiellos-crm .mi-root .mi-admin-note{margin:6px 0 10px;font-size:13px}
+#cassiellos-crm .mi-root .mi-admin-ok{color:#6ee7b7}
+#cassiellos-crm .mi-root .mi-admin-check{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--crm-muted,#94a3b8);margin:4px 0 10px}
+#cassiellos-crm .mi-root .mi-btn-danger{border-color:rgba(248,113,113,.45);color:#fca5a5}
+#cassiellos-crm .mi-root tr[data-selected=true] td{background:rgba(56,189,248,.06)}
+@media (max-width:640px){#cassiellos-crm .mi-root .mi-admin-form{flex-direction:column;align-items:stretch}#cassiellos-crm .mi-root .mi-admin-actions .crm-btn{flex:1 1 auto}#cassiellos-crm .mi-root .mi-admin-input{width:100%}}

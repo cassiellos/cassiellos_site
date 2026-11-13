@@ -5,7 +5,7 @@ import { formatAgo, formatInstant, formatInt, formatMetric, formatMoney, formatM
 import type { ClientView, ConnectionsView, OverviewView, ProspectingView, Trend } from '@/lib/crm/intel/view-types'
 import { CompareBars, PLATFORM_COLOR, StackedShare, TrendChart, type ChartSeries } from './intel-charts'
 import {
-  AssetCardView, CampaignTable, ConversionsTable, CurrencyKpiGrid, Kpi, Panel, PlatformTag, ScrollTable, SimulatedTag, STATE_LABEL, StateBadge, StateMessage, conversionsText, metricText,
+  AssetCardView, CampaignTable, ConversionsTable, CurrencyKpiGrid, Kpi, Panel, PlatformTag, ScrollTable, SimulatedTag, STATE_LABEL, StateBadge, StateMessage, conversionsText, metricText, useDataMode,
 } from './intel-ui'
 
 /* ---------- utilidades de gráfico ---------- */
@@ -36,15 +36,15 @@ export function ProspectingArea({ v, now }: { v: ProspectingView; now: Date }) {
   const funnelSeries: ChartSeries[] = v.trend.series.filter(s => s.platform === 'crm').map(s => ({ key: s.key, label: s.label, color: s.key.endsWith('leads') ? PLATFORM_COLOR.crm_leads : PLATFORM_COLOR.crm_meetings, values: s.values }))
   const na = 'Indisponível no recorte'
   return <>
-    <div className="mi-callout"><strong>Funil comercial simulado.</strong> Leads e reuniões desta área são fictícios. Na integração real virão do funil do CRM (atribuição por UTM, por canal), sem somar com as conversões reportadas pelas plataformas. O CRM real não foi consultado.</div>
+    {v.funnel.simulated && <div className="mi-callout"><strong>Funil comercial simulado.</strong> Leads e reuniões desta área são fictícios. Na integração real virão do funil do CRM (atribuição por UTM, por canal), sem somar com as conversões reportadas pelas plataformas. O CRM real não foi consultado.</div>}
     {!v.kpis.hasData ? <StateMessage kind="empty">Sem investimento das campanhas de aquisição no período e recorte selecionados.</StateMessage> : brl && <CurrencyKpiGrid k={brl} scoped={scoped} extra={<>
-      <Kpi label="Leads (simulados)" tone="sim" value={v.funnel.available ? formatInt(v.funnel.leads) : '—'} title={v.funnel.available ? undefined : v.funnel.scopeNote}
+      <Kpi label={v.funnel.simulated ? 'Leads (simulados)' : 'Leads (CRM)'} tone="sim" value={v.funnel.available ? formatInt(v.funnel.leads) : '—'} title={v.funnel.available ? undefined : v.funnel.scopeNote}
         foot={v.funnel.available ? (v.funnel.unattributedLeads ? formatInt(v.funnel.unattributedLeads) + ' sem origem atribuída · por canal' : 'por canal') : na}/>
-      <Kpi label="Reuniões (simuladas)" tone="sim" value={v.funnel.available ? formatInt(v.funnel.meetings) : '—'} foot={v.funnel.available ? 'confirmadas · por canal' : na}/>
+      <Kpi label={v.funnel.simulated ? 'Reuniões (simuladas)' : 'Reuniões (CRM)'} tone="sim" value={v.funnel.available ? formatInt(v.funnel.meetings) : '—'} foot={v.funnel.available ? 'confirmadas · por canal' : na}/>
       <Kpi label={'CPL · ' + brl.currency} tone="sim" value={v.funnel.available ? formatMetric(ch.length === 1 ? ch[0].cplMicros : cplOf(totalCost, ch.reduce((s, c) => s + c.leads, 0)), 'money', brl.currency) : '—'} foot={v.funnel.available ? 'investimento ÷ leads atribuídos' : na}/>
       <Kpi label={'Custo por reunião · ' + brl.currency} tone="sim" value={v.funnel.available ? formatMetric(ch.length === 1 ? ch[0].costPerMeetingMicros : cplOf(totalCost, v.funnel.meetings), 'money', brl.currency) : '—'} foot={v.funnel.available ? 'investimento ÷ reuniões' : na}/>
     </>}/>}
-    {!v.funnel.available && <p className="mi-note" role="note">{v.funnel.scopeNote} Limpe o recorte de campanhas para ver leads, reuniões, CPL e custo por reunião.</p>}
+    {!v.funnel.available && <p className="mi-note" role="note">{v.funnel.scopeNote}{v.funnel.simulated ? ' Limpe o recorte de campanhas para ver leads, reuniões, CPL e custo por reunião.' : ''}</p>}
     <div className="mi-grid-2">
       <SpendTrendPanel trend={v.trend} title="Evolução do investimento" scoped={scoped}/>
       <Panel title="Leads e reuniões" subtitle={<>Funil comercial por dia, por canal · <SimulatedTag/></>}>
@@ -141,6 +141,7 @@ export function OverviewArea({ v, now, openClient }: { v: OverviewView; now: Dat
 
 /* ---------- C. Visão individual do cliente ---------- */
 export function ClientArea({ v, now, onSync, syncing, syncNotes }: { v: ClientView; now: Date; onSync: (assetId: string) => void; syncing: string | null; syncNotes: Record<string, string> }) {
+  const mode = useDataMode()
   const none = v.assets.length === 0
   const scoped = v.meta.campaignScope.active
   return <>
@@ -175,7 +176,7 @@ export function ClientArea({ v, now, onSync, syncing, syncNotes }: { v: ClientVi
         </Panel>)}
       </div>}
     </>}
-    {v.assets.length > 0 && <Panel title="Contas e propriedades confirmadas" subtitle="Só vínculos confirmados alimentam as métricas · atualização manual simulada, em memória, no máximo 1 a cada 15 minutos por conta"><div className="mi-assets">
+    {v.assets.length > 0 && <Panel title="Contas e propriedades confirmadas" subtitle={'Só vínculos confirmados alimentam as métricas · ' + (mode === 'real' ? 'atualização manual sob demanda, no máximo 1 a cada 15 minutos por conta (controle no banco)' : 'atualização manual simulada, em memória, no máximo 1 a cada 15 minutos por conta')}><div className="mi-assets">
       {v.assets.map(a => <AssetCardView key={a.assetId} a={a} now={now} onSync={onSync} syncing={syncing === a.assetId} syncNote={syncNotes[a.assetId] ?? null}/>)}</div></Panel>}
     {v.pendingAssets.length > 0 && <Panel title="Vínculos pendentes" subtitle="Prováveis, não encontrados ou sem acesso — não autorizados: não são sincronizados nem entram em métricas"><div className="mi-assets">
       {v.pendingAssets.map(a => <AssetCardView key={a.assetId} a={a} now={now}/>)}</div></Panel>}
@@ -184,6 +185,12 @@ export function ClientArea({ v, now, onSync, syncing, syncNotes }: { v: ClientVi
 
 /* ---------- D. Conexões e integrações ---------- */
 export function ConnectionsArea({ v, now }: { v: ConnectionsView; now: Date }) {
+  const mode = useDataMode()
+  if (mode === 'real') return <>
+    <div className="mi-callout mi-callout-memory" role="note"><strong>Registros no banco do CRM.</strong> {v.storageNotice}</div>
+    <ConnectionRowsPanel v={v} now={now}/>
+    <RunsPanel v={v}/>
+  </>
   return <>
     <div className="mi-callout"><strong>Estrutura demonstrativa.</strong> Nesta fase não existe login OAuth, troca de tokens nem conexão real. Os controles abaixo estão desabilitados e as situações exibidas são simuladas.</div>
     <div className="mi-callout mi-callout-memory" role="note"><strong>Registros em memória.</strong> {v.storageNotice}</div>
@@ -198,6 +205,21 @@ export function ConnectionsArea({ v, now }: { v: ConnectionsView; now: Date }) {
       <article className="crm-card mi-conn mi-conn-new"><strong>Nova conexão</strong><p className="mi-muted">Google Ads, GA4, GTM e Meta Ads serão conectados numa fase futura, somente leitura, após aprovação do titular.</p>
         <button type="button" className="crm-btn" disabled>Conectar conta — indisponível (demonstração)</button></article>
     </div>
+    <ConnectionRowsPanel v={v} now={now}/>
+    <RunsPanel v={v}/>
+  </>
+}
+const CONN_STATUS: Record<string, string> = { active: 'Ativa', pending: 'Pendente', expired: 'Expirada', revoked: 'Revogada', error: 'Com erro' }
+const ASSOC: Record<string, string> = { confirmed: 'Confirmado', probable: 'Provável', not_found: 'Não encontrado', no_access: 'Sem acesso', ended: 'Encerrado' }
+const RUN_STATUS: Record<string, string> = { succeeded: 'Concluída', partial: 'Parcial', failed: 'Falhou', skipped_locked: 'Ignorada (em andamento)' }
+const KIND: Record<string, string> = { ads_daily: 'Métricas diárias', ga4_daily: 'GA4 diário', gtm_snapshot: 'Diagnóstico GTM' }
+const TRIGGER: Record<string, string> = { schedule: 'Diária', manual: 'Manual', backfill: 'Histórico', reprocess: 'Reprocessamento' }
+
+export { STATE_LABEL }
+
+function ConnectionRowsPanel({ v, now }: { v: ConnectionsView; now: Date }) {
+  void now
+  return <>
     <Panel title="Contas por cliente" subtitle="Conexão técnica, acesso à plataforma e vínculo com o cliente são verificações diferentes — só o conjunto autoriza sincronizar">
       <ScrollTable label="Contas por cliente"><table className="mi-table">
         <thead><tr><th>Conta externa</th><th>Cliente</th><th>Vínculo com o cliente</th><th>Sincronização</th><th>Conexão técnica</th><th>Acesso à plataforma</th><th>Última verificação</th><th>Última sincronização</th><th>Erro</th><th>Ação prevista</th></tr></thead>
@@ -215,7 +237,13 @@ export function ConnectionsArea({ v, now }: { v: ConnectionsView; now: Date }) {
         </tr>)}</tbody>
       </table></ScrollTable>
     </Panel>
-    <Panel title="Execuções recentes de sincronização" subtitle={<>Registro do motor (mock), mantido em memória: tentativas, linhas e erros sanitizados · <SimulatedTag/></>}>
+  </>
+}
+
+function RunsPanel({ v }: { v: ConnectionsView }) {
+  const mode = useDataMode()
+  return <>
+    <Panel title="Execuções recentes de sincronização" subtitle={mode === 'real' ? 'Registro persistido no banco: tentativas, linhas e erros sanitizados (sem dados sensíveis)' : <>Registro do motor (mock), mantido em memória: tentativas, linhas e erros sanitizados · <SimulatedTag/></>}>
       <ScrollTable label="Execuções recentes"><table className="mi-table">
         <thead><tr><th>Conta</th><th>Situação</th><th>Início</th><th>Tipo</th><th>Origem</th><th className="mi-num">Tentativas</th><th className="mi-num">Linhas</th><th>Erro</th></tr></thead>
         <tbody>{v.recentRuns.map((r, i) => <tr key={i}><td data-label="Conta" className="mi-cell-title">{r.assetName}</td>
@@ -226,10 +254,3 @@ export function ConnectionsArea({ v, now }: { v: ConnectionsView; now: Date }) {
     </Panel>
   </>
 }
-const CONN_STATUS: Record<string, string> = { active: 'Ativa', pending: 'Pendente', expired: 'Expirada', revoked: 'Revogada', error: 'Com erro' }
-const ASSOC: Record<string, string> = { confirmed: 'Confirmado', probable: 'Provável', not_found: 'Não encontrado', no_access: 'Sem acesso', ended: 'Encerrado' }
-const RUN_STATUS: Record<string, string> = { succeeded: 'Concluída', partial: 'Parcial', failed: 'Falhou', skipped_locked: 'Ignorada (em andamento)' }
-const KIND: Record<string, string> = { ads_daily: 'Métricas diárias', ga4_daily: 'GA4 diário', gtm_snapshot: 'Diagnóstico GTM' }
-const TRIGGER: Record<string, string> = { schedule: 'Diária', manual: 'Manual', backfill: 'Histórico', reprocess: 'Reprocessamento' }
-
-export { STATE_LABEL }

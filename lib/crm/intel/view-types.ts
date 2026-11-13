@@ -23,7 +23,14 @@ export type IntelFilters = {
 }
 
 export type ViewMeta = {
-  simulated: true
+  /** true somente no modo de demonstração (dados fictícios). */
+  simulated: boolean
+  /** demo = dados fictícios em memória; real = clientes e contas reais persistidos no banco do CRM. */
+  mode: 'demo' | 'real'
+  /** Modo real: existe ao menos uma importação concluída de fonte autorizada para os dados exibidos? */
+  hasImportedData: boolean
+  /** Modo real: horário da última importação concluída considerada nesta visão (null = nenhuma). */
+  lastImportAt: string | null
   dataNotice: string
   generatedAt: string
   reportTimeZone: string
@@ -33,8 +40,8 @@ export type ViewMeta = {
   filters: IntelFilters
   /** Recorte por campanha ativo (situação e/ou busca) e o que ele afeta. */
   campaignScope: { active: boolean; status: CampaignStatusFilter; search: string }
-  /** Onde ficam os registros desta Central nesta fase. */
-  storage: 'memory'
+  /** Onde ficam os registros desta Central: memória (demonstração) ou banco do CRM (modo real). */
+  storage: 'memory' | 'database'
 }
 
 export type AssetState =
@@ -163,7 +170,7 @@ export type ProspectingView = {
   assets: AssetCard[]
   kpis: AdsKpis
   funnel: {
-    simulated: true
+    simulated: boolean
     /** Leads/reuniões são atribuídos por CANAL (UTM), não por campanha: com recorte de campanhas, ficam indisponíveis. */
     available: boolean
     scopeNote: string

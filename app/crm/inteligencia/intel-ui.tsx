@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { deltaPct, formatAgo, formatDecimal, formatInstant, formatInt, formatMetric, formatMoney, metricTitle } from '@/lib/crm/intel/format'
 import type { MetricValue } from '@/lib/crm/intel/metrics'
 import type { AssetCard, AssetState, CampaignRow, ConversionKpi, CurrencyKpis } from '@/lib/crm/intel/view-types'
@@ -22,15 +22,29 @@ export const DATA_WARNING: Partial<Record<AssetState, string>> = {
   auth_expired: 'Dados desatualizados · integração expirada', stale: 'Dados desatualizados', sync_error: 'Última sincronização com erro', suspended: 'Conta suspensa',
 }
 
+/** Modo de dados da Central: `demo` (fictícios) ou `real` (contas autorizadas). Define rótulos e selos. */
+export const DataModeContext = createContext<'demo' | 'real'>('demo')
+export const useDataMode = () => useContext(DataModeContext)
+
+/** Rótulos do modo real (estados de clientes/contas recém-cadastrados e integrações reais). */
+export const REAL_STATE_LABEL: Partial<Record<AssetState | 'no_integration', string>> = {
+  no_connection: 'Aguardando conexão', no_integration: 'Aguardando conexão', pending_validation: 'Aguardando confirmação de vínculo',
+  auth_expired: 'Autorização expirada', sync_error: 'Erro de sincronização', connected: 'Dados atualizados', stale: 'Dados desatualizados / aguardando sincronização',
+}
+
 export function StateBadge({ state }: { state: AssetState | 'no_integration' }) {
-  return <span className="mi-badge" data-tone={STATE_TONE[state]}>{STATE_LABEL[state]}</span>
+  const mode = useDataMode()
+  return <span className="mi-badge" data-tone={STATE_TONE[state]}>{(mode === 'real' ? REAL_STATE_LABEL[state] : undefined) ?? STATE_LABEL[state]}</span>
 }
 
 export function PlatformTag({ platform }: { platform: IntelPlatform | 'crm' }) {
   return <span className="mi-platform" data-platform={platform}>{PLATFORM_NAME[platform]}</span>
 }
 
-export function SimulatedTag() { return <span className="mi-sim-tag">Dados simulados</span> }
+export function SimulatedTag() {
+  const mode = useDataMode()
+  return mode === 'real' ? <span className="mi-sim-tag mi-src-tag">Fonte: contas autorizadas</span> : <span className="mi-sim-tag">Dados simulados</span>
+}
 
 export function Panel({ title, subtitle, children, actions, className }: { title: string; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; className?: string }) {
   return <section className={'crm-card crm-panel mi-panel ' + (className ?? '')}>
@@ -130,6 +144,7 @@ const ACCESS_LABEL = { yes: 'Com acesso de leitura', no: 'Sem acesso', unknown: 
 const ASSOC_LABEL: Record<string, string> = { confirmed: 'Confirmado pelo titular', probable: 'Provável — não autorizado', not_found: 'Conta não encontrada', no_access: 'Sem acesso', ended: 'Encerrado' }
 
 export function AssetCardView({ a, now, onSync, syncing, syncNote }: { a: AssetCard; now: Date; onSync?: (id: string) => void; syncing?: boolean; syncNote?: string | null }) {
+  const realMode = useDataMode() === 'real'
   const confirmed = a.association === 'confirmed'
   const waitUntil = a.manualSync.retryAt && Date.parse(a.manualSync.retryAt) > now.getTime() ? a.manualSync.retryAt : null
   const canClick = a.manualSync.allowed || (a.manualSync.retryAt !== null && !waitUntil)
@@ -147,7 +162,7 @@ export function AssetCardView({ a, now, onSync, syncing, syncNote }: { a: AssetC
       <div><dt>Fuso</dt><dd>{a.timeZone ?? '—'}</dd></div>
       <div><dt>Acesso</dt><dd>{a.accessPath === 'manager' ? 'Conta gerente (MCC)' : a.accessPath === 'direct' ? 'Direto' : '—'}</dd></div>
       {confirmed ? <>
-        <div><dt>Última sincronização (simulada)</dt><dd>{formatInstant(a.lastSyncAt)}{a.lastSyncAt && <small> ({formatAgo(a.lastSyncAt, now)})</small>}</dd></div>
+        <div><dt>{realMode ? 'Última sincronização' : 'Última sincronização (simulada)'}</dt><dd>{formatInstant(a.lastSyncAt)}{a.lastSyncAt && <small> ({formatAgo(a.lastSyncAt, now)})</small>}</dd></div>
         <div><dt>Último sucesso</dt><dd>{formatInstant(a.lastSuccessAt)}</dd></div>
       </> : <div className="mi-asset-wide"><dt>Sincronização</dt><dd>Não sincronizada — {a.syncBlockReason ?? 'vínculo não confirmado'}</dd></div>}
     </dl>
@@ -157,7 +172,7 @@ export function AssetCardView({ a, now, onSync, syncing, syncNote }: { a: AssetC
     {onSync && confirmed && <div className="mi-asset-actions">
       <button type="button" className="crm-btn" onClick={() => onSync(a.assetId)} disabled={syncing || !canClick}
         title={!canClick ? (a.manualSync.reason ?? undefined) : 'Simulação: nada é gravado em banco; limite de 1 atualização a cada 15 minutos por conta'}>
-        {syncing ? 'Atualizando (simulação)…' : 'Atualizar agora (simulação)'}</button>
+        {realMode ? (syncing ? 'Sincronizando…' : 'Sincronizar agora') : syncing ? 'Atualizando (simulação)…' : 'Atualizar agora (simulação)'}</button>
       {!canClick && <small className="mi-asset-why">{waitUntil ? 'Limite de 1 atualização a cada 15 minutos por conta. Disponível às ' + new Date(waitUntil).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.' : a.manualSync.reason}</small>}
       {syncNote && <small role="status">{syncNote}</small>}
     </div>}

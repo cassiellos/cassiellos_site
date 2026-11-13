@@ -29,6 +29,13 @@ const intelDescriptions: Record<IntelArea, string> = {
   cliente: 'Desempenho de cada cliente, contas e indicadores de marketing. Dados demonstrativos.',
   conexoes: 'Status das contas, permissões e atualizações disponíveis apenas em modo de demonstração.',
 }
+/** Modo real (MI_DATA_MODE=real): clientes e contas de anúncios reais, autorizados e confirmados. */
+const intelRealDescriptions: Record<IntelArea, string> = {
+  prospeccao: 'Campanhas da própria Cassiellos nas contas autorizadas: investimento, desempenho e conversões de cada plataforma.',
+  agencia: 'Desempenho consolidado dos clientes monitorados, por moeda e plataforma, com alertas de conexão e de dados desatualizados.',
+  cliente: 'Cadastro dos clientes monitorados e desempenho real das contas confirmadas para cada um.',
+  conexoes: 'Autorização das plataformas, descoberta de contas, vínculo com clientes, sincronização e auditoria.',
+}
 const navigation: { id: View; label: string; icon: string; count?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
   { id: 'leads', label: 'Leads', icon: 'users' },
@@ -70,7 +77,7 @@ const sectionNames: Record<View, string> = {
   'intel-prospeccao': 'Prospecção Cassiellos', 'intel-agencia': 'Visão geral da agência', 'intel-cliente': 'Visão do cliente', 'intel-conexoes': 'Conexões e integrações',
 }
 
-export default function MiniCrm({ intelEnabled = false }: { intelEnabled?: boolean }) {
+export default function MiniCrm({ intelEnabled = false, intelMode = 'demo' }: { intelEnabled?: boolean; intelMode?: 'demo' | 'real' }) {
   const [view, setView] = useState<View>('dashboard')
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [search, setSearch] = useState('')
@@ -117,10 +124,10 @@ export default function MiniCrm({ intelEnabled = false }: { intelEnabled?: boole
       </aside>
 
       <main className="crm-main">
-        <header className="crm-topbar">
+        <header className="crm-topbar" data-intel={intelArea ? 'true' : undefined}>
           <div className="crm-breadcrumb"><span>Workspace</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
           <div className="crm-top-actions">
-            {intelArea ? <span className="crm-tag" role="note">DADOS SIMULADOS</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
+            {intelArea ? <span className="crm-tag" role="note">{intelMode === 'real' ? 'MODO REAL' : 'DADOS SIMULADOS'}</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
             <button className="crm-icon-btn" type="button" aria-label="Visualizar eventos" title="Eventos de conversão" onClick={() => openView('conversoes')}><Icon name="bell" size={18}/></button><form action="/api/crm/auth/logout" method="POST" className="crm-top-logout"><button type="submit" className="crm-icon-btn" aria-label="Encerrar sessão" title="Encerrar sessão"><Icon name="shield" size={17}/></button></form>
             <span className="crm-avatar" aria-label="Perfil da equipe">C</span>
           </div>
@@ -128,7 +135,7 @@ export default function MiniCrm({ intelEnabled = false }: { intelEnabled?: boole
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? intelDescriptions[intelArea] : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
             <div className="crm-controls">
               {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               

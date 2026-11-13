@@ -25,6 +25,8 @@ import {
 } from './view-types'
 
 export const DATA_NOTICE = 'Demonstração da fundação. Nenhuma conta real foi consultada e nenhum número representa clientes reais.'
+export const REAL_DATA_NOTICE = 'Dados importados somente das contas Google Ads e Meta Ads autorizadas e confirmadas para cada cliente. Cada plataforma mantém suas próprias definições de conversão e de atribuição; nada aqui equivale automaticamente a um lead do CRM.'
+export const REAL_STORAGE_NOTICE = 'Registros persistidos no banco do CRM. Atualização manual: 1 por conta a cada 15 minutos e teto global por minuto, controlados no banco (valem para todas as instâncias do servidor). Credenciais ficam cifradas no cofre e nunca chegam ao navegador.'
 export const STORAGE_NOTICE = 'Atualizações e registros de sincronização são simulados e mantidos temporariamente em memória. Nenhum dado desta Central é gravado no banco de produção nem em outro banco. Os registros podem desaparecer quando o servidor é reiniciado (novo deploy ou nova instância). O limite de 1 atualização a cada 15 minutos por conta e o limite por minuto valem apenas dentro de cada instância do servidor e são demonstrativos: não são um controle de segurança distribuído.'
 
 /* ---------------- filtros ---------------- */
@@ -44,7 +46,7 @@ export function parseIntelFilters(params: URLSearchParams, clients: readonly Mon
   const campaign = (params.get('campaign') ?? '').trim()
   if (campaign.length > 60 || /[<>{}]/.test(campaign)) throw new FilterError('INVALID_FILTER', 'campaign')
   const rawClient = params.get('client') ?? ''
-  if (rawClient && !/^[a-z0-9_]{3,64}$/.test(rawClient)) throw new FilterError('INVALID_FILTER', 'client')
+  if (rawClient && !/^[a-z0-9_-]{3,64}$/.test(rawClient)) throw new FilterError('INVALID_FILTER', 'client')
   const external = clients.filter(c => c.kind === 'client' && c.status !== 'archived')
   let client = rawClient || (area === 'cliente' ? external[0]?.id ?? '' : 'all')
   if (area === 'cliente' && client === 'all') client = external[0]?.id ?? ''
@@ -57,7 +59,7 @@ export function parseIntelFilters(params: URLSearchParams, clients: readonly Mon
 const BASIS_LABEL: Record<string, string> = { 'google:conversions': 'Conversões (definição da conta Google Ads)', 'meta:actions:lead': 'Leads reportados pela Meta (ação "lead")' }
 const ATTRIBUTION_LABEL: Record<string, string> = { 'google:modelo-da-conta': 'Modelo de atribuição configurado na conta Google', 'meta:7d_click,1d_view': '7 dias após clique · 1 dia após visualização' }
 
-type Ctx = { snap: IntelSnapshot; now: Date; filters: IntelFilters; reportTz: string }
+type Ctx = { snap: IntelSnapshot; now: Date; filters: IntelFilters; reportTz: string; mode: 'demo' | 'real' }
 
 function assetToday(ctx: Ctx, asset: Asset): CivilDate { return civilDateInZone(ctx.now, asset.timeZone ?? ctx.reportTz) }
 function assetRange(ctx: Ctx, asset: Asset): DateRange { return periodRange(ctx.filters.period, assetToday(ctx, asset)) }
@@ -241,10 +243,24 @@ function metaOf(ctx: Ctx): ViewMeta {
   const { range } = reportDays(ctx)
   const today = civilDateInZone(ctx.now, ctx.reportTz)
   const prev = previousOf(range)
-  return { simulated: true, dataNotice: DATA_NOTICE, generatedAt: ctx.now.toISOString(), reportTimeZone: ctx.reportTz,
+  const imported = ctx.mode === 'real' ? lastImport(ctx) : null
+  return { simulated: ctx.mode === 'demo', mode: ctx.mode, hasImportedData: imported !== null, lastImportAt: imported, dataNotice: ctx.mode === 'real' ? REAL_DATA_NOTICE : DATA_NOTICE, generatedAt: ctx.now.toISOString(), reportTimeZone: ctx.reportTz,
     period: { preset: ctx.filters.period, label: PERIOD_LABEL[ctx.filters.period], start: range.start, end: range.end, includesToday: range.end === today },
     previous: prev, filters: ctx.filters,
-    campaignScope: { active: campaignScopeActive(ctx), status: ctx.filters.status, search: ctx.filters.campaign }, storage: 'memory' }
+    campaignScope: { active: campaignScopeActive(ctx), status: ctx.filters.status, search: ctx.filters.campaign }, storage: ctx.mode === 'real' ? 'database' : 'memory' }
+}
+
+/**
+ * Última execução bem-sucedida (com linhas) entre as contas CONFIRMADAS dos clientes desta visão — evidência de
+ * importação real. Escopo: Prospecção → agência; Cliente → o cliente; demais áreas → filtro de cliente (ou todos).
+ */
+function lastImport(ctx: Ctx): string | null {
+  const agency = ctx.snap.dataset.clients.find(c => c.kind === 'agency')?.id
+  const scope = ctx.filters.area === 'prospeccao' ? agency : ctx.filters.client !== 'all' ? ctx.filters.client : null
+  const confirmed = new Set(ctx.snap.dataset.links.filter(l => l.status === 'confirmed' && (scope === null || l.clientId === scope)).map(l => l.assetId))
+  let best: string | null = null
+  for (const r of ctx.snap.store.runs) if (confirmed.has(r.assetId) && r.status === 'succeeded' && r.rowsInserted + r.rowsUpdated + r.rowsUnchanged > 0 && (!best || r.finishedAt > best)) best = r.finishedAt
+  return best
 }
 
 const clientOptions = (ctx: Ctx): ClientOption[] => ctx.snap.dataset.clients.filter(c => c.kind === 'client' && c.status !== 'archived').map(c => ({ id: c.id, name: c.name, kind: c.kind }))
@@ -371,7 +387,9 @@ export function buildProspectingView(ctx: Ctx): ProspectingView {
   // Leads e reuniões são atribuídos por CANAL (UTM), não por campanha: o funil usa todas as campanhas do canal e fica
   // indisponível quando há recorte de campanhas (não se inventa atribuição de leads a campanhas).
   const channelFacts = adsFacts({ ...ctx, filters: { ...ctx.filters, status: 'all', campaign: '' } }, assets, a => assetRange(ctx, a))
-  const funnelAvailable = !campaignScopeActive(ctx)
+  // Modo real: leads/reuniões do CRM NÃO são atribuídos automaticamente às campanhas (nenhum número é inventado).
+  const real = ctx.mode === 'real'
+  const funnelAvailable = !real && !campaignScopeActive(ctx)
   const funnelDays = funnelAvailable ? simulateAgencyFunnel(channelFacts) : []
   const unattributed = funnelAvailable ? days.filter(d => d <= range.end).reduce((s, d) => s + Math.round(unit('na' + d) * 2.4), 0) : 0
   const kpis = kpisOf(facts, prev)
@@ -397,8 +415,9 @@ export function buildProspectingView(ctx: Ctx): ProspectingView {
   const trend: Trend = { days, series: [...spendTrend(days, facts), ...(funnelAvailable ? [count('leads', 'Leads (simulados)'), count('meetings', 'Reuniões (simuladas)')] : [])] }
   return {
     meta: metaOf(ctx), assets: cards, kpis,
-    funnel: { simulated: true, available: funnelAvailable,
-      scopeNote: funnelAvailable ? 'Leads e reuniões por canal (atribuição por UTM), considerando todas as campanhas do canal.'
+    funnel: { simulated: !real, available: funnelAvailable,
+      scopeNote: real ? 'Leads e reuniões do CRM não são atribuídos automaticamente às campanhas: conversões das plataformas e leads do CRM são medidas diferentes.'
+        : funnelAvailable ? 'Leads e reuniões por canal (atribuição por UTM), considerando todas as campanhas do canal.'
         : 'Indisponível com recorte de campanhas: leads e reuniões são atribuídos por canal, não por campanha.',
       leads: byChannel.reduce((s, c) => s + c.leads, 0) + (ctx.filters.platform === 'all' ? unattributed : 0),
       meetings: byChannel.reduce((s, c) => s + c.meetings, 0), unattributedLeads: ctx.filters.platform === 'all' ? unattributed : 0, byChannel },
@@ -412,6 +431,9 @@ const PLANNED: Record<AssetState, string> = {
   suspended: 'Verificar a situação da conta na plataforma', sync_error: 'Acompanhar a nova tentativa automática', stale: 'Verificar a conexão e sincronizar novamente',
   paused: 'Nenhuma (conta pausada pelo anunciante)', no_data: 'Nenhuma (sem veiculação no período)', connected: 'Nenhuma ação necessária',
 }
+
+const PLANNED_REAL: Record<AssetState, string> = { ...PLANNED, pending_validation: 'Confirmar o vínculo com o cliente (Conexões e integrações)',
+  no_connection: 'Conectar a plataforma e descobrir as contas', auth_expired: 'Reautorizar a conexão', sync_error: 'Ver o erro e sincronizar novamente' }
 
 export function buildConnectionsView(ctx: Ctx): ConnectionsView {
   const rows: ConnectionRow[] = []
@@ -429,7 +451,7 @@ export function buildConnectionsView(ctx: Ctx): ConnectionsView {
       rows.push({ clientId: client.id, clientName: client.name, platform: card.platform, assetName: card.name, externalIdLabel: card.externalIdLabel,
         association: link.status, connectionLabel: conn?.label ?? null, authStatus: conn?.status ?? 'none', accessPath: asset.accessPath,
         lastVerifiedAt: conn?.lastVerifiedAt ?? null, lastSyncAt: card.lastSyncAt, lastRunStatus: card.lastRunStatus,
-        lastError: link.status === 'confirmed' ? last?.errorMessage ?? null : null, plannedAction: PLANNED[card.state],
+        lastError: link.status === 'confirmed' ? last?.errorMessage ?? null : null, plannedAction: (ctx.mode === 'real' ? PLANNED_REAL : PLANNED)[card.state],
         platformAccess: card.platformAccess, syncAuthorized: card.syncAuthorized, syncBlockReason: card.syncBlockReason })
     }
   }
@@ -439,7 +461,7 @@ export function buildConnectionsView(ctx: Ctx): ConnectionsView {
     attempts: r.attempts, rows: r.rowsInserted + r.rowsUpdated + r.rowsUnchanged, startedAt: r.startedAt, error: r.errorMessage,
   }))
   return {
-    meta: metaOf(ctx), rows, storageNotice: STORAGE_NOTICE,
+    meta: metaOf(ctx), rows, storageNotice: ctx.mode === 'real' ? REAL_STORAGE_NOTICE : STORAGE_NOTICE,
     clients: ctx.snap.dataset.clients.filter(c => c.status !== 'archived').map(c => ({ id: c.id, name: c.name, kind: c.kind })),
     connections: ctx.snap.dataset.connections.map(c => ({ id: c.id, label: c.label, provider: c.provider, authKind: c.authKind, status: c.status, lastVerifiedAt: c.lastVerifiedAt, scopes: c.scopes })),
     recentRuns,
@@ -447,7 +469,7 @@ export function buildConnectionsView(ctx: Ctx): ConnectionsView {
 }
 
 export function buildIntelPayload(snap: IntelSnapshot, filters: IntelFilters, now: Date): IntelPayload {
-  const ctx: Ctx = { snap, now, filters, reportTz: snap.dataset.clients[0]?.reportTimeZone ?? 'America/Sao_Paulo' }
+  const ctx: Ctx = { snap, now, filters, reportTz: snap.dataset.clients[0]?.reportTimeZone ?? 'America/Sao_Paulo', mode: snap.mode ?? 'demo' }
   switch (filters.area) {
     case 'prospeccao': return { area: 'prospeccao', view: buildProspectingView(ctx) }
     case 'agencia': return { area: 'agencia', view: buildOverviewView(ctx) }

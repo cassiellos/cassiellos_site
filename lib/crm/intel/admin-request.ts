@@ -34,6 +34,8 @@ export type IntelDeps = {
 }
 
 export const MAX_INTEL_BODY = 2_000
+/** Modo real: comporta as observações do cadastro de cliente (até 2.000 caracteres) com folga de codificação. */
+export const MAX_INTEL_REAL_BODY = 6_000
 const bad = (error: string, status = 400, extra: Record<string, unknown> = {}): HandlerResponse => ({ status, body: { error, ...extra } })
 
 
