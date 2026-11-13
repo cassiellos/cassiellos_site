@@ -224,3 +224,7 @@
 #cassiellos-crm .mi-root .mi-btn-danger{border-color:rgba(248,113,113,.45);color:#fca5a5}
 #cassiellos-crm .mi-root tr[data-selected=true] td{background:rgba(56,189,248,.06)}
 @media (max-width:640px){#cassiellos-crm .mi-root .mi-admin-form{flex-direction:column;align-items:stretch}#cassiellos-crm .mi-root .mi-admin-actions .crm-btn{flex:1 1 auto}#cassiellos-crm .mi-root .mi-admin-input{width:100%}}
+
+/* Edição de nome e observações no mesmo campo de cliente, sem alterar a tabela em leitura. */
+.mi-admin-edit-stack { display: grid; gap: 7px; min-width: 0; }
+.mi-admin-edit-stack > .mi-admin-input { width: 100%; min-width: 0; }
