@@ -9,6 +9,7 @@
  * - Erros: `rate_limited` (429) espera Retry-After/backoff exponencial; `transient` tenta de novo com limite;
  *   autorização expirada/revogada ou sem permissão PARA imediatamente e abre alerta.
  * - Progresso por página: o que já foi gravado fica; falha no meio = `partial` (retomada segura reexecutando a janela).
+ * - O armazenamento pode ser em memória (demonstração) ou PostgreSQL (modo real, sync/pg-store.ts); tudo é aguardado.
  * - NADA aqui agenda execuções (sem cron): quem chama decide quando. Atualização manual tem intervalo mínimo.
  * - Só aceita `AuthorizedSyncTarget` (sync/eligibility.ts): vínculo confirmado + conexão ativa. Ativos prováveis,
  *   não encontrados, sem acesso ou com autorização expirada/revogada nunca chegam ao conector.
@@ -80,18 +81,18 @@ async function runGuarded(
   const startedAt = deps.now()
   const base = { id: deps.newRunId(), assetId: asset.id, kind, trigger, range, startedAt: startedAt.toISOString() }
   const state: RunState = { attempts: 0, pages: 0, inserted: 0, updated: 0, unchanged: 0 }
-  if (!deps.store.tryAcquireLease(asset.id, deps.owner, startedAt, LEASE_TTL_MS)) {
+  if (!(await deps.store.tryAcquireLease(asset.id, deps.owner, startedAt, LEASE_TTL_MS, { runId: base.id, kind, trigger, range }))) {
     const run: SyncRun = { ...base, status: 'skipped_locked', attempts: 0, pagesDone: 0, rowsInserted: 0, rowsUpdated: 0, rowsUnchanged: 0,
       errorKind: null, errorMessage: 'outra sincronização desta conta está em andamento', nextAttemptAt: null, finishedAt: deps.now().toISOString() }
-    deps.store.recordRun(run)
+    await deps.store.recordRun(run)
     return run
   }
   try {
     await body(state, base.id)
     const run: SyncRun = { ...base, status: 'succeeded', attempts: state.attempts, pagesDone: state.pages, rowsInserted: state.inserted,
       rowsUpdated: state.updated, rowsUnchanged: state.unchanged, errorKind: null, errorMessage: null, nextAttemptAt: null, finishedAt: deps.now().toISOString() }
-    deps.store.recordRun(run)
-    deps.store.resolveAlerts(asset.id, ['auth_expired', 'auth_revoked', 'permission_denied', 'rate_limited', 'sync_failed', 'sync_partial', 'stale_data'], deps.now())
+    await deps.store.recordRun(run)
+    await deps.store.resolveAlerts(asset.id, ['auth_expired', 'auth_revoked', 'permission_denied', 'rate_limited', 'sync_failed', 'sync_partial', 'stale_data'], deps.now())
     return run
   } catch (error) {
     const stop = error instanceof StopError ? error : new StopError('transient', sanitize(error instanceof Error ? error.message : 'erro'), null)
@@ -103,11 +104,11 @@ async function runGuarded(
     const run: SyncRun = { ...base, status: partial ? 'partial' : 'failed', attempts: state.attempts, pagesDone: state.pages,
       rowsInserted: state.inserted, rowsUpdated: state.updated, rowsUnchanged: state.unchanged, errorKind: stop.kind,
       errorMessage: stop.message, nextAttemptAt, finishedAt: now.toISOString() }
-    deps.store.recordRun(run)
-    deps.store.openAlert(asset.id, ALERT_FOR[stop.kind] ?? (partial ? 'sync_partial' : 'sync_failed'), stop.message, now)
+    await deps.store.recordRun(run)
+    await deps.store.openAlert(asset.id, ALERT_FOR[stop.kind] ?? (partial ? 'sync_partial' : 'sync_failed'), stop.message, now)
     return run
   } finally {
-    deps.store.releaseLease(asset.id, deps.owner)
+    await deps.store.releaseLease(asset.id, deps.owner)
   }
 }
 
@@ -125,14 +126,14 @@ export async function syncAdsAsset(deps: SyncDeps, connector: AdsReadConnector, 
   return runGuarded(deps, asset, 'ads_daily', trigger, range, async (state, runId) => {
     const ctx = contextFor(asset)
     const account = await withRetry(deps, state, () => connector.getAccount(ctx, asset.externalId))
-    deps.store.observeAsset(asset.id, { currencyCode: account.currencyCode, timeZone: account.timeZone, accountStatus: account.status, observedAt: deps.now().toISOString() })
-    if (account.status === 'suspended') deps.store.openAlert(asset.id, 'account_suspended', 'conta suspensa na plataforma', deps.now())
-    else deps.store.resolveAlerts(asset.id, ['account_suspended'], deps.now())
+    await deps.store.observeAsset(asset.id, { currencyCode: account.currencyCode, timeZone: account.timeZone, accountStatus: account.status, observedAt: deps.now().toISOString() })
+    if (account.status === 'suspended') await deps.store.openAlert(asset.id, 'account_suspended', 'conta suspensa na plataforma', deps.now())
+    else await deps.store.resolveAlerts(asset.id, ['account_suspended'], deps.now())
     let token: string | null = null
     let pages = 0
     do {
       const page = await withRetry(deps, state, () => connector.listCampaigns(ctx, asset.externalId, token))
-      deps.store.upsertCampaigns(asset.id, page.items, deps.now())
+      await deps.store.upsertCampaigns(asset.id, page.items, deps.now())
       token = page.nextPageToken
       if (++pages > MAX_PAGES) throw new StopError('invalid_request', 'paginação de campanhas excedeu o limite', null)
     } while (token)
@@ -140,7 +141,7 @@ export async function syncAdsAsset(deps: SyncDeps, connector: AdsReadConnector, 
     pages = 0
     do {
       const page = await withRetry(deps, state, () => connector.getDailyMetrics(ctx, asset.externalId, range, token))
-      const res = deps.store.upsertAdsRows(page.items.map(r => ({
+      const res = await deps.store.upsertAdsRows(page.items.map(r => ({
         assetId: asset.id, campaignExternalId: r.campaignExternalId, day: r.date, currency: account.currencyCode,
         impressions: r.impressions, clicks: r.clicks, costMicros: r.costMicros, conversions: r.conversions,
         conversionBasis: r.conversionBasis, attribution: r.attribution, syncRunId: runId,
@@ -160,7 +161,7 @@ export async function syncGa4Asset(deps: SyncDeps, connector: Ga4ReadConnector, 
     let pages = 0
     do {
       const page = await withRetry(deps, state, () => connector.runDailyReport(ctx, asset.externalId, range, token))
-      const res = deps.store.upsertGa4Rows(page.items.map(r => ({ ...r, assetId: asset.id, syncRunId: runId })))
+      const res = await deps.store.upsertGa4Rows(page.items.map(r => ({ ...r, assetId: asset.id, syncRunId: runId })))
       state.inserted += res.inserted; state.updated += res.updated; state.unchanged += res.unchanged
       state.pages++
       token = page.nextPageToken
@@ -173,7 +174,7 @@ export async function syncGtmAsset(deps: SyncDeps, connector: GtmReadConnector, 
   return runGuarded(deps, asset, 'gtm_snapshot', trigger, null, async (state, runId) => {
     const ctx = contextFor(asset)
     const diag = await withRetry(deps, state, () => connector.getDiagnostics(ctx, asset.externalId))
-    deps.store.saveGtm(asset.id, diag, deps.now())
+    await deps.store.saveGtm(asset.id, diag, deps.now())
     state.pages++
   })
 }

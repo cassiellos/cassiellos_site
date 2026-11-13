@@ -60,17 +60,26 @@ export type AssetObservation = { currencyCode: string; timeZone: string; account
 
 export type UpsertResult = { inserted: number; updated: number; unchanged: number }
 
+type Awaitable<T> = T | Promise<T>
+
+/** Execução que pede o lease: o PostgreSQL usa estes dados para registrar o job `running` (mi_sync_jobs). */
+export type LeaseJob = { runId: string; kind: SyncKind; trigger: SyncTrigger; range: DateRange | null }
+
+/**
+ * Contrato do armazenamento. Métodos podem ser síncronos (memória) ou assíncronos (PostgreSQL, sync/pg-store.ts):
+ * o motor sempre aguarda o resultado.
+ */
 export interface SyncStore {
-  tryAcquireLease(assetId: string, owner: string, now: Date, ttlMs: number): boolean
-  releaseLease(assetId: string, owner: string): void
-  observeAsset(assetId: string, obs: AssetObservation): void
-  upsertCampaigns(assetId: string, campaigns: readonly CampaignInfo[], now: Date): void
-  upsertAdsRows(rows: readonly StoredAdsRow[]): UpsertResult
-  upsertGa4Rows(rows: readonly StoredGa4Row[]): UpsertResult
-  saveGtm(assetId: string, diag: GtmDiagnostics, now: Date): void
-  recordRun(run: SyncRun): void
-  openAlert(assetId: string, kind: AlertKind, message: string, now: Date): void
-  resolveAlerts(assetId: string, kinds: readonly AlertKind[], now: Date): void
+  tryAcquireLease(assetId: string, owner: string, now: Date, ttlMs: number, job?: LeaseJob): Awaitable<boolean>
+  releaseLease(assetId: string, owner: string): Awaitable<void>
+  observeAsset(assetId: string, obs: AssetObservation): Awaitable<void>
+  upsertCampaigns(assetId: string, campaigns: readonly CampaignInfo[], now: Date): Awaitable<void>
+  upsertAdsRows(rows: readonly StoredAdsRow[]): Awaitable<UpsertResult>
+  upsertGa4Rows(rows: readonly StoredGa4Row[]): Awaitable<UpsertResult>
+  saveGtm(assetId: string, diag: GtmDiagnostics, now: Date): Awaitable<void>
+  recordRun(run: SyncRun): Awaitable<void>
+  openAlert(assetId: string, kind: AlertKind, message: string, now: Date): Awaitable<void>
+  resolveAlerts(assetId: string, kinds: readonly AlertKind[], now: Date): Awaitable<void>
 }
 
 const adsKey = (r: Pick<StoredAdsRow, 'assetId' | 'campaignExternalId' | 'day' | 'conversionBasis'>) =>

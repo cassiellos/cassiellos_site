@@ -10,6 +10,7 @@
 #   scripts/crm-local-sandbox-db.sh create NOME MODO    # cria um banco e imprime a URL de conexão
 #       MODO = sandbox  0001–0016 + ligação 'sandbox' + marcador + semente sintética
 #              fresh16  0001–0016, SEM ligação de ambiente (teste de isolamento)
+#              fresh19  0001–0019 (Central de Inteligência com integrações reais — testes do modo real)
 #              pre16    0001–0015 (teste da aplicação/reversão da 0016)
 #              pre12    0001–0011 (teste de atualização da 0012, suíte de regressão)
 #              upto12   0001–0012 + 0015 (teste da consolidação 0013: o Financeiro atual exige a 0015)
@@ -58,6 +59,7 @@ create() {
   case "$mode" in
     sandbox) migrate "$name" 16 ;;
     fresh16) migrate "$name" 16 ;;
+    fresh19) migrate "$name" 19 ;;
     pre16)   migrate "$name" 15 ;;
     pre12)   migrate "$name" 11 ;;
     upto12)  migrate "$name" 12; psqlx -d "$name" -f "$ROOT/db/migrations/0015_finance_project_installments.sql" >/dev/null ;;
