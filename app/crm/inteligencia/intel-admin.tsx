@@ -65,7 +65,7 @@ function Note({ msg }: { msg: { tone: 'ok' | 'bad'; text: string } | null }) {
 
 /* ======================================================= Visão do cliente ======================================================= */
 
-export function ClientAdmin({ admin, selectedClientId, act, onChanged, onSelect }: { admin: AdminBlock; selectedClientId: string | null; act: Act; onChanged: () => void; onSelect: (id: string) => void }) {
+export function ClientAdmin({ admin, selectedClientId, act, onChanged, onSelect, onArchived }: { admin: AdminBlock; selectedClientId: string | null; act: Act; onChanged: () => void; onSelect: (id: string) => void; onArchived: (id: string) => void }) {
   const { busy, msg, run } = useAction(act, onChanged)
   const [form, setForm] = useState({ name: '', notes: '', financeClientId: '' })
   const [editing, setEditing] = useState<{ id: string; name: string; notes: string; financeClientId: string } | null>(null)
@@ -92,7 +92,10 @@ export function ClientAdmin({ admin, selectedClientId, act, onChanged, onSelect 
         <thead><tr><th>Cliente</th><th>Situação</th><th>Financeiro</th><th className="mi-num">Contas confirmadas</th><th>Atualizado</th><th>Ações</th></tr></thead>
         <tbody>{clients.map(c => <tr key={c.id} data-selected={c.id === selectedClientId ? 'true' : undefined}>
           <td data-label="Cliente" className="mi-cell-title">{editing?.id === c.id
-            ? <input className="mi-admin-input" aria-label="Nome" value={editing.name} maxLength={160} onChange={e => setEditing({ ...editing, name: e.target.value })}/>
+            ? <div className="mi-admin-edit-stack">
+                <input className="mi-admin-input" aria-label="Nome" value={editing.name} maxLength={160} onChange={e => setEditing({ ...editing, name: e.target.value })}/>
+                <input className="mi-admin-input" aria-label="Observações administrativas" placeholder="Observações administrativas" value={editing.notes} maxLength={2000} onChange={e => setEditing({ ...editing, notes: e.target.value })}/>
+              </div>
             : <><strong>{c.name}</strong>{c.notes && <span className="mi-sub">{c.notes.slice(0, 80)}</span>}</>}</td>
           <td data-label="Situação"><span className="mi-badge" data-tone={c.status === 'active' ? 'ok' : c.status === 'paused' ? 'warn' : 'muted'}>{CLIENT_STATUS[c.status]}</span></td>
           <td data-label="Financeiro">{editing?.id === c.id
@@ -104,13 +107,13 @@ export function ClientAdmin({ admin, selectedClientId, act, onChanged, onSelect 
           <td data-label="Ações"><div className="mi-admin-actions">
             {c.status !== 'archived' && <button type="button" className="crm-btn" onClick={() => onSelect(c.id)} disabled={c.id === selectedClientId}>Ver painel</button>}
             {c.status !== 'archived' && (editing?.id === c.id
-              ? <><button type="button" className="crm-btn crm-btn-primary" disabled={busy === 'edit'} onClick={() => void run('edit', 'update_client', { clientId: c.id, name: editing.name, financeClientId: editing.financeClientId || null }, 'Cliente atualizado.').then(r => { if (r.ok) setEditing(null) })}>Salvar</button>
+              ? <><button type="button" className="crm-btn crm-btn-primary" disabled={busy === 'edit'} onClick={() => void run('edit', 'update_client', { clientId: c.id, name: editing.name, notes: editing.notes, financeClientId: editing.financeClientId || null }, 'Cliente atualizado.').then(r => { if (r.ok) setEditing(null) })}>Salvar</button>
                   <button type="button" className="crm-btn" onClick={() => setEditing(null)}>Cancelar</button></>
               : <button type="button" className="crm-btn" onClick={() => setEditing({ id: c.id, name: c.name, notes: c.notes, financeClientId: c.financeClientId ?? '' })}>Editar</button>)}
             {c.status === 'active' && <button type="button" className="crm-btn" disabled={busy === 'st' + c.id} onClick={() => void run('st' + c.id, 'update_client', { clientId: c.id, status: 'paused' }, 'Cliente pausado.')}>Pausar</button>}
             {c.status === 'paused' && <button type="button" className="crm-btn" disabled={busy === 'st' + c.id} onClick={() => void run('st' + c.id, 'update_client', { clientId: c.id, status: 'active' }, 'Cliente reativado.')}>Reativar</button>}
             {c.status !== 'archived' && <button type="button" className="crm-btn mi-btn-danger" disabled={busy === 'ar' + c.id}
-              onClick={() => { if (window.confirm(`Arquivar "${c.name}"? Os vínculos com contas de anúncios serão encerrados (o histórico é preservado).`)) void run('ar' + c.id, 'archive_client', { clientId: c.id }, 'Cliente arquivado.') }}>Arquivar</button>}
+              onClick={() => { if (window.confirm(`Arquivar "${c.name}"? Os vínculos com contas de anúncios serão encerrados (o histórico é preservado).`)) void run('ar' + c.id, 'archive_client', { clientId: c.id }, 'Cliente arquivado.').then(r => { if (r.ok) onArchived(c.id) }) }}>Arquivar</button>}
           </div></td>
         </tr>)}</tbody>
       </table></ScrollTable>}
