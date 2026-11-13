@@ -5,7 +5,7 @@ import { adminActorFromSession } from '@/lib/crm/admin-actions'
 import { handleIntelAdmin, MAX_INTEL_BODY, MAX_INTEL_REAL_BODY, type IntelRequest } from '@/lib/crm/intel/admin-request'
 import { isIntelOriginAllowed } from '@/lib/crm/intel/origin'
 import { crmRuntimeRequestEnv } from '@/lib/crm/runtime-env'
-import { getCrmPool } from '@/lib/crm/db'
+import { getIntelPool } from '@/lib/crm/db'
 import { dataMode } from '@/lib/crm/intel/real/config'
 import { handleIntelReal } from '@/lib/crm/intel/real/admin-real'
 import { realRuntimeFor } from '@/lib/crm/intel/real/runtime'
@@ -34,7 +34,7 @@ async function base(request: Request): Promise<Omit<IntelRequest, 'method' | 'ra
 
 function handle(req: Parameters<typeof handleIntelAdmin>[1]) {
   // A sessão é verificada ANTES de qualquer acesso ao banco (handleIntelReal); sem MI_DATA_MODE=real nada do modo real é carregado.
-  if (dataMode() === 'real') return handleIntelReal({ runtime: realRuntimeFor(getCrmPool(), process.env) }, req)
+  if (dataMode() === 'real') return handleIntelReal({ runtime: realRuntimeFor(getIntelPool(), process.env) }, req)
   return handleIntelAdmin({}, req)
 }
 
