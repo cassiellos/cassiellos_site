@@ -602,3 +602,35 @@ body:has(#cassiellos-crm) .nav,body:has(#cassiellos-crm) .foot,body:has(#cassiel
   #cassiellos-crm .crm-meta-validation-head { font-size:13px; }
   #cassiellos-crm .crm-meta-event-name {font-size:22px;}
 }
+
+
+/* Correção pontual: menu lateral com scroll independente.
+   NÃO limitar a altura ou o overflow do CRM, layout, body ou painel principal:
+   a página permanece com a rolagem nativa que já funcionava. */
+@media (min-width:831px) {
+  #cassiellos-crm .crm-sidebar {
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
+  #cassiellos-crm .crm-brand,
+  #cassiellos-crm .crm-sidebar-footer {
+    flex-shrink:0;
+  }
+  #cassiellos-crm .crm-nav-wrap {
+    height:0;
+    flex:1 1 auto;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:scroll;
+    overscroll-behavior-y:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(153,169,191,.6) transparent;
+  }
+  #cassiellos-crm .crm-nav-wrap::-webkit-scrollbar { width:8px; }
+  #cassiellos-crm .crm-nav-wrap::-webkit-scrollbar-thumb {
+    background:rgba(153,169,191,.5);
+    border-radius:8px;
+  }
+}
