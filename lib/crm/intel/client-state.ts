@@ -100,10 +100,19 @@ export function absorbClientLists(prev: ClientLists, area: IntelArea, listed: re
   return sameClientList(prev.clients, external) ? prev : { ...prev, clients: external.map(c => ({ ...c })) }
 }
 
+/** Retira imediatamente um cliente arquivado das opções conhecidas, sem deixar seleção fantasma na UI. */
+export function omitArchivedClient(prev: ClientLists, id: string): ClientLists {
+  const clients = prev.clients.filter(c => c.id !== id)
+  const connClients = prev.connClients.filter(c => c.id !== id)
+  return clients.length === prev.clients.length && connClients.length === prev.connClients.length
+    ? prev : { clients, connClients }
+}
+
 /** Filtros efetivos a partir das preferências e das listas conhecidas (antes de conhecer clientes vale o pedido normalizado). */
 export function resolveFilters(prefs: FilterPrefs, lists: ClientLists): IntelFilters {
   const externalIds = lists.clients.filter(c => c.kind === 'client').map(c => c.id)
-  if (!externalIds.length) return normalizeForArea({ area: prefs.area, period: prefs.period, platform: prefs.platform, status: prefs.status, campaign: prefs.campaign, client: prefs.client })
+  if (!externalIds.length) return normalizeForArea({ area: prefs.area, period: prefs.period, platform: prefs.platform, status: prefs.status, campaign: prefs.campaign,
+    client: prefs.area === 'cliente' && prefs.client === 'all' ? '' : prefs.client })
   const allIds = (lists.connClients.length ? lists.connClients : lists.clients).map(c => c.id)
   return effectiveFilters(prefs, externalIds, allIds)
 }
