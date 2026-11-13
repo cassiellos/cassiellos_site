@@ -86,9 +86,9 @@
 /* gráficos */
 #cassiellos-crm.mi-root .mi-chart{margin:0}
 #cassiellos-crm.mi-root .mi-chart-box{position:relative}
-#cassiellos-crm.mi-root .mi-chart svg{display:block;width:100%;height:auto;min-height:170px;overflow:visible}
+#cassiellos-crm.mi-root .mi-chart svg{display:block;max-width:100%;overflow:visible}
 #cassiellos-crm.mi-root .mi-grid{stroke:rgba(220,227,238,.07)}
-#cassiellos-crm.mi-root .mi-axis{fill:#7f93ad;font-size:10.5px;font-variant-numeric:tabular-nums}
+#cassiellos-crm.mi-root .mi-axis{fill:#8fa2bb;font-size:12px;font-variant-numeric:tabular-nums}
 #cassiellos-crm.mi-root .mi-hover-line{stroke:rgba(220,227,238,.25);stroke-dasharray:3 4}
 #cassiellos-crm.mi-root .mi-hit{cursor:crosshair;outline:none}
 #cassiellos-crm.mi-root .mi-hit:focus-visible{fill:rgba(34,199,242,.08)}
@@ -144,3 +144,63 @@
   #cassiellos-crm.mi-root .mi-compare li{grid-template-columns:1fr auto}#cassiellos-crm.mi-root .mi-compare-track{grid-column:1/-1;grid-row:2}#cassiellos-crm.mi-root .mi-client-head{align-items:flex-start;flex-direction:column}
   #cassiellos-crm.mi-root .mi-dist{grid-template-columns:1fr}#cassiellos-crm.mi-root .mi-sim-pill{font-size:9px;padding:6px 9px}}
 @media(prefers-reduced-motion:reduce){#cassiellos-crm.mi-root .mi-spinner{animation:none}}
+
+/* ===== Missão 07 — escopo, confiança do ativo, tabelas responsivas e navegação mobile ===== */
+#cassiellos-crm.mi-root .mi-scope{border:1px solid rgba(77,141,255,.35);background:rgba(77,141,255,.08);color:#c9d8f2;padding:12px 16px;border-radius:10px;font-size:12px;line-height:1.6;margin:-8px 0 18px}
+#cassiellos-crm.mi-root .mi-scope strong{color:#a9c6ff}
+#cassiellos-crm.mi-root .mi-scope .mi-link{margin-left:4px}
+#cassiellos-crm.mi-root .mi-callout-memory{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07);color:#d6ccf7}
+#cassiellos-crm.mi-root .mi-callout-memory strong{color:#c7b6ff}
+#cassiellos-crm.mi-root .mi-kpi-scope{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9c6ff;border:1px solid rgba(77,141,255,.35);border-radius:99px;padding:1px 6px;vertical-align:1px}
+#cassiellos-crm.mi-root .mi-kpi[data-tone=structural] .mi-kpi-scope{color:#b9c7d9;border-color:var(--crm-border)}
+#cassiellos-crm.mi-root .mi-unit{color:#8193ab;font-size:10.5px}
+#cassiellos-crm.mi-root .mi-badge-data{margin-top:5px;display:inline-block;white-space:normal}
+#cassiellos-crm.mi-root .mi-alert-scope{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a9b9cc;border:1px solid var(--crm-border);border-radius:5px;padding:1px 5px;margin-right:4px}
+#cassiellos-crm.mi-root .mi-trust{list-style:none;margin:0;padding:8px 10px;display:grid;gap:5px;border:1px solid var(--crm-border);border-radius:9px;background:rgba(255,255,255,.015);font-size:11px}
+#cassiellos-crm.mi-root .mi-trust li{display:flex;justify-content:space-between;gap:10px}
+#cassiellos-crm.mi-root .mi-trust span{color:#8ea3bc}
+#cassiellos-crm.mi-root .mi-trust strong{font-weight:700;text-align:right;color:#72e6bb}
+#cassiellos-crm.mi-root .mi-trust li[data-ok=false] strong{color:#f5c76b}
+#cassiellos-crm.mi-root .mi-asset-wide{grid-column:1/-1}
+#cassiellos-crm.mi-root .mi-asset-block{margin:0;font-size:11px;color:#f5c76b}
+#cassiellos-crm.mi-root .mi-asset-why{color:#f5c76b!important}
+#cassiellos-crm.mi-root .mi-tooltip[data-side=left]{transform:translateX(-100%)}
+#cassiellos-crm.mi-root .mi-tooltip[data-side=right]{transform:none}
+/* rolagem horizontal sinalizada */
+#cassiellos-crm.mi-root .mi-scroll{position:relative}
+#cassiellos-crm.mi-root .mi-scroll-hint{display:none;font-size:11px;font-weight:700;color:#8fdcf6;margin:0 0 6px;text-align:right}
+#cassiellos-crm.mi-root .mi-scroll[data-overflow=true] .mi-scroll-hint{display:block}
+#cassiellos-crm.mi-root .mi-scroll[data-overflow=true]::after{content:'';position:absolute;top:22px;right:0;bottom:0;width:28px;pointer-events:none;background:linear-gradient(90deg,rgba(13,25,41,0),rgba(13,25,41,.95))}
+#cassiellos-crm.mi-root .mi-scroll[data-end=true]::after{display:none}
+#cassiellos-crm.mi-root .mi-scroll-box:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
+/* navegação: botão de áreas só no mobile */
+#cassiellos-crm.mi-root .mi-nav-toggle{display:none}
+@media(max-width:830px){
+  #cassiellos-crm.mi-root .crm-brand{flex-wrap:wrap}
+  #cassiellos-crm.mi-root .mi-nav-toggle{display:inline-flex;align-items:center;gap:8px;margin-left:auto;min-height:40px;padding:0 14px;border:1px solid var(--crm-border);border-radius:9px;background:#111d2f;color:#e8f0ff;font-weight:700;font-size:13px}
+  #cassiellos-crm.mi-root .mi-nav-toggle:focus-visible{outline:2px solid var(--crm-cyan);outline-offset:2px}
+  #cassiellos-crm.mi-root .mi-nav-current{color:#f5a3aa}
+  #cassiellos-crm.mi-root .mi-nav[data-open=false]{display:none}
+  #cassiellos-crm.mi-root .mi-nav[data-open=true]{display:grid;grid-template-columns:1fr;gap:6px;overflow:visible;padding:4px 14px 14px}
+  #cassiellos-crm.mi-root .mi-nav[data-open=true] .crm-nav-btn{width:100%;min-width:0;white-space:normal}
+  #cassiellos-crm.mi-root .mi-nav[data-open=true] .crm-nav-label{display:block;margin:6px 0 2px}
+}
+/* tabelas como cartões em telas estreitas (tabela completa permanece no desktop) */
+@media(max-width:640px){
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-scroll-hint,#cassiellos-crm.mi-root .mi-scroll[data-cards=true]::after{display:none}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table{min-width:0;display:block}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table thead{display:none}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tr{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;border:1px solid var(--crm-border);border-radius:11px;padding:10px 12px;background:rgba(255,255,255,.02)}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td{display:flow-root;padding:7px 0;border-bottom:1px solid rgba(220,227,238,.06);text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge{white-space:normal;margin:0 0 3px 4px}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td .mi-badge-data{border-radius:7px;text-align:center}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td:last-child{border-bottom:0}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td::before{content:attr(data-label);float:left;width:44%;padding-right:10px;color:#7f93ad;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:left;line-height:1.5}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title{display:block;text-align:left;font-size:13px}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td.mi-cell-title::before{display:none}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]{display:block;text-align:left}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table td[colspan]::before{display:none}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .mi-table tr:hover td{background:none}
+  #cassiellos-crm.mi-root .mi-scroll[data-cards=true] .crm-table-wrap{overflow:visible}
+}

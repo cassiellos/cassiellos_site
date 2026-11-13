@@ -1,15 +1,17 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { formatCivil } from '@/lib/crm/intel/format'
 
-/** Gráficos em SVG próprio (mesmo padrão do LeadGraph do dashboard): sem dependências, acessíveis, responsivos. */
+/**
+ * Gráficos em SVG próprio (mesmo padrão do LeadGraph do dashboard): sem dependências, acessíveis.
+ * O SVG usa a LARGURA REAL do contêiner (ResizeObserver): textos de eixo têm tamanho legível em qualquer tela
+ * (em 360 px não são reduzidos pela escala do viewBox) e a quantidade de rótulos se ajusta para não colidir.
+ */
 
 export const PLATFORM_COLOR: Record<string, string> = { google_ads: '#4d8dff', meta_ads: '#22c7f2', crm_leads: '#34d6a0', crm_meetings: '#f5b84b', ga4: '#a78bfa', gtm: '#94a3b8' }
 
 export type ChartSeries = { key: string; label: string; color: string; values: (number | null)[]; dashed?: boolean }
-
-const W = 760, H = 236, PAD_L = 58, PAD_R = 14, PAD_T = 14, PAD_B = 30
 
 function niceMax(v: number): number {
   if (v <= 0) return 1
@@ -18,28 +20,49 @@ function niceMax(v: number): number {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * exp
 }
 
-export function TrendChart({ days, series, format, title, emptyText = 'Sem dados no período selecionado.' }: {
-  days: string[]; series: ChartSeries[]; format: (v: number) => string; title: string; emptyText?: string
+function useWidth<T extends HTMLElement>(fallback: number) {
+  const ref = useRef<T>(null)
+  const [w, setW] = useState(fallback)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const set = () => setW(Math.max(260, Math.round(el.clientWidth)))
+    set()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(set) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [])
+  return [ref, w] as const
+}
+
+export function TrendChart({ days, series, format, axisFormat, title, emptyText = 'Sem dados no período selecionado.' }: {
+  days: string[]; series: ChartSeries[]; format: (v: number) => string; axisFormat?: (v: number) => string; title: string; emptyText?: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
   const id = useId()
+  const [boxRef, W] = useWidth<HTMLDivElement>(720)
   const hasData = series.some(s => s.values.some(v => v !== null && v > 0))
   const max = useMemo(() => niceMax(Math.max(0, ...series.flatMap(s => s.values.map(v => v ?? 0)))), [series])
-  if (!days.length || !series.length || !hasData) return <div className="mi-chart-empty" role="note">{emptyText}</div>
+  const axis = axisFormat ?? format
+  const narrow = W < 480
+  const H = narrow ? 200 : 236, PAD_T = 14, PAD_B = 30, PAD_R = 12
+  const PAD_L = Math.min(84, Math.max(46, ...[0, 0.5, 1].map(t => axis(t * max).length * 6.4 + 10)))
   const innerW = W - PAD_L - PAD_R, innerH = H - PAD_T - PAD_B
-  const x = (i: number) => PAD_L + (days.length === 1 ? innerW / 2 : (i * innerW) / (days.length - 1))
+  const x = (i: number) => PAD_L + (days.length <= 1 ? innerW / 2 : (i * innerW) / (days.length - 1))
   const y = (v: number) => PAD_T + innerH - (v / max) * innerH
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => t * max)
-  const labelEvery = Math.max(1, Math.ceil(days.length / 7))
+  const ticks = (narrow ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1]).map(t => t * max)
+  const maxLabels = Math.max(2, Math.floor(innerW / 62))
+  const labelEvery = Math.max(1, Math.ceil(days.length / maxLabels))
   const path = (vals: (number | null)[]) => vals.map((v, i) => (i === 0 || vals[i - 1] === null ? 'M' : 'L') + x(i).toFixed(1) + ' ' + y(v ?? 0).toFixed(1)).join(' ')
   const colW = innerW / Math.max(1, days.length - 1)
   return <figure className="mi-chart" aria-labelledby={id}>
     <figcaption id={id} className="mi-sr-only">{title}</figcaption>
     <div className="mi-chart-legend">{series.map(s => <span key={s.key}><i style={{ background: s.color }} data-dashed={s.dashed ? 'true' : undefined}/>{s.label}</span>)}</div>
-    <div className="mi-chart-box">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} onMouseLeave={() => setHover(null)}>
-        {ticks.map(t => <g key={t}><line x1={PAD_L} x2={W - PAD_R} y1={y(t)} y2={y(t)} className="mi-grid"/><text x={PAD_L - 8} y={y(t) + 4} textAnchor="end" className="mi-axis">{format(t)}</text></g>)}
-        {days.map((d, i) => i % labelEvery === 0 || i === days.length - 1 ? <text key={d} x={x(i)} y={H - 8} textAnchor="middle" className="mi-axis">{formatCivil(d)}</text> : null)}
+    <div className="mi-chart-box" ref={boxRef}>
+      {!days.length || !series.length || !hasData ? <div className="mi-chart-empty" role="note">{emptyText}</div> :
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} onMouseLeave={() => setHover(null)}>
+        {ticks.map(t => <g key={t}><line x1={PAD_L} x2={W - PAD_R} y1={y(t)} y2={y(t)} className="mi-grid"/><text x={PAD_L - 8} y={y(t) + 4} textAnchor="end" className="mi-axis">{axis(t)}</text></g>)}
+        {days.map((d, i) => i % labelEvery === 0 && (days.length - 1 - i >= labelEvery / 2 || i === days.length - 1) ? <text key={d} x={x(i)} y={H - 8} textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'} className="mi-axis">{formatCivil(d)}</text> : null)}
         {series.map((s, si) => <g key={s.key}>
           {si === 0 && <path d={path(s.values) + ` L${x(days.length - 1)} ${y(0)} L${x(0)} ${y(0)} Z`} fill={s.color} opacity={0.08}/>}
           <path d={path(s.values)} fill="none" stroke={s.color} strokeWidth={2.2} strokeDasharray={s.dashed ? '6 5' : undefined} strokeLinejoin="round" strokeLinecap="round"/>
@@ -48,9 +71,9 @@ export function TrendChart({ days, series, format, title, emptyText = 'Sem dados
         {hover !== null && series.map(s => s.values[hover] !== null ? <circle key={s.key} cx={x(hover)} cy={y(s.values[hover] ?? 0)} r={4} fill={s.color} stroke="#07101f" strokeWidth={2}/> : null)}
         {days.map((d, i) => <rect key={d} x={x(i) - colW / 2} y={PAD_T} width={Math.max(colW, 4)} height={innerH} fill="transparent" tabIndex={0}
           aria-label={formatCivil(d, true) + ': ' + series.map(s => s.label + ' ' + (s.values[i] === null ? 'sem dados' : format(s.values[i] ?? 0))).join('; ')}
-          onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} className="mi-hit"/>)}
-      </svg>
-      {hover !== null && <div className="mi-tooltip" style={{ left: `${(x(hover) / W) * 100}%` }} role="status">
+          onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} onClick={() => setHover(i)} className="mi-hit"/>)}
+      </svg>}
+      {hover !== null && hasData && <div className="mi-tooltip" data-side={x(hover) > W * 0.6 ? 'left' : x(hover) < W * 0.25 ? 'right' : 'center'} style={{ left: `${(x(hover) / W) * 100}%` }} role="status">
         <strong>{formatCivil(days[hover], true)}</strong>
         {series.map(s => <span key={s.key}><i style={{ background: s.color }}/>{s.label}: {s.values[hover] === null ? 'sem dados' : format(s.values[hover] ?? 0)}</span>)}
       </div>}
