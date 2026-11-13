@@ -105,7 +105,7 @@ export default function MiniCrm({ intelEnabled = false }: { intelEnabled?: boole
     <div className="crm-layout">
       <aside className="crm-sidebar" aria-label="Navegação do CRM">
         <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">CRM | Cassiellos</span></div></div>
-        <nav className="crm-nav-wrap" aria-label="Seções">
+        <nav className="crm-nav-wrap" aria-label="Seções" data-lenis-prevent>
           <div className="crm-nav-label">Workspace</div>
           {navigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}{item.count && <span className="crm-nav-count">{item.count}</span>}</button>)}
           <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
