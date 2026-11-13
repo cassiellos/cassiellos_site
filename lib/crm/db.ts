@@ -97,25 +97,33 @@ export function getCrmPool(): Pool {
 }
 
 /**
- * Central de Inteligência, durante a homologação no MESMO domínio do CRM.
+ * Banco da Inteligência no MESMO domínio e login do CRM.
  *
- * Em Production + MI_DATA_MODE=real, NUNCA consulta o banco principal sem
- * uma migração e habilitação específicas. A fase provisória usa um banco Neon
- * separado (mi_preview), com a autenticação da própria Production.
+ * Antes de ativar em Production, o titular autorizou as migrações 0017–0019
+ * e a ativação explícita. A seleção é fail-closed:
+ * - somente MI_SANDBOX_ENABLED=true: usa o Neon mi_preview separado;
+ * - somente MI_PRODUCTION_DATABASE_ENABLED=true: usa o banco operacional;
+ * - ambas ou nenhuma em modo real de Production: erro, jamais fallback oculto.
  *
- * As demais rotas do CRM continuam usando getCrmPool() sem qualquer mudança.
- * Um URL inválido ou ausente interrompe somente a API da Inteligência.
+ * Preview continua usando apenas o CRM_DATABASE_URL da própria branch.
+ * Google Ads/Meta Ads têm flags de autorização distintas e permanecem off.
  */
+export type IntelDatabaseTarget = 'default' | 'sandbox' | 'production'
+
+export function intelDatabaseTarget(env: Record<string, string | undefined>): IntelDatabaseTarget {
+  if (env.VERCEL_ENV !== 'production' || env.MI_DATA_MODE !== 'real') return 'default'
+  const sandbox = env.MI_SANDBOX_ENABLED === 'true'
+  const production = env.MI_PRODUCTION_DATABASE_ENABLED === 'true'
+  if (sandbox === production) throw new CrmDatabaseConfigError('INVALID')
+  if (production && env.CRM_PRODUCTION_ENABLED !== 'true') throw new CrmDatabaseConfigError('INVALID')
+  return production ? 'production' : 'sandbox'
+}
+
 const globalForIntel = globalThis as typeof globalThis & { __cassiellosIntelSandboxPool?: Pool }
 
 export function getIntelPool(): Pool {
-  if (process.env.VERCEL_ENV !== 'production' || process.env.MI_DATA_MODE !== 'real') {
-    return getCrmPool()
-  }
-
-  if (process.env.MI_SANDBOX_ENABLED !== 'true') {
-    throw new CrmDatabaseConfigError('MISSING')
-  }
+  const target = intelDatabaseTarget(process.env)
+  if (target !== 'sandbox') return getCrmPool()
   const raw = process.env.MI_SANDBOX_DATABASE_URL?.trim()
   if (!raw) throw new CrmDatabaseConfigError('MISSING')
 
