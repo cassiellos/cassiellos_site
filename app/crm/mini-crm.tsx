@@ -55,7 +55,7 @@ const sectionNames: Record<View, string> = {
   dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações', financeiro: 'Financeiro',
 }
 
-export default function MiniCrm() {
+export default function MiniCrm({ intelEnabled = false }: { intelEnabled?: boolean }) {
   const [view, setView] = useState<View>('dashboard')
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [search, setSearch] = useState('')
@@ -82,6 +82,8 @@ export default function MiniCrm() {
           {navigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}{item.count && <span className="crm-nav-count">{item.count}</span>}</button>)}
           <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
           <button type="button" className="crm-nav-btn" data-active={view === 'financeiro'} onClick={() => openView('financeiro')} aria-current={view === 'financeiro' ? 'page' : undefined}><Icon name="wallet"/>Financeiro</button>
+          {intelEnabled && <><div className="crm-nav-label crm-nav-label-section">Inteligência</div>
+          <a className="crm-nav-btn" href="/crm/inteligencia" style={{ textDecoration: 'none' }}><Icon name="chart"/>Central de Inteligência</a></>}
         </nav>
         <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>CRM · operacional</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
       </aside>
