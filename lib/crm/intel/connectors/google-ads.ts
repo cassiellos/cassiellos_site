@@ -2,8 +2,8 @@
  * Conector REAL do Google Ads (somente leitura) — REST da Google Ads API (versão em MI_GOOGLE_ADS_API_VERSION; padrão v26).
  *
  * - Toda chamada passa por `assertReadOnlyRequest` (só ListAccessibleCustomers e GoogleAdsService.Search com GAQL SELECT).
- * - Cabeçalhos: Authorization (token de acesso de curta duração, obtido no servidor), developer-token e, quando o acesso é
- *   via conta de administrador (MCC), login-customer-id com o ID do gerente.
+ * - Cabeçalhos: Authorization (token de acesso de curta duração, obtido no servidor); legacy developer-token
+ *   é opcional desde 09/09/2026 e ignorado pela API; para MCC, login-customer-id com ID do gerente.
  * - Métricas: `metrics.conversions` = conversões PRINCIPAIS conforme as definições e o modelo de atribuição DA CONTA
  *   (basis `google:conversions`, attribution `google:modelo-da-conta`). Não é somado a conversões da Meta nem a leads do CRM.
  * - Valores int64 chegam como texto e campos zerados podem ser omitidos pela API (proto3 JSON): ausência = 0 real.
@@ -19,7 +19,7 @@ const API = 'https://googleads.googleapis.com'
 export type GoogleAdsConfig = {
   fetch: FetchLike
   apiVersion?: string
-  developerToken: string
+  developerToken?: string
   /** Token de acesso da conexão (renovado no servidor a partir do refresh token guardado no cofre). */
   accessToken: (connectionId: string) => Promise<string>
 }
@@ -50,7 +50,8 @@ export function createGoogleAdsConnector(cfg: GoogleAdsConfig): AdsReadConnector
   let lastQuota: RateLimitState = { remaining: null, usagePercent: null }
 
   async function headers(ctx: ConnectorContext, loginCustomerId: string | null) {
-    const h: Record<string, string> = { Authorization: 'Bearer ' + (await cfg.accessToken(ctx.connectionId)), 'developer-token': cfg.developerToken, 'Content-Type': 'application/json' }
+    const h: Record<string, string> = { Authorization: 'Bearer ' + (await cfg.accessToken(ctx.connectionId)), 'Content-Type': 'application/json' }
+    if (cfg.developerToken?.trim()) h['developer-token'] = cfg.developerToken.trim()
     if (loginCustomerId) h['login-customer-id'] = cid(loginCustomerId)
     return h
   }
