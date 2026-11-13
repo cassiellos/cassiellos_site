@@ -61,13 +61,23 @@ export async function handleIntelReal(deps: RealDeps, req: IntelRequest): Promis
   if (req.method === 'GET') {
     try {
       const snap = await loadRealSnapshot(rt.db, now)
-      const params = req.searchParams ?? new URLSearchParams()
+      // No modo real, uma URL antiga pode apontar para um cliente que acabou
+      // de ser arquivado. Recupera a primeira seleção ativa, preservando os
+      // filtros e sem mudar a validação de valores malformados.
+      const params = new URLSearchParams(req.searchParams ?? new URLSearchParams())
       const area = params.get('area')
+      const activeClientIds = snap.dataset.clients.filter(c => c.kind === 'client' && c.status !== 'archived').map(c => c.id)
+      if (area === 'cliente') {
+        const requested = params.get('client')
+        if (requested && requested !== 'all' && /^[a-z0-9_-]{3,64}$/.test(requested) && !activeClientIds.includes(requested)) {
+          params.delete('client')
+        }
+      }
       const admin = area === 'cliente' || area === 'conexoes' ? await adminBlock(rt) : undefined
       let payload
       try { payload = buildIntelPayload(snap, parseIntelFilters(params, snap.dataset.clients), now) } catch (e) {
         // Modo real sem nenhum cliente externo cadastrado: a área Cliente mostra só o cadastro (nenhum número).
-        if (e instanceof FilterError && e.code === 'CLIENT_NOT_FOUND' && area === 'cliente' && !params.get('client') && !snap.dataset.clients.some(c => c.kind === 'client' && c.status !== 'archived')) {
+        if (e instanceof FilterError && e.code === 'CLIENT_NOT_FOUND' && area === 'cliente' && activeClientIds.length === 0) {
           const body = { ok: true, simulated: false, mode: 'real', area: 'cliente', view: null, admin }
           assertNoSecretsInPayload(body)
           return { status: 200, body }
