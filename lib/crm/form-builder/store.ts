@@ -73,7 +73,8 @@ export async function changeFlowDocument(db: Pool,input:{id:string;revision:numb
     let after: DbRow
     let auditAction:'draft_saved'|'published'|'unpublished'
     if(input.action==='save'){
-      if(!titleValid(input.title)||!descriptionValid(input.description)||!validFlowSlug(input.slug))throw new FlowStoreError('INVALID')
+      if(!titleValid(input.title)||!descriptionValid(input.description)||!validFlowSlug(input.slug)||
+         (current.status==='published'&&input.slug!==current.slug))throw new FlowStoreError('INVALID')
       const parsed=validateFlow(input.draft)
       if(!parsed.ok)throw new FlowStoreError('INVALID')
       const updated=await client.query<DbRow>(`UPDATE crm.form_flows SET title=$2,slug=$3,description=$4,draft=$5::jsonb,revision=$6,
