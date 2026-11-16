@@ -213,9 +213,10 @@ export default function FormsPanel(){
                   <option value="select">Múltipla escolha</option><option value="text">Texto curto</option></select></label>
                 <label className="crm-forms-check"><input type="checkbox" checked={active.required} onChange={e=>updateQuestion({required:e.target.checked})}/>Obrigatória</label>
               </div>
-              {active.input==='select'&&<label>Alternativas (uma por linha)<textarea rows={4} value={active.options.join('\n')} onChange={e=>{
+              {active.input==='select'&&<label>Alternativas (uma por linha)<textarea key={active.id} rows={4} defaultValue={active.options.join('\n')} onChange={e=>{
                 const options=e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)
-                updateQuestion({options,branches:active.branches.filter(b=>options.includes(b.answer))})}}/></label>}
+                updateQuestion({options,branches:active.branches.filter(b=>options.includes(b.answer))})}}/>
+                <small className="crm-forms-option-hint">Uma alternativa por linha. Edite livremente com Enter, selecionar tudo ou colar; linhas vazias são ignoradas ao salvar.</small></label>}
               <label>Próxima etapa padrão<select value={active.next} onChange={e=>updateQuestion({next:e.target.value})}>
                 {targetOptions.map(s=><option key={s.id} value={s.id}>{s.title} ({s.id})</option>)}</select></label>
               {active.input==='select'&&<div className="crm-forms-branches">
