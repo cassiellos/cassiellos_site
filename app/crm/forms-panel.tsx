@@ -83,6 +83,25 @@ export default function FormsPanel(){
     setDraft(next);setDirty(true);setFinish('');setMessage('');setSelectedStep(targetId)
     return true
   }
+  function removeBranch(sourceId:string,answer:string){
+    if(!draft)return
+    const source=draft.steps.find(s=>s.id===sourceId)
+    if(!source||source.type!=='question')return
+    const rule=source.branches.find(b=>b.answer===answer)
+    if(!rule)return
+    const previous=draft.steps.find(s=>s.id===rule.to)?.title||rule.to
+    const fallback=draft.steps.find(s=>s.id===source.next)?.title||source.next
+    const notice='Remover o desvio de "'+answer+'"? A resposta deixará de ir para "'+
+      previous+'" e passará a seguir o destino padrão "'+fallback+'". '+
+      'Se uma etapa ficar desconectada, você precisará corrigi-la antes de salvar ou publicar.'
+    if(!window.confirm(notice))return
+    edit(d=>{
+      const changed=d.steps.find(s=>s.id===sourceId)
+      if(changed?.type==='question')changed.branches=changed.branches.filter(b=>b.answer!==answer)
+    })
+    setSelectedStep(sourceId)
+    setMessage('Desvio removido somente do rascunho. Confira o novo percurso e eventuais etapas desconectadas.')
+  }
   function moveNode(id:string,point:DiagramPoint){
     edit(d=>{d.layout={...d.layout,[id]:point}})
   }
@@ -221,7 +240,7 @@ export default function FormsPanel(){
       <div className={'crm-forms-workspace'+(viewMode==='flow'?' crm-forms-workspace-flow':'')}>
         {viewMode==='flow'&&<FormsFlowCanvas flow={draft} selectedStep={selectedStep}
           onSelect={id=>{setSelectedStep(id);setPreview(false)}}
-          onMove={moveNode} onConnect={connectSteps} onResetLayout={resetLayout}/>}
+          onMove={moveNode} onConnect={connectSteps} onRemoveBranch={removeBranch} onResetLayout={resetLayout}/>}
         {viewMode==='steps'&&<div className="crm-card crm-forms-map">
           <div className="crm-forms-map-head"><strong>MAPA DO FUNIL</strong><span>{draft.steps.length} etapas</span></div>
           {draft.steps.map((s,i)=><button key={s.id} type="button" className="crm-forms-node" data-selected={selectedStep===s.id} onClick={()=>{setSelectedStep(s.id);setPreview(false)}}>
@@ -271,7 +290,7 @@ export default function FormsPanel(){
       {viewMode==='flow'&&<div className="crm-forms-flow-actions">
         <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Adicionar pergunta</button>
         <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Adicionar finalização</button>
-        <small>Adicionar pergunta após a etapa selecionada liga automaticamente o caminho padrão à nova pergunta. As bifurcações existentes são preservadas.</small>
+        <small>Adicionar pergunta após uma pergunta selecionada insere a nova no caminho padrão; ao selecionar uma finalização, ela é inserida no início. Os desvios existentes são preservados.</small>
       </div>}
       {preview&&<div className="crm-card crm-forms-preview">
         <div className="crm-forms-editor-header"><div><span>PRÉVIA SEM GRAVAÇÃO</span><h3>Simulação da jornada</h3></div>
