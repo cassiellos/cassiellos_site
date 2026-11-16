@@ -134,3 +134,38 @@ export function validateDiagramLayout(raw: unknown, ids: Set<string>): Record<st
   }
   return result
 }
+
+
+/**
+ * Exclusão conservadora: nunca reescreve implicitamente o destino de uma resposta.
+ * Uma etapa referenciada deve ser desconectada/redirecionada explicitamente antes.
+ */
+export type StepRemoval =
+  | { ok: true; flow: FlowDefinition; startChanged: boolean }
+  | { ok: false; issues: string[] }
+
+export function removeDiagramStep(flow: FlowDefinition,id: string): StepRemoval {
+  const step=flow.steps.find(s=>s.id===id)
+  if(!step)return {ok:false,issues:['Etapa não encontrada.']}
+  if(flow.steps.length<=2)return {ok:false,issues:['O fluxo precisa manter pelo menos duas etapas.']}
+  const links:string[]=[]
+  for(const source of flow.steps){
+    if(source.id===id||source.type!=='question')continue
+    if(source.next===id)links.push('destino padrão de "'+source.title+'"')
+    for(const branch of source.branches)if(branch.to===id)
+      links.push('resposta "'+branch.answer+'" de "'+source.title+'"')
+  }
+  if(links.length)return {ok:false,issues:[
+    'Esta etapa recebe '+links.length+' conexão(ões). Redirecione-as antes de excluir: '+links.join('; ')+'.'
+  ]}
+  const startChanged=flow.start===id
+  if(startChanged&&(step.type!=='question'||!flow.steps.some(s=>s.id===step.next)))
+    return {ok:false,issues:['Configure um próximo destino válido para a etapa inicial antes de excluí-la.']}
+  const layout=flow.layout?{...flow.layout}:undefined
+  if(layout)delete layout[id]
+  return {ok:true,startChanged,flow:{
+    start:startChanged&&step.type==='question'?step.next:flow.start,
+    steps:flow.steps.filter(s=>s.id!==id),
+    ...(layout===undefined?{}:{layout}),
+  }}
+}
