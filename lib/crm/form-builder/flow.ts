@@ -29,6 +29,7 @@ export type FlowDefinition = { start: string; steps: FlowStep[] }
 export type FlowDocument = {
   id: string; title: string; slug: string; description: string; status: 'draft' | 'published'
   revision: number; publishedVersion: number; draft: FlowDefinition; published: FlowDefinition | null
+  publishedMeta: { title: string; description: string } | null
   createdAt: string; updatedAt: string
 }
 
