@@ -25,14 +25,16 @@ describe('construtor de formulários — PostgreSQL local e descartável', { ski
     const revised=structuredClone(form.draft)
     revised.steps[0].title='Qual é o nome da sua escola?'
     form=await changeFlowDocument(db,{id:form.id,revision:form.revision,action:'save',
-      title:form.title,slug:form.slug,description:'Campanha de captação para escolas',draft:revised})
+      title:'Escolas — texto atualizado',slug:form.slug,description:'Campanha de captação para escolas',draft:revised})
     assert.equal(form.draft.steps[0].title,'Qual é o nome da sua escola?')
+    assert.equal((await getPublishedFlow(db,'escolas'))?.publishedMeta?.title,'Formulário Escolas','o título público continua imutável')
     assert.equal((await getPublishedFlow(db,'escolas'))?.published?.steps[0].title,'Qual é o nome do seu negócio?')
     await assert.rejects(changeFlowDocument(db,{id:form.id,revision:form.revision,action:'save',
       title:form.title,slug:'outro-endereco',description:form.description,draft:form.draft}),
       (e:unknown)=>e instanceof FlowStoreError&&e.code==='INVALID')
     form=await changeFlowDocument(db,{id:form.id,revision:form.revision,action:'publish'})
     assert.equal(form.publishedVersion,2)
+    assert.equal((await getPublishedFlow(db,'escolas'))?.publishedMeta?.title,'Escolas — texto atualizado')
     assert.equal((await getPublishedFlow(db,'escolas'))?.published?.steps[0].title,'Qual é o nome da sua escola?')
     form=await changeFlowDocument(db,{id:form.id,revision:form.revision,action:'unpublish'})
     assert.equal(form.status,'draft')
