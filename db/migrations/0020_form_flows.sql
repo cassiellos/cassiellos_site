@@ -14,13 +14,14 @@ CREATE TABLE IF NOT EXISTS crm.form_flows (
   status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   draft jsonb NOT NULL,
   published jsonb,
+  published_meta jsonb,
   revision integer NOT NULL DEFAULT 1 CHECK (revision >= 1),
   published_version integer NOT NULL DEFAULT 0 CHECK (published_version >= 0),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   published_at timestamptz,
-  CONSTRAINT form_flows_publish_consistency CHECK ((status = 'draft' AND published IS NULL AND published_version >= 0) OR
-    (status = 'published' AND published IS NOT NULL AND published_version > 0))
+  CONSTRAINT form_flows_publish_consistency CHECK ((status = 'draft' AND published IS NULL AND published_meta IS NULL AND published_version >= 0) OR
+    (status = 'published' AND published IS NOT NULL AND published_meta IS NOT NULL AND published_version > 0))
 );
 CREATE INDEX IF NOT EXISTS form_flows_updated ON crm.form_flows (updated_at DESC);
 -- Histórico somente com IDs e números de revisão, sem respostas de usuários nem credenciais.
