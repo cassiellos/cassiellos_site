@@ -60,3 +60,10 @@
 @media(max-width:650px){#cassiellos-crm .cvf-stage{height:480px}#cassiellos-crm .cvf-toolbar{padding:11px}#cassiellos-crm .cvf-legend{padding:10px}
   #cassiellos-crm .cvf-stage-tip{font-size:9px;white-space:normal}#cassiellos-crm .cvf-foot-tip{margin-left:0;width:100%}}
 @media(prefers-reduced-motion:reduce){#cassiellos-crm .cvf-world{will-change:auto}#cassiellos-crm .cvf-node{transition:none}}
+
+
+#cassiellos-crm .cvf-port-row{height:33px;position:relative;display:flex;align-items:stretch}
+#cassiellos-crm .cvf-port-row .cvf-node-port{flex:1;min-width:0}
+#cassiellos-crm .cvf-port-row:has(.cvf-port-delete) .cvf-node-port{padding-right:28px}
+#cassiellos-crm .cvf-port-delete{position:absolute;right:22px;top:6px;width:19px;height:19px;padding:0;border:1px solid #735767;border-radius:5px;background:#372536;color:#ffaab6;font:700 15px/15px sans-serif;cursor:pointer}
+#cassiellos-crm .cvf-port-delete:hover,#cassiellos-crm .cvf-port-delete:focus-visible{background:#762f48;border-color:#ef667c;color:#fff;outline:none}
