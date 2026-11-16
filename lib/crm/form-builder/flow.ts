@@ -114,7 +114,8 @@ export function validateFlow(raw: unknown): FlowValidation {
     const s = byId.get(id)!
     stack.add(id)
     if (s.type === 'question') {
-      for (const next of [s.next, ...s.branches.map(b => b.to)]) visit(next)
+      const covered = s.input === 'select' && s.options.every(value => s.branches.some(b => b.answer === value))
+      for (const next of [...(covered ? [] : [s.next]), ...s.branches.map(b => b.to)]) visit(next)
     }
     stack.delete(id)
     visited.add(id)
@@ -147,7 +148,7 @@ export function routeFlow(flow: FlowDefinition, rawAnswers: unknown): RoutedAnsw
     const raw = input[step.id]
     const answer = typeof raw === 'string' ? raw.trim() : ''
     if ((step.required && answer.length < 2) || answer.length > 160 || (step.input === 'select' && !step.options.includes(answer))) return null
-    if (answer) accepted[step.id] = answer
+    accepted[step.id] = answer
     id = step.branches.find(b => b.answer === answer)?.to || step.next
   }
   return null
