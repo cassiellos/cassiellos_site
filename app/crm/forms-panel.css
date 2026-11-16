@@ -65,3 +65,11 @@
 #cassiellos-crm .crm-forms-flow-actions small{font-size:11px;color:#a3b8ca;flex:1 1 270px;line-height:1.5}
 @media(max-width:1220px){#cassiellos-crm .crm-forms-workspace-flow{grid-template-columns:1fr}#cassiellos-crm .crm-forms-workspace-flow>.crm-forms-editor{max-height:none;overflow:visible}}
 @media(max-width:650px){#cassiellos-crm .crm-forms-view-tabs small{margin-left:0;width:100%}#cassiellos-crm .crm-forms-view-tabs button{flex:1 1 120px}}
+
+
+#cassiellos-crm .crm-forms-cover-editor{display:grid;gap:13px;padding:20px}
+#cassiellos-crm .crm-forms-cover-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+#cassiellos-crm .crm-forms-cover-heading strong{font-size:11px;letter-spacing:.1em;color:#f28c78}
+#cassiellos-crm .crm-forms-cover-heading small{font-size:11px;color:#a2b4c7}
+#cassiellos-crm .crm-forms-cover-bullets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(max-width:800px){#cassiellos-crm .crm-forms-cover-bullets{grid-template-columns:1fr}}

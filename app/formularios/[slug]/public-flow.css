@@ -36,3 +36,21 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 .cpf-footer{display:flex;justify-content:space-between;color:#929eab;font-size:12px;padding:27px 2px 40px}
 .cpf-footer a{color:#657a94;text-decoration:none}
 @media(max-width:560px){.cpf-header{height:70px;padding:0 18px}.cpf-header>span{display:none}.cpf-shell{margin:26px auto 0}.cpf-card{padding:22px 18px}.cpf-primary{width:100%}}
+
+
+/* Capa Chronos, somente quando configurada no próprio formulário. */
+.cassiellos-public-flow[data-chronos=true]{background:#fff;font-family:Lato,Arial,system-ui,sans-serif}
+.cassiellos-public-flow[data-chronos=true] .cpf-shell{max-width:660px}
+.cassiellos-public-flow[data-chronos=true] .cpf-card{box-shadow:none;border-color:#e7eaee}
+.cassiellos-public-flow[data-chronos=true] .cpf-primary{background:#e87825;border-radius:7px}
+.cassiellos-public-flow[data-chronos=true] .cpf-primary:hover{background:#bc5717}
+.cassiellos-public-flow[data-chronos=true] .cpf-progress span{background:#e87825}
+.cpf-cover{display:flex;flex-direction:column;align-items:flex-start;gap:15px}
+.cpf-cover h1{max-width:560px!important;font-size:clamp(27px,4.8vw,42px)!important;line-height:1.17!important;letter-spacing:-.045em!important;margin:0 0 2px!important}
+.cpf-cover ul{list-style:none;display:grid;gap:11px;margin:2px 0 5px;padding:0;width:100%;color:#303a49;font-size:15px}
+.cpf-cover ul li{margin:0;max-width:530px;white-space:normal}
+.cpf-cover-qualifier{font-size:13px!important;color:#536273!important;margin:2px 0 5px!important;max-width:520px}
+.cpf-cover .cpf-primary{min-width:180px;text-transform:uppercase;letter-spacing:.01em}
+.cpf-contact-already{margin:7px 0!important;font-size:13px!important;color:#4f6071!important}
+.cpf-contact-already strong{color:#17263c}
+@media(max-width:560px){.cpf-cover h1{font-size:29px!important}.cpf-cover ul li{font-size:13px}}

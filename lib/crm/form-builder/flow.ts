@@ -4,14 +4,19 @@
  * Rascunhos ficam separados da versão publicada.
  */
 import { validateDiagramLayout } from './diagram'
+import { validateBrazilianPhone } from '../contact-validation'
+import { isValidWebPresence } from '../booking-forms'
 
 export type FlowOutcome = 'qualified' | 'limited' | 'other'
+export type FlowCover = { headline: string; bullets: [string,string,string]; qualifier: string; cta: string }
 export type FlowQuestion = {
   id: string
   type: 'question'
   title: string
   description: string
   input: 'text' | 'select'
+  /** Formato semântico opcional; formulários anteriores continuam com texto livre. */
+  field?: 'name' | 'phone' | 'website'
   required: boolean
   options: string[]
   next: string
@@ -27,7 +32,7 @@ export type FlowResult = {
   actionHref: string
 }
 export type FlowStep = FlowQuestion | FlowResult
-export type FlowDefinition = { start: string; steps: FlowStep[]; layout?: Record<string, { x: number; y: number }> }
+export type FlowDefinition = { start: string; steps: FlowStep[]; cover?: FlowCover; layout?: Record<string, { x: number; y: number }> }
 export type FlowDocument = {
   id: string; title: string; slug: string; description: string; status: 'draft' | 'published'
   revision: number; publishedVersion: number; draft: FlowDefinition; published: FlowDefinition | null
@@ -54,6 +59,18 @@ export function validateFlow(raw: unknown): FlowValidation {
   const f = raw as Record<string, unknown>
   if (!Array.isArray(f.steps) || f.steps.length < 2 || f.steps.length > FLOW_MAX_STEPS) return { ok: false, issues: ['O fluxo precisa ter de 2 a 24 etapas.'] }
   if (typeof f.start !== 'string' || !ID.test(f.start)) problems.push('A etapa inicial é inválida.')
+  let cover:FlowCover|undefined
+  if (f.cover !== undefined) {
+    const c=f.cover
+    if(!c||typeof c!=='object'||Array.isArray(c)) problems.push('Capa do formulário inválida.')
+    else {
+      const v=c as Record<string,unknown>
+      if(!plain(v.headline,160)||!plain(v.cta,60)||!plain(v.qualifier,240)||
+        !Array.isArray(v.bullets)||v.bullets.length!==3||v.bullets.some(b=>!plain(b,100))) {
+        problems.push('Headline, destaques ou botão da capa inválidos.')
+      }else cover={headline:v.headline as string,bullets:v.bullets as [string,string,string],qualifier:v.qualifier as string,cta:v.cta as string}
+    }
+  }
   const ids = new Set<string>()
   const steps: FlowStep[] = []
   for (const [i, item] of f.steps.entries()) {
@@ -72,7 +89,9 @@ export function validateFlow(raw: unknown): FlowValidation {
       steps.push({ id: s.id, type: 'result', title: s.title, description: s.description, outcome: s.outcome as FlowOutcome,
         actionLabel: s.actionLabel, actionHref: s.actionHref as string })
     } else if (s.type === 'question') {
-      if (!['text', 'select'].includes(String(s.input)) || typeof s.required !== 'boolean' ||
+      if (!['text', 'select'].includes(String(s.input)) ||
+          (s.field !== undefined && !['name','phone','website'].includes(String(s.field))) ||
+          (s.field !== undefined && s.input !== 'text') || typeof s.required !== 'boolean' ||
           typeof s.next !== 'string' || !Array.isArray(s.branches) || s.branches.length > 12) {
         problems.push('Pergunta inválida em ' + s.id); continue
       }
@@ -93,7 +112,8 @@ export function validateFlow(raw: unknown): FlowValidation {
         branches.push({ answer: b.answer, to: b.to })
       }
       steps.push({ id: s.id, type: 'question', title: s.title, description: s.description,
-        input: s.input as 'select' | 'text', required: s.required, options: options as string[],
+        input: s.input as 'select' | 'text', ...(s.field === undefined ? {} : {field:s.field as FlowQuestion['field']}),
+        required: s.required, options: options as string[],
         next: s.next, branches })
     } else problems.push('Tipo de etapa inválido em ' + s.id)
   }
@@ -128,7 +148,7 @@ export function validateFlow(raw: unknown): FlowValidation {
   const layout = validateDiagramLayout(f.layout, ids)
   if (layout === null) problems.push('Posições do fluxograma inválidas.')
   return problems.length ? { ok: false, issues: [...new Set(problems)] } :
-    { ok: true, flow: { start: f.start as string, steps, ...(f.layout === undefined ? {} : { layout: layout! }) } }
+    { ok: true, flow: { start: f.start as string, steps, ...(cover ? {cover} : {}), ...(f.layout === undefined ? {} : { layout: layout! }) } }
 }
 
 export type RoutedAnswers = { result: FlowResult; path: string[]; answers: Record<string, string> }
@@ -152,6 +172,8 @@ export function routeFlow(flow: FlowDefinition, rawAnswers: unknown): RoutedAnsw
     const raw = input[step.id]
     const answer = typeof raw === 'string' ? raw.trim() : ''
     if ((step.required && answer.length < 2) || answer.length > 160 || (step.input === 'select' && !step.options.includes(answer))) return null
+    if(step.field === 'phone' && !validateBrazilianPhone(answer).ok) return null
+    if(step.field === 'website' && !isValidWebPresence(answer)) return null
     accepted[step.id] = answer
     id = step.branches.find(b => b.answer === answer)?.to || step.next
   }
