@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe,it } from 'node:test'
-import { diagramModel,diagramPorts,validateDiagramLayout } from './diagram'
+import { diagramModel,diagramPorts,validateDiagramLayout,removeDiagramStep } from './diagram'
 import { newFlowTemplate, routeFlow, validateFlow } from './flow'
 
 describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
@@ -46,6 +46,34 @@ describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
     assert.equal(validateFlow(flow).ok,false)
     assert.equal(validateDiagramLayout({budget:{x:12.8,y:20.1}},new Set(['budget']))?.budget.x,13)
     assert.equal(validateDiagramLayout({budget:{x:100000,y:3}},new Set(['budget'])),null)
+  })
+  it('impede excluir resultado conectado e nunca converte Não em lead qualificado silenciosamente',()=>{
+    const flow=sample()
+    const before=JSON.stringify(flow)
+    const denied=removeDiagramStep(flow,'limited')
+    assert.equal(denied.ok,false)
+    if(!denied.ok)assert.match(denied.issues.join(' '),/resposta "Não"/)
+    assert.equal(JSON.stringify(flow),before)
+    assert.equal(routeFlow(flow,{clinic:'Escola A',revenue:'Até R$ 10 mil',budget:'Não'})?.result.outcome,'limited')
+    const budget=flow.steps.find(s=>s.id==='budget')
+    if(!budget||budget.type!=='question')throw Error('missing budget')
+    budget.branches=[]
+    const permitted=removeDiagramStep(flow,'limited')
+    assert.equal(permitted.ok,true)
+    if(permitted.ok){
+      assert.equal(permitted.flow.steps.some(s=>s.id==='limited'),false)
+      assert.equal(validateFlow(permitted.flow).ok,true)
+    }
+  })
+  it('troca a etapa inicial somente com confirmação explícita no editor',()=>{
+    const flow=sample()
+    const removal=removeDiagramStep(flow,'clinic')
+    assert.equal(removal.ok,true)
+    if(removal.ok){
+      assert.equal(removal.startChanged,true)
+      assert.equal(removal.flow.start,'revenue')
+      assert.equal(validateFlow(removal.flow).ok,true)
+    }
   })
   it('permite construir uma bifurcação adicional sem modificar os demais destinos',()=>{
     const flow=sample()
