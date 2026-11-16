@@ -174,7 +174,7 @@ export default function FormsPanel(){
       <div className="crm-card crm-forms-meta">
         <div className="crm-forms-fields">
           <label>Nome<input value={title} maxLength={120} onChange={e=>{setTitle(e.target.value);setDirty(true)}}/></label>
-          <label>URL amigável<input value={slug} maxLength={70} onChange={e=>{setSlug(e.target.value);setDirty(true)}}/></label>
+          <label>URL amigável<input value={slug} disabled={selected.status==='published'} title={selected.status==='published'?'Despublique antes de alterar o endereço público.':undefined} maxLength={70} onChange={e=>{setSlug(e.target.value);setDirty(true)}}/></label>
           <label className="crm-forms-wide">Descrição curta<input value={description} maxLength={400} onChange={e=>{setDescription(e.target.value);setDirty(true)}}/></label>
         </div>
         <div className="crm-forms-toolbar">
