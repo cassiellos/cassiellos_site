@@ -217,6 +217,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
           const isSelected=selectedStep===node.id
           const isOrphan=!model.reachable.has(node.id)
           const question=step.type==='question'?step:null
+          const outcome=step.type==='result'?step.outcome:null
           const used=new Set(question?.branches.map(b=>b.answer)||[])
           const unbranched=question?.input==='select'?question.options.filter(x=>!used.has(x)):[]
           return <div key={node.id} className="cvf-node" style={{left:pos.x,top:pos.y,width:node.w,height:node.h}}
@@ -254,8 +255,8 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
                 </select>
               </div>}
             </div>:<div className="cvf-node-final">
-              <span className={'cvf-result-pill cvf-result-'+step.outcome}>
-                {step.outcome==='qualified'?'Orçamento compatível':step.outcome==='limited'?'Orçamento limitado':'Outro resultado'}
+              <span className={'cvf-result-pill cvf-result-'+outcome}>
+                {outcome==='qualified'?'Orçamento compatível':outcome==='limited'?'Orçamento limitado':'Outro resultado'}
               </span>
               <span>Etapa final do caminho</span>
             </div>}
