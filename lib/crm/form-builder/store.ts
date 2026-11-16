@@ -6,11 +6,13 @@ export class FlowStoreError extends Error {
 }
 type DbRow = { id: string; title: string; slug: string; description: string; status: 'draft'|'published';
   revision: number; published_version: number; draft: FlowDefinition; published: FlowDefinition | null;
+  published_meta: { title:string; description:string } | null;
   created_at: Date | string; updated_at: Date | string }
-const SELECT = 'id,title,slug,description,status,revision,published_version,draft,published,created_at,updated_at'
+const SELECT = 'id,title,slug,description,status,revision,published_version,draft,published,published_meta,created_at,updated_at'
 const normalize = (r: DbRow): FlowDocument => ({
   id: r.id,title: r.title,slug: r.slug,description: r.description,status: r.status,
   revision: r.revision,publishedVersion: r.published_version,draft: r.draft,published: r.published,
+  publishedMeta: r.published_meta,
   createdAt: new Date(r.created_at).toISOString(),updatedAt: new Date(r.updated_at).toISOString(),
 })
 function mapped(error: unknown): never {
@@ -83,11 +85,11 @@ export async function changeFlowDocument(db: Pool,input:{id:string;revision:numb
     }else if(input.action==='publish'){
       const validation=validateFlow(current.draft)
       if(!validation.ok)throw new FlowStoreError('INVALID')
-      const updated=await client.query<DbRow>(`UPDATE crm.form_flows SET status='published',published=draft,published_version=published_version+1,
+      const updated=await client.query<DbRow>(`UPDATE crm.form_flows SET status='published',published=draft,published_meta=jsonb_build_object('title',title,'description',description),published_version=published_version+1,
         published_at=now(),revision=$2,updated_at=now() WHERE id=$1 RETURNING ${SELECT}`,[input.id,nextRevision])
       after=updated.rows[0];auditAction='published'
     }else if(input.action==='unpublish'){
-      const updated=await client.query<DbRow>(`UPDATE crm.form_flows SET status='draft',published=NULL,published_at=NULL,
+      const updated=await client.query<DbRow>(`UPDATE crm.form_flows SET status='draft',published=NULL,published_meta=NULL,published_at=NULL,
         revision=$2,updated_at=now() WHERE id=$1 RETURNING ${SELECT}`,[input.id,nextRevision])
       after=updated.rows[0];auditAction='unpublished'
     }else throw new FlowStoreError('INVALID')
