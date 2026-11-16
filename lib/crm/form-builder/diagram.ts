@@ -169,3 +169,22 @@ export function removeDiagramStep(flow: FlowDefinition,id: string): StepRemoval 
     ...(layout===undefined?{}:{layout}),
   }}
 }
+
+/**
+ * Camera inicial calculada somente após medir o viewport REAL do canvas.
+ * Quando o fluxo não cabe nem no zoom mínimo (especialmente no celular),
+ * focaliza a primeira etapa em vez de posicionar o grafo inteiro fora da tela.
+ * Independente de DOM para permitir teste da matemática em Node.
+ */
+export type DiagramCamera = { x: number; y: number; zoom: number }
+export function fitDiagramCamera(model:DiagramModel,viewport:{w:number;h:number},startId:string,minZoom=.2):DiagramCamera {
+  const w=Math.max(1,viewport.w),h=Math.max(1,viewport.h)
+  const zoom=Math.min(1,Math.max(minZoom,Math.min((w-48)/model.width,(h-52)/model.height)))
+  const allFit=model.width*zoom<=w-12 && model.height*zoom<=h-12
+  if(allFit){
+    return {zoom,x:(w-model.width*zoom)/2-model.minX*zoom,y:(h-model.height*zoom)/2-model.minY*zoom}
+  }
+  const first=model.nodes.find(n=>n.id===startId)||model.nodes[0]
+  if(!first)return {zoom,x:24,y:24}
+  return {zoom,x:w/2-(first.x+first.w/2)*zoom,y:h/2-(first.y+first.h/2)*zoom}
+}

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useId, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
+import { useLayoutEffect, useId, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import type { FlowDefinition, FlowQuestion } from '@/lib/crm/form-builder/flow'
-import { diagramModel, NODE_WIDTH, PORT_TOP, PORT_HEIGHT, type DiagramPoint, type DiagramNode } from '@/lib/crm/form-builder/diagram'
+import { diagramModel, fitDiagramCamera, NODE_WIDTH, PORT_TOP, PORT_HEIGHT, type DiagramPoint, type DiagramNode } from '@/lib/crm/form-builder/diagram'
 import './forms-flow-canvas.css'
 
 type PendingConnection = { source: string; answer: string | null; label: string }
@@ -16,7 +16,7 @@ type Props = {
   onRemoveBranch: (sourceId: string, answer: string) => void
   onResetLayout: () => void
 }
-const MIN_ZOOM = .3
+const MIN_ZOOM = .2
 const MAX_ZOOM = 1.6
 const WIDTH = NODE_WIDTH
 const clamp = (value:number,min:number,max:number) => Math.min(max,Math.max(min,value))
@@ -33,9 +33,13 @@ function shortLabel(name:string) {
 
 export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onConnect,onRemoveBranch,onResetLayout}:Props) {
   const model = useMemo(()=>diagramModel(flow),[flow])
+  const modelRef=useRef(model)
+  modelRef.current=model
   const stage = useRef<HTMLDivElement>(null)
-  const [size,setSize] = useState({w:930,h:650})
-  const [camera,setCamera] = useState<Camera>({x:26,y:28,zoom:.8})
+  const [size,setSize] = useState({w:0,h:0})
+  const [camera,setCamera] = useState<Camera>({x:26,y:28,zoom:1})
+  const [measured,setMeasured] = useState(false)
+  const cameraTouched = useRef(false)
   const [pending,setPending] = useState<PendingConnection|null>(null)
   const [temp,setTemp] = useState<Record<string,DiagramPoint>>({})
   const [notice,setNotice] = useState('')
@@ -46,31 +50,54 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
   const nodesById = useMemo(()=>new Map(model.nodes.map(node=>[node.id,node])),[model.nodes])
   const positions = useMemo(()=>new Map(model.nodes.map(n=>[n.id,{...n,...(temp[n.id]||{})}])),[model.nodes,temp])
 
-  useEffect(()=>{
-    const node=stage.current
-    if(!node)return
-    const measure=()=>setSize({w:Math.max(300,node.clientWidth),h:Math.max(300,node.clientHeight)})
+  // Initial fit only after the stage has a measurable rendered box. A zero-width or
+  // temporary hidden viewport must never set the initial camera or mark fit complete.
+  // Observe actual layout, not the guessed 930px initial state.
+  const stepStructure = flow.start+'|'+flow.steps.map(s=>s.id).join('|')
+  useLayoutEffect(()=>{
+    const el=stage.current
+    if(!el)return
+    let disposed=false
+    let raf=0
+    let lastW=0,lastH=0
+    const measure=()=>{
+      cancelAnimationFrame(raf)
+      raf=requestAnimationFrame(()=>{
+        if(disposed)return
+        const rect=el.getBoundingClientRect()
+        const w=Math.round(rect.width),h=Math.round(rect.height)
+        if(w<80||h<80)return
+        if(w===lastW&&h===lastH)return
+        lastW=w;lastH=h
+        setSize({w,h})
+        if(!cameraTouched.current){
+          setCamera(fitDiagramCamera(modelRef.current,{w,h},flow.start,MIN_ZOOM))
+        }
+        setMeasured(true)
+      })
+    }
+    // Both observers cover lazy-mounted tabs and first-paint layout shifts.
     measure()
-    if(typeof ResizeObserver==='undefined')return
-    const obs=new ResizeObserver(measure)
-    obs.observe(node)
-    return ()=>obs.disconnect()
-  },[])
+    const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(measure):null
+    observer?.observe(el)
+    const visibility=typeof IntersectionObserver!=='undefined'?new IntersectionObserver(entries=>{
+      if(entries.some(e=>e.isIntersecting))measure()
+    }):null
+    visibility?.observe(el)
+    return ()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();visibility?.disconnect()}
+  },[stepStructure])
 
   const fit=()=>{
-    const zoom=clamp(Math.min((size.w-74)/model.width,(size.h-68)/model.height),MIN_ZOOM,1)
-    setCamera({zoom,x:(size.w-model.width*zoom)/2-model.minX*zoom,
-      y:(size.h-model.height*zoom)/2-model.minY*zoom})
+    const rect=stage.current?.getBoundingClientRect()
+    const actual={w:Math.round(rect?.width||size.w),h:Math.round(rect?.height||size.h)}
+    if(actual.w<80||actual.h<80)return
+    cameraTouched.current=true
+    setSize(actual)
+    setCamera(fitDiagramCamera(model,actual,flow.start,MIN_ZOOM))
+    setMeasured(true)
   }
-  // Refit when the editor opens or a new step is added, but never when someone types
-  // into a question or repositions a card.
-  useEffect(()=>{
-    const zoom=clamp(Math.min((size.w-74)/model.width,(size.h-68)/model.height),MIN_ZOOM,1)
-    setCamera({zoom,x:(size.w-model.width*zoom)/2-model.minX*zoom,
-      y:(size.h-model.height*zoom)/2-model.minY*zoom})
-  },[flow.start,flow.steps.length,size.w,size.h])
-
   function zoomAt(amount:number){
+    cameraTouched.current=true
     setCamera(prev=>{
       const next=clamp(prev.zoom*amount,MIN_ZOOM,MAX_ZOOM)
       const x=(size.w/2-prev.x)/prev.zoom
@@ -80,6 +107,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
   }
   function onWheel(e:WheelEvent<HTMLDivElement>){
     e.preventDefault()
+    cameraTouched.current=true
     if(e.ctrlKey||e.metaKey){
       const rect=stage.current?.getBoundingClientRect()
       const px=e.clientX-(rect?.left||0)
@@ -96,6 +124,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
     if(e.button!==0)return
     if((e.target as Element).closest('.cvf-node'))return
     if((e.target as Element).closest('.cvf-tool'))return
+    cameraTouched.current=true
     pointerPan.current={x:e.clientX,y:e.clientY,originX:camera.x,originY:camera.y}
     e.currentTarget.setPointerCapture(e.pointerId)
   }
@@ -108,6 +137,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
 
   function startMove(e:PointerEvent<HTMLButtonElement>,node:DiagramNode){
     if(e.button!==0 || pending)return
+    cameraTouched.current=true
     e.stopPropagation()
     dragging.current={id:node.id,startX:e.clientX,startY:e.clientY,
       originX:positions.get(node.id)?.x??node.x,originY:positions.get(node.id)?.y??node.y,moved:false}
@@ -185,9 +215,10 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
         <button className="cvf-tool cvf-reset" type="button" onClick={()=>{
           if(Object.keys(flow.layout||{}).length&&!window.confirm('Restaurar a organização automática dos cartões? A mudança ficará no rascunho até você salvar.'))return
           const auto=diagramModel({...flow,layout:undefined})
-          const zoom=clamp(Math.min((size.w-74)/auto.width,(size.h-68)/auto.height),MIN_ZOOM,1)
+          const rect=stage.current?.getBoundingClientRect()
+          const actual={w:Math.round(rect?.width||size.w),h:Math.round(rect?.height||size.h)}
           setTemp({});moveCache.current={};onResetLayout()
-          setCamera({zoom,x:(size.w-auto.width*zoom)/2-auto.minX*zoom,y:(size.h-auto.height*zoom)/2-auto.minY*zoom})
+          if(actual.w>=80&&actual.h>=80){cameraTouched.current=true;setCamera(fitDiagramCamera(auto,actual,flow.start,MIN_ZOOM))}
         }}>Organizar</button>
       </div>
     </div>
@@ -196,10 +227,10 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
       <button type="button" onClick={()=>{setPending(null);setNotice('')}}>Cancelar ligação ×</button>
     </div>}
     {notice&&!pending&&<div className="cvf-notice" role="status">{notice}</div>}
-    <div ref={stage} className="cvf-stage" tabIndex={0}
+    <div ref={stage} className="cvf-stage" tabIndex={0} data-measured={measured}
       onPointerDown={startPan} onPointerMove={panMove} onPointerUp={finishPan} onPointerCancel={finishPan}
       onWheel={onWheel} aria-label="Área do fluxograma. Arraste o fundo para navegar; Ctrl mais rolagem para zoom.">
-      <div className="cvf-world" style={{width:model.width,height:model.height,
+      <div className="cvf-world" style={{visibility:measured?'visible':'hidden',width:model.width,height:model.height,
         transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
         <svg aria-hidden="true" className="cvf-lines" width="100%" height="100%"
           style={{position:'absolute',left:0,top:0,overflow:'visible',pointerEvents:'none'}}>
@@ -271,6 +302,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
           </div>
         })}
       </div>
+      {!measured&&<div className="cvf-stage-loading" role="status">Preparando visualização do fluxograma…</div>}
       <div className="cvf-stage-tip">Arraste os cartões · Arraste o fundo · Clique na saída e depois no destino · Ctrl/⌘ + rolar para ampliar</div>
     </div>
     <div className="cvf-legend"><span><i className="cvf-green"/> Resposta Sim</span><span><i className="cvf-amber"/> Resposta Não</span><span><i className="cvf-slate"/> Caminho padrão</span><span className="cvf-foot-tip">As mudanças só afetam o rascunho até você publicar.</span></div>
