@@ -12,11 +12,12 @@ import AvailabilityPanel from './availability-panel'
 import MetaHomologationPanel from './meta-homologation-panel'
 import NotificationsPanel from './notifications-panel'
 import FinancePanel from './finance-panel'
+import FormsPanel from './forms-panel'
 import NeonUsageMonitor from './neon-usage-monitor'
 import IntelApp from './inteligencia/intel-app'
 import type { IntelArea } from '@/lib/crm/intel/view-types'
 
-type View = 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'notificacoes' | 'relatorios' | 'configuracoes' | 'financeiro' | `intel-${IntelArea}`
+type View = 'formularios' | 'dashboard' | 'leads' | 'agenda' | 'disponibilidade' | 'funil' | 'conversoes' | 'notificacoes' | 'relatorios' | 'configuracoes' | 'financeiro' | `intel-${IntelArea}`
 const intelNavigation: { id: `intel-${IntelArea}`; label: string; icon: string }[] = [
   { id: 'intel-prospeccao', label: 'Prospecção Cassiellos', icon: 'target' },
   { id: 'intel-agencia', label: 'Visão geral da agência', icon: 'chart' },
@@ -39,6 +40,7 @@ const intelRealDescriptions: Record<IntelArea, string> = {
 const navigation: { id: View; label: string; icon: string; count?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
   { id: 'leads', label: 'Leads', icon: 'users' },
+  { id: 'formularios', label: 'Formulários', icon: 'funnel' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'disponibilidade', label: 'Disponibilidade', icon: 'clock' },
   { id: 'funil', label: 'Funil comercial', icon: 'funnel' },
@@ -73,7 +75,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 }
 
 const sectionNames: Record<View, string> = {
-  dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações', financeiro: 'Financeiro',
+  formularios: 'Formulários', dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações', financeiro: 'Financeiro',
   'intel-prospeccao': 'Prospecção Cassiellos', 'intel-agencia': 'Visão geral da agência', 'intel-cliente': 'Visão do cliente', 'intel-conexoes': 'Conexões e integrações',
 }
 
@@ -90,6 +92,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { setFocusLead(id); setView('leads') }
     else if (params.get('view') === 'notificacoes') setView('notificacoes')
     else if (params.get('view') === 'financeiro') setView('financeiro')
+    else if (params.get('view') === 'formularios') setView('formularios')
     else if (intelEnabled && intelNavigation.some(item => item.id === params.get('view'))) setView(params.get('view') as View)
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/crm-sw.js', { scope: '/crm', updateViaCache: 'none' }).catch(() => undefined)
     fetch('/api/crm/push', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
@@ -99,7 +102,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     setView(next)
     setSearch('')
     const url = new URL(window.location.href)
-    if (next.startsWith('intel-')) {
+    if (next.startsWith('intel-') || next === 'formularios') {
       url.searchParams.delete('lead')
       url.searchParams.set('view', next)
     } else {
@@ -135,7 +138,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
+            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'formularios' ? 'Crie jornadas editáveis, bifurcações e resultados diferentes por capacidade de investimento.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
             <div className="crm-controls">
               {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
@@ -145,6 +148,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
           {intelArea && <IntelApp embeddedArea={intelArea} initialMode={intelMode} sandboxMode={intelSandbox} onNavigateArea={area => openView(`intel-${area}`)}/>}
           {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>INTEGRAÇÃO COMERCIAL HABILITADA</strong> Pixel, eventos Chronos e CAPI foram ativados na Preview em 03/11/2026. Esta tela não consulta a Meta nem as variáveis da Vercel em tempo real; a deduplicação e as conversões reais ainda dependem de verificação externa.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
+          {view === 'formularios' && <FormsPanel/>}
           {view === 'leads' && <RealLeadsPanel search={search} focusLeadId={focusLead}/>}
 
           {view === 'agenda' && <><RealAgendaPanel/><StuckReservations/></>}
