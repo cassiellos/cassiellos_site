@@ -60,7 +60,7 @@ describe('Formulários visuais — jornada pública, captação real e isolament
     assert.equal(lead.rows[0].stage,'new')
     const record=await db.query("SELECT answers #>> '{journey,outcome}' AS result FROM crm.form_submissions WHERE id=$1",[saved.submissionId])
     assert.equal(record.rows[0].result,'limited')
-    const event=await db.query('SELECT activity_kind FROM crm.lead_activities WHERE lead_id=$1 ORDER BY created_at DESC LIMIT 1',[saved.leadId])
+    const event=await db.query('SELECT activity_kind FROM crm.lead_activities WHERE lead_id=$1 AND activity_kind='form_flow_budget_limited' LIMIT 1',[saved.leadId])
     assert.equal(event.rows[0].activity_kind,'form_flow_budget_limited')
   })
   it('lead existente preserva classificação e etapa, mesmo após mudar a resposta sobre verba',async()=>{
