@@ -225,6 +225,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
             role="group" aria-label={step.title}>
             <button className="cvf-node-drag" type="button" aria-label={'Selecionar ou arrastar: '+step.title}
               title="Clique para editar ou arraste para mover no mapa"
+              onClick={e=>e.stopPropagation()}
               onPointerDown={e=>startMove(e,node)}
               onPointerMove={moveNode} onPointerUp={finishMove} onPointerCancel={finishMove}>
               <span className="cvf-node-number">{String(i+1).padStart(2,'0')}{flow.start===node.id?' · INÍCIO':''}</span>
