@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe,it } from 'node:test'
-import { diagramModel,diagramPorts,validateDiagramLayout,removeDiagramStep } from './diagram'
+import { diagramModel,diagramPorts,validateDiagramLayout,fitDiagramCamera,removeDiagramStep } from './diagram'
 import { newFlowTemplate, routeFlow, validateFlow } from './flow'
 
 describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
@@ -30,6 +30,38 @@ describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
     assert.equal(model.reachable.has('limited'),false)
     assert.equal(model.nodes.find(n=>n.id==='limited')?.depth,
       Math.max(...model.nodes.filter(n=>model.reachable.has(n.id)).map(n=>n.depth))+1)
+  })
+  it('enquadra o fluxo ao medir um canvas desktop e mantém algum cartão visível',()=>{
+    const model=diagramModel(sample())
+    const viewport={w:1200,h:610}
+    const camera=fitDiagramCamera(model,viewport,'clinic')
+    assert.ok(camera.zoom>=.2&&camera.zoom<=1)
+    const first=model.nodes.find(n=>n.id==='clinic')!
+    const sx=camera.x+first.x*camera.zoom
+    const sy=camera.y+first.y*camera.zoom
+    assert.ok(sx+first.w*camera.zoom>0&&sx<viewport.w)
+    assert.ok(sy+first.h*camera.zoom>0&&sy<viewport.h)
+    assert.ok(Number.isFinite(camera.x)&&Number.isFinite(camera.y))
+  })
+  it('focaliza a etapa inicial no celular quando não cabe o diagrama inteiro',()=>{
+    const model=diagramModel(sample())
+    const viewport={w:414,h:480}
+    const camera=fitDiagramCamera(model,viewport,'clinic')
+    const first=model.nodes.find(n=>n.id==='clinic')!
+    const centerX=camera.x+(first.x+first.w/2)*camera.zoom
+    const centerY=camera.y+(first.y+first.h/2)*camera.zoom
+    assert.ok(centerX>0&&centerX<viewport.w)
+    assert.ok(centerY>0&&centerY<viewport.h)
+    assert.ok(camera.zoom>=.2,'mobile camera must remain navigable')
+  })
+  it('não enquadra fora da área mesmo com posições personalizadas extremas',()=>{
+    const flow=sample()
+    flow.layout={clinic:{x:-2400,y:-1800},qualified:{x:6500,y:6200}}
+    const model=diagramModel(flow)
+    const camera=fitDiagramCamera(model,{w:670,h:500},'clinic')
+    const first=model.nodes.find(n=>n.id==='clinic')!
+    assert.ok(camera.x+first.x*camera.zoom>=-first.w*camera.zoom)
+    assert.ok(camera.y+first.y*camera.zoom>=-first.h*camera.zoom)
   })
   it('valida posições por ID, tamanho e faixa antes de persistir no JSONB',()=>{
     const flow=sample()
