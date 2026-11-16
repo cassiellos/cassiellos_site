@@ -231,6 +231,15 @@ export default function FormsPanel(){
         </div>
         {selected.status==='published'&&<p><a href={'/formularios/'+selected.slug} target="_blank" rel="noopener noreferrer">Abrir versão publicada ↗</a> · Alterações no rascunho não afetam este link até publicar novamente.</p>}
       </div>
+      {draft.cover&&<div className="crm-card crm-forms-cover-editor">
+        <div className="crm-forms-cover-heading"><strong>CAPA DO FORMULÁRIO · MODELO CHRONOS</strong><small>Esta apresentação aparece antes da primeira pergunta.</small></div>
+        <label>Headline<input maxLength={160} value={draft.cover.headline} onChange={e=>edit(d=>{if(d.cover)d.cover.headline=e.target.value})}/></label>
+        <div className="crm-forms-cover-bullets">{draft.cover.bullets.map((bullet,i)=><label key={i}>Destaque {i+1}
+          <input maxLength={100} value={bullet} onChange={e=>edit(d=>{if(d.cover)d.cover.bullets[i]=e.target.value})}/>
+        </label>)}</div>
+        <label>Filtro de qualificação (rodapé em itálico)<textarea rows={2} maxLength={240} value={draft.cover.qualifier} onChange={e=>edit(d=>{if(d.cover)d.cover.qualifier=e.target.value})}/></label>
+        <label>Botão da capa<input maxLength={60} value={draft.cover.cta} onChange={e=>edit(d=>{if(d.cover)d.cover.cta=e.target.value})}/></label>
+      </div>}
       {validation&&!validation.ok&&<div className="crm-forms-invalid" role="alert"><strong>Revise o fluxo antes de salvar:</strong><ul>{validation.issues.map((issue,i)=><li key={i}>{issue}</li>)}</ul></div>}
       <div className="crm-forms-view-tabs" role="group" aria-label="Modo de visualização do construtor">
         <button type="button" data-active={viewMode==='flow'} aria-pressed={viewMode==='flow'} onClick={()=>setViewMode('flow')}>◈ Fluxograma interativo</button>
@@ -261,10 +270,13 @@ export default function FormsPanel(){
             <label>Texto de apoio<textarea rows={3} maxLength={500} value={active.description} onChange={e=>updateStep({description:e.target.value})}/></label>
             {active.type==='question'?<>
               <div className="crm-forms-columns">
-                <label>Tipo de resposta<select value={active.input} onChange={e=>updateQuestion({input:e.target.value as 'text'|'select',options:e.target.value==='select'?['Sim','Não']:[],branches:[]})}>
+                <label>Tipo de resposta<select value={active.input} onChange={e=>updateQuestion({input:e.target.value as 'text'|'select',field:undefined,options:e.target.value==='select'?['Sim','Não']:[],branches:[]})}>
                   <option value="select">Múltipla escolha</option><option value="text">Texto curto</option></select></label>
                 <label className="crm-forms-check"><input type="checkbox" checked={active.required} onChange={e=>updateQuestion({required:e.target.checked})}/>Obrigatória</label>
               </div>
+              {active.input==='text'&&<label>Formato da resposta<select value={active.field||''} onChange={e=>updateQuestion({field:e.target.value?e.target.value as FlowQuestion['field']:undefined})}>
+                <option value="">Texto livre</option><option value="name">Nome da pessoa</option><option value="phone">Telefone com DDD</option><option value="website">Instagram ou site</option>
+              </select></label>}
               {active.input==='select'&&<label>Alternativas (uma por linha)<textarea key={active.id} rows={4} defaultValue={active.options.join('\n')} onChange={e=>{
                 const options=e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)
                 updateQuestion({options,branches:active.branches.filter(b=>options.includes(b.answer))})}}/>
