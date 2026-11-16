@@ -92,6 +92,8 @@ export type LeadSubmissionInput = {
   /** Classificação aplicada SOMENTE se o lead for criado agora. */
   newLeadIsTest: boolean
   bookingMode: string
+  /** Resultado da jornada visual; nunca altera a etapa de leads antigos. */
+  flow?: { id: string; version: number; outcome: 'qualified' | 'limited' | 'other'; path: string[] }
   /**
    * Resultado da verificação antiabuso feita NO SERVIDOR antes da gravação
    * (Fase 3 / item 4). Só envios com turnstile 'verified' podem confirmar reunião.
@@ -197,6 +199,7 @@ export async function saveLeadSubmission(
           niche: input.niche, formSlug: input.formSlug,
           contact: { name: input.name, email, whatsapp: input.phone },
           questions: input.answers, attribution: attributionForStorage(input.attribution, input.marketing),
+          ...(input.flow ? { journey: input.flow } : {}),
           serviceRequest: { basis: 'pre_contractual_request', noticeVersion: LEAD_POLICY_VERSION },
           ...(input.protection ? { protection: input.protection } : {}),
           // Only the yes/no choice is stored; never browser identifiers (decision C2).
@@ -254,6 +257,18 @@ export async function saveLeadSubmission(
         })]
         : [leadId, 'form_completed', JSON.stringify(baseDetails)],
     )
+    if (input.flow) {
+      // Event-like classification is atomic with the submission, including resubmits.
+      // The CRM stage of an existing lead is intentionally preserved.
+      await client.query(
+        `INSERT INTO crm.lead_activities (lead_id,activity_kind,performed_by,details)
+         VALUES ($1,$2,'public_flow',$3::jsonb)`,
+        [leadId, input.flow.outcome === 'limited' ? 'form_flow_budget_limited'
+          : input.flow.outcome === 'qualified' ? 'form_flow_qualified' : 'form_flow_other',
+          JSON.stringify({submissionId,formSlug:input.formSlug,flowId:input.flow.id,
+            flowVersion:input.flow.version,outcome:input.flow.outcome,path:input.flow.path})],
+      )
+    }
     await client.query('COMMIT')
     committed = true
     return { leadId, submissionId, reused: false, resubmitted: Boolean(plan), isTest, leadEventId }
