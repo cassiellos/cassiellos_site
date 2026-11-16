@@ -13,6 +13,7 @@ type Props = {
   onSelect: (id: string) => void
   onMove: (id: string, point: DiagramPoint) => void
   onConnect: (sourceId: string, answer: string | null, targetId: string) => boolean
+  onRemoveBranch: (sourceId: string, answer: string) => void
   onResetLayout: () => void
 }
 const MIN_ZOOM = .3
@@ -30,7 +31,7 @@ function shortLabel(name:string) {
   return name.slice(0,57).trimEnd()+'…'
 }
 
-export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onConnect,onResetLayout}:Props) {
+export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onConnect,onRemoveBranch,onResetLayout}:Props) {
   const model = useMemo(()=>diagramModel(flow),[flow])
   const stage = useRef<HTMLDivElement>(null)
   const [size,setSize] = useState({w:930,h:650})
@@ -234,13 +235,19 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
               <strong>{shortLabel(step.title)}</strong>
             </button>
             {question?<div className="cvf-node-ports">
-              {node.ports.map(port=><button key={port.key} type="button" className="cvf-node-port"
-                style={{'--cvf-color':colorFor(port.label,port.kind)} as React.CSSProperties}
-                aria-label={'Conectar resposta '+port.label+' a outra etapa'}
-                title={port.kind==='default'?'Alterar o destino padrão para as respostas não bifurcadas':'Alterar o destino da resposta '+port.label}
-                onClick={e=>portStart(e,{source:node.id,answer:port.answer,label:port.label})}>
-                <span>{port.label}</span><i aria-hidden="true"/>
-              </button>)}
+              {node.ports.map(port=><div className="cvf-port-row" key={port.key}>
+                <button type="button" className="cvf-node-port"
+                  style={{'--cvf-color':colorFor(port.label,port.kind)} as React.CSSProperties}
+                  aria-label={'Conectar resposta '+port.label+' a outra etapa'}
+                  title={port.kind==='default'?'Alterar o destino padrão para as respostas não bifurcadas':'Alterar o destino da resposta '+port.label}
+                  onClick={e=>portStart(e,{source:node.id,answer:port.answer,label:port.label})}>
+                  <span>{port.label}</span><i aria-hidden="true"/>
+                </button>
+                {port.kind==='branch'&&port.answer&&<button type="button" className="cvf-port-delete"
+                  title={'Retirar bifurcação da resposta '+port.answer}
+                  aria-label={'Retirar bifurcação da resposta '+port.answer}
+                  onClick={e=>{e.stopPropagation();onRemoveBranch(node.id,port.answer!)}}>×</button>}
+              </div>)}
               {unbranched.length>0&&question.input==='select'&&<div className="cvf-add-branch" onClick={e=>e.stopPropagation()}>
                 <select aria-label={'Criar bifurcação em '+step.title} value={freshBranch[node.id]||''}
                   onChange={e=>{
