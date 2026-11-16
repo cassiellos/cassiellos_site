@@ -19,7 +19,7 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
   const doc=await getPublishedFlow(getCrmPool(),slug)
   if(!doc?.published)notFound()
   const cfg=getTurnstileConfig()
-  return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.title}
-    description={doc.description} version={doc.publishedVersion} flow={doc.published}
+  return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.publishedMeta?.title||doc.title}
+    description={doc.publishedMeta?.description||doc.description} version={doc.publishedVersion} flow={doc.published}
     turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null}/>
 }
