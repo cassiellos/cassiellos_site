@@ -79,7 +79,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       setToken(null);setResetSignal(n=>n+1)
     }
   }
-  return <main className="cassiellos-public-flow">
+  return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)}>
     <header className="cpf-header"><a href="/" aria-label="Agência Cassiellos, início">
       <img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></a>
       <span>DIAGNÓSTICO ESTRATÉGICO</span>
