@@ -3,6 +3,8 @@
  * escolhem o destino por conta própria: o backend recalcula todo o percurso.
  * Rascunhos ficam separados da versão publicada.
  */
+import { validateDiagramLayout } from './diagram'
+
 export type FlowOutcome = 'qualified' | 'limited' | 'other'
 export type FlowQuestion = {
   id: string
@@ -25,7 +27,7 @@ export type FlowResult = {
   actionHref: string
 }
 export type FlowStep = FlowQuestion | FlowResult
-export type FlowDefinition = { start: string; steps: FlowStep[] }
+export type FlowDefinition = { start: string; steps: FlowStep[]; layout?: Record<string, { x: number; y: number }> }
 export type FlowDocument = {
   id: string; title: string; slug: string; description: string; status: 'draft' | 'published'
   revision: number; publishedVersion: number; draft: FlowDefinition; published: FlowDefinition | null
@@ -123,8 +125,10 @@ export function validateFlow(raw: unknown): FlowValidation {
   }
   visit(f.start as string)
   if (visited.size !== steps.length) problems.push('Há etapas desconectadas da jornada.')
+  const layout = validateDiagramLayout(f.layout, ids)
+  if (layout === null) problems.push('Posições do fluxograma inválidas.')
   return problems.length ? { ok: false, issues: [...new Set(problems)] } :
-    { ok: true, flow: { start: f.start as string, steps } }
+    { ok: true, flow: { start: f.start as string, steps, ...(f.layout === undefined ? {} : { layout: layout! }) } }
 }
 
 export type RoutedAnswers = { result: FlowResult; path: string[]; answers: Record<string, string> }

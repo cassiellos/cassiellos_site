@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FlowDefinition, FlowDocument, FlowQuestion, FlowResult, FlowStep } from '@/lib/crm/form-builder/flow'
 import { validateFlow } from '@/lib/crm/form-builder/flow'
+import FormsFlowCanvas from './forms-flow-canvas'
+import { removeDiagramStep, type DiagramPoint } from '@/lib/crm/form-builder/diagram'
 import './forms-panel.css'
 
 type ResponseData = { ok?: boolean; forms?: FlowDocument[]; form?: FlowDocument; error?: string; issues?: string[] }
@@ -26,6 +28,7 @@ function errorText(e:unknown){const text=e instanceof Error?e.message:'FAILED';r
 
 export default function FormsPanel(){
   const [forms,setForms]=useState<FlowDocument[]>([])
+  const [viewMode,setViewMode]=useState<'flow'|'steps'>('flow')
   const [selected,setSelected]=useState<FlowDocument|null>(null)
   const [draft,setDraft]=useState<FlowDefinition|null>(null)
   const [title,setTitle]=useState('')
@@ -66,6 +69,46 @@ export default function FormsPanel(){
   function updateStep(patch:Partial<FlowStep>){edit(d=>{const i=d.steps.findIndex(s=>s.id===selectedStep);if(i>=0)d.steps[i]={...d.steps[i],...patch} as FlowStep})}
   function updateQuestion(patch:Partial<FlowQuestion>){updateStep(patch)}
   function updateResult(patch:Partial<FlowResult>){updateStep(patch)}
+  function connectSteps(sourceId:string,answer:string|null,targetId:string):boolean{
+    if(!draft||sourceId===targetId)return false
+    const next=clone(draft)
+    const source=next.steps.find(s=>s.id===sourceId)
+    if(!source||source.type!=='question'||!next.steps.some(s=>s.id===targetId))return false
+    if(answer===null)source.next=targetId
+    else if(source.input==='select'&&source.options.includes(answer)){
+      source.branches=[...source.branches.filter(b=>b.answer!==answer),{answer,to:targetId}]
+    }else return false
+    const checked=validateFlow(next)
+    if(!checked.ok){setMessage('Conexão não aplicada: '+checked.issues.join(' | '));return false}
+    setDraft(next);setDirty(true);setFinish('');setMessage('');setSelectedStep(targetId)
+    return true
+  }
+  function removeBranch(sourceId:string,answer:string){
+    if(!draft)return
+    const source=draft.steps.find(s=>s.id===sourceId)
+    if(!source||source.type!=='question')return
+    const rule=source.branches.find(b=>b.answer===answer)
+    if(!rule)return
+    const previous=draft.steps.find(s=>s.id===rule.to)?.title||rule.to
+    const fallback=draft.steps.find(s=>s.id===source.next)?.title||source.next
+    const notice='Remover o desvio de "'+answer+'"? A resposta deixará de ir para "'+
+      previous+'" e passará a seguir o destino padrão "'+fallback+'". '+
+      'Se uma etapa ficar desconectada, você precisará corrigi-la antes de salvar ou publicar.'
+    if(!window.confirm(notice))return
+    edit(d=>{
+      const changed=d.steps.find(s=>s.id===sourceId)
+      if(changed?.type==='question')changed.branches=changed.branches.filter(b=>b.answer!==answer)
+    })
+    setSelectedStep(sourceId)
+    setMessage('Desvio removido somente do rascunho. Confira o novo percurso e eventuais etapas desconectadas.')
+  }
+  function moveNode(id:string,point:DiagramPoint){
+    edit(d=>{d.layout={...d.layout,[id]:point}})
+  }
+  function resetLayout(){
+    if(!draft?.layout||Object.keys(draft.layout).length===0)return
+    edit(d=>{delete d.layout})
+  }
   function addQuestion(){
     if(!draft)return
     const id='question_'+Math.random().toString(36).slice(2,9)
@@ -96,19 +139,20 @@ export default function FormsPanel(){
     setSelectedStep(id)
   }
   function removeStep(){
-    if(!draft||draft.steps.length<=2||!active)return
-    const removed=active
-    const fallback=removed.type==='question'?removed.next : draft.steps.find(s=>s.type==='result'&&s.id!==removed.id)?.id
-    if(!fallback)return setMessage('Crie outro resultado final antes de excluir este.')
-    edit(d=>{
-      d.steps=d.steps.filter(s=>s.id!==removed.id)
-      if(d.start===removed.id)d.start=fallback
-      for(const s of d.steps)if(s.type==='question'){
-        if(s.next===removed.id)s.next=fallback
-        s.branches=s.branches.map(b=>b.to===removed.id?{...b,to:fallback}:b)
-      }
-    })
-    setSelectedStep(fallback)
+    if(!draft||!active)return
+    const plan=removeDiagramStep(draft,active.id)
+    if(!plan.ok){
+      setMessage('Exclusão bloqueada: '+plan.issues.join(' ')+' Nenhum destino foi alterado.')
+      return
+    }
+    const prompt=plan.startChanged
+      ? 'Excluir a etapa inicial? A nova etapa inicial será "'+
+        (draft.steps.find(s=>s.id===plan.flow.start)?.title||plan.flow.start)+'".'
+      : 'Excluir a etapa "'+active.title+'"? Nenhuma conexão será redirecionada automaticamente.'
+    if(!window.confirm(prompt))return
+    setDraft(plan.flow);setDirty(true);setFinish('')
+    setSelectedStep(plan.startChanged?plan.flow.start:plan.flow.steps[0].id)
+    setMessage('Etapa excluída do rascunho. Revise o percurso antes de salvar.')
   }
   async function create(){
     if(!newTitle.trim())return
@@ -188,8 +232,16 @@ export default function FormsPanel(){
         {selected.status==='published'&&<p><a href={'/formularios/'+selected.slug} target="_blank" rel="noopener noreferrer">Abrir versão publicada ↗</a> · Alterações no rascunho não afetam este link até publicar novamente.</p>}
       </div>
       {validation&&!validation.ok&&<div className="crm-forms-invalid" role="alert"><strong>Revise o fluxo antes de salvar:</strong><ul>{validation.issues.map((issue,i)=><li key={i}>{issue}</li>)}</ul></div>}
-      <div className="crm-forms-workspace">
-        <div className="crm-card crm-forms-map">
+      <div className="crm-forms-view-tabs" role="group" aria-label="Modo de visualização do construtor">
+        <button type="button" data-active={viewMode==='flow'} aria-pressed={viewMode==='flow'} onClick={()=>setViewMode('flow')}>◈ Fluxograma interativo</button>
+        <button type="button" data-active={viewMode==='steps'} aria-pressed={viewMode==='steps'} onClick={()=>setViewMode('steps')}>☷ Lista de etapas</button>
+        <small>As duas visualizações editam o mesmo rascunho.</small>
+      </div>
+      <div className={'crm-forms-workspace'+(viewMode==='flow'?' crm-forms-workspace-flow':'')}>
+        {viewMode==='flow'&&<FormsFlowCanvas flow={draft} selectedStep={selectedStep}
+          onSelect={id=>{setSelectedStep(id);setPreview(false)}}
+          onMove={moveNode} onConnect={connectSteps} onRemoveBranch={removeBranch} onResetLayout={resetLayout}/>}
+        {viewMode==='steps'&&<div className="crm-card crm-forms-map">
           <div className="crm-forms-map-head"><strong>MAPA DO FUNIL</strong><span>{draft.steps.length} etapas</span></div>
           {draft.steps.map((s,i)=><button key={s.id} type="button" className="crm-forms-node" data-selected={selectedStep===s.id} onClick={()=>{setSelectedStep(s.id);setPreview(false)}}>
             <span className="crm-forms-node-index">{String(i+1).padStart(2,'0')}</span>
@@ -200,7 +252,7 @@ export default function FormsPanel(){
             <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Pergunta</button>
             <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Resultado final</button>
           </div>
-        </div>
+        </div>}
         <div className="crm-card crm-forms-editor">
           {active&&<>
             <div className="crm-forms-editor-header"><div><span>EDITOR DA ETAPA</span><h3>{active.type==='question'?'Pergunta':'Página final'}</h3></div>
@@ -235,6 +287,11 @@ export default function FormsPanel(){
           </>}
         </div>
       </div>
+      {viewMode==='flow'&&<div className="crm-forms-flow-actions">
+        <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Adicionar pergunta</button>
+        <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Adicionar finalização</button>
+        <small>Adicionar pergunta após uma pergunta selecionada insere a nova no caminho padrão; ao selecionar uma finalização, ela é inserida no início. Os desvios existentes são preservados.</small>
+      </div>}
       {preview&&<div className="crm-card crm-forms-preview">
         <div className="crm-forms-editor-header"><div><span>PRÉVIA SEM GRAVAÇÃO</span><h3>Simulação da jornada</h3></div>
           <button type="button" className="crm-btn" onClick={beginPreview}>Reiniciar</button></div>
