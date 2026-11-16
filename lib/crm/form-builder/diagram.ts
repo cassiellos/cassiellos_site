@@ -16,7 +16,7 @@ export type DiagramPort = {
 }
 export type DiagramPoint = { x: number; y: number }
 export type DiagramNode = { id: string; step: FlowStep; x: number; y: number; w: number; h: number; ports: DiagramPort[]; depth: number }
-export type DiagramModel = { nodes: DiagramNode[]; ports: DiagramPort[]; width: number; height: number; reachable: Set<string> }
+export type DiagramModel = { nodes: DiagramNode[]; ports: DiagramPort[]; width: number; height: number; minX: number; minY: number; reachable: Set<string> }
 export const NODE_WIDTH = 268
 const COLUMN_GAP = 165
 const ROW_GAP = 64
@@ -115,7 +115,7 @@ export function diagramModel(flow: FlowDefinition): DiagramModel {
   const minY=Math.min(0,...nodes.map(n=>n.y))-24
   const maxX=Math.max(700,...nodes.map(n=>n.x+n.w))+100
   const maxY=Math.max(480,...nodes.map(n=>n.y+n.h))+100
-  return {nodes,ports,width:Math.max(720,maxX-minX),height:Math.max(520,maxY-minY),reachable}
+  return {nodes,ports,minX,minY,width:Math.max(720,maxX-minX),height:Math.max(520,maxY-minY),reachable}
 }
 
 /** Gravações de layout têm limite para não permitir dados gigantes ou deslocamentos infinitos. */
