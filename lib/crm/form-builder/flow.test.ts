@@ -31,6 +31,15 @@ describe('editor de formulários — grafo e rotas seguras',()=>{
     assert.equal(checked.ok,false)
     if(!checked.ok)assert.match(checked.issues.join(' '),/ciclo/i)
   })
+  it('não aceita finalização sem caminho real quando todas as alternativas possuem destinos próprios',()=>{
+    const flow=example()
+    const q=flow.steps.find(s=>s.id==='budget')
+    if(!q||q.type!=='question')throw Error('missing budget')
+    q.branches=[{answer:'Sim',to:'limited'},{answer:'Não',to:'limited'}]
+    const checked=validateFlow(flow)
+    assert.equal(checked.ok,false)
+    if(!checked.ok)assert.match(checked.issues.join(' '),/desconectadas/i)
+  })
   it('exige destinos válidos e bloqueia URLs externas/javascript:',()=>{
     assert.equal(safeFlowHref('/agendar'),true)
     assert.equal(safeFlowHref('//site-externo.test'),false)
