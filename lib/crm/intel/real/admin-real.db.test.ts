@@ -191,4 +191,37 @@ describe('API do modo real (banco descartável + conectores falsos)', { skip: RE
     const demo = await handleOAuthCallback({ ...rt, env: { ...ENV, MI_DATA_MODE: undefined } }, { provider: 'google', code: 'c', state: await createOAuthState(pool, 'google', 'a'), error: null, intelEnabled: 'true', runtimeEnabled: true }, clock)
     assert.equal(demo.status, 404, 'modo demonstração não aceita retorno OAuth')
   })
+
+  it('regressão Minds: auditoria legada com authorization não provoca 503 nas quatro áreas', async () => {
+    const created = await post({ action: 'create_client', name: 'Cliente Homologação' })
+    assert.equal(created.status, 200)
+    const clientId = (created.body as { client: { id: string } }).client.id
+
+    await pool.query(`INSERT INTO crm.mi_audit_log (actor, action, entity, entity_id, details)
+      VALUES ($1, $2, $3, $4, $5::jsonb)`, [
+      'admin-test', 'association_confirmed', 'client_asset', clientId,
+      JSON.stringify({
+        authorization: 'user_explicit_canary_2026-11-15',
+        access_token: 'never-expose-canary',
+        assetId: '76b132ef-5448-42db-aede-e2de453883bd',
+        clientId,
+        shared: false,
+      }),
+    ])
+    for (const area of ['cliente', 'conexoes', 'agencia', 'prospeccao']) {
+      const response = await get({ area, client: area === 'cliente' ? clientId : 'all' })
+      assert.equal(response.status, 200, area + ' deve continuar acessível')
+      const payload = JSON.stringify(response.body)
+      assert.ok(!payload.includes('user_explicit_canary_2026-11-15'), area + ' não deve mostrar autorização bruta')
+      assert.ok(!payload.includes('never-expose-canary'), area + ' não deve mostrar segredo')
+      if (area === 'cliente' || area === 'conexoes') {
+        const admin = (response.body as { admin: { audit: { details: Record<string, unknown> }[] } }).admin
+        assert.ok(admin.audit.some(x => x.details.shared === false), 'metadados permitidos preservados')
+      }
+    }
+    const persisted = await pool.query(`SELECT details FROM crm.mi_audit_log
+      WHERE actor = 'admin-test' AND action = 'association_confirmed' LIMIT 1`)
+    assert.equal(persisted.rows[0].details.authorization, 'user_explicit_canary_2026-11-15')
+    assert.equal(persisted.rows[0].details.access_token, 'never-expose-canary', 'auditoria original permanece íntegra')
+  })
 })
