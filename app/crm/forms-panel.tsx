@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FlowDefinition, FlowDocument, FlowQuestion, FlowResult, FlowStep } from '@/lib/crm/form-builder/flow'
 import { validateFlow } from '@/lib/crm/form-builder/flow'
 import FormsFlowCanvas from './forms-flow-canvas'
-import type { DiagramPoint } from '@/lib/crm/form-builder/diagram'
+import { removeDiagramStep, type DiagramPoint } from '@/lib/crm/form-builder/diagram'
 import './forms-panel.css'
 
 type ResponseData = { ok?: boolean; forms?: FlowDocument[]; form?: FlowDocument; error?: string; issues?: string[] }
@@ -120,36 +120,20 @@ export default function FormsPanel(){
     setSelectedStep(id)
   }
   function removeStep(){
-    if(!draft||draft.steps.length<=2||!active)return
-    const removed=active
-    const incoming:string[]=[]
-    for(const s of draft.steps){
-      if(s.type!=='question'||s.id===removed.id)continue
-      if(s.next===removed.id)incoming.push('destino padrão de "'+s.title+'"')
-      for(const b of s.branches)if(b.to===removed.id)incoming.push('resposta "'+b.answer+'" de "'+s.title+'"')
-    }
-    if(incoming.length){
-      setMessage('Exclusão bloqueada: esta etapa recebe '+incoming.length+
-        ' conexão(ões). Redirecione-as antes de excluir: '+incoming.join('; ')+'. Nenhum destino foi alterado.')
+    if(!draft||!active)return
+    const plan=removeDiagramStep(draft,active.id)
+    if(!plan.ok){
+      setMessage('Exclusão bloqueada: '+plan.issues.join(' ')+' Nenhum destino foi alterado.')
       return
     }
-    const replacement=removed.type==='question'?removed.next:null
-    if(removed.id===draft.start && (!replacement||!draft.steps.some(s=>s.id===replacement))){
-      setMessage('Esta é a etapa inicial. Configure um próximo destino válido antes de excluí-la.')
-      return
-    }
-    const explanation=removed.id===draft.start
-      ? 'Excluir a etapa inicial? A nova primeira etapa será "'+
-        (draft.steps.find(s=>s.id===replacement)?.title||replacement)+'".'
-      : 'Excluir a etapa "'+removed.title+'"? As conexões existentes não serão redirecionadas automaticamente.'
-    if(!window.confirm(explanation))return
-    edit(d=>{
-      d.steps=d.steps.filter(s=>s.id!==removed.id)
-      if(d.layout)delete d.layout[removed.id]
-      if(d.start===removed.id&&replacement)d.start=replacement
-    })
-    setSelectedStep(removed.id===draft.start?replacement!:draft.start)
-    setMessage('Etapa excluída do rascunho. Revise a jornada antes de salvar.')
+    const prompt=plan.startChanged
+      ? 'Excluir a etapa inicial? A nova etapa inicial será "'+
+        (draft.steps.find(s=>s.id===plan.flow.start)?.title||plan.flow.start)+'".'
+      : 'Excluir a etapa "'+active.title+'"? Nenhuma conexão será redirecionada automaticamente.'
+    if(!window.confirm(prompt))return
+    setDraft(plan.flow);setDirty(true);setFinish('')
+    setSelectedStep(plan.startChanged?plan.flow.start:plan.flow.steps[0].id)
+    setMessage('Etapa excluída do rascunho. Revise o percurso antes de salvar.')
   }
   async function create(){
     if(!newTitle.trim())return
