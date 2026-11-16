@@ -67,3 +67,6 @@
 #cassiellos-crm .cvf-port-row:has(.cvf-port-delete) .cvf-node-port{padding-right:28px}
 #cassiellos-crm .cvf-port-delete{position:absolute;right:22px;top:6px;width:19px;height:19px;padding:0;border:1px solid #735767;border-radius:5px;background:#372536;color:#ffaab6;font:700 15px/15px sans-serif;cursor:pointer}
 #cassiellos-crm .cvf-port-delete:hover,#cassiellos-crm .cvf-port-delete:focus-visible{background:#762f48;border-color:#ef667c;color:#fff;outline:none}
+
+/* Initial frame is hidden until the real canvas width/height are measured. */
+#cassiellos-crm .cvf-stage-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:25px;text-align:center;color:#bdd0e4;font-size:12px;letter-spacing:.02em;pointer-events:none;background:rgba(11,24,43,.82);z-index:3}
