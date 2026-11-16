@@ -18,6 +18,7 @@ type StoredLead = {
   status: string
   revenue: string | null
   objective: string | null
+  flowOutcome?: 'qualified' | 'limited' | 'other' | null
   formVersion: string | null
   latestContactName: string | null
   latestContactWhatsapp: string | null
@@ -191,7 +192,7 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
     if (!term) return entries
     return entries.filter(lead => [
       lead.name, lead.company, lead.email, lead.whatsapp, lead.niche,
-      lead.status, lead.revenue, lead.objective, lead.source, lead.campaign, lead.latestSource, lead.latestCampaign,
+      lead.status, lead.revenue, lead.objective, lead.flowOutcome, lead.source, lead.campaign, lead.latestSource, lead.latestCampaign,
     ].some(value => (value || '').toLocaleLowerCase('pt-BR').includes(term)))
   }, [entries, search])
 
@@ -232,6 +233,8 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
         <td><div className="crm-company">
           <span className="crm-company-logo">{initials(lead.company || lead.name)}</span>
           <span>{lead.company || 'Empresa não informada'} {lead.isTest && <span className="crm-test-tag">TESTE</span>}
+            {lead.flowOutcome === 'limited' && <span className="crm-test-tag" title="Contato interessado, mas sem a verba mínima informada">ORÇAMENTO LIMITADO</span>}
+            {lead.flowOutcome === 'qualified' && <span className="crm-test-tag" title="Capacidade de investimento declarada pelo lead">ORÇAMENTO COMPATÍVEL</span>}
             <span className="crm-real-person">{lead.name}</span>
             {lead.latestContactName && lead.latestContactName.trim().toLowerCase() !== lead.name.trim().toLowerCase() &&
               <span className="crm-real-person">Último formulário: {lead.latestContactName}</span>}

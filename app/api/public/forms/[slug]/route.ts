@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getCrmPool } from '@/lib/crm/db'
+import { getPublishedFlow } from '@/lib/crm/form-builder/store'
+import { routeFlow } from '@/lib/crm/form-builder/flow'
+import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { isCrmPreviewOrigin, CRM_CANONICAL_ORIGIN, crmAllowedOrigins } from '@/lib/crm/preview-origins'
+import { clean, validatedName, validatedEmail, validatedPhone } from '@/lib/crm/booking-intake-request'
+import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
+import { INTAKE_LIMIT, requestFingerprint, consumeRequestQuota } from '@/lib/crm/request-limits'
+import { sanitizeAttribution } from '@/lib/crm/attribution'
+import { resolveMarketingConsent, META_CLICK_ID_PARAM } from '@/lib/marketing/meta'
+import { saveLeadSubmission } from '@/lib/crm/lead-intake'
+import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
+
+export const runtime='nodejs'
+export const dynamic='force-dynamic'
+export const maxDuration=20
+const headers={'Cache-Control':'no-store, private','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer'}
+const send=(data:unknown,status=200)=>NextResponse.json(data,{status,headers})
+export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string}>}){
+  if(!isCrmRuntimeEnabled())return send({error:'NOT_FOUND'},404)
+  const {slug}=await params
+  // Only the CRM-owned, same-origin frontend may submit. No wildcard/CORS.
+  if(!isCrmPreviewOrigin(req.headers.get('origin')))return send({error:'FORBIDDEN'},403)
+  if(!req.headers.get('content-type')?.startsWith('application/json'))return send({error:'INVALID_CONTENT_TYPE'},415)
+  let data:Record<string,unknown>
+  try {
+    const raw=await req.text()
+    if(raw.length>16000)return send({error:'PAYLOAD_TOO_LARGE'},413)
+    data=JSON.parse(raw)
+    if(!data||typeof data!=='object'||Array.isArray(data))throw Error('invalid')
+  }catch{return send({error:'INVALID_REQUEST'},400)}
+  if(data.website)return send({error:'INVALID_REQUEST'},400)
+  try{
+    const doc=await getPublishedFlow(getCrmPool(),slug)
+    if(!doc?.published)return send({error:'FORM_NOT_AVAILABLE'},404)
+    if(data.version!==doc.publishedVersion)return send({error:'FORM_UPDATED'},409)
+    const key=clean(data.idempotencyKey,50)
+    if(!key||!(/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i).test(key))return send({error:'INVALID_REQUEST_KEY'},400)
+    const result=routeFlow(doc.published,data.answers)
+    if(!result)return send({error:'INVALID_FLOW_ANSWERS'},400)
+    const name=validatedName(data.name),email=validatedEmail(data.email),phone=validatedPhone(data.whatsapp)
+    if(!name||!email||!phone)return send({error:'INVALID_CONTACT'},400)
+    if(data.contactRequest!==true)return send({error:'CONTACT_REQUEST_REQUIRED'},400)
+
+    const cfg=getTurnstileConfig()
+    if(cfg.status!=='ready')return send({error:'SECURITY_CHECK_UNAVAILABLE'},503)
+    const expectedHostnames=[...new Set([CRM_CANONICAL_ORIGIN,...crmAllowedOrigins()].map(x=>new URL(x).hostname))]
+    const token=await verifyTurnstileToken({
+      token:data.turnstileToken,secretKey:cfg.secretKey,remoteIp:req.headers.get('x-vercel-forwarded-for'),
+      expectedAction:TURNSTILE_BOOKING_ACTION,expectedHostnames,
+    })
+    if(!token.ok || token.action!==TURNSTILE_BOOKING_ACTION || !expectedHostnames.includes(token.hostname))return send({error:'SECURITY_CHECK_FAILED'},403)
+    const fingerprint=requestFingerprint(INTAKE_LIMIT,req.headers.get('x-vercel-forwarded-for'))
+    if(!fingerprint)return send({error:'SECURITY_CHECK_UNAVAILABLE'},503)
+    if(!(await consumeRequestQuota(getCrmPool(),INTAKE_LIMIT,fingerprint)))return send({error:'TOO_MANY_REQUESTS'},429)
+
+    const marketing=resolveMarketingConsent(data.marketing,req.headers.get('cookie'))
+    const attribution=sanitizeAttribution(data.attribution,clean)
+    if(!marketing.consent)delete attribution[META_CLICK_ID_PARAM]
+
+    const saved=await saveLeadSubmission(getCrmPool(),{
+      idempotencyKey:key,name,email,phone,formSlug:doc.slug,
+      formVersion:'flow-v'+doc.publishedVersion,niche:doc.title,answers:result.answers,attribution,
+      newLeadIsTest:classifyNewLeadAsTest({email}),bookingMode:getCrmBookingMode(),
+      protection:{turnstile:'verified',action:token.action,hostname:token.hostname,challengeTs:token.challengeTs},
+      marketing,eventSourceUrl:CRM_CANONICAL_ORIGIN+'/formularios/'+doc.slug,
+      flow:{id:doc.id,version:doc.publishedVersion,outcome:result.result.outcome,path:result.path},
+    })
+    return send({ok:true,reused:saved.reused,outcome:result.result.outcome,
+      title:result.result.title,description:result.result.description,
+      actionLabel:result.result.actionLabel,actionHref:result.result.actionHref},saved.reused?200:201)
+  }catch{
+    console.warn('[public-form-flow] submission_failed')
+    return send({error:'FORM_SUBMISSION_UNAVAILABLE'},503)
+  }
+}
