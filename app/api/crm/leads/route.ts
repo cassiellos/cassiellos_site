@@ -30,6 +30,7 @@ type RealLeadRow = LeadAttributionRow & {
   latest_contact_whatsapp: string | null
   revenue: string | null
   objective: string | null
+  flow_outcome: string | null
   latest_submission_at: Date | null
   meeting_count: string
 }
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
              s.answers #>> '{contact,whatsapp}' AS latest_contact_whatsapp,
              s.answers #>> '{questions,revenue}' AS revenue,
              s.answers #>> '{questions,priority}' AS objective,
+             s.answers #>> '{journey,outcome}' AS flow_outcome,
              -- Origem: a PRIMEIRA válida é a principal; a mais recente fica separada (lib/crm/lead-attribution.ts).
              ${LEAD_ATTRIBUTION_COLUMNS},
              (SELECT count(*)::text FROM crm.appointments a WHERE a.lead_id = l.id
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
           status: row.stage,
           revenue: row.revenue,
           objective: row.objective,
+          flowOutcome: ['qualified','limited','other'].includes(row.flow_outcome||'')?row.flow_outcome:null,
           formVersion: row.form_version,
           latestContactName: row.latest_contact_name,
           latestContactWhatsapp: row.latest_contact_whatsapp,
