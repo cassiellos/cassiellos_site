@@ -166,10 +166,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
     const x2=dst.x
     const y2=dst.y+(dst.step.type==='result'?77:75)
     const bend=Math.max(55,Math.abs(x2-x1)*.42)
-    const isBack=x2<x1+30
-    const path=isBack
-      ? `M ${x1} ${y1} C ${x1+bend} ${y1} ${x2-bend} ${y2} ${x2} ${y2}`
-      : `M ${x1} ${y1} C ${x1+bend} ${y1} ${x2-bend} ${y2} ${x2} ${y2}`
+    const path=`M ${x1} ${y1} C ${x1+bend} ${y1} ${x2-bend} ${y2} ${x2} ${y2}`
     return {key:port.key,path,color:colorFor(port.label,port.kind),label:port.label}
   }).filter((x):x is NonNullable<typeof x>=>Boolean(x))
 
@@ -186,7 +183,10 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
         <button className="cvf-tool cvf-fit" type="button" onClick={fit}>Centralizar</button>
         <button className="cvf-tool cvf-reset" type="button" onClick={()=>{
           if(Object.keys(flow.layout||{}).length&&!window.confirm('Restaurar a organização automática dos cartões? A mudança ficará no rascunho até você salvar.'))return
-          setTemp({});moveCache.current={};onResetLayout();fit()
+          const auto=diagramModel({...flow,layout:undefined})
+          const zoom=clamp(Math.min((size.w-74)/auto.width,(size.h-68)/auto.height),MIN_ZOOM,1)
+          setTemp({});moveCache.current={};onResetLayout()
+          setCamera({zoom,x:(size.w-auto.width*zoom)/2-auto.minX*zoom,y:(size.h-auto.height*zoom)/2-auto.minY*zoom})
         }}>Organizar</button>
       </div>
     </div>
@@ -226,7 +226,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
             role="group" aria-label={step.title}>
             <button className="cvf-node-drag" type="button" aria-label={'Selecionar ou arrastar: '+step.title}
               title="Clique para editar ou arraste para mover no mapa"
-              onClick={e=>e.stopPropagation()}
+              onClick={e=>{e.stopPropagation();if(e.detail===0)chooseNode(node.id)}}
               onPointerDown={e=>startMove(e,node)}
               onPointerMove={moveNode} onPointerUp={finishMove} onPointerCancel={finishMove}>
               <span className="cvf-node-number">{String(i+1).padStart(2,'0')}{flow.start===node.id?' · INÍCIO':''}</span>
