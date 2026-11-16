@@ -183,8 +183,9 @@ export async function saveLeadSubmission(
       isTest = input.newLeadIsTest
       const result = await client.query<{ id: string }>(
         `INSERT INTO crm.leads (full_name, email, whatsapp, company, segment, stage, is_test)
-         VALUES ($1,$2,$3,$4,$5,'new',$6) RETURNING id`,
-        [input.name, email, input.phone, company, input.niche, isTest],
+         VALUES ($1,$2,$3,$4,$5,$7,$6) RETURNING id`,
+        [input.name, email, input.phone, company, input.niche, isTest,
+          input.flow?.outcome === 'qualified' ? 'qualified' : 'new'],
       )
       leadId = result.rows[0].id
     }
