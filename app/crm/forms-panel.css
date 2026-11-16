@@ -52,3 +52,16 @@
 #cassiellos-crm .crm-forms-preview form{display:flex;gap:10px}
 @media(max-width:950px){#cassiellos-crm .crm-forms-workspace{grid-template-columns:1fr}#cassiellos-crm .crm-forms-fields{grid-template-columns:1fr}}
 @media(max-width:560px){#cassiellos-crm .crm-forms-branches>label{grid-template-columns:1fr}#cassiellos-crm .crm-forms-create{padding:15px}}
+
+
+#cassiellos-crm .crm-forms-view-tabs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-bottom:1px solid #2b3c50;padding:3px 0 12px}
+#cassiellos-crm .crm-forms-view-tabs button{appearance:none;border:1px solid #364b63;border-radius:9px;background:#122238;color:#c7d6e9;padding:10px 14px;font-size:12px;font-weight:650;cursor:pointer}
+#cassiellos-crm .crm-forms-view-tabs button[data-active=true]{background:#402436;border-color:#ec5770;color:#fff}
+#cassiellos-crm .crm-forms-view-tabs button:focus-visible{outline:2px solid #f36779;outline-offset:2px}
+#cassiellos-crm .crm-forms-view-tabs small{color:#8fa4b9;font-size:11px;margin-left:auto}
+#cassiellos-crm .crm-forms-workspace-flow{grid-template-columns:minmax(0,1fr) minmax(300px,350px);align-items:start}
+#cassiellos-crm .crm-forms-workspace-flow>.crm-forms-editor{max-height:760px;overflow-y:auto;overscroll-behavior:contain}
+#cassiellos-crm .crm-forms-flow-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#cassiellos-crm .crm-forms-flow-actions small{font-size:11px;color:#a3b8ca;flex:1 1 270px;line-height:1.5}
+@media(max-width:1220px){#cassiellos-crm .crm-forms-workspace-flow{grid-template-columns:1fr}#cassiellos-crm .crm-forms-workspace-flow>.crm-forms-editor{max-height:none;overflow:visible}}
+@media(max-width:650px){#cassiellos-crm .crm-forms-view-tabs small{margin-left:0;width:100%}#cassiellos-crm .crm-forms-view-tabs button{flex:1 1 120px}}
