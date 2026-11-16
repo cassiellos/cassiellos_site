@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS crm.form_flows (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   published_at timestamptz,
-  CONSTRAINT form_flows_publish_consistency CHECK ((status = 'draft' AND published IS NULL AND published_version = 0) OR
+  CONSTRAINT form_flows_publish_consistency CHECK ((status = 'draft' AND published IS NULL AND published_version >= 0) OR
     (status = 'published' AND published IS NOT NULL AND published_version > 0))
 );
 CREATE INDEX IF NOT EXISTS form_flows_updated ON crm.form_flows (updated_at DESC);
