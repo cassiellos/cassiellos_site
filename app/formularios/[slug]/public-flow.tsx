@@ -3,11 +3,14 @@ import { useState, useRef, type FormEvent } from 'react'
 import type { FlowDefinition, FlowStep, FlowResult } from '@/lib/crm/form-builder/flow'
 import { TURNSTILE_BOOKING_ACTION } from '@/lib/crm/turnstile'
 import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
+import { validateBrazilianPhone } from '@/lib/crm/contact-validation'
+import { isValidWebPresence } from '@/lib/crm/booking-forms'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
 type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null}
 export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
+  const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   const [answers,setAnswers]=useState<Record<string,string>>({})
   const [freeText,setFreeText]=useState('')
   const [name,setName]=useState('')
@@ -26,11 +29,15 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   function next(step:Extract<FlowStep,{type:'question'}>,answer:string){
     if(step.required&&answer.trim().length<2){setError('Preencha esta resposta para continuar.');return}
     if(step.input==='select'&&!step.options.includes(answer)){setError('Selecione uma alternativa válida.');return}
+    if(step.field==='phone'&&!validateBrazilianPhone(answer).ok){setError('Informe um telefone válido com DDD.');return}
+    if(step.field==='website'&&!isValidWebPresence(answer)){setError('Informe o @ do Instagram ou um site válido.');return}
     const to=step.branches.find(b=>b.answer===answer)?.to||step.next
     if(!flow.steps.some(s=>s.id===to)||visited.includes(to)){
       setError('O caminho configurado está indisponível.');return
     }
     setAnswers(a=>({...a,[step.id]:answer.trim()}))
+    if(step.field==='name')setName(answer.trim())
+    if(step.field==='phone')setWhatsapp(answer.trim())
     setVisited(h=>[...h,to]);setFreeText('');setError('')
   }
   function back(){
@@ -78,10 +85,15 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       <span>DIAGNÓSTICO ESTRATÉGICO</span>
     </header>
     <div className="cpf-shell">
-      <div className="cpf-topline"><span>FORMULÁRIO PERSONALIZADO</span><span>{status==='complete'?'Concluído':String(visited.length).padStart(2,'0')+' / '+String(flow.steps.length).padStart(2,'0')}</span></div>
-      <div className="cpf-progress"><span style={{width:(status==='complete'?100:Math.min(95,visited.length/flow.steps.length*100))+'%'}}/></div>
+      <div className="cpf-topline"><span>{flow.cover?'DIAGNÓSTICO PARA HAMBURGUERIAS':'FORMULÁRIO PERSONALIZADO'}</span><span>{coverOpen?'INÍCIO':status==='complete'?'Concluído':String(visited.length).padStart(2,'0')+' / '+String(flow.steps.length).padStart(2,'0')}</span></div>
+      <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(95,visited.length/flow.steps.length*100))+'%'}}/></div>
       <section className="cpf-card" aria-live="polite">
-        {status==='complete'&&complete?<div className="cpf-result">
+        {coverOpen&&flow.cover?<div className="cpf-cover">
+          <h1>{flow.cover.headline}</h1>
+          <ul>{flow.cover.bullets.map((bullet,i)=><li key={i}>{bullet}</li>)}</ul>
+          <p className="cpf-cover-qualifier"><em>→ {flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
+          <button type="button" className="cpf-primary" onClick={()=>setCoverOpen(false)}>{flow.cover.cta} →</button>
+        </div>:status==='complete'&&complete?<div className="cpf-result">
           <div className="cpf-success">✓ Envio recebido</div>
           <h1>{complete.title}</h1><p>{complete.description}</p>
           {complete.actionHref&&complete.actionLabel&&<a className="cpf-primary" href={complete.actionHref}>{complete.actionLabel}</a>}
@@ -92,17 +104,17 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           {current.input==='select'?<div className="cpf-options">{current.options.map(option=>
             <button type="button" className="cpf-option" key={option} onClick={()=>next(current,option)}>{option}<span aria-hidden="true">→</span></button>)}</div>:
             <form onSubmit={e=>{e.preventDefault();next(current,freeText)}}>
-              <label className="cpf-label">Sua resposta<input required={current.required} autoComplete="organization" value={freeText}
-                minLength={2} maxLength={160} placeholder="Digite sua resposta" onChange={e=>setFreeText(e.target.value)}/></label>
+              <label className="cpf-label">Sua resposta<input required={current.required} autoComplete={current.field==='name'?'name':current.field==='phone'?'tel':'off'} type={current.field==='phone'?'tel':'text'} inputMode={current.field==='phone'?'tel':undefined} value={freeText}
+                minLength={2} maxLength={160} placeholder={current.field==='name'?'Digite seu nome':current.field==='phone'?'WhatsApp com DDD':current.field==='website'?'@hamburgueria ou site':'Digite sua resposta'} onChange={e=>setFreeText(e.target.value)}/></label>
               <button className="cpf-primary" type="submit">Continuar →</button>
             </form>}
         </div>:current?.type==='result'?<div className="cpf-contact">
           <div className="cpf-eyebrow">ÚLTIMA ETAPA</div>
           <h1>{current.title}</h1><p>{current.description}</p>
           <form onSubmit={submit} noValidate>
-            <label className="cpf-label">Nome completo<input required minLength={2} maxLength={120} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label>
+            {!flow.steps.some(step=>step.type==='question'&&step.field==='name')?<label className="cpf-label">Nome completo<input required minLength={2} maxLength={120} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label>:<p className="cpf-contact-already">Nome: <strong>{name}</strong></p>}
             <label className="cpf-label">E-mail<input required type="email" maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
-            <label className="cpf-label">WhatsApp com DDD<input required type="tel" maxLength={24} autoComplete="tel" placeholder="(31) 99999-9999" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)}/></label>
+            {!flow.steps.some(step=>step.type==='question'&&step.field==='phone')?<label className="cpf-label">WhatsApp com DDD<input required type="tel" maxLength={24} autoComplete="tel" placeholder="(31) 99999-9999" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)}/></label>:<p className="cpf-contact-already">WhatsApp: <strong>{whatsapp}</strong></p>}
             <label className="cpf-trap" aria-hidden="true">Site<input tabIndex={-1} autoComplete="off" value={website} onChange={e=>setWebsite(e.target.value)}/></label>
             <p className="cpf-privacy">Ao enviar, você solicita nosso contato sobre o diagnóstico. Leia a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>. O envio não concede autorização automática para campanhas de marketing.</p>
             {turnstileSiteKey?<TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_BOOKING_ACTION} resetSignal={resetSignal}
@@ -114,7 +126,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           </form>
         </div>:<h1>Esta etapa está indisponível.</h1>}
         {error&&<div className="cpf-error" role="alert">{error}</div>}
-        {canBack&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
+        {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
       <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><a href="/politica-de-privacidade">Privacidade</a></footer>
     </div>
