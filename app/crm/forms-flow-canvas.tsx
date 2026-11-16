@@ -33,6 +33,8 @@ function shortLabel(name:string) {
 
 export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onConnect,onRemoveBranch,onResetLayout}:Props) {
   const model = useMemo(()=>diagramModel(flow),[flow])
+  const modelRef=useRef(model)
+  modelRef.current=model
   const stage = useRef<HTMLDivElement>(null)
   const [size,setSize] = useState({w:0,h:0})
   const [camera,setCamera] = useState<Camera>({x:26,y:28,zoom:1})
@@ -69,7 +71,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
         lastW=w;lastH=h
         setSize({w,h})
         if(!cameraTouched.current){
-          setCamera(fitDiagramCamera(model,{w,h},flow.start,MIN_ZOOM))
+          setCamera(fitDiagramCamera(modelRef.current,{w,h},flow.start,MIN_ZOOM))
         }
         setMeasured(true)
       })
@@ -228,7 +230,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
     <div ref={stage} className="cvf-stage" tabIndex={0} data-measured={measured}
       onPointerDown={startPan} onPointerMove={panMove} onPointerUp={finishPan} onPointerCancel={finishPan}
       onWheel={onWheel} aria-label="Área do fluxograma. Arraste o fundo para navegar; Ctrl mais rolagem para zoom.">
-      <div className="cvf-world" style={{width:model.width,height:model.height,
+      <div className="cvf-world" style={{visibility:measured?'visible':'hidden',width:model.width,height:model.height,
         transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
         <svg aria-hidden="true" className="cvf-lines" width="100%" height="100%"
           style={{position:'absolute',left:0,top:0,overflow:'visible',pointerEvents:'none'}}>
@@ -300,6 +302,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
           </div>
         })}
       </div>
+      {!measured&&<div className="cvf-stage-loading" role="status">Preparando visualização do fluxograma…</div>}
       <div className="cvf-stage-tip">Arraste os cartões · Arraste o fundo · Clique na saída e depois no destino · Ctrl/⌘ + rolar para ampliar</div>
     </div>
     <div className="cvf-legend"><span><i className="cvf-green"/> Resposta Sim</span><span><i className="cvf-amber"/> Resposta Não</span><span><i className="cvf-slate"/> Caminho padrão</span><span className="cvf-foot-tip">As mudanças só afetam o rascunho até você publicar.</span></div>
