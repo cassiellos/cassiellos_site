@@ -24,6 +24,7 @@ import { createOAuthState, googleAuthorizeUrl, metaAuthorizeUrl } from './oauth'
 import * as repo from './repo'
 import type { RealRuntime } from './runtime'
 import { loadRealSnapshot } from './snapshot'
+import { auditForAdmin } from './audit-public'
 
 export type RealDeps = { runtime: RealRuntime; now?: () => Date; log?: (event: string, details: Record<string, unknown>) => void; owner?: string }
 
@@ -34,12 +35,12 @@ const bad = (error: string, status = 400, extra: Record<string, unknown> = {}): 
 const REPO_STATUS: Record<repo.RepoError['code'], number> = { INVALID: 400, NOT_FOUND: 404, CONFLICT: 409, ASSET_ALREADY_OWNED: 409, FINANCE_ALREADY_LINKED: 409, ARCHIVED: 409 }
 
 async function adminBlock(rt: RealRuntime) {
-  const [clients, financeClients, connections, assets, associations, audit] = await Promise.all([
+  const [clients, financeClients, connections, assets, associations, auditRows] = await Promise.all([
     repo.listClients(rt.db, { includeArchived: true }), repo.listFinanceClients(rt.db), repo.listConnections(rt.db), repo.listAssets(rt.db),
     repo.listAssociations(rt.db), repo.recentAudit(rt.db, 30)])
   const g = googleStatus(rt.env), m = metaStatus(rt.env)
   return {
-    clients, financeClients, connections, assets, associations, audit,
+    clients, financeClients, connections, assets, associations, audit: auditRows.map(auditForAdmin),
     providers: {
       google: { enabled: g.enabled, configured: g.configured, missing: g.missing, vault: !!rt.vault },
       meta: { enabled: m.enabled, configured: m.configured, missing: m.missing, vault: !!rt.vault, systemUserAvailable: !!rt.env.MI_META_SYSTEM_USER_TOKEN },
