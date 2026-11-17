@@ -233,3 +233,43 @@
   #cassiellos-crm[data-crm-root] .crm-nav-btn,
   #cassiellos-crm[data-crm-root] .crm-quicklinks button{transition:none}
 }
+
+
+/* Real leads mobile: semantic card list mirrors the desktop table without horizontal scroll. */
+#cassiellos-crm[data-crm-root] .crm-mobile-leads-list{display:none}
+@media(max-width:830px){
+  #cassiellos-crm[data-crm-root] .crm-real-leads .crm-table-wrap{display:none}
+  #cassiellos-crm[data-crm-root] .crm-mobile-leads-list{display:grid;gap:9px;padding:5px 12px 15px}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-card{
+    background:#17273b;border:1px solid #304259;border-radius:10px;
+    color:#ecf3fb;text-align:left;min-width:0;width:100%;padding:14px;
+    display:flex;flex-direction:column;gap:12px;cursor:pointer;
+  }
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-card:active{background:#24374e}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-head{display:flex;align-items:center;gap:11px;min-width:0}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-head .crm-company-logo{flex:0 0 39px;width:39px;height:39px;font-weight:750}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-identity{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-identity strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-identity small{font-size:11px;color:#a2b5ca;overflow:hidden;text-overflow:ellipsis}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-arrow{color:#c9d9e9;font-size:24px}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-tag{color:#f3b6bd;font-size:10px;font-weight:700;padding:5px 8px;border:1px solid rgba(236,96,114,.32);border-radius:6px;background:rgba(236,96,114,.07)}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-summary{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:11px;color:#95acc2;border-top:1px solid #2e4057;padding-top:11px}
+  #cassiellos-crm[data-crm-root] .crm-mobile-lead-summary span{max-width:55%}
+  #cassiellos-crm[data-crm-root] .crm-real-leads .crm-table-head{gap:12px}
+  #cassiellos-crm[data-crm-root] .crm-real-leads .crm-real-info{padding:12px 15px;font-size:11px;line-height:1.5}
+  /* Pipeline is a vertically scrolling stage list on small screens, not a 1,324px board. */
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-scroll{overflow-x:visible;padding-bottom:0}
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-grid{
+    display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:10px;
+  }
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-col{min-height:0;border-radius:11px}
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-col-head{padding:14px}
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-cards{padding:11px}
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-intro{gap:10px;margin-bottom:13px;padding:13px}
+  #cassiellos-crm[data-crm-root] .crm-real-funnel-intro span{min-width:0}
+  /* Calendar controls and dialogs wrap instead of pushing viewport width. */
+  #cassiellos-crm[data-crm-root] .crm-real-agenda-title{gap:12px;padding:16px}
+  #cassiellos-crm[data-crm-root] .crm-real-agenda-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #cassiellos-crm[data-crm-root] .crm-real-agenda-item{padding:13px}
+}
