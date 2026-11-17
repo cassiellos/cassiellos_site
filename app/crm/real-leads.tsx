@@ -257,6 +257,29 @@ export default function RealLeadsPanel({ search, focusLeadId = null }: { search:
         </button></td>
       </tr>)}</tbody>
     </table></div> : null}
+    {state==='ready' && filtered.length>0 && <div className="crm-mobile-leads-list" aria-label="Leads em cartões">
+      {filtered.map(lead=><button key={lead.id} type="button" className="crm-mobile-lead-card"
+        aria-label={'Abrir ficha de '+(lead.company||lead.name)}
+        onClick={()=>setSelected(current=>current===lead.id?null:lead.id)}>
+        <span className="crm-mobile-lead-head">
+          <span className="crm-company-logo">{initials(lead.company||lead.name)}</span>
+          <span className="crm-mobile-lead-identity">
+            <strong>{lead.company||lead.name}</strong>
+            <small>{lead.company?lead.name:(lead.niche||'Contato cadastrado')}</small>
+          </span>
+          <span className="crm-mobile-lead-arrow" aria-hidden="true">›</span>
+        </span>
+        <span className="crm-mobile-lead-meta">
+          <span className="crm-status">{labelStatus[lead.status]||lead.status}</span>
+          {lead.flowOutcome==='limited'&&<span className="crm-mobile-lead-tag">Orçamento limitado</span>}
+          {lead.isTest&&<span className="crm-mobile-lead-tag">Teste</span>}
+        </span>
+        <span className="crm-mobile-lead-summary">
+          <span>{lead.revenue||'Faturamento não informado'}</span>
+          <span>{dateLabel(lead.createdAt)}</span>
+        </span>
+      </button>)}
+    </div>}
     {state === 'ready' && total !== null && total > 100 ? <p className="crm-real-note">
       Exibindo os 100 cadastros mais recentes. Paginação será adicionada antes de operar com maior volume.
     </p> : null}
