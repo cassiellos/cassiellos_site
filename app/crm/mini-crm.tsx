@@ -134,6 +134,11 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     window.addEventListener('keydown',onKey)
     return ()=>{document.body.style.overflow=prior;window.removeEventListener('keydown',onKey);priorFocus?.focus({preventScroll:true})}
   },[mobileMenuOpen])
+  useEffect(()=>{
+    const onResize=()=>{if(window.innerWidth>830){setMobileMenuOpen(false);setMobileSearchOpen(false)}}
+    window.addEventListener('resize',onResize)
+    return ()=>window.removeEventListener('resize',onResize)
+  },[])
   const openView = (next: View) => {
     setMobileMenuOpen(false)
     setMobileSearchOpen(false)
