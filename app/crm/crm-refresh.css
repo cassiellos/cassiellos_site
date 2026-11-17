@@ -273,3 +273,73 @@
   #cassiellos-crm[data-crm-root] .crm-real-agenda-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   #cassiellos-crm[data-crm-root] .crm-real-agenda-item{padding:13px}
 }
+
+
+/* Desktop simplificado: acessos principais consistentes com a barra inferior do celular. */
+#cassiellos-crm[data-crm-root] .crm-desktop-primary{display:none}
+@media(min-width:1320px){
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary{
+    display:flex;align-items:center;gap:4px;min-width:0;margin:0 auto 0 12px;
+    padding:4px;background:#152236;border:1px solid #2a3b50;border-radius:11px;
+  }
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button{
+    border:0;border-radius:8px;padding:9px 13px;min-height:39px;display:flex;
+    align-items:center;gap:8px;background:transparent;color:#a4b7cd;
+    font-weight:630;font-size:11.5px;white-space:nowrap;cursor:pointer;
+  }
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button svg{flex-shrink:0}
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button[data-active=true]{
+    background:#29384f;color:#fff;
+  }
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button[data-active=true] svg{color:#fc7588}
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button:hover{color:#fff;background:#25364d}
+  #cassiellos-crm[data-crm-root] .crm-topbar{gap:12px;padding-inline:25px}
+  #cassiellos-crm[data-crm-root] .crm-search{min-width:180px;max-width:225px}
+  #cassiellos-crm[data-crm-root] .crm-top-actions{flex-shrink:0}
+}
+@media(min-width:831px){
+  #cassiellos-crm[data-crm-root] .crm-topbar{position:sticky;top:0;z-index:40;backdrop-filter:blur(14px)}
+  #cassiellos-crm[data-crm-root] .crm-sidebar{width:232px;flex-basis:232px}
+  #cassiellos-crm[data-crm-root] .crm-brand{padding:23px 19px}
+  #cassiellos-crm[data-crm-root] .crm-nav-wrap{padding:15px 10px}
+  #cassiellos-crm[data-crm-root] .crm-hero{padding-bottom:18px;border-bottom:1px solid #23354a}
+  #cassiellos-crm[data-crm-root] .crm-card{box-shadow:0 3px 12px rgba(0,0,0,.075)}
+  #cassiellos-crm[data-crm-root] .crm-fin{gap:17px}
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+    padding:9px;background:#101d2e;border:1px solid #2d4158;border-radius:12px;
+    overflow:visible;scrollbar-width:auto;
+  }
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs button{
+    white-space:normal;text-align:center;justify-content:center;
+    min-width:0;padding:9px 10px;min-height:44px;line-height:1.3;font-size:12px;
+    border:1px solid #30435a;border-radius:8px;background:#19283d;color:#c1d0e1;
+  }
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs button[data-active=true]{
+    background:#35273a;color:#fff;border-color:#b95567;
+    box-shadow:inset 3px 0 0 #ee5066;
+  }
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs button:hover{background:#2a3a51;border-color:#637892}
+  #cassiellos-crm[data-crm-root] .crm-fin-filters{
+    padding:17px;background:#111f30;border:1px solid #2b3c50;
+    border-radius:12px;display:flex;align-items:flex-end;gap:12px;
+  }
+  #cassiellos-crm[data-crm-root] .crm-fin-filters .crm-fin-field{flex:1 1 145px;max-width:none;min-width:125px}
+  #cassiellos-crm[data-crm-root] .crm-fin-filters .crm-fin-field:first-child{flex:1.2 1 160px}
+  #cassiellos-crm[data-crm-root] .crm-fin-kpi{padding:17px 18px;border-radius:11px}
+  #cassiellos-crm[data-crm-root] .crm-fin-kpi span{letter-spacing:.035em}
+  #cassiellos-crm[data-crm-root] .crm-fin-kpi strong{font-size:23px;letter-spacing:-.025em}
+  #cassiellos-crm[data-crm-root] .crm-fin-grid{gap:14px}
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs button:focus-visible,
+  #cassiellos-crm[data-crm-root] .crm-desktop-primary button:focus-visible{
+    outline:2px solid #ff7a89;outline-offset:2px;
+  }
+}
+@media(min-width:1160px){
+  #cassiellos-crm[data-crm-root] .crm-fin-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+  #cassiellos-crm[data-crm-root] .crm-fin-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(min-width:831px) and (max-width:1200px){
+  #cassiellos-crm[data-crm-root] .crm-sidebar{width:214px;flex-basis:214px}
+  #cassiellos-crm[data-crm-root] .crm-fin-filters{gap:9px}
+}
