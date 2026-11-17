@@ -177,7 +177,13 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
       <main className="crm-main" id="crm-main-content">
         <header className="crm-topbar" data-intel={intelArea ? 'true' : undefined}>
           <div className="crm-mobile-heading"><img src="/brand/cassiellos-symbol-signal-red.svg" width={23} height={23} alt=""/><div><small>SHARK SCALE</small><strong>{sectionNames[view]}</strong></div></div>
-          <div className="crm-breadcrumb"><span>Workspace</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
+          <div className="crm-breadcrumb"><span>SHARK SCALE</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
+          <nav className="crm-desktop-primary" aria-label="Acesso rápido às áreas principais">
+            {mobileTabs.map(tab=><button key={tab.id} type="button" data-active={view===tab.id}
+              aria-current={view===tab.id?'page':undefined} onClick={()=>openView(tab.id)}>
+              <Icon name={tab.icon} size={17}/><span>{tab.label==='Início'?'Visão geral':tab.label}</span>
+            </button>)}
+          </nav>
           <div className="crm-top-actions">
             {intelArea ? <span className="crm-tag" role="note">{intelSandbox ? 'TESTE ISOLADO' : intelMode === 'real' ? 'MODO REAL' : 'DADOS SIMULADOS'}</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
             <button className="crm-icon-btn crm-mobile-search-toggle" type="button" aria-label={mobileSearchOpen?"Fechar busca":"Buscar leads"} aria-expanded={mobileSearchOpen} onClick={()=>{setMobileSearchOpen(v=>!v);setMobileMenuOpen(false)}}><Icon name={mobileSearchOpen?"close":"search"} size={18}/></button>
