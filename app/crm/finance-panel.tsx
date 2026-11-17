@@ -151,12 +151,12 @@ function LineChart({ labels, series, title }: { labels: string[]; series: Series
   </figure>
 }
 
-function CategoryBars({ rows, empty }: { rows: { label: string; competenceCents: number; cashCents: number }[]; empty: string }) {
+function CategoryBars({ rows, empty, firstBasis = 'Competência' }: { rows: { label: string; competenceCents: number; cashCents: number }[]; empty: string; firstBasis?: string }) {
   const max = Math.max(1, ...rows.flatMap(r => [r.competenceCents, r.cashCents]))
   if (!rows.length) return <p className="crm-fin-empty">{empty}</p>
   return <div className="crm-fin-cats">{rows.map(r => <div key={r.label} className="crm-fin-cat">
     <div className="crm-fin-cat-head"><span>{r.label}</span><strong>{formatCents(r.competenceCents)}</strong></div>
-    <div className="crm-fin-track" title={'Competência: ' + formatCents(r.competenceCents)}><i style={{ width: (100 * r.competenceCents / max) + '%' }}/></div>
+    <div className="crm-fin-track" title={firstBasis + ': ' + formatCents(r.competenceCents)}><i style={{ width: (100 * r.competenceCents / max) + '%' }}/></div>
     <div className="crm-fin-track crm-fin-track-cash" title={'Caixa: ' + formatCents(r.cashCents)}><i style={{ width: (100 * r.cashCents / max) + '%' }}/></div>
     <small>Caixa no mês: {formatCents(r.cashCents)}</small>
   </div>)}</div>
@@ -568,7 +568,7 @@ function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) =>
             { name: 'Receita recebida ' + (c.year - 1), color: '#4a5b75', values: c.previousYearMonths.map(m => m.cashIn) }]}/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Receita por categoria — {monthLabel(data.month)}</div>
         <div className="crm-panel-subtitle">Barra cheia: cobrança com vencimento no mês · barra fina: caixa confirmado</div>
-        <CategoryBars rows={dueCategories} empty="Sem cobranças com vencimento neste mês — R$ 0,00."/></section>
+        <CategoryBars rows={dueCategories.filter(r=>r.competenceCents>0||r.cashCents>0)} firstBasis="Vencimento" empty="Sem cobranças com vencimento neste mês — R$ 0,00."/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Despesas por categoria — {monthLabel(data.month)}</div>
         <div className="crm-panel-subtitle">Gastos próprios da agência (sem verbas de anúncio de clientes)</div>
         <CategoryBars rows={c.categories.out} empty="Sem despesas neste mês — R$ 0,00."/></section>
