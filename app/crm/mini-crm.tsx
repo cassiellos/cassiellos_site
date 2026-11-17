@@ -119,10 +119,20 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     if(!mobileMenuOpen)return
     const prior=document.body.style.overflow
     document.body.style.overflow='hidden'
+    const priorFocus=document.activeElement instanceof HTMLElement?document.activeElement:null
     mobileMenuRef.current?.focus()
-    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setMobileMenuOpen(false)}
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){event.preventDefault();setMobileMenuOpen(false)}
+      if(event.key==='Tab'){
+        const controls=Array.from(mobileMenuRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled])')||[])
+        if(!controls.length)return
+        const first=controls[0],last=controls[controls.length-1]
+        if(event.shiftKey&&(document.activeElement===first||document.activeElement===mobileMenuRef.current)){event.preventDefault();last.focus()}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+      }
+    }
     window.addEventListener('keydown',onKey)
-    return ()=>{document.body.style.overflow=prior;window.removeEventListener('keydown',onKey)}
+    return ()=>{document.body.style.overflow=prior;window.removeEventListener('keydown',onKey);priorFocus?.focus({preventScroll:true})}
   },[mobileMenuOpen])
   const openView = (next: View) => {
     setMobileMenuOpen(false)
@@ -174,7 +184,7 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">{view==='dashboard'?'PAINEL':'SHARK SCALE · CRM'}</div><h1>{view === 'dashboard' ? 'Visão geral' : sectionNames[view]}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'formularios' ? 'Crie jornadas editáveis, bifurcações e resultados diferentes por capacidade de investimento.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
+            <div><div className="crm-eyebrow">{view==='dashboard'?'PAINEL':'SHARK SCALE · CRM'}</div><h1>{view === 'dashboard' ? 'Visão geral' : sectionNames[view]}</h1><p className="crm-description">{view === 'dashboard' ? 'Acompanhe os indicadores e acesse rapidamente o que importa.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'formularios' ? 'Crie formulários, organize perguntas e defina caminhos para cada perfil de cliente.' : view === 'leads' ? 'Encontre contatos, consulte respostas e acompanhe cada oportunidade.' : view === 'agenda' ? 'Confira seus compromissos e os horários das reuniões.' : view === 'funil' ? 'Veja em qual etapa comercial está cada contato.' : view === 'disponibilidade' ? 'Defina horários de atendimento, feriados e bloqueios.' : view === 'notificacoes' ? 'Acompanhe os avisos e as ações que precisam de atenção.' : view === 'financeiro' ? 'Acompanhe contratos, receitas, despesas e pagamentos.' : view === 'conversoes' ? 'Consulte o histórico técnico de eventos e conversões Meta.' : view === 'relatorios' ? 'Compare os resultados reais da captação e dos agendamentos.' : 'Acesse as configurações operacionais do CRM.'}</p></div>
             <div className="crm-controls">
               {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
