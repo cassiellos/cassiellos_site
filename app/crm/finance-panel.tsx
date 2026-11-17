@@ -7,7 +7,8 @@ import {
   EXPENSE_CATEGORIES, FORMALIZATION_STATUS, INVOICE_STATUS, PERIODICITIES, REVENUE_CATEGORIES, SERVICE_STATUS, SOURCE_STATUS, addMonths, centsToInput, formatCents,
   formatChange, formatDate, monthLabel, parseMoneyToCents, percentChange, shortMonth, splitAgencyExpenseFunding, todayInBrazil,
 } from '@/lib/crm/finance/model'
-import { MONTH_BASIS_LABEL, entriesForMonth, monthListTotals, type MonthBasis } from '@/lib/crm/finance/month-filter'
+import { MONTH_BASIS_LABEL, civilMonthOf, entriesForMonth, monthListTotals, type MonthBasis } from '@/lib/crm/finance/month-filter'
+import { forecastRevenueByDue } from '@/lib/crm/finance/forecast-by-due'
 import './finance-panel.css'
 
 /**
@@ -150,12 +151,12 @@ function LineChart({ labels, series, title }: { labels: string[]; series: Series
   </figure>
 }
 
-function CategoryBars({ rows, empty }: { rows: { label: string; competenceCents: number; cashCents: number }[]; empty: string }) {
+function CategoryBars({ rows, empty, firstBasis = 'Competência' }: { rows: { label: string; competenceCents: number; cashCents: number }[]; empty: string; firstBasis?: string }) {
   const max = Math.max(1, ...rows.flatMap(r => [r.competenceCents, r.cashCents]))
   if (!rows.length) return <p className="crm-fin-empty">{empty}</p>
   return <div className="crm-fin-cats">{rows.map(r => <div key={r.label} className="crm-fin-cat">
     <div className="crm-fin-cat-head"><span>{r.label}</span><strong>{formatCents(r.competenceCents)}</strong></div>
-    <div className="crm-fin-track" title={'Competência: ' + formatCents(r.competenceCents)}><i style={{ width: (100 * r.competenceCents / max) + '%' }}/></div>
+    <div className="crm-fin-track" title={firstBasis + ': ' + formatCents(r.competenceCents)}><i style={{ width: (100 * r.competenceCents / max) + '%' }}/></div>
     <div className="crm-fin-track crm-fin-track-cash" title={'Caixa: ' + formatCents(r.cashCents)}><i style={{ width: (100 * r.cashCents / max) + '%' }}/></div>
     <small>Caixa no mês: {formatCents(r.cashCents)}</small>
   </div>)}</div>
@@ -453,7 +454,7 @@ function PartnerRateio({ month, values, onNavigate }: {
   </div>
 }
 
-function Kpis({ v, onNavigate, rateio }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void; rateio?: Overview['rateio'] }) {
+function Kpis({ v, onNavigate, rateio, dueOpen }: { v: (key: string) => number; onNavigate?: (tab: Tab, mode?: DrilldownMode) => void; rateio?: Overview['rateio']; dueOpen?: number }) {
   // Só projeções visuais: nenhuma retirada dos sócios é lançada no Financeiro.
   const result = v('resultCashCents')
   const distributable = Math.max(0, result)
@@ -468,7 +469,7 @@ function Kpis({ v, onNavigate, rateio }: { v: (key: string) => number; onNavigat
   type Tone = 'default' | 'green' | 'orange' | 'red'
   type Card = { label: string; cents: number; sub: string; extra?: string; tab?: Tab; mode?: DrilldownMode; tone: Tone }
   const cards: Card[] = [
-    { label: 'Contas a receber', cents: v('receivableMonthCents'), sub: 'Saldo pendente das cobranças do mês',
+    { label: 'A receber no mês', cents: dueOpen ?? v('receivableMonthCents'), sub: 'Cobranças com vencimento neste mês (não recebidas)',
       extra: 'Em aberto até o mês: ' + formatCents(v('receivableOpenTotalCents')), tab: 'receber', tone: 'default' },
     { label: 'Receita recebida', cents: v('revenueReceivedCashCents'), sub: 'Caixa · entrou no mês',
       extra: 'Da competência do mês: ' + formatCents(v('revenueReceivedOfCompetenceCents')), tab: 'receitas', mode: 'cash', tone: 'green' },
@@ -539,11 +540,16 @@ function Kpis({ v, onNavigate, rateio }: { v: (key: string) => number; onNavigat
 
 function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) => number; onNavigate: (tab: Tab, mode?: DrilldownMode) => void }) {
   const c = data.charts
+  const due = forecastRevenueByDue(data.entries, data.month)
+  const dueCategories = Array.from(new Set([...Object.keys(due.byCategory),...c.categories.in.map(row=>row.category)]))
+    .map(category=>({category, label:(REVENUE_CATEGORIES as Record<string,string>)[category]||category,
+      competenceCents:due.byCategory[category]||0,
+      cashCents:c.categories.in.find(row=>row.category===category)?.cashCents||0}))
   const noData = !data.sources.length
   return <>
     {noData && <div className="crm-info-box"><strong>Ainda não há contratos nem despesas cadastrados.</strong> Os indicadores mostram R$ 0,00 até que
       você cadastre clientes, contratos e despesas reais. Nenhum valor é estimado ou inventado.</div>}
-    <Kpis v={v} onNavigate={onNavigate} rateio={data.rateio}/>
+    <Kpis v={v} onNavigate={onNavigate} rateio={data.rateio} dueOpen={due.openCents}/>
     <div className="crm-fin-actions"><button className="crm-btn" type="button" onClick={() => onNavigate('rateio')}>Ver rateio de despesas entre Daniel e Guilherme ↗</button></div>
     {v('clientAdBudgetCents') > 0 && <p className="crm-fin-note">Verbas de anúncio de clientes neste mês (fora do caixa da agência, não entram nos totais): {formatCents(v('clientAdBudgetCents'))}</p>}
     <div className="crm-fin-grid">
@@ -552,17 +558,17 @@ function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) =>
         <BarChart title={'Entradas e saídas por mês em ' + c.year} labels={c.yearMonths.map(m => shortMonth(m.month))}
           series={[{ name: 'Entradas', color: '#34d6a0', values: c.yearMonths.map(m => m.cashIn) }, { name: 'Saídas', color: '#f13c4b', values: c.yearMonths.map(m => m.cashOut) }]}/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Receita dos últimos 12 meses</div>
-        <div className="crm-panel-subtitle">Prevista (competência) × recebida (caixa)</div>
+        <div className="crm-panel-subtitle">Prevista por vencimento × recebida efetivamente (caixa)</div>
         <LineChart title="Receita dos últimos 12 meses" labels={c.last12.map(m => shortMonth(m.month))}
-          series={[{ name: 'Prevista (competência)', color: '#8ca8ff', values: c.last12.map(m => m.competenceIn) }, { name: 'Recebida (caixa)', color: '#34d6a0', values: c.last12.map(m => m.cashIn) }]}/></section>
+          series={[{ name: 'Prevista (vencimento)', color: '#8ca8ff', values: c.last12.map(m => forecastRevenueByDue(data.entries,m.month).expectedCents) }, { name: 'Recebida (caixa)', color: '#34d6a0', values: c.last12.map(m => m.cashIn) }]}/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Comparação dos meses de {c.year}</div>
         <div className="crm-panel-subtitle">Resultado de caixa mês a mês (recebido − pago) e receita recebida de {c.year - 1}</div>
         <BarChart title={'Resultado mensal em ' + c.year} labels={c.yearMonths.map(m => shortMonth(m.month))}
           series={[{ name: 'Resultado ' + c.year, color: '#22c7f2', values: c.yearMonths.map(m => m.cashIn - m.cashOut) },
             { name: 'Receita recebida ' + (c.year - 1), color: '#4a5b75', values: c.previousYearMonths.map(m => m.cashIn) }]}/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Receita por categoria — {monthLabel(data.month)}</div>
-        <div className="crm-panel-subtitle">Barra cheia: competência · barra fina: caixa</div>
-        <CategoryBars rows={c.categories.in} empty="Sem receitas neste mês — R$ 0,00."/></section>
+        <div className="crm-panel-subtitle">Barra cheia: cobrança com vencimento no mês · barra fina: caixa confirmado</div>
+        <CategoryBars rows={dueCategories.filter(r=>r.competenceCents>0||r.cashCents>0)} firstBasis="Vencimento" empty="Sem cobranças com vencimento neste mês — R$ 0,00."/></section>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Despesas por categoria — {monthLabel(data.month)}</div>
         <div className="crm-panel-subtitle">Gastos próprios da agência (sem verbas de anúncio de clientes)</div>
         <CategoryBars rows={c.categories.out} empty="Sem despesas neste mês — R$ 0,00."/></section>
@@ -659,8 +665,8 @@ function MonthlyPending({ data, month, direction, setDialog, onlyOverdue = false
 }) {
   const [showOverdue, setShowOverdue] = useState(false)
   const allOpen = data.entries.filter(e => e.direction === direction && e.state !== 'cancelled' && e.remainingCents > 0)
-  const current = allOpen.filter(e => e.competenceMonth === month)
-  const previousOverdue = allOpen.filter(e => e.competenceMonth < month && e.overdue)
+  const current = allOpen.filter(e => direction === 'in' ? civilMonthOf(e.dueDate) === month : e.competenceMonth === month)
+  const previousOverdue = allOpen.filter(e => (direction === 'in' ? (civilMonthOf(e.dueDate)||'9999-99') : e.competenceMonth) < month && e.overdue)
   const allOverdue = allOpen.filter(e => e.overdue)
   const overdueTotal = allOverdue.reduce((sum, e) => sum + e.remainingCents, 0)
   const olderTotal = previousOverdue.reduce((sum, e) => sum + e.remainingCents, 0)
@@ -676,7 +682,9 @@ function MonthlyPending({ data, month, direction, setDialog, onlyOverdue = false
   </>
   return <>
     <EntryList title={'Contas a ' + noun + ' — ' + monthLabel(month)}
-      subtitle="Somente cobranças em aberto da competência selecionada. Ao registrar a quitação, a cobrança sai desta lista e permanece no histórico."
+      subtitle={direction === 'in'
+         ? 'Cobranças ainda em aberto com vencimento neste mês. Recebimentos efetivos continuam separados da previsão.'
+         : 'Despesas em aberto da competência selecionada. Pagamentos reais continuam no histórico.'}
       list={current} setDialog={setDialog}
       empty={'Nenhuma cobrança pendente em ' + monthLabel(month) + '.'}
       totals={[[direction === 'in' ? 'Saldo a receber neste mês' : 'Saldo a pagar neste mês', currentTotal]]}/>
@@ -756,7 +764,7 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
     {clients.map(c => {
       const services = contracts.filter(s => s.clientId === c.id)
       const activeCount = services.filter(s => s.status === 'active').length
-      const history = data.entries.filter(e => e.direction === 'in' && e.clientId === c.id && e.competenceMonth <= month && e.state !== 'cancelled')
+      const history = data.entries.filter(e => e.direction === 'in' && e.clientId === c.id && (civilMonthOf(e.dueDate)||'9999-99') <= month && e.state !== 'cancelled')
         .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
       return <section key={c.id} className="crm-card crm-panel crm-fin-client" data-archived={c.archived || undefined}>
         <div className="crm-panel-head"><div><div className="crm-panel-title">{c.name}{c.archived && <span className="crm-fin-badge" data-tone="muted">Arquivado</span>}</div>
@@ -768,7 +776,7 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
           </div></div>
         {services.map(s => <div key={s.id} className="crm-fin-service">
           <SourceRow s={s} setDialog={setDialog} post={post} busy={busy} referenceMonth={month}
-            monthEntries={data.entries.filter(e => e.sourceId === s.id && e.competenceMonth === month && e.state !== 'cancelled')}/>
+            monthEntries={data.entries.filter(e => e.sourceId === s.id && civilMonthOf(e.dueDate) === month && e.state !== 'cancelled')}/>
           {s.installmentPlan && <details className="crm-fin-client-history crm-fin-project-history">
             <summary>Cronograma das parcelas ({s.installmentCount}) · total {formatCents(s.amountCents)}</summary>
             {data.entries.filter(e => e.sourceId === s.id && e.installmentNumber !== null)
@@ -778,7 +786,7 @@ function Contracts({ data, month, setDialog, post, busy }: { data: Overview; mon
         </div>)}
         {!services.length && <p className="crm-fin-empty">Nenhum serviço ativo cadastrado para este cliente.</p>}
         <details className="crm-fin-client-history">
-          <summary>Histórico de faturamento e pagamentos até {monthLabel(month)} ({history.length})</summary>
+          <summary>Histórico de cobranças por vencimento até {monthLabel(month)} ({history.length})</summary>
           {history.length ? history.map(e => <EntryRow key={e.id} e={e} setDialog={setDialog}/>)
             : <p className="crm-fin-empty">Sem lançamentos históricos neste período.</p>}
         </details>
