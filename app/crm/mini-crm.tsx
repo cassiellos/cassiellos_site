@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import './crm.css'
+import './crm-refresh.css'
 import RealLeadsPanel from './real-leads'
 import RealAgendaPanel from './real-agenda'
 import RealDashboard from './real-dashboard'
@@ -39,12 +40,12 @@ const intelRealDescriptions: Record<IntelArea, string> = {
   conexoes: 'Autorização das plataformas, descoberta de contas, vínculo com clientes, sincronização e auditoria.',
 }
 const navigation: { id: View; label: string; icon: string; count?: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
+  { id: 'dashboard', label: 'Visão geral', icon: 'grid' },
   { id: 'leads', label: 'Leads', icon: 'users' },
   { id: 'formularios', label: 'Formulários', icon: 'funnel' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'disponibilidade', label: 'Disponibilidade', icon: 'clock' },
-  { id: 'funil', label: 'Funil comercial', icon: 'funnel' },
+  { id: 'funil', label: 'Funil', icon: 'funnel' },
   { id: 'conversoes', label: 'Conversões Meta', icon: 'target' },
   { id: 'notificacoes', label: 'Notificações', icon: 'bell' },
   { id: 'relatorios', label: 'Relatórios', icon: 'chart' },
@@ -75,6 +76,18 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{shapes[name] || shapes.grid}</svg>
 }
 
+const navSections: { title: string; ids: View[] }[] = [
+  {title:'VISÃO COMERCIAL',ids:['dashboard','leads','agenda','funil']},
+  {title:'CAPTAÇÃO',ids:['formularios','relatorios','conversoes']},
+  {title:'OPERAÇÃO',ids:['disponibilidade','notificacoes','financeiro','configuracoes']},
+]
+const mobileTabs: { id: View; label: string; icon: string }[] = [
+  {id:'dashboard',label:'Início',icon:'grid'},
+  {id:'leads',label:'Leads',icon:'users'},
+  {id:'formularios',label:'Formulários',icon:'funnel'},
+  {id:'agenda',label:'Agenda',icon:'calendar'},
+]
+
 const sectionNames: Record<View, string> = {
   formularios: 'Formulários', dashboard: 'Dashboard', leads: 'Gestão de leads', agenda: 'Agenda de reuniões', disponibilidade: 'Disponibilidade', funil: 'Funil comercial', conversoes: 'Conversões Meta', notificacoes: 'Notificações', relatorios: 'Relatórios', configuracoes: 'Configurações', financeiro: 'Financeiro',
   'intel-prospeccao': 'Prospecção Cassiellos', 'intel-agencia': 'Visão geral da agência', 'intel-cliente': 'Visão do cliente', 'intel-conexoes': 'Conexões e integrações',
@@ -85,6 +98,9 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [search, setSearch] = useState('')
   const [focusLead, setFocusLead] = useState<string | null>(null)
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false)
+  const [mobileSearchOpen,setMobileSearchOpen]=useState(false)
+  const mobileMenuRef=useRef<HTMLDivElement>(null)
   // Links diretos (avisos do PWA): /crm?lead=<id> abre a ficha do lead; /crm?view=notificacoes abre o painel.
   // Também registra o service worker do PWA (sem pedir permissão) e reprocessa a fila de avisos pendentes.
   useEffect(() => {
@@ -99,7 +115,18 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     fetch('/api/crm/push', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'process_due' }) }).catch(() => undefined)
   }, [])
+  useEffect(()=>{
+    if(!mobileMenuOpen)return
+    const prior=document.body.style.overflow
+    document.body.style.overflow='hidden'
+    mobileMenuRef.current?.focus()
+    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setMobileMenuOpen(false)}
+    window.addEventListener('keydown',onKey)
+    return ()=>{document.body.style.overflow=prior;window.removeEventListener('keydown',onKey)}
+  },[mobileMenuOpen])
   const openView = (next: View) => {
+    setMobileMenuOpen(false)
+    setMobileSearchOpen(false)
     setView(next)
     setSearch('')
     const url = new URL(window.location.href)
@@ -112,40 +139,53 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
     window.history.replaceState(null, '', url.pathname + url.search)
   }
   const intelArea: IntelArea | null = intelEnabled && view.startsWith('intel-') ? view.slice('intel-'.length) as IntelArea : null
+  const sidebarItem=(item:{id:View;label:string;icon:string;count?:string})=><button key={item.id} type="button" className="crm-nav-btn" data-active={view===item.id} onClick={()=>openView(item.id)} aria-current={view===item.id?'page':undefined}><Icon name={item.icon}/><span>{item.label}</span>{item.count&&<span className="crm-nav-count">{item.count}</span>}</button>
+  const moreActive=!mobileTabs.some(tab=>tab.id===view)
   return <div id="cassiellos-crm" data-crm-root>
     <div className="crm-layout">
       <aside className="crm-sidebar" aria-label="Navegação do CRM">
         <div className="crm-brand"><img className="crm-brand-symbol" src="/brand/cassiellos-symbol-signal-red.svg" width={40} height={26} alt="Símbolo oficial Cassiellos"/><div><div className="crm-brand-word">Cassiellos</div><span className="crm-brand-sub">CRM | Cassiellos</span></div></div>
         <nav className="crm-nav-wrap" aria-label="Seções" data-lenis-prevent>
-          <div className="crm-nav-label">Workspace</div>
-          {navigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}{item.count && <span className="crm-nav-count">{item.count}</span>}</button>)}
-          <div className="crm-nav-label crm-nav-label-section">Financeiro</div>
-          <button type="button" className="crm-nav-btn" data-active={view === 'financeiro'} onClick={() => openView('financeiro')} aria-current={view === 'financeiro' ? 'page' : undefined}><Icon name="wallet"/>Financeiro</button>
-          {intelEnabled && <><div className="crm-nav-label crm-nav-label-section">Inteligência</div>
-          {intelNavigation.map(item => <button key={item.id} type="button" className="crm-nav-btn" data-active={view === item.id} onClick={() => openView(item.id)} aria-current={view === item.id ? 'page' : undefined}><Icon name={item.icon}/>{item.label}</button>)}</>}
+          {navSections.map(group=><div className="crm-nav-group" key={group.title}>
+            <div className="crm-nav-label">{group.title}</div>
+            {group.ids.map(id=>{const item=id==='financeiro'?{id:'financeiro' as View,label:'Financeiro',icon:'wallet'}:navigation.find(n=>n.id===id)
+              return item?sidebarItem(item):null})}
+          </div>)}
+          {intelEnabled&&<div className="crm-nav-group">
+            <div className="crm-nav-label">INTELIGÊNCIA</div>
+            {intelNavigation.map(item=>sidebarItem(item))}
+          </div>}
         </nav>
         <div className="crm-sidebar-footer"><NeonUsageMonitor/><div className="crm-profile"><span className="crm-avatar">C</span><span><strong>Equipe Cassiellos</strong><small>CRM · operacional</small></span></div><form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-logout"><Icon name="shield" size={15}/> Encerrar sessão</button></form></div>
       </aside>
 
-      <main className="crm-main">
+      <main className="crm-main" id="crm-main-content">
         <header className="crm-topbar" data-intel={intelArea ? 'true' : undefined}>
+          <div className="crm-mobile-heading"><img src="/brand/cassiellos-symbol-signal-red.svg" width={23} height={23} alt=""/><div><small>SHARK SCALE</small><strong>{sectionNames[view]}</strong></div></div>
           <div className="crm-breadcrumb"><span>Workspace</span><span style={{ opacity: .45 }}>/</span><strong>{sectionNames[view]}</strong></div>
           <div className="crm-top-actions">
             {intelArea ? <span className="crm-tag" role="note">{intelSandbox ? 'TESTE ISOLADO' : intelMode === 'real' ? 'MODO REAL' : 'DADOS SIMULADOS'}</span> : <label className="crm-search"><Icon name="search" size={16}/><input type="search" aria-label="Buscar leads no CRM" placeholder="Buscar leads..." value={search} onChange={e => {setSearch(e.target.value);if (e.target.value) setView('leads')}}/></label>}
+            <button className="crm-icon-btn crm-mobile-search-toggle" type="button" aria-label={mobileSearchOpen?"Fechar busca":"Buscar leads"} aria-expanded={mobileSearchOpen} onClick={()=>{setMobileSearchOpen(v=>!v);setMobileMenuOpen(false)}}><Icon name={mobileSearchOpen?"close":"search"} size={18}/></button>
             <button className="crm-icon-btn" type="button" aria-label="Visualizar eventos" title="Eventos de conversão" onClick={() => openView('conversoes')}><Icon name="bell" size={18}/></button><form action="/api/crm/auth/logout" method="POST" className="crm-top-logout"><button type="submit" className="crm-icon-btn" aria-label="Encerrar sessão" title="Encerrar sessão"><Icon name="shield" size={17}/></button></form>
             <span className="crm-avatar" aria-label="Perfil da equipe">C</span>
           </div>
+          {mobileSearchOpen&&!intelArea&&<label className="crm-mobile-search"><Icon name="search" size={17}/><input type="search" autoFocus aria-label="Buscar leads por nome, empresa ou telefone" placeholder="Buscar leads..." value={search} onChange={e=>{setSearch(e.target.value);if(e.target.value)setView("leads")}}/></label>}
         </header>
 
         <div className="crm-content">
           <div className="crm-hero">
-            <div><div className="crm-eyebrow">Painel de performance</div><h1>{view === 'dashboard' ? 'Visão geral do negócio.' : sectionNames[view] + '.'}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'formularios' ? 'Crie jornadas editáveis, bifurcações e resultados diferentes por capacidade de investimento.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
+            <div><div className="crm-eyebrow">{view==='dashboard'?'PAINEL':'SHARK SCALE · CRM'}</div><h1>{view === 'dashboard' ? 'Visão geral' : sectionNames[view]}</h1><p className="crm-description">{view === 'dashboard' ? 'Indicadores reais de captação, reuniões e resultados do CRM.' : intelArea ? (intelMode === 'real' ? intelRealDescriptions : intelDescriptions)[intelArea] : view === 'formularios' ? 'Crie jornadas editáveis, bifurcações e resultados diferentes por capacidade de investimento.' : view === 'leads' ? 'Cadastros reais protegidos, sincronizados com o banco do CRM.' : view === 'agenda' ? 'Reuniões reais registradas no Neon, com acesso ao Google Meet.' : view === 'funil' ? 'Oportunidades reais, com qualificação e histórico auditável.' : view === 'disponibilidade' ? 'Horário comercial, feriados, bloqueios e exceções do agendamento público.' : view === 'notificacoes' ? 'Avisos do CRM no celular: reuniões confirmadas e ações de WhatsApp.' : view === 'financeiro' ? 'Contratos, receitas, despesas, contas e notas fiscais — competência e caixa separados, direto do banco do CRM.' : view === 'conversoes' ? 'Meta Pixel, eventos Chronos e CAPI habilitados no CRM. Acompanhe os eventos reais no Gerenciador de Eventos da Meta.' : view === 'relatorios' ? 'Indicadores reais de captação e reuniões consultados no banco do CRM.' : 'Configurações operacionais e informações de privacidade do CRM.'}</p></div>
             <div className="crm-controls">
               {(view === 'dashboard' || view === 'relatorios') && <button className="crm-btn" type="button" onClick={() => setPeriod(period === '7d' ? '30d' : '7d')}><Icon name="calendar" size={15}/>{period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}<Icon name="down" size={14}/></button>}
               
             </div>
           </div>
 
+          {view==='dashboard'&&<div className="crm-quicklinks" aria-label="Acessos rápidos">
+            <button type="button" onClick={()=>openView('leads')}><Icon name="users" size={17}/> Ver leads <span aria-hidden="true">↗</span></button>
+            <button type="button" onClick={()=>openView('agenda')}><Icon name="calendar" size={17}/> Consultar agenda <span aria-hidden="true">↗</span></button>
+            <button type="button" onClick={()=>openView('formularios')}><Icon name="funnel" size={17}/> Formulários <span aria-hidden="true">↗</span></button>
+          </div>}
           {intelArea && <IntelApp embeddedArea={intelArea} initialMode={intelMode} sandboxMode={intelSandbox} onNavigateArea={area => openView(`intel-${area}`)}/>}
           {view === 'conversoes' && <div className="crm-meta-context-banner"><Icon name="target" size={16}/><div><strong>INTEGRAÇÃO COMERCIAL HABILITADA</strong> Pixel, eventos Chronos e CAPI foram ativados na Preview em 03/11/2026. Esta tela não consulta a Meta nem as variáveis da Vercel em tempo real; a deduplicação e as conversões reais ainda dependem de verificação externa.</div></div>}
           {view === 'dashboard' && <RealDashboard period={period} openView={openView}/>}
@@ -228,5 +268,40 @@ export default function MiniCrm({ intelEnabled = false, intelMode = 'demo', inte
         </div>
       </main>
     </div>
+    <nav className="crm-mobile-tabs" aria-label="Navegação principal no celular">
+      {mobileTabs.map(tab=><button key={tab.id} type="button" data-active={view===tab.id}
+        aria-current={view===tab.id?'page':undefined} onClick={()=>openView(tab.id)}>
+        <Icon name={tab.icon} size={21}/><span>{tab.label}</span>
+      </button>)}
+      <button type="button" data-active={moreActive||mobileMenuOpen} aria-haspopup="dialog"
+        aria-expanded={mobileMenuOpen} onClick={()=>{setMobileMenuOpen(v=>!v);setMobileSearchOpen(false)}}>
+        <Icon name="grid" size={21}/><span>Mais</span>
+      </button>
+    </nav>
+    {mobileMenuOpen&&<div className="crm-mobile-menu-overlay">
+      <button type="button" className="crm-mobile-menu-backdrop" aria-label="Fechar menu" onClick={()=>setMobileMenuOpen(false)}/>
+      <div className="crm-mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Todas as áreas do CRM" tabIndex={-1} ref={mobileMenuRef}>
+        <div className="crm-mobile-menu-head"><div><span>SHARK SCALE</span><strong>Todas as áreas</strong></div>
+          <button type="button" aria-label="Fechar menu" onClick={()=>setMobileMenuOpen(false)}><Icon name="close" size={20}/></button>
+        </div>
+        <div className="crm-mobile-menu-content">
+          {navSections.map(group=><section key={group.title}>
+            <h2>{group.title}</h2><div className="crm-mobile-menu-grid">
+              {group.ids.map(id=>{
+                const item=id==='financeiro'?{id:'financeiro' as View,label:'Financeiro',icon:'wallet'}:navigation.find(n=>n.id===id)
+                return item?<button key={id} type="button" data-active={view===id} onClick={()=>openView(id)}>
+                  <Icon name={item.icon} size={19}/><span>{item.label}</span><Icon name="arrow" size={15}/>
+                </button>:null
+              })}
+            </div>
+          </section>)}
+          {intelEnabled&&<section><h2>INTELIGÊNCIA</h2><div className="crm-mobile-menu-grid">
+            {intelNavigation.map(item=><button type="button" key={item.id} data-active={view===item.id} onClick={()=>openView(item.id)}>
+              <Icon name={item.icon} size={19}/><span>{item.label}</span><Icon name="arrow" size={15}/></button>)}
+          </div></section>}
+          <form action="/api/crm/auth/logout" method="POST"><button type="submit" className="crm-mobile-menu-logout"><Icon name="shield" size={17}/> Encerrar sessão</button></form>
+        </div>
+      </div>
+    </div>}
   </div>
 }
