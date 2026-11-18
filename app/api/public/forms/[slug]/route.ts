@@ -5,6 +5,7 @@ import { routeFlow } from '@/lib/crm/form-builder/flow'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { isCrmPreviewOrigin, CRM_CANONICAL_ORIGIN, crmAllowedOrigins } from '@/lib/crm/preview-origins'
 import { clean, validatedName, validatedEmail, validatedPhone } from '@/lib/crm/booking-intake-request'
+import { validateBrazilianMobilePhone } from '@/lib/crm/contact-validation'
 import { TURNSTILE_BOOKING_ACTION, getTurnstileConfig, verifyTurnstileToken } from '@/lib/crm/turnstile'
 import { INTAKE_LIMIT, requestFingerprint, consumeRequestQuota } from '@/lib/crm/request-limits'
 import { sanitizeAttribution } from '@/lib/crm/attribution'
@@ -41,7 +42,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string
     const result=routeFlow(doc.published,data.answers)
     if(!result)return send({error:'INVALID_FLOW_ANSWERS'},400)
     const name=validatedName(data.name),email=validatedEmail(data.email),phone=validatedPhone(data.whatsapp)
-    if(!name||!email||!phone)return send({error:'INVALID_CONTACT'},400)
+    if(!name||!email||!phone||!validateBrazilianMobilePhone(data.whatsapp).ok)return send({error:'INVALID_CONTACT'},400)
     if(data.contactRequest!==true)return send({error:'CONTACT_REQUEST_REQUIRED'},400)
 
     const cfg=getTurnstileConfig()
