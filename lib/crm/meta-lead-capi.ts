@@ -103,8 +103,12 @@ export async function dispatchLeadToMeta(
           log({ scope: 'meta_capi', event: 'Lead', outcome: 'accepted', httpStatus: response.status, attempts })
           return { status: 'accepted', attempts, httpStatus: response.status }
         }
-        transient = response.status === 429 || response.status >= 500
-        lastError = received === 0 ? 'no_events_received' : 'http_' + response.status
+        const graphError = json && typeof json === 'object' && 'error' in json
+          ? (json as { error?: { code?: number; is_transient?: boolean } }).error : null
+        transient = response.status === 429 || response.status >= 500 ||
+          graphError?.is_transient === true ||
+          [1, 2, 4, 17, 32, 341, 613].includes(graphError?.code ?? -1)
+        lastError = response.status < 300 ? 'no_events_received' : 'http_' + response.status
         if (!transient) {
           await deps.store.finish(deliveryId, { status: 'rejected', httpStatus: response.status, error: lastError })
           log({ scope: 'meta_capi', event: 'Lead', outcome: 'rejected', httpStatus: response.status, attempts })
