@@ -6,7 +6,7 @@ import { validateFlow, type FlowDefinition, type FlowQuestion, type FlowResult, 
  */
 export type FlowEditPlan =
   | { ok: true; flow: FlowDefinition; focusId: string; message: string }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string; orphanSteps?: { id: string; title: string }[] }
 
 const copy = (flow: FlowDefinition): FlowDefinition => JSON.parse(JSON.stringify(flow)) as FlowDefinition
 const find = (flow: FlowDefinition, id: string) => flow.steps.find(step => step.id === id)
@@ -110,7 +110,9 @@ export function insertResultAt(flow: FlowDefinition, selectedId: string, newId: 
  * Excluir sem quebrar os links: pergunta -> próximo padrão; finalização ->
  * outra finalização escolhida pelo usuário. Nunca elimina outras etapas automaticamente.
  */
-export function removeStepAndReconnect(flow: FlowDefinition, selectedId: string, replacementId?: string): FlowEditPlan {
+export function removeStepAndReconnect(
+  flow: FlowDefinition, selectedId: string, replacementId?: string, removeOrphans = false,
+): FlowEditPlan {
   if (flow.steps.length <= 2) return { ok: false, reason: 'O fluxo precisa manter ao menos duas etapas.' }
   const selected = find(flow, selectedId)
   if (!selected) return { ok: false, reason: 'Selecione uma etapa para excluir.' }
@@ -127,6 +129,35 @@ export function removeStepAndReconnect(flow: FlowDefinition, selectedId: string,
   replaceIncoming(next, selectedId, replacement)
   next.steps = next.steps.filter(step => step.id !== selectedId)
   if (next.layout) delete next.layout[selectedId]
-  return validateEdit(next, replacement, 'Etapa excluída. Os caminhos de entrada foram redirecionados para "' +
+  // Se uma saída exclusiva da etapa excluída ficar sem acesso, nunca a elimina
+  // implicitamente. O editor pede uma confirmação EXPLÍCITA com os nomes das etapas.
+  const visited = new Set<string>()
+  const walk = (id: string) => {
+    if (visited.has(id)) return
+    const node = find(next, id)
+    if (!node) return
+    visited.add(id)
+    if (node.type === 'question') {
+      const covered = node.input === 'select' &&
+        node.options.every(option => node.branches.some(b => b.answer === option))
+      if (!covered) walk(node.next)
+      for (const branch of node.branches) walk(branch.to)
+    }
+  }
+  walk(next.start)
+  const orphans = next.steps.filter(node => !visited.has(node.id))
+  if (orphans.length && !removeOrphans) {
+    return { ok: false, reason: 'A etapa possui caminhos exclusivos que também ficarão desconectados. ' +
+      'Confirme a exclusão dessas etapas ou redirecione as conexões manualmente.',
+      orphanSteps: orphans.map(node => ({ id: node.id, title: node.title })) }
+  }
+  if (orphans.length) {
+    const orphanIds = new Set(orphans.map(node => node.id))
+    next.steps = next.steps.filter(node => !orphanIds.has(node.id))
+    if (next.layout) for (const id of orphanIds) delete next.layout[id]
+  }
+  return validateEdit(next, replacement, 'Etapa excluída. ' +
+    (orphans.length ? 'Também removidas as ' + orphans.length + ' etapas exclusivas confirmadas. ' : '') +
+    'Os caminhos de entrada foram redirecionados para "' +
     (find(next, replacement)?.title ?? replacement) + '".')
 }
