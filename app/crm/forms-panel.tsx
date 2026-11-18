@@ -53,7 +53,16 @@ export default function FormsPanel(){
   }
   async function refresh(){
     setLoading(true)
-    try{const data=await api();setForms(data.forms||[]);setMessage('')}
+    try{
+      const data=await api()
+      const available=data.forms||[]
+      setForms(available);setMessage('')
+      // Link direto para um rascunho específico sem publicar o formulário.
+      // Ex.: /crm?view=formularios&form=hamburguerias
+      const requested=new URLSearchParams(window.location.search).get('form')
+      const target=requested?available.find(doc=>doc.slug===requested):null
+      if(target)fromDoc(target)
+    }
     catch(e){setMessage(errorText(e))}
     finally{setLoading(false)}
   }
