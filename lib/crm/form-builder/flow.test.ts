@@ -21,6 +21,17 @@ describe('editor de formulários — grafo e rotas seguras',()=>{
     assert.equal(routeFlow(flow,{clinic:'Escola A',budget:'Sim'}),null)
     assert.equal(routeFlow(flow,{clinic:'Escola A',revenue:'Até R$ 10 mil',budget:'Sim',limited:'Sim'}),null)
   })
+  it('formulário público rejeita fixo e DDD inválido, mesmo com envio direto ao servidor',()=>{
+    const flow=example()
+    const before=flow.steps.find(s=>s.id==='clinic')
+    if(!before||before.type!=='question')throw Error('missing question')
+    before.field='phone'
+    const valid=routeFlow(flow,{clinic:'(31) 99876-5432',revenue:'Até R$ 10 mil',budget:'Sim'})
+    assert.equal(valid?.result.outcome,'qualified')
+    for(const phone of ['(31) 3456-7890','(20) 99876-5432','(31) 89876-5432','(31) 99876-54321']){
+      assert.equal(routeFlow(flow,{clinic:phone,revenue:'Até R$ 10 mil',budget:'Sim'}),null,phone)
+    }
+  })
   it('editores não conseguem criar ciclos nem etapas desconectadas',()=>{
     const flow=example()
     const q=flow.steps.find(s=>s.id==='budget')
