@@ -10,6 +10,7 @@ type Camera = { x: number; y: number; zoom: number }
 type Props = {
   flow: FlowDefinition
   selectedStep: string
+  focusStep?: { id: string; key: number } | null
   onSelect: (id: string) => void
   onMove: (id: string, point: DiagramPoint) => void
   onConnect: (sourceId: string, answer: string | null, targetId: string) => boolean
@@ -31,7 +32,7 @@ function shortLabel(name:string) {
   return name.slice(0,57).trimEnd()+'…'
 }
 
-export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onConnect,onRemoveBranch,onResetLayout}:Props) {
+export default function FormsFlowCanvas({flow,selectedStep,focusStep,onSelect,onMove,onConnect,onRemoveBranch,onResetLayout}:Props) {
   const model = useMemo(()=>diagramModel(flow),[flow])
   const modelRef=useRef(model)
   modelRef.current=model
@@ -86,6 +87,24 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
     visibility?.observe(el)
     return ()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();visibility?.disconnect()}
   },[stepStructure])
+
+  // Ao inserir uma etapa no caminho escolhido, o viewport acompanha o novo cartão.
+  // A câmera só se move por uma ação explícita de inserção/desfazer, nunca por edição de texto.
+  useLayoutEffect(()=>{
+    if(!focusStep)return
+    const el=stage.current
+    if(!el)return
+    const item=modelRef.current.nodes.find(n=>n.id===focusStep.id)
+    if(!item)return
+    const rect=el.getBoundingClientRect()
+    if(rect.width<80||rect.height<80)return
+    cameraTouched.current=true
+    setCamera(prev=>({
+      ...prev,
+      x:rect.width/2-(item.x+item.w/2)*prev.zoom,
+      y:rect.height/2-(item.y+item.h/2)*prev.zoom,
+    }))
+  },[focusStep?.key])
 
   const fit=()=>{
     const rect=stage.current?.getBoundingClientRect()
