@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { getCrmPool } from '@/lib/crm/db'
 import { getBookingForm } from '@/lib/crm/booking-forms'
 import { createBookingGrant } from '@/lib/crm/booking-grant'
@@ -12,6 +12,7 @@ import { activeHomologation } from '@/lib/marketing/homologation'
 import { claimHomologationEvent } from '@/lib/crm/meta-homologation-claims'
 import { crmRuntime, isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { homologMode } from '@/lib/crm/homolog-mode'
+import { dispatchLeadToMeta, metaLeadClientFromHeaders, pgLeadCapiStore, metaLeadConfig } from '@/lib/crm/meta-lead-capi'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Lead da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -26,7 +27,7 @@ function homologationClaims(cookieHeader: string | null) {
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 20
+export const maxDuration = 60
 
 const MAX_BODY_SIZE = 12_000
 
@@ -99,6 +100,19 @@ export async function POST(request: NextRequest) {
     // Reason codes only: never the token, IP, e-mail or secret.
     log: (event, details) => console.warn('[booking-leads]', event, details.reason ?? '', (details.codes ?? []).join(',')),
   }, { value, remoteIp: forwardedFor, cookieHeader: request.headers.get('cookie') })
+  // CAPI Lead depois do sucesso. Mesma chave do Pixel; qualquer teste/recusa é bloqueado no store.
+  const tracking=result.status===201&&result.body&&typeof result.body==='object'
+    ? (result.body as {tracking?:{lead?:{eventId?:unknown}}}).tracking?.lead : null
+  const eventId=typeof tracking?.eventId==='string'&&/^lead_[a-f0-9]{32}$/.test(tracking.eventId)
+    ? tracking.eventId : null
+  const capi=eventId?metaLeadConfig():null
+  if(eventId&&capi?.mode==='live'){
+    const client=metaLeadClientFromHeaders(request.headers)
+    after(()=>dispatchLeadToMeta({config:capi,store:pgLeadCapiStore(getCrmPool()),
+      fetch:(url,init)=>fetch(url,{...init,cache:'no-store'}),
+      log:entry=>console.info(JSON.stringify(entry))},
+      {eventId,...client}).then(()=>undefined))
+  }
   // O cadastro continua normal, mas NÃO envia notificação de novo lead.
   // O aviso administrativo só sai depois que a reunião for confirmada (POST /api/booking/confirm).
   return response(result.body, result.status)
