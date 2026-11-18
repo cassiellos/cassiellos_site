@@ -10,6 +10,7 @@ import {
 import { MONTH_BASIS_LABEL, civilMonthOf, entriesForMonth, monthListTotals, type MonthBasis } from '@/lib/crm/finance/month-filter'
 import { forecastRevenueByDue } from '@/lib/crm/finance/forecast-by-due'
 import './finance-panel.css'
+import './finance-mobile.css'
 
 /**
  * FINANCEIRO do CRM | Cassiellos. Somente administradores, somente Preview. Todos os números vêm do Neon (API
