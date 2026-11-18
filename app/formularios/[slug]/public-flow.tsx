@@ -208,7 +208,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           </form>
         </div>:<h1>Esta etapa está indisponível.</h1>}
         {error&&<div className="cpf-error" role="alert">{error}</div>}
-        {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
+        {canBack&&!coverOpen&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
       <footer className="cpf-footer">
         <span>© Agência Cassiellos · {new Date().getFullYear()}</span>
