@@ -1,0 +1,196 @@
+/*
+ * SHARK SCALE — Financeiro no celular.
+ * Pensado para 320px–830px: período visível, filtros sob demanda, quatro KPIs
+ * fundamentais e navegação financeira secundária SEM duplicar a barra global.
+ * Não muda modelos, datas, receitas, contratos nem consultas ao Neon.
+ */
+#cassiellos-crm .crm-fin-mobile-nav,
+#cassiellos-crm .crm-fin-mobile-filter-toggle,
+#cassiellos-crm .crm-fin-mobile-overview,
+#cassiellos-crm .crm-fin-mobile-chart-toggle{display:none}
+#cassiellos-crm .crm-fin-advanced-fields{display:contents}
+@media(min-width:831px) and (max-width:1199px){
+  #cassiellos-crm .crm-fin-advanced-fields>.crm-fin-field:first-child{grid-column:auto}
+}
+@media(max-width:830px){
+  #cassiellos-crm .crm-fin{gap:12px;min-width:0}
+  #cassiellos-crm .crm-fin-tabs{display:none}
+  #cassiellos-crm .crm-fin-mobile-nav{
+    display:block;min-width:0;scroll-margin-top:81px;
+    border:1px solid #293e54;border-radius:12px;padding:5px;
+    background:#111e30;
+  }
+  #cassiellos-crm .crm-fin-mobile-primary{
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;min-width:0;
+  }
+  #cassiellos-crm .crm-fin-mobile-primary button{
+    border:1px solid transparent;border-radius:8px;background:transparent;color:#a7b9ce;
+    min-height:42px;min-width:0;padding:8px 3px;font-size:12px;font-weight:700;
+    cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:3px;
+  }
+  #cassiellos-crm .crm-fin-mobile-primary button[data-active="true"]{
+    border-color:#a54d62;background:#372437;color:#fff;box-shadow:inset 0 -2px 0 #f15f72;
+  }
+  #cassiellos-crm .crm-fin-mobile-primary button span{font-size:15px;color:inherit}
+  #cassiellos-crm .crm-fin-mobile-areas{
+    margin:6px 2px 3px;padding:9px 0 0;border-top:1px solid #2b4158;
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+  }
+  #cassiellos-crm .crm-fin-mobile-areas button{
+    display:flex;align-items:center;justify-content:space-between;gap:7px;
+    min-height:45px;padding:9px 10px;border:1px solid #34475f;border-radius:9px;
+    background:#1a2b40;color:#d6e4f1;font-size:11px;font-weight:675;text-align:left;
+  }
+  #cassiellos-crm .crm-fin-mobile-areas button span{color:#91a8c0;font-size:18px}
+  #cassiellos-crm .crm-fin-mobile-areas button[data-active="true"]{
+    border-color:#d86b7b;background:#3c2a3f;color:#fff;
+  }
+  #cassiellos-crm .crm-fin-current-area{margin:6px 4px 0;padding:8px 10px;
+    color:#b4c7da;font-size:11px;border-top:1px solid #2b4158}
+  #cassiellos-crm .crm-fin-current-area strong{color:#fff}
+
+  /* O mês é o filtro fundamental: os demais ficam recolhidos, sem sumir. */
+  #cassiellos-crm .crm-fin-filters{
+    display:grid;grid-template-columns:minmax(0,1fr);gap:8px;
+    align-items:stretch;padding:11px;border:1px solid #2c4056;border-radius:12px;
+    background:#121f30;min-width:0;
+  }
+  #cassiellos-crm .crm-fin-filters>.crm-fin-field,
+  #cassiellos-crm .crm-fin-filters>.crm-fin-field:first-child{
+    grid-column:1/-1;min-width:0;max-width:none;gap:5px;
+  }
+  #cassiellos-crm .crm-fin-filters>.crm-fin-field>span{
+    font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#a1b7cf;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-month{
+    width:100%;grid-template-columns:42px minmax(0,1fr) 42px;gap:7px;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-month .crm-btn{
+    min-height:43px;height:43px;min-width:42px;width:42px;font-size:21px;border-radius:8px;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-month input[type="month"]{
+    min-height:43px;height:43px;min-width:0;width:100%;font-size:15px;padding:0 5px 0 11px;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-mobile-filter-toggle{
+    display:flex;align-items:center;gap:9px;justify-content:space-between;
+    min-width:0;width:100%;min-height:40px;padding:8px 10px;
+    background:#1b2b40;border:1px solid #30475f;border-radius:8px;
+    color:#c3d4e6;font-size:11px;font-weight:660;cursor:pointer;text-align:left;
+  }
+  #cassiellos-crm .crm-fin-mobile-filter-toggle span:nth-child(2){flex:1;min-width:0}
+  #cassiellos-crm .crm-fin-filter-count{
+    flex:0 0 auto;min-width:22px;height:22px;padding:3px 5px;border-radius:6px;
+    background:#e94d62;color:#fff;text-align:center;font-size:11px;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields{display:none;min-width:0}
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields[data-open="true"]{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:11px 9px;padding:11px 2px 1px;border-top:1px solid #304258;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields>.crm-fin-field,
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields>.crm-fin-field:first-child{
+    grid-column:auto;min-width:0;max-width:none;flex:none;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields>.crm-fin-field:nth-child(n+3){
+    grid-column:1/-1;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields .crm-fin-field>span{
+    min-height:0;line-height:1.4;font-size:10.5px;
+  }
+  #cassiellos-crm .crm-fin-filters .crm-fin-advanced-fields select{
+    min-height:43px;height:43px;font-size:16px;padding-left:10px;
+  }
+  #cassiellos-crm .crm-fin-clear-filters{grid-column:1/-1;min-height:40px}
+
+  /* Indicadores essenciais: 2×2, em vez de cartões grandes empilhados. */
+  #cassiellos-crm .crm-fin-desktop-kpis,
+  #cassiellos-crm .crm-fin-desktop-rateio{display:none}
+  #cassiellos-crm .crm-fin-mobile-overview{display:block;min-width:0}
+  #cassiellos-crm .crm-fin-mobile-summary-title{
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    margin:2px 2px 10px;
+  }
+  #cassiellos-crm .crm-fin-mobile-summary-title strong{font-size:14px;color:#edf3fc}
+  #cassiellos-crm .crm-fin-mobile-summary-title small{font-size:10px;color:#8fa5bf}
+  #cassiellos-crm .crm-fin-mobile-core{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+  }
+  #cassiellos-crm .crm-fin-mobile-metric{
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    min-height:106px;gap:6px;padding:12px 13px;border-radius:11px;
+    border:1px solid #31465e;background:#162539;color:#f3f7fb;
+    text-align:left;min-width:0;cursor:pointer;box-shadow:none;
+  }
+  #cassiellos-crm .crm-fin-mobile-metric>span{
+    color:#a8bed4;font-size:10px;font-weight:700;line-height:1.2;letter-spacing:.01em;
+  }
+  #cassiellos-crm .crm-fin-mobile-metric>strong{
+    color:#fff;font-size:clamp(16px,4.3vw,23px);letter-spacing:-.055em;line-height:1.16;
+    white-space:nowrap;max-width:100%;font-variant-numeric:tabular-nums;font-weight:790;
+  }
+  #cassiellos-crm .crm-fin-mobile-metric>small{
+    color:#8fa6be;font-size:10px;line-height:1.25;white-space:normal;
+  }
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="green"]{border-color:rgba(50,211,155,.3);background:#142a30}
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="green"]>strong{color:#50dcb0}
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="orange"]{border-color:rgba(255,181,102,.26)}
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="orange"]>strong{color:#ffb876}
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="red"]{border-color:rgba(255,84,110,.34)}
+  #cassiellos-crm .crm-fin-mobile-metric[data-tone="red"]>strong{color:#ff8091}
+  #cassiellos-crm .crm-fin-mobile-metric:active{background:#24374d}
+
+  /* Informações secundárias permanecem acessíveis sob demanda. */
+  #cassiellos-crm .crm-fin-mobile-secondary{
+    border:1px solid #2c3f55;background:#121f30;border-radius:10px;
+    margin-top:10px;overflow:hidden;
+  }
+  #cassiellos-crm .crm-fin-mobile-secondary summary{
+    min-height:45px;padding:12px 14px;color:#c2d5e8;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:12px;font-weight:700;cursor:pointer;list-style:none;
+  }
+  #cassiellos-crm .crm-fin-mobile-secondary summary::-webkit-details-marker{display:none}
+  #cassiellos-crm .crm-fin-mobile-secondary[open] summary{border-bottom:1px solid #2c3f55}
+  #cassiellos-crm .crm-fin-mobile-secondary[open] summary span{transform:rotate(180deg)}
+  #cassiellos-crm .crm-fin-mobile-secondary-list{display:grid;gap:0}
+  #cassiellos-crm .crm-fin-mobile-secondary-list button{
+    display:grid;grid-template-columns:minmax(0,1fr) auto 11px;align-items:center;gap:9px;
+    min-height:44px;padding:9px 14px;border:0;border-bottom:1px solid #27394e;
+    background:none;color:#c3d3e4;text-align:left;font-size:11px;
+  }
+  #cassiellos-crm .crm-fin-mobile-secondary-list button:last-child{border-bottom:0}
+  #cassiellos-crm .crm-fin-mobile-secondary-list button strong{font-size:12px;color:#fff;font-variant-numeric:tabular-nums}
+  #cassiellos-crm .crm-fin-mobile-secondary-list button span:last-child{font-size:17px;color:#9ab0c7}
+
+  /* Cinco gráficos continuam disponíveis, porém não ocupam a primeira rolagem. */
+  #cassiellos-crm .crm-fin-mobile-chart-toggle{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:13px 14px;min-height:57px;border:1px solid #30445c;border-radius:11px;
+    background:#18283d;color:#dce9f6;text-align:left;cursor:pointer;
+  }
+  #cassiellos-crm .crm-fin-mobile-chart-toggle>span:first-child{display:flex;flex-direction:column;gap:3px}
+  #cassiellos-crm .crm-fin-mobile-chart-toggle strong{font-size:12px}
+  #cassiellos-crm .crm-fin-mobile-chart-toggle small{color:#97abc1;font-size:10px}
+  #cassiellos-crm .crm-fin-mobile-chart-toggle>span:last-child{font-size:11px;color:#f09cac;white-space:nowrap;font-weight:710}
+  #cassiellos-crm .crm-fin-grid[data-mobile-open="false"]{display:none}
+  #cassiellos-crm .crm-fin-grid[data-mobile-open="true"]{display:grid;grid-template-columns:minmax(0,1fr);gap:11px}
+  #cassiellos-crm .crm-fin-kpi:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-metric:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-primary button:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-areas button:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-filter-toggle:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-chart-toggle:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-secondary summary:focus-visible,
+  #cassiellos-crm .crm-fin-mobile-secondary-list button:focus-visible{
+    outline:2px solid #ff8596;outline-offset:2px;
+  }
+}
+@media(max-width:360px){
+  #cassiellos-crm .crm-fin-mobile-primary button{font-size:11px}
+  #cassiellos-crm .crm-fin-mobile-metric{padding:11px 10px}
+  #cassiellos-crm .crm-fin-mobile-metric>strong{font-size:15.5px}
+  #cassiellos-crm .crm-fin-mobile-summary-title small{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  #cassiellos-crm .crm-fin-mobile-secondary summary span{transition:none}
+}
