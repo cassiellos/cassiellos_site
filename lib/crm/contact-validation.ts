@@ -52,6 +52,20 @@ export function validateBrazilianPhone(raw: unknown): PhoneResult {
   return { ok: true, digits, display: formatPhoneInput(digits) }
 }
 
+/**
+ * Regra específica de formulários de captação por WhatsApp:
+ * somente celulares brasileiros (DDD válido + nove dígitos começando com 9).
+ * O validador geral continua aceitando fixos/WhatsApp Business nos fluxos legados.
+ */
+export function validateBrazilianMobilePhone(raw: unknown): PhoneResult {
+  const result = validateBrazilianPhone(raw)
+  if (!result.ok) return result
+  if (result.digits.length !== 11 || result.digits.charAt(2) !== '9') {
+    return { ok: false, code: 'PHONE_INVALID', message: 'Informe um celular com DDD e 9 dígitos, começando por 9.' }
+  }
+  return result
+}
+
 /** Máscara progressiva: (31) 99999-9999 para celular, (31) 3333-4444 para fixo. Nunca mais de 11 dígitos. */
 export function formatPhoneInput(raw: string): string {
   const d = nationalPhoneDigits(raw).slice(0, 11)
