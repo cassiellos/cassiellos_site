@@ -142,6 +142,7 @@ export default function FormsPanel(){
   }
   useEffect(()=>{void refresh()},[])
   async function open(id:string){
+    if(dirty&&!window.confirm('Descartar as alterações não salvas para abrir outro formulário?'))return
     try{const data=await api(undefined,id);if(data.form)fromDoc(data.form)}
     catch(e){setMessage(errorText(e))}
   }
@@ -268,10 +269,13 @@ export default function FormsPanel(){
     setPreviewStep(step.branches.find(b=>b.answer===value)?.to||step.next)
   }
   const liveStep=draft?.steps.find(s=>s.id===previewStep)
-  return <section className="crm-forms" aria-label="Construtor de formulários">
+  return <section ref={rootRef} className="crm-forms" aria-label="Construtor de formulários">
     <div className="crm-forms-heading">
       <div><strong>FORMULÁRIOS INTELIGENTES</strong><p>Crie jornadas diferentes para cada nicho, configure bifurcações e publique quando estiver pronto. O /agendar atual permanece independente.</p></div>
-      {selected&&<button type="button" className="crm-btn" onClick={()=>{setSelected(null);setDraft(null);setMessage('')}}>← Todos os formulários</button>}
+      {selected&&<button type="button" className="crm-btn" onClick={()=>{
+        if(dirty&&!window.confirm('Sair do editor e descartar todas as alterações não salvas?'))return
+        setSelected(null);setDraft(null);setMessage('');setUndoStack([]);setRedoStack([])
+      }}>← Todos os formulários</button>}
     </div>
     {message&&<div className="crm-forms-message" role="status">{message}</div>}
     {loading&&<div className="crm-card crm-forms-loading">Carregando seus formulários…</div>}
@@ -292,13 +296,19 @@ export default function FormsPanel(){
     {!loading&&selected&&draft&&<>
       <div className="crm-card crm-forms-meta">
         <div className="crm-forms-fields">
-          <label>Nome<input value={title} maxLength={120} onChange={e=>{setTitle(e.target.value);setDirty(true)}}/></label>
-          <label>URL amigável<input value={slug} disabled={selected.status==='published'} title={selected.status==='published'?'Despublique antes de alterar o endereço público.':undefined} maxLength={70} onChange={e=>{setSlug(e.target.value);setDirty(true)}}/></label>
-          <label className="crm-forms-wide">Descrição curta<input value={description} maxLength={400} onChange={e=>{setDescription(e.target.value);setDirty(true)}}/></label>
+          <label>Nome<input value={title} maxLength={120} onChange={e=>{recordUndo('meta:title');setTitle(e.target.value);setDirty(true)}}/></label>
+          <label>URL amigável<input value={slug} disabled={selected.status==='published'} title={selected.status==='published'?'Despublique antes de alterar o endereço público.':undefined} maxLength={70} onChange={e=>{recordUndo('meta:slug');setSlug(e.target.value);setDirty(true)}}/></label>
+          <label className="crm-forms-wide">Descrição curta<input value={description} maxLength={400} onChange={e=>{recordUndo('meta:description');setDescription(e.target.value);setDirty(true)}}/></label>
         </div>
         <div className="crm-forms-toolbar">
           <span className="crm-forms-pill">{selected.status==='published'?'Publicado · versão '+selected.publishedVersion:'Somente rascunho'}</span>
+          <span className="crm-forms-help">Alterações só entram no banco ao clicar em <strong>Salvar rascunho</strong>.</span>
           {dirty&&<span className="crm-forms-dirty">Alterações não salvas</span>}
+          <div className="crm-forms-history" role="group" aria-label="Histórico de alterações">
+            <button type="button" className="crm-btn" title="Desfazer alteração (Ctrl/⌘ + Z fora dos campos)" aria-label="Desfazer alteração" disabled={!undoStack.length||busy} onClick={undo}>↶ Desfazer</button>
+            <button type="button" className="crm-btn" title="Refazer alteração (Ctrl/⌘ + Shift + Z)" aria-label="Refazer alteração" disabled={!redoStack.length||busy} onClick={redo}>↷ Refazer</button>
+            <button type="button" className="crm-btn crm-forms-discard" title="Recuperar a última versão salva" disabled={!dirty||busy} onClick={discard}>Descartar alterações</button>
+          </div>
           <button type="button" className="crm-btn" onClick={beginPreview}>Simular jornada</button>
           <button type="button" className="crm-btn crm-forms-primary" disabled={busy||!dirty||!validation?.ok} onClick={()=>void save()}>Salvar rascunho</button>
           <button type="button" className="crm-btn" disabled={busy||dirty||!validation?.ok} onClick={()=>void publish('publish')}>Publicar versão salva</button>
@@ -324,7 +334,8 @@ export default function FormsPanel(){
       <div className={'crm-forms-workspace'+(viewMode==='flow'?' crm-forms-workspace-flow':'')}>
         {viewMode==='flow'&&<FormsFlowCanvas flow={draft} selectedStep={selectedStep}
           onSelect={id=>{setSelectedStep(id);setPreview(false)}}
-          onMove={moveNode} onConnect={connectSteps} onRemoveBranch={removeBranch} onResetLayout={resetLayout}/>}
+          onMove={moveNode} onConnect={connectSteps} onRemoveBranch={removeBranch} onResetLayout={resetLayout}
+          focusStep={focusStep}/>}
         {viewMode==='steps'&&<div className="crm-card crm-forms-map">
           <div className="crm-forms-map-head"><strong>MAPA DO FUNIL</strong><span>{draft.steps.length} etapas</span></div>
           {draft.steps.map((s,i)=><button key={s.id} type="button" className="crm-forms-node" data-selected={selectedStep===s.id} onClick={()=>{setSelectedStep(s.id);setPreview(false)}}>
@@ -333,14 +344,20 @@ export default function FormsPanel(){
             <span>›</span>
           </button>)}
           <div className="crm-forms-map-actions">
-            <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Pergunta</button>
-            <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Resultado final</button>
+            <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Pergunta aqui</button>
+            <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Finalização aqui</button>
           </div>
         </div>}
         <div className="crm-card crm-forms-editor">
           {active&&<>
             <div className="crm-forms-editor-header"><div><span>EDITOR DA ETAPA</span><h3>{active.type==='question'?'Pergunta':'Página final'}</h3></div>
-              <button type="button" className="crm-forms-remove" onClick={removeStep}>Excluir etapa</button></div>
+              <button type="button" className="crm-forms-remove" disabled={busy} onClick={removeStep}>Excluir etapa</button></div>
+            {active.type==='result'&&<label className="crm-forms-delete-destination">Ao excluir esta finalização, enviar as conexões para:
+              <select value={validRedirect} onChange={e=>setRedirectFinal(e.target.value)}>
+                {finalOptions.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+              <small>A confirmação mostra quais caminhos serão alterados. Você poderá desfazer antes de salvar.</small>
+            </label>}
             <label>Título da etapa<input value={active.title} maxLength={160} onChange={e=>updateStep({title:e.target.value})}/></label>
             <label>Texto de apoio<textarea rows={3} maxLength={500} value={active.description} onChange={e=>updateStep({description:e.target.value})}/></label>
             {active.type==='question'?<>
@@ -375,9 +392,20 @@ export default function FormsPanel(){
         </div>
       </div>
       {viewMode==='flow'&&<div className="crm-forms-flow-actions">
-        <button type="button" className="crm-btn" onClick={addQuestion} disabled={draft.steps.length>=24}>+ Adicionar pergunta</button>
-        <button type="button" className="crm-btn" onClick={addResult} disabled={draft.steps.length>=24}>+ Adicionar finalização</button>
-        <small>Adicionar pergunta após uma pergunta selecionada insere a nova no caminho padrão; ao selecionar uma finalização, ela é inserida no início. Os desvios existentes são preservados.</small>
+        <div className="crm-forms-insert-where">
+          <strong>Inserir no cartão selecionado:</strong>
+          <span>{active?.title||'Selecione uma etapa no mapa'}</span>
+          {active?.type==='question'&&active.input==='select'&&
+            <label>Caminho para inserir pergunta
+              <select value={selectedOutput} onChange={e=>setSelectedOutput(e.target.value)}>
+                <option value="">Caminho padrão (respostas sem desvio)</option>
+                {active.options.map(answer=><option key={answer} value={'answer:'+answer}>Resposta: {answer}</option>)}
+              </select>
+            </label>}
+        </div>
+        <button type="button" className="crm-btn" onClick={addQuestion} disabled={busy||draft.steps.length>=24}>+ Inserir pergunta aqui</button>
+        <button type="button" className="crm-btn" onClick={addResult} disabled={busy||draft.steps.length>=24}>+ Criar finalização aqui</button>
+        <small>A pergunta entra na saída escolhida ou antes da finalização selecionada. A nova finalização cria uma resposta própria, sem substituir o caminho atual. Tudo pode ser desfeito antes de salvar.</small>
       </div>}
       {preview&&<div className="crm-card crm-forms-preview">
         <div className="crm-forms-editor-header"><div><span>PRÉVIA SEM GRAVAÇÃO</span><h3>Simulação da jornada</h3></div>
