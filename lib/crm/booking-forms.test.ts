@@ -87,3 +87,16 @@ describe('presença digital — site ou Instagram', () => {
     }
   })
 })
+
+describe('Hamburguerias — calendário direto após qualificação', () => {
+  it('tem uma configuração de agenda própria, sem perguntas de odontologia', () => {
+    const form=getBookingForm('hamburguerias')
+    assert.ok(form)
+    assert.equal(form.slug,'hamburguerias')
+    assert.equal(form.niche,'Hamburguerias')
+    assert.equal(form.durationMinutes,30)
+    assert.equal(form.meetingName,'Diagnóstico estratégico para hamburguerias')
+    assert.deepEqual(form.fields,[],'dados já preenchidos não serão solicitados novamente')
+    assert.equal(/odontolog|pacient|consultório/i.test(JSON.stringify(form)),false)
+  })
+})
