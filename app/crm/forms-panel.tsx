@@ -53,6 +53,7 @@ export default function FormsPanel(){
   const [selectedOutput,setSelectedOutput]=useState('')
   const [redirectFinal,setRedirectFinal]=useState('')
   const [focusStep,setFocusStep]=useState<{id:string;key:number}|null>(null)
+  const [fieldResetVersion,setFieldResetVersion]=useState(0)
   const focusIndex=useRef(0)
   const rootRef=useRef<HTMLElement|null>(null)
   const validation=useMemo(()=>draft?validateFlow(draft):null,[draft])
@@ -63,7 +64,7 @@ export default function FormsPanel(){
   function fromDoc(doc:FlowDocument){
     setSelected(doc);setDraft(clone(doc.draft));setTitle(doc.title);setSlug(doc.slug);setDescription(doc.description)
     setSelectedStep(doc.draft.start);setDirty(false);setMessage('');setPreview(false);setPreviewAnswers({});setFinish('')
-    setUndoStack([]);setRedoStack([]);lastHistory.current=null;setSelectedOutput('');setRedirectFinal('')
+    setUndoStack([]);setRedoStack([]);lastHistory.current=null;setSelectedOutput('');setRedirectFinal('');setFieldResetVersion(n=>n+1)
   }
 
   // Histórico só em memória. Nenhuma operação persiste antes de "Salvar rascunho".
@@ -84,7 +85,7 @@ export default function FormsPanel(){
   function focus(id:string){setFocusStep({id,key:++focusIndex.current})}
   function applySnapshot(value:EditSnapshot,label:string){
     setDraft(clone(value.draft));setTitle(value.title);setSlug(value.slug);setDescription(value.description)
-    setSelectedStep(value.selectedStep);setSelectedOutput('');setPreview(false)
+    setSelectedStep(value.selectedStep);setSelectedOutput('');setPreview(false);setFieldResetVersion(n=>n+1)
     setDirty(changedSinceSaved(value));setMessage(label);focus(value.selectedStep)
     lastHistory.current=null
   }
@@ -218,7 +219,15 @@ export default function FormsPanel(){
   }
   function removeStep(){
     if(!draft||!active)return
-    const plan=removeStepAndReconnect(draft,active.id,active.type==='result'?validRedirect:undefined)
+    const target=active.type==='result'?validRedirect:undefined
+    let plan=removeStepAndReconnect(draft,active.id,target)
+    if(!plan.ok && plan.orphanSteps?.length){
+      const names=plan.orphanSteps.map(s=>'• '+s.title).join('\n')
+      if(!window.confirm('A etapa "'+active.title+'" possui caminhos que ficarão inacessíveis:\n\n'+
+        names+'\n\nExcluir também essas '+plan.orphanSteps.length+
+        ' etapa(s)? Isso não será salvo automaticamente e poderá ser desfeito.'))return
+      plan=removeStepAndReconnect(draft,active.id,target,true)
+    }
     if(!plan.ok){setMessage(plan.reason);return}
     const incoming=draft.steps.filter(s=>s.type==='question'&&s.id!==active.id&&
       (s.next===active.id||s.branches.some(b=>b.to===active.id))).length
@@ -333,12 +342,12 @@ export default function FormsPanel(){
       </div>
       <div className={'crm-forms-workspace'+(viewMode==='flow'?' crm-forms-workspace-flow':'')}>
         {viewMode==='flow'&&<FormsFlowCanvas flow={draft} selectedStep={selectedStep}
-          onSelect={id=>{setSelectedStep(id);setPreview(false)}}
+          onSelect={id=>{setSelectedStep(id);setSelectedOutput('');setPreview(false)}}
           onMove={moveNode} onConnect={connectSteps} onRemoveBranch={removeBranch} onResetLayout={resetLayout}
           focusStep={focusStep}/>}
         {viewMode==='steps'&&<div className="crm-card crm-forms-map">
           <div className="crm-forms-map-head"><strong>MAPA DO FUNIL</strong><span>{draft.steps.length} etapas</span></div>
-          {draft.steps.map((s,i)=><button key={s.id} type="button" className="crm-forms-node" data-selected={selectedStep===s.id} onClick={()=>{setSelectedStep(s.id);setPreview(false)}}>
+          {draft.steps.map((s,i)=><button key={s.id} type="button" className="crm-forms-node" data-selected={selectedStep===s.id} onClick={()=>{setSelectedStep(s.id);setSelectedOutput('');setPreview(false)}}>
             <span className="crm-forms-node-index">{String(i+1).padStart(2,'0')}</span>
             <span><strong>{s.title}</strong><small>{s.type==='question'?(s.branches.length?'Bifurcação: '+s.branches.map(b=>b.answer+' → '+b.to).join(', '):'Próximo: '+s.next):'Resultado: '+s.outcome}</small></span>
             <span>›</span>
@@ -369,7 +378,7 @@ export default function FormsPanel(){
               {active.input==='text'&&<label>Formato da resposta<select value={active.field||''} onChange={e=>updateQuestion({field:e.target.value?e.target.value as FlowQuestion['field']:undefined})}>
                 <option value="">Texto livre</option><option value="name">Nome da pessoa</option><option value="phone">Telefone com DDD</option><option value="website">Instagram ou site</option>
               </select></label>}
-              {active.input==='select'&&<label>Alternativas (uma por linha)<textarea key={active.id} rows={4} defaultValue={active.options.join('\n')} onChange={e=>{
+              {active.input==='select'&&<label>Alternativas (uma por linha)<textarea key={active.id+'-'+fieldResetVersion} rows={4} defaultValue={active.options.join('\n')} onChange={e=>{
                 const options=e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)
                 updateQuestion({options,branches:active.branches.filter(b=>options.includes(b.answer))})}}/>
                 <small className="crm-forms-option-hint">Uma alternativa por linha. Edite livremente com Enter, selecionar tudo ou colar; linhas vazias são ignoradas ao salvar.</small></label>}
