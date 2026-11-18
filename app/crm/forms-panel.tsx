@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { FlowDefinition, FlowDocument, FlowQuestion, FlowResult, FlowStep } from '@/lib/crm/form-builder/flow'
 import { validateFlow } from '@/lib/crm/form-builder/flow'
 import FormsFlowCanvas from './forms-flow-canvas'
 import type { DiagramPoint } from '@/lib/crm/form-builder/diagram'
 import { insertQuestionAt, insertResultAt, removeStepAndReconnect, type FlowEditPlan } from '@/lib/crm/form-builder/editor-actions'
 import './forms-panel.css'
+import PublicFlow from '@/app/formularios/[slug]/public-flow'
+import '@/app/formularios/[slug]/public-flow.css'
 
 type ResponseData = { ok?: boolean; forms?: FlowDocument[]; form?: FlowDocument; error?: string; issues?: string[] }
 const api = async (body?:Record<string,unknown>,id?:string):Promise<ResponseData>=>{
@@ -43,6 +46,9 @@ export default function FormsPanel(){
   const [busy,setBusy]=useState(false)
   const [dirty,setDirty]=useState(false)
   const [preview,setPreview]=useState(false)
+  const [fullPreview,setFullPreview]=useState(false)
+  const previewDialog=useRef<HTMLDivElement|null>(null)
+  const restoreFocus=useRef<HTMLElement|null>(null)
   const [previewAnswers,setPreviewAnswers]=useState<Record<string,string>>({})
   const [previewStep,setPreviewStep]=useState<string>('')
   const [finish,setFinish]=useState('')
@@ -62,6 +68,7 @@ export default function FormsPanel(){
   const finalOptions=draft?.steps.filter(s=>s.type==='result'&&s.id!==active?.id)||[]
   const validRedirect=finalOptions.some(x=>x.id===redirectFinal)?redirectFinal:finalOptions[0]?.id||''
   function fromDoc(doc:FlowDocument){
+    setFullPreview(false)
     setSelected(doc);setDraft(clone(doc.draft));setTitle(doc.title);setSlug(doc.slug);setDescription(doc.description)
     setSelectedStep(doc.draft.start);setDirty(false);setMessage('');setPreview(false);setPreviewAnswers({});setFinish('')
     setUndoStack([]);setRedoStack([]);lastHistory.current=null;setSelectedOutput('');setRedirectFinal('');setFieldResetVersion(n=>n+1)
@@ -106,6 +113,32 @@ export default function FormsPanel(){
     if(dirty&&!window.confirm('Descartar todas as mudanças não salvas e recuperar a última versão salva deste formulário?'))return
     fromDoc(selected);setMessage('Versão salva restaurada. Alterações locais descartadas.')
   }
+  useEffect(()=>{
+    if(!fullPreview)return
+    const previous=document.body.style.overflow
+    restoreFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null
+    document.body.style.overflow='hidden'
+    const controls=()=>Array.from(previewDialog.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled])')||[])
+    const focusFirst=()=>controls()[0]?.focus({preventScroll:true})
+    const raf=requestAnimationFrame(focusFirst)
+    const keydown=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){event.preventDefault();setFullPreview(false);return}
+      if(event.key!=='Tab')return
+      const list=controls()
+      if(!list.length)return
+      const first=list[0],last=list[list.length-1]
+      if(event.shiftKey&&(document.activeElement===first||document.activeElement===previewDialog.current)){
+        event.preventDefault();last.focus()
+      }else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+    }
+    document.addEventListener('keydown',keydown)
+    return ()=>{
+      cancelAnimationFrame(raf);document.removeEventListener('keydown',keydown)
+      document.body.style.overflow=previous;restoreFocus.current?.focus({preventScroll:true})
+    }
+  },[fullPreview])
+
   useEffect(()=>{
     if(!dirty)return
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''}
@@ -281,11 +314,34 @@ export default function FormsPanel(){
   return <section ref={rootRef} className="crm-forms" aria-label="Construtor de formulários">
     <div className="crm-forms-heading">
       <div><strong>FORMULÁRIOS INTELIGENTES</strong><p>Crie jornadas diferentes para cada nicho, configure bifurcações e publique quando estiver pronto. O /agendar atual permanece independente.</p></div>
-      {selected&&<button type="button" className="crm-btn" onClick={()=>{
-        if(dirty&&!window.confirm('Sair do editor e descartar todas as alterações não salvas?'))return
-        setSelected(null);setDraft(null);setMessage('');setUndoStack([]);setRedoStack([])
-      }}>← Todos os formulários</button>}
+      {selected&&draft&&<div className="crm-forms-heading-actions">
+        <button type="button" className="crm-btn crm-forms-preview-open" onClick={()=>setFullPreview(true)}>
+          ◉ Visualizar formulário
+        </button>
+        <a className="crm-btn crm-forms-preview-link"
+          href={'/crm/visualizar/'+encodeURIComponent(selected.slug)} target="_blank" rel="noopener noreferrer"
+          title="Abre apenas a última versão salva do rascunho">↗ Prévia salva</a>
+        <button type="button" className="crm-btn" onClick={()=>{
+          if(dirty&&!window.confirm('Sair do editor e descartar todas as alterações não salvas?'))return
+          setSelected(null);setDraft(null);setMessage('');setUndoStack([]);setRedoStack([])
+        }}>← Todos os formulários</button>
+      </div>}
     </div>
+    {fullPreview&&selected&&draft&&typeof document!=='undefined'&&createPortal(
+      <div className="crm-forms-full-preview" ref={previewDialog} role="dialog"
+        aria-modal="true" aria-label="Prévia do formulário como visitante" tabIndex={-1}>
+        <div className="crm-forms-full-preview-bar">
+          <div><strong>PRÉVIA DO FORMULÁRIO · SEM ENVIO</strong>
+            <span>{dirty?'Inclui suas alterações ainda não salvas.':'Mostrando o rascunho salvo.'} Nenhum lead será criado.</span>
+          </div>
+          <button type="button" className="crm-btn" onClick={()=>setFullPreview(false)}
+            aria-label="Fechar prévia do formulário">✕ Fechar prévia</button>
+        </div>
+        <PublicFlow key={selected.id+':'+JSON.stringify(draft)} slug={slug} title={title}
+          description={description} version={selected.revision} flow={draft}
+          metaPixelId={null} turnstileSiteKey={null} previewOnly />
+      </div>,document.body
+    )}
     {message&&!selected&&<div className="crm-forms-message" role="status">{message}</div>}
     {loading&&<div className="crm-card crm-forms-loading">Carregando seus formulários…</div>}
     {!loading&&!selected&&<>

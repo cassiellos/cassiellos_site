@@ -1,0 +1,8 @@
+.crm-draft-preview-page{min-height:100vh;background:#f4f6f9}
+.crm-draft-preview-banner{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px max(22px,calc((100vw - 1120px)/2));background:#142238;color:#fff;border-bottom:2px solid #f25c73;box-shadow:0 4px 16px rgba(20,34,56,.18)}
+.crm-draft-preview-banner div{display:flex;flex-direction:column;gap:4px}
+.crm-draft-preview-banner strong{font-size:12px;font-weight:800;letter-spacing:.07em;color:#ffc4ca}
+.crm-draft-preview-banner span{font-size:12px;color:#c7d5e8}
+.crm-draft-preview-banner a{display:inline-flex;align-items:center;justify-content:center;border:1px solid #64748b;color:#fff;text-decoration:none;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700}
+.crm-draft-preview-banner a:hover,.crm-draft-preview-banner a:focus-visible{background:#32455f;outline:2px solid #ffc4ca}
+@media(max-width:640px){.crm-draft-preview-banner{padding:12px 16px}.crm-draft-preview-banner a{width:100%}}

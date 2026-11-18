@@ -10,8 +10,8 @@ import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/co
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null}
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId}:PublicFlowProps){
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;previewOnly?:boolean}
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,previewOnly=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   const [answers,setAnswers]=useState<Record<string,string>>({})
@@ -53,6 +53,12 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   async function submit(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!current||current.type!=='result'||status!=='ready')return
+    // A prévia usa o próprio componente visual, mas nunca envia dados ou eventos.
+    if(previewOnly){
+      setComplete({title:current.title,description:current.description,outcome:current.outcome,
+        actionLabel:current.actionLabel,actionHref:current.actionHref})
+      setStatus('complete');setError('');return
+    }
     if(!token||!turnstileSiteKey){setError('Conclua a verificação de segurança para continuar.');return}
     if(!idempotencyKey.current)idempotencyKey.current=crypto.randomUUID()
     setStatus('sending');setError('')
@@ -89,15 +95,16 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     }
   }
   return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)}>
-    <MetaPixel pixelId={metaPixelId}/>
-    <header className="cpf-header"><a href="/" aria-label="Agência Cassiellos, início">
-      <img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></a>
+    {!previewOnly&&<MetaPixel pixelId={metaPixelId}/>}
+    <header className="cpf-header">{previewOnly
+      ? <div className="cpf-brand"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></div>
+      : <a href="/" aria-label="Agência Cassiellos, início"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></a>}
       <span>DIAGNÓSTICO ESTRATÉGICO</span>
     </header>
     <div className="cpf-shell">
       <div className="cpf-topline"><span>{flow.cover?'DIAGNÓSTICO PARA HAMBURGUERIAS':'FORMULÁRIO PERSONALIZADO'}</span><span>{coverOpen?'INÍCIO':status==='complete'?'Concluído':String(visited.length).padStart(2,'0')+' / '+String(flow.steps.length).padStart(2,'0')}</span></div>
       <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(95,visited.length/flow.steps.length*100))+'%'}}/></div>
-      <ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>
+      {!previewOnly&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>}
       <section className="cpf-card" aria-live="polite">
         {coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{flow.cover.headline}</h1>
@@ -105,10 +112,14 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           <p className="cpf-cover-qualifier"><em>→ {flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
           <button type="button" className="cpf-primary" onClick={()=>setCoverOpen(false)}>{flow.cover.cta} →</button>
         </div>:status==='complete'&&complete?<div className="cpf-result">
-          <div className="cpf-success">✓ Envio recebido</div>
+          <div className="cpf-success">{previewOnly?'✓ Simulação concluída':'✓ Envio recebido'}</div>
           <h1>{complete.title}</h1><p>{complete.description}</p>
-          {complete.actionHref&&complete.actionLabel&&<a className="cpf-primary" href={complete.actionHref}>{complete.actionLabel}</a>}
-          <p className="cpf-footnote">Seus dados foram registrados para atendimento conforme nossa Política de Privacidade.</p>
+          {complete.actionHref&&complete.actionLabel&&(previewOnly
+            ? <span className="cpf-primary cpf-preview-disabled-cta" aria-label="Botão ilustrativo, desativado na prévia">{complete.actionLabel}</span>
+            : <a className="cpf-primary" href={complete.actionHref}>{complete.actionLabel}</a>)}
+          <p className="cpf-footnote">{previewOnly
+            ? 'Esta foi apenas uma simulação. Nenhuma resposta ou dado pessoal foi enviado ou salvo.'
+            : 'Seus dados foram registrados para atendimento conforme nossa Política de Privacidade.'}</p>
         </div>:current?.type==='question'?<div className="cpf-question" key={current.id}>
           <div className="cpf-eyebrow">{title}</div>
           <h1>{current.title}</h1><p>{current.description||description}</p>
@@ -128,18 +139,19 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
             {!flow.steps.some(step=>step.type==='question'&&step.field==='phone')?<label className="cpf-label">WhatsApp com DDD<input required type="tel" maxLength={24} autoComplete="tel" placeholder="(31) 99999-9999" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)}/></label>:<p className="cpf-contact-already">WhatsApp: <strong>{whatsapp}</strong></p>}
             <label className="cpf-trap" aria-hidden="true">Site<input tabIndex={-1} autoComplete="off" value={website} onChange={e=>setWebsite(e.target.value)}/></label>
             <p className="cpf-privacy">Ao enviar, você solicita nosso contato sobre o diagnóstico. Leia a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>. O envio não concede autorização automática para campanhas de marketing.</p>
-            {turnstileSiteKey?<TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_BOOKING_ACTION} resetSignal={resetSignal}
-              onToken={setToken} onStateChange={setTokenState}/>:
-              <p className="cpf-security">Verificação de segurança indisponível. O envio ficará bloqueado.</p>}
-            <button className="cpf-primary" type="submit" disabled={!token||status==='sending'||!name.trim()||!email.trim()||!whatsapp.trim()}>
-              {status==='sending'?'Enviando…':'Enviar meus dados →'}</button>
-            {tokenState==='error'&&<p className="cpf-security">Não foi possível validar a proteção. Recarregue a página.</p>}
+            {previewOnly?<p className="cpf-preview-note">Prévia privada: envio e verificação de segurança desativados. Você pode simular a conclusão sem registrar um lead.</p>
+              :turnstileSiteKey?<TurnstileWidget siteKey={turnstileSiteKey} action={TURNSTILE_BOOKING_ACTION} resetSignal={resetSignal}
+                onToken={setToken} onStateChange={setTokenState}/>:
+                <p className="cpf-security">Verificação de segurança indisponível. O envio ficará bloqueado.</p>}
+            <button className="cpf-primary" type="submit" disabled={!previewOnly&&(!token||status==='sending'||!name.trim()||!email.trim()||!whatsapp.trim())}>
+              {previewOnly?'Simular conclusão (sem enviar) →':status==='sending'?'Enviando…':'Enviar meus dados →'}</button>
+            {!previewOnly&&tokenState==='error'&&<p className="cpf-security">Não foi possível validar a proteção. Recarregue a página.</p>}
           </form>
         </div>:<h1>Esta etapa está indisponível.</h1>}
         {error&&<div className="cpf-error" role="alert">{error}</div>}
         {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
-      <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><span><ConsentPreferencesButton/> · <a href="/politica-de-privacidade">Privacidade</a></span></footer>
+      <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><span>{!previewOnly&&<><ConsentPreferencesButton/> · </>}<a href="/politica-de-privacidade" target={previewOnly?'_blank':undefined} rel={previewOnly?'noopener noreferrer':undefined}>Privacidade</a></span></footer>
     </div>
   </main>
 }
