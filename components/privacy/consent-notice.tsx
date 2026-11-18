@@ -96,8 +96,8 @@ export default function ConsentNotice({ marketingEnabled = false }: { marketingE
       <h3 id="consent-marketing-title">Cookies de marketing</h3>
       <p>Com sua autorização, utilizamos o Meta Pixel e a API de Conversões, tecnologias da Meta, para medir os resultados
         dos nossos anúncios e melhorar nossas campanhas. Nesse caso, a Meta recebe identificadores do seu navegador e o registro
-        das visitas, das etapas do formulário, dos cadastros e dos agendamentos feitos nestas páginas; os agendamentos
-        confirmados também são informados pelos nossos servidores, com o endereço IP e o tipo de navegador. Nada disso inclui
+        das visitas, das etapas do formulário, dos cadastros e dos agendamentos feitos nestas páginas; os cadastros novos e agendamentos
+        confirmados também podem ser informados pelos nossos servidores, com o endereço IP e o tipo de navegador. Nada disso inclui
         seu nome, e-mail ou telefone. Você pode aceitar ou recusar esse rastreamento sem prejudicar o uso do formulário.</p>
       {marketing !== null && <p className="consent-current">Escolha atual: {marketing ? 'marketing aceito' : 'marketing recusado'}.</p>}
       <div className="consent-notice-actions">
