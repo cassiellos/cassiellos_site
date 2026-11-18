@@ -109,3 +109,24 @@
 #cassiellos-crm .crm-forms-step-actions-buttons .crm-btn{flex:1 1 140px}
 #cassiellos-crm .crm-forms-step-actions .crm-btn:disabled{opacity:.4;cursor:not-allowed}
 #cassiellos-crm .crm-forms-step-actions small{font-size:11px;color:#97aec7;line-height:1.5}
+
+/* Prévia fiel ao formulário público e sempre destacada no topo do editor. */
+#cassiellos-crm .crm-forms-heading-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+#cassiellos-crm .crm-forms-heading-actions .crm-btn{white-space:nowrap}
+#cassiellos-crm .crm-forms-preview-open{background:#ec4258!important;color:#fff!important;border:1px solid #ec4258!important;font-weight:800;box-shadow:0 5px 18px rgba(236,66,88,.16)}
+#cassiellos-crm .crm-forms-preview-open:hover{background:#c9364a!important}
+#cassiellos-crm .crm-forms-preview-link{border:1px solid #455d78;background:#14253b;color:#dbe9f8;text-decoration:none;border-radius:9px;padding:10px 12px;display:inline-flex;align-items:center;font-size:12px;font-weight:700}
+#cassiellos-crm .crm-forms-preview-link:hover,#cassiellos-crm .crm-forms-preview-link:focus-visible{border-color:#f47784;color:#fff;outline:2px solid #f4778450}
+.crm-forms-full-preview{position:fixed;inset:0;z-index:2147483000;overflow-y:auto;overscroll-behavior:contain;background:#f4f6f9;color:#152438}
+.crm-forms-full-preview-bar{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:#15253a;color:#fff;border-bottom:2px solid #e84659;padding:11px 20px}
+.crm-forms-full-preview-bar>div{display:flex;flex-direction:column;gap:4px}
+.crm-forms-full-preview-bar strong{font-size:12px;color:#ffc6cf;letter-spacing:.08em}
+.crm-forms-full-preview-bar span{font-size:12px;color:#d0dff0}
+.crm-forms-full-preview-bar .crm-btn{background:#2b3d54;border:1px solid #627c97;color:#fff;border-radius:8px;padding:10px 15px;font-size:12px;font-weight:750;cursor:pointer}
+.crm-forms-full-preview-bar .crm-btn:hover,.crm-forms-full-preview-bar .crm-btn:focus-visible{background:#40556c;outline:2px solid #ffc6cf}
+@media(max-width:700px){
+  #cassiellos-crm .crm-forms-heading-actions{width:100%;justify-content:flex-start}
+  #cassiellos-crm .crm-forms-preview-open{flex:1 1 100%}
+  .crm-forms-full-preview-bar{padding:10px 14px}
+  .crm-forms-full-preview-bar .crm-btn{flex:1 1 100%}
+}
