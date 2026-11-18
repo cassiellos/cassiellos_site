@@ -188,3 +188,26 @@ export function fitDiagramCamera(model:DiagramModel,viewport:{w:number;h:number}
   if(!first)return {zoom,x:24,y:24}
   return {zoom,x:w/2-(first.x+first.w/2)*zoom,y:h/2-(first.y+first.h/2)*zoom}
 }
+
+
+/**
+ * Zoom no ponto sob o cursor (trackpad, roda com Ctrl/⌘ ou gesto do Safari).
+ * Não depende do navegador: mantém o mesmo ponto do diagrama debaixo do cursor,
+ * inclusive quando o fator atinge os limites de zoom.
+ */
+export function zoomDiagramCameraAt(
+  camera: DiagramCamera, factor: number, anchor: { x: number; y: number },
+  minZoom = .2, maxZoom = 3,
+): DiagramCamera {
+  if (!Number.isFinite(factor) || factor <= 0 || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.y)) {
+    return camera
+  }
+  const zoom = Math.min(maxZoom, Math.max(minZoom, camera.zoom * factor))
+  const xInWorld = (anchor.x - camera.x) / camera.zoom
+  const yInWorld = (anchor.y - camera.y) / camera.zoom
+  return {
+    zoom,
+    x: anchor.x - xInWorld * zoom,
+    y: anchor.y - yInWorld * zoom,
+  }
+}
