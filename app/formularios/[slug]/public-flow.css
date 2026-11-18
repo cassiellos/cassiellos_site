@@ -68,3 +68,8 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 .cassiellos-public-flow .consent-notice-links a,.cassiellos-public-flow .consent-preferences-button{font-size:12px;color:#ce3449;background:none;border:0;text-decoration:underline;cursor:pointer;padding:0}
 .cassiellos-public-flow .cpf-footer .consent-preferences-button{color:#657a94;text-decoration:none}
 @media(max-width:560px){.cassiellos-public-flow .consent-notice{padding:14px}.cassiellos-public-flow .consent-notice-actions{display:grid;grid-template-columns:1fr 1fr}.cassiellos-public-flow .consent-choice{padding:8px 9px;font-size:12px}.cpf-footer{gap:10px}}
+
+/* A prévia administrativa mostra os mesmos elementos do fluxo sem permitir envios. */
+.cpf-header .cpf-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#121e31;letter-spacing:-.04em;font-size:20px}
+.cpf-preview-note{border:1px solid #bed8c8;background:#f1f9f4;color:#1d6045!important;border-radius:8px;padding:12px 14px;font-size:12px!important}
+.cpf-primary.cpf-preview-disabled-cta{opacity:.62;cursor:not-allowed;pointer-events:none}
