@@ -67,6 +67,21 @@ export function isValidWebPresence(input: unknown): boolean {
 }
 
 const bookingForms: Record<string, BookingForm> = {
+  // A etapa de agendamento é embutida APÓS o formulário já preenchido de Hamburguerias.
+  // Não há perguntas adicionais nem redirecionamento para o fluxo legado de odontologia.
+  hamburguerias: {
+    slug: 'hamburguerias',
+    version: 'hamburguerias-inline-calendar-v1',
+    niche: 'Hamburguerias',
+    eyebrow: 'DIAGNÓSTICO PARA HAMBURGUERIAS',
+    headline: 'Escolha o melhor dia e horário para conversar com a Cassiellos',
+    highlights: [],
+    cta: 'Agendar diagnóstico',
+    description: 'Conversa de 30 minutos sobre o crescimento da sua hamburgueria.',
+    meetingName: 'Diagnóstico estratégico para hamburguerias',
+    durationMinutes: 30,
+    fields: [],
+  },
   odontologia: {
     slug: 'odontologia',
     // v5: formulário comercial único, público e independente de nicho.

@@ -12,6 +12,9 @@ import { sanitizeAttribution } from '@/lib/crm/attribution'
 import { resolveMarketingConsent, META_CLICK_ID_PARAM } from '@/lib/marketing/meta'
 import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
+import { bookingAccessConfig } from '@/lib/crm/booking-access'
+import { createBookingGrant } from '@/lib/crm/booking-grant'
+import { getBookingForm } from '@/lib/crm/booking-forms'
 import { dispatchLeadToMeta, metaLeadClientFromHeaders, pgLeadCapiStore, metaLeadConfig } from '@/lib/crm/meta-lead-capi'
 
 export const runtime='nodejs'
@@ -80,10 +83,19 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string
         log:entry=>console.info(JSON.stringify(entry))},
         {eventId:leadEventId,...client}).then(()=>undefined))
     }
+    // Uma sessão assinada vincula o agendamento à MESMA inscrição já validada.
+    // Só o caminho qualificado recebe calendário; sem nova coleta nem novo Lead.
+    const inlineBooking=result.result.outcome==='qualified' && Boolean(getBookingForm(doc.slug))
+    const bookingEnabled=inlineBooking && bookingAccessConfig().enabled
+    const bookingToken=bookingEnabled?createBookingGrant({
+      leadId:saved.leadId,submissionId:saved.submissionId,formSlug:doc.slug,
+    }):null
     return send({ok:true,reused:saved.reused,
+      ...(inlineBooking?{inlineBooking:true,bookingEnabled,bookingToken}:{}),
       ...(leadEventId?{tracking:{lead:{eventName:'Lead',eventId:leadEventId}}}:{}),outcome:result.result.outcome,
       title:result.result.title,description:result.result.description,
-      actionLabel:result.result.actionLabel,actionHref:result.result.actionHref},saved.reused?200:201)
+      actionLabel:inlineBooking?'':result.result.actionLabel,
+      actionHref:inlineBooking?'':result.result.actionHref},saved.reused?200:201)
   }catch{
     console.warn('[public-form-flow] submission_failed')
     return send({error:'FORM_SUBMISSION_UNAVAILABLE'},503)

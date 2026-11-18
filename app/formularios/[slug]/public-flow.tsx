@@ -6,6 +6,7 @@ import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
 import { nextPhoneInput, validateBrazilianMobilePhone, validateEmailAddress, nationalPhoneDigits } from '@/lib/crm/contact-validation'
 import { isValidWebPresence } from '@/lib/crm/booking-forms'
 import MetaPixel from '@/components/marketing/meta-pixel'
+import InlineBookingCalendar from './inline-booking-calendar'
 import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 
@@ -35,7 +36,9 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   const [token,setToken]=useState<string|null>(null)
   const [tokenState,setTokenState]=useState('loading')
   const [resetSignal,setResetSignal]=useState(0)
-  const [status,setStatus]=useState<'ready'|'sending'|'complete'>('ready')
+  const [status,setStatus]=useState<'ready'|'sending'|'calendar'|'complete'>('ready')
+  const [bookingToken,setBookingToken]=useState<string|null>(null)
+  const [bookingEnabled,setBookingEnabled]=useState(true)
   const [error,setError]=useState('')
   const [complete,setComplete]=useState<Confirmation|null>(null)
   const [website,setWebsite]=useState('')
@@ -45,7 +48,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   const currentStep=Math.min(visited.length,totalSteps)
   const phoneEntry=current?.type==='question'&&current.field==='phone'
   const phoneCompleted=phoneEntry&&validateBrazilianMobilePhone(freeText).ok
-  const canBack=visited.length>1&&status!=='sending'
+  const canBack=visited.length>1&&status==='ready'
   function next(step:Extract<FlowStep,{type:'question'}>,answer:string){
     if(step.required&&answer.trim().length<2){setError('Preencha esta resposta para continuar.');return}
     if(step.input==='select'&&!step.options.includes(answer)){setError('Selecione uma alternativa válida.');return}
@@ -75,6 +78,10 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     if(!current||current.type!=='result'||status!=='ready')return
     // A prévia usa o próprio componente visual, mas nunca envia dados ou eventos.
     if(previewOnly){
+      // Permite conferir o calendário no editor sem criar lead ou reunião.
+      if(current.outcome==='qualified'){
+        setStatus('calendar');setError('');return
+      }
       setComplete({title:current.title,description:current.description,outcome:current.outcome,
         actionLabel:current.actionLabel,actionHref:current.actionHref})
       setStatus('complete');setError('');return
@@ -109,16 +116,24 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       if(data?.reused!==true && data?.tracking?.lead?.eventName==='Lead'){
         trackMetaConversion('Lead',data.tracking.lead.eventId,{content_name:slug})
       }
-      setComplete({title:data.title,description:data.description,outcome:data.outcome,
-        actionLabel:data.actionLabel,actionHref:data.actionHref})
-      setStatus('complete')
+      if(data.outcome==='qualified'&&data.inlineBooking===true){
+        // Inscrição já salva e validada. A próxima tela é o calendário nesta MESMA página.
+        // O token assinado vale só para o lead/submissão atuais, sem repetir cadastro.
+        setBookingToken(typeof data.bookingToken==='string'?data.bookingToken:null)
+        setBookingEnabled(data.bookingEnabled===true)
+        setStatus('calendar')
+      }else{
+        setComplete({title:data.title,description:data.description,outcome:data.outcome,
+          actionLabel:data.actionLabel,actionHref:data.actionHref})
+        setStatus('complete')
+      }
     }catch(e){
       setError(e instanceof Error?e.message:'Não foi possível enviar.')
       setStatus('ready')
       setToken(null);setResetSignal(n=>n+1)
     }
   }
-  return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)} data-screen={coverOpen?'cover':status==='complete'?'complete':current?.type==='result'?'contact':'question'}>
+  return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)} data-screen={coverOpen?'cover':status==='calendar'?'calendar':status==='complete'?'complete':current?.type==='result'?'contact':'question'}>
     {!previewOnly&&<MetaPixel pixelId={metaPixelId}/>}
     <header className="cpf-header">{previewOnly
       ? <div className="cpf-brand"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></div>
@@ -130,7 +145,10 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(99,currentStep/totalSteps*100))+'%'}}/></div>
       {/* Aviso opcional não aparece ao abrir o formulário. O visitante pode acessar as escolhas no rodapé. */}
       <section className="cpf-card" aria-live="polite">
-        {coverOpen&&flow.cover?<div className="cpf-cover">
+        {status==='calendar'?<InlineBookingCalendar formSlug={slug}
+          bookingToken={bookingToken} email={email} bookingEnabled={bookingEnabled}
+          previewOnly={previewOnly}/>:
+        coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{coverHeadline(flow.cover.headline)}</h1>
           <ul>{flow.cover.bullets.map((bullet,i)=><li key={i}>{bullet}</li>)}</ul>
           <p className="cpf-cover-qualifier"><em>{flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
@@ -190,7 +208,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           </form>
         </div>:<h1>Esta etapa está indisponível.</h1>}
         {error&&<div className="cpf-error" role="alert">{error}</div>}
-        {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
+        {canBack&&!coverOpen&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
       <footer className="cpf-footer">
         <span>© Agência Cassiellos · {new Date().getFullYear()}</span>
