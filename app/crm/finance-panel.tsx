@@ -575,7 +575,61 @@ function Kpis({ v, onNavigate, rateio, dueOpen }: { v: (key: string) => number; 
   </div>
 }
 
+/**
+ * Resumo operacional do Financeiro em telas pequenas.
+ * Os números vêm das mesmas consultas reais do desktop, sem estimativas locais.
+ * "A receber" usa vencimento; "Recebido" e "Pago" são movimentos reais de caixa.
+ */
+function MobileFinanceOverview({ v, dueOpen, onNavigate, rateio }: {
+  v: (key:string)=>number
+  dueOpen:number
+  onNavigate:(tab:Tab,mode?:DrilldownMode)=>void
+  rateio:Overview['rateio']
+}) {
+  const projected = splitAgencyExpenseFunding({
+    expensesForecastCents:rateio.expensesForecastCents,
+    hostingForecastCents:rateio.hostingForecastCents,
+    hostingReceivedCents:rateio.hostingReceivedCents,
+  })
+  const core: {label:string;value:number;tone:string;hint:string;dest:Tab;mode?:DrilldownMode}[] = [
+    {label:'Recebido',value:v('revenueReceivedCashCents'),tone:'green',hint:'Entrou no caixa',dest:'receitas',mode:'cash'},
+    {label:'A receber',value:dueOpen,tone:'neutral',hint:'Vence neste mês',dest:'receber'},
+    {label:'Despesas pagas',value:v('expensesPaidCashCents'),tone:'orange',hint:'Saiu do caixa',dest:'pagar',mode:'cash'},
+    {label:'Resultado do mês',value:v('resultCashCents'),tone:v('resultCashCents')>=0?'green':'red',
+      hint:'Recebido − pago',dest:'relatorios'},
+  ]
+  const other: {label:string;value:string;dest:Tab;mode?:DrilldownMode}[] = [
+    {label:'Despesas previstas',value:formatCents(v('expensesForecastCents')),dest:'despesas'},
+    {label:'Recebíveis vencidos',value:formatCents(v('overdueReceivableCents')),dest:'receber',mode:'overdue'},
+    {label:'Contratos recorrentes',value:String(v('activeRecurringContracts')),dest:'contratos'},
+    {label:'Rateio projetado dos sócios',value:formatCents(projected.projectedFundingCents),dest:'rateio'},
+  ]
+  return <section className="crm-fin-mobile-overview" aria-label="Resumo financeiro do mês">
+    <div className="crm-fin-mobile-summary-title"><strong>Essencial do mês</strong><small>Valores do CRM · toque para detalhar</small></div>
+    <div className="crm-fin-mobile-core">
+      {core.map(metric=><button type="button" key={metric.label} className="crm-fin-mobile-metric"
+        data-tone={metric.tone} onClick={()=>onNavigate(metric.dest,metric.mode)}
+        aria-label={metric.label+': '+formatCents(metric.value)+'. '+metric.hint+'. Abrir detalhes.'}>
+        <span>{metric.label}</span>
+        <strong>{formatCents(metric.value)}</strong>
+        <small>{metric.hint}</small>
+      </button>)}
+    </div>
+    <details className="crm-fin-mobile-secondary">
+      <summary>Outros indicadores <span aria-hidden="true">⌄</span></summary>
+      <div className="crm-fin-mobile-secondary-list">
+        {other.map(metric=><button key={metric.label} type="button"
+          aria-label={metric.label+': '+metric.value+'. Abrir detalhes.'}
+          onClick={()=>onNavigate(metric.dest,metric.mode)}>
+          <span>{metric.label}</span><strong>{metric.value}</strong><span aria-hidden="true">›</span>
+        </button>)}
+      </div>
+    </details>
+  </section>
+}
+
 function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) => number; onNavigate: (tab: Tab, mode?: DrilldownMode) => void }) {
+  const [mobileChartsOpen,setMobileChartsOpen]=useState(false)
   const c = data.charts
   const due = forecastRevenueByDue(data.entries, data.month)
   const dueCategories = Array.from(new Set([...Object.keys(due.byCategory),...c.categories.in.map(row=>row.category)]))
@@ -586,10 +640,16 @@ function Overview({ data, v, onNavigate }: { data: Overview; v: (key: string) =>
   return <>
     {noData && <div className="crm-info-box"><strong>Ainda não há contratos nem despesas cadastrados.</strong> Os indicadores mostram R$ 0,00 até que
       você cadastre clientes, contratos e despesas reais. Nenhum valor é estimado ou inventado.</div>}
-    <Kpis v={v} onNavigate={onNavigate} rateio={data.rateio} dueOpen={due.openCents}/>
-    <div className="crm-fin-actions"><button className="crm-btn" type="button" onClick={() => onNavigate('rateio')}>Ver rateio de despesas entre Daniel e Guilherme ↗</button></div>
+    <MobileFinanceOverview v={v} dueOpen={due.openCents} onNavigate={onNavigate} rateio={data.rateio}/>
+    <div className="crm-fin-desktop-kpis"><Kpis v={v} onNavigate={onNavigate} rateio={data.rateio} dueOpen={due.openCents}/></div>
+    <div className="crm-fin-actions crm-fin-desktop-rateio"><button className="crm-btn" type="button" onClick={() => onNavigate('rateio')}>Ver rateio de despesas entre Daniel e Guilherme ↗</button></div>
     {v('clientAdBudgetCents') > 0 && <p className="crm-fin-note">Verbas de anúncio de clientes neste mês (fora do caixa da agência, não entram nos totais): {formatCents(v('clientAdBudgetCents'))}</p>}
-    <div className="crm-fin-grid">
+    <button type="button" className="crm-fin-mobile-chart-toggle" aria-controls="crm-fin-overview-charts"
+      aria-expanded={mobileChartsOpen} onClick={()=>setMobileChartsOpen(v=>!v)}>
+      <span><strong>Gráficos e análises</strong><small>Receitas, despesas e evolução mensal</small></span>
+      <span aria-hidden="true">{mobileChartsOpen?'Ocultar −':'Ver gráficos +'}</span>
+    </button>
+    <div id="crm-fin-overview-charts" className="crm-fin-grid" data-mobile-open={mobileChartsOpen}>
       <section className="crm-card crm-panel"><div className="crm-panel-title">Entradas × saídas por mês — {c.year}</div>
         <div className="crm-panel-subtitle">Base caixa: datas reais de recebimento e pagamento</div>
         <BarChart title={'Entradas e saídas por mês em ' + c.year} labels={c.yearMonths.map(m => shortMonth(m.month))}
