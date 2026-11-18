@@ -4,7 +4,7 @@
  * Rascunhos ficam separados da versão publicada.
  */
 import { validateDiagramLayout } from './diagram'
-import { validateBrazilianPhone } from '../contact-validation'
+import { validateBrazilianMobilePhone } from '../contact-validation'
 import { isValidWebPresence } from '../booking-forms'
 
 export type FlowOutcome = 'qualified' | 'limited' | 'other'
@@ -172,7 +172,7 @@ export function routeFlow(flow: FlowDefinition, rawAnswers: unknown): RoutedAnsw
     const raw = input[step.id]
     const answer = typeof raw === 'string' ? raw.trim() : ''
     if ((step.required && answer.length < 2) || answer.length > 160 || (step.input === 'select' && !step.options.includes(answer))) return null
-    if(step.field === 'phone' && !validateBrazilianPhone(answer).ok) return null
+    if(step.field === 'phone' && !validateBrazilianMobilePhone(answer).ok) return null
     if(step.field === 'website' && !isValidWebPresence(answer)) return null
     accepted[step.id] = answer
     id = step.branches.find(b => b.answer === answer)?.to || step.next
