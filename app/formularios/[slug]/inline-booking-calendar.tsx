@@ -302,11 +302,11 @@ export default function InlineBookingCalendar({
       <p>✓ {dateLabel(day)} às {chosen.localTime} · 30 minutos</p>
       {previewOnly
         ? <p className="cpf-schedule-note">Prévia: os horários são apenas para visualização. Nenhuma reunião será criada.</p>
-        : <button type="button" className="cpf-primary"
+        : <><p className="cpf-schedule-note">Ao confirmar, criaremos a reunião no Google Agenda para este horário. Um convite poderá ser enviado ao e-mail informado.</p><button type="button" className="cpf-primary"
             disabled={!bookingEnabled||confirming||mustReview||!bookingToken}
             onClick={()=>void confirmBooking()}>
             {confirming?'Confirmando com o Google Agenda...':'Confirmar meu agendamento'}
-          </button>}
+          </button></>}
     </div>}
     {confirmError&&<p className="cpf-schedule-error" role="alert">{confirmError}</p>}
     {mustReview&&<p className="cpf-schedule-note">Se o horário não foi confirmado, nossa equipe poderá verificar o pedido. Não é necessário preencher o formulário outra vez.</p>}
