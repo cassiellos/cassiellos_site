@@ -148,7 +148,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
               <label className="cpf-label"><span className="cpf-sr-only">{phoneEntry?'Seu WhatsApp com DDD':'Sua resposta'}</span>
                 <input required={current.required} autoComplete={current.field==='name'?'name':current.field==='phone'?'tel-national':'off'}
                   type={current.field==='phone'?'tel':'text'} inputMode={current.field==='phone'?'numeric':undefined}
-                  value={freeText} minLength={2} maxLength={current.field==='phone'?15:160}
+                  value={freeText} minLength={2} maxLength={current.field==='phone'?24:160}
                   aria-invalid={phoneEntry&&error?true:undefined} aria-describedby={phoneEntry?'cpf-phone-help':undefined}
                   placeholder={current.field==='name'?'Digite seu nome':current.field==='phone'?'(31) 99999-9999':current.field==='website'?'@hamburgueria ou site':'Digite sua resposta'}
                   onChange={e=>{setFreeText(previous=>current.field==='phone'?nextPhoneInput(previous,e.target.value):e.target.value);if(error)setError('')}}/>
@@ -167,7 +167,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
           <form onSubmit={submit} noValidate>
             {!flow.steps.some(step=>step.type==='question'&&step.field==='name')?<label className="cpf-label">Nome completo<input required minLength={2} maxLength={120} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label>:<p className="cpf-contact-already">Nome: <strong>{name}</strong></p>}
             <label className="cpf-label">E-mail<input required type="email" maxLength={180} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
-            {!flow.steps.some(step=>step.type==='question'&&step.field==='phone')?<label className="cpf-label">WhatsApp com DDD<input required type="tel" inputMode="numeric" maxLength={15} autoComplete="tel-national" placeholder="(31) 99999-9999" value={whatsapp} onChange={e=>setWhatsapp(previous=>nextPhoneInput(previous,e.target.value))}/></label>:<p className="cpf-contact-already">WhatsApp: <strong>{whatsapp}</strong></p>}
+            {!flow.steps.some(step=>step.type==='question'&&step.field==='phone')?<label className="cpf-label">WhatsApp com DDD<input required type="tel" inputMode="numeric" maxLength={24} autoComplete="tel-national" placeholder="(31) 99999-9999" value={whatsapp} onChange={e=>setWhatsapp(previous=>nextPhoneInput(previous,e.target.value))}/></label>:<p className="cpf-contact-already">WhatsApp: <strong>{whatsapp}</strong></p>}
             <label className="cpf-trap" aria-hidden="true">Site<input tabIndex={-1} autoComplete="off" value={website} onChange={e=>setWebsite(e.target.value)}/></label>
             <p className="cpf-privacy">Ao enviar, você solicita nosso contato sobre o diagnóstico. Leia a <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>. O envio não concede autorização automática para campanhas de marketing.</p>
             {previewOnly?<p className="cpf-preview-note">Prévia privada: envio e verificação de segurança desativados. Você pode simular a conclusão sem registrar um lead.</p>
