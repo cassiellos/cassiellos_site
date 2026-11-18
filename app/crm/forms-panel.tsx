@@ -286,7 +286,7 @@ export default function FormsPanel(){
         setSelected(null);setDraft(null);setMessage('');setUndoStack([]);setRedoStack([])
       }}>← Todos os formulários</button>}
     </div>
-    {message&&<div className="crm-forms-message" role="status">{message}</div>}
+    {message&&!selected&&<div className="crm-forms-message" role="status">{message}</div>}
     {loading&&<div className="crm-card crm-forms-loading">Carregando seus formulários…</div>}
     {!loading&&!selected&&<>
       <div className="crm-card crm-forms-create">
@@ -361,6 +361,24 @@ export default function FormsPanel(){
           {active&&<>
             <div className="crm-forms-editor-header"><div><span>EDITOR DA ETAPA</span><h3>{active.type==='question'?'Pergunta':'Página final'}</h3></div>
               <button type="button" className="crm-forms-remove" disabled={busy} onClick={removeStep}>Excluir etapa</button></div>
+            {message&&<div className="crm-forms-action-feedback" role="status">{message}</div>}
+            <div className="crm-forms-step-actions">
+              <strong>Inserir a partir desta etapa</strong>
+              {active.type==='question'&&active.input==='select'&&
+                <label>Em qual caminho?
+                  <select value={selectedOutput} onChange={e=>setSelectedOutput(e.target.value)}>
+                    <option value="">Caminho padrão (respostas sem desvio)</option>
+                    {active.options.map(answer=><option key={answer} value={'answer:'+answer}>Resposta: {answer}</option>)}
+                  </select>
+                </label>}
+              <div className="crm-forms-step-actions-buttons">
+                <button className="crm-btn" type="button" disabled={busy||draft.steps.length>=24} onClick={addQuestion}>+ Pergunta aqui</button>
+                <button className="crm-btn" type="button" disabled={busy||draft.steps.length>=24} onClick={addResult}>+ Finalização aqui</button>
+              </div>
+              <small>{active.type==='result'
+                ? 'Pergunta: será inserida antes desta finalização. Finalização: cria um caminho alternativo na pergunta anterior.'
+                : 'A pergunta usa o caminho escolhido. A finalização cria uma nova alternativa sem romper as existentes.'}</small>
+            </div>
             {active.type==='result'&&<label className="crm-forms-delete-destination">Ao excluir esta finalização, enviar as conexões para:
               <select value={validRedirect} onChange={e=>setRedirectFinal(e.target.value)}>
                 {finalOptions.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
