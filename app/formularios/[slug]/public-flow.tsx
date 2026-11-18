@@ -5,10 +5,13 @@ import { TURNSTILE_BOOKING_ACTION } from '@/lib/crm/turnstile'
 import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
 import { validateBrazilianPhone } from '@/lib/crm/contact-validation'
 import { isValidWebPresence } from '@/lib/crm/booking-forms'
+import MetaPixel from '@/components/marketing/meta-pixel'
+import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
+import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null}
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey}:PublicFlowProps){
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null}
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   const [answers,setAnswers]=useState<Record<string,string>>({})
@@ -54,22 +57,28 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     if(!idempotencyKey.current)idempotencyKey.current=crypto.randomUUID()
     setStatus('sending');setError('')
     try{
+      const marketing=readMarketingConsent()
       const attribution:Record<string,string>={}
       const params=new URLSearchParams(window.location.search)
       for(const key of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid']){
         const value=params.get(key)
-        if(value)attribution[key]=value
+        if(value && (key!=='fbclid' || marketing.consent))attribution[key]=value
       }
       const response=await fetch('/api/public/forms/'+encodeURIComponent(slug),{
         method:'POST',credentials:'same-origin',cache:'no-store',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({name,email,whatsapp,answers,version,turnstileToken:token,
-          idempotencyKey:idempotencyKey.current,contactRequest:true,attribution,website}),
+          idempotencyKey:idempotencyKey.current,contactRequest:true,attribution,marketing,website}),
       })
       const data=await response.json()
       if(!response.ok)throw Error(data.error==='FORM_UPDATED'?'Este formulário foi atualizado. Recarregue a página para continuar.':
         data.error==='TOO_MANY_REQUESTS'?'Muitas tentativas. Tente novamente mais tarde.':
         'Não foi possível enviar agora. Confira seus dados e tente novamente.')
+      // Apenas o Lead novo e real devolvido pelo servidor. Pixel e CAPI usam o mesmo event_id.
+      // O rastreamento também exige o consentimento de marketing atual no navegador.
+      if(data?.reused!==true && data?.tracking?.lead?.eventName==='Lead'){
+        trackMetaConversion('Lead',data.tracking.lead.eventId,{content_name:slug})
+      }
       setComplete({title:data.title,description:data.description,outcome:data.outcome,
         actionLabel:data.actionLabel,actionHref:data.actionHref})
       setStatus('complete')
@@ -80,6 +89,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     }
   }
   return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)}>
+    <MetaPixel pixelId={metaPixelId}/>
     <header className="cpf-header"><a href="/" aria-label="Agência Cassiellos, início">
       <img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></a>
       <span>DIAGNÓSTICO ESTRATÉGICO</span>
@@ -87,6 +97,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     <div className="cpf-shell">
       <div className="cpf-topline"><span>{flow.cover?'DIAGNÓSTICO PARA HAMBURGUERIAS':'FORMULÁRIO PERSONALIZADO'}</span><span>{coverOpen?'INÍCIO':status==='complete'?'Concluído':String(visited.length).padStart(2,'0')+' / '+String(flow.steps.length).padStart(2,'0')}</span></div>
       <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(95,visited.length/flow.steps.length*100))+'%'}}/></div>
+      <ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>
       <section className="cpf-card" aria-live="polite">
         {coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{flow.cover.headline}</h1>
@@ -128,7 +139,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         {error&&<div className="cpf-error" role="alert">{error}</div>}
         {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
-      <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><a href="/politica-de-privacidade">Privacidade</a></footer>
+      <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><span><ConsentPreferencesButton/> · <a href="/politica-de-privacidade">Privacidade</a></span></footer>
     </div>
   </main>
 }
