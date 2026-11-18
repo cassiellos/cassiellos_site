@@ -73,3 +73,17 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 .cpf-header .cpf-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#121e31;letter-spacing:-.04em;font-size:20px}
 .cpf-preview-note{border:1px solid #bed8c8;background:#f1f9f4;color:#1d6045!important;border-radius:8px;padding:12px 14px;font-size:12px!important}
 .cpf-primary.cpf-preview-disabled-cta{opacity:.62;cursor:not-allowed;pointer-events:none}
+
+/* Alinhado ao formulário /agendar aprovado: privacidade discreta e acionada pelo usuário.
+   Nada de banner de consentimento antes da capa ou da primeira pergunta. */
+.cassiellos-public-flow .cpf-privacy-links{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end}
+.cassiellos-public-flow .cpf-privacy-toggle{border:0;background:none;padding:0;color:#657a94;font:inherit;font-size:12px;text-decoration:none;cursor:pointer}
+.cassiellos-public-flow .cpf-privacy-toggle:hover,.cassiellos-public-flow .cpf-privacy-toggle:focus-visible{color:#d94258;text-decoration:underline;outline-offset:3px}
+.cassiellos-public-flow .cpf-privacy-minimal:empty{display:none}
+.cassiellos-public-flow .cpf-privacy-minimal{padding:0 0 24px}
+.cassiellos-public-flow .cpf-privacy-minimal .consent-notice{margin:0;border-radius:11px;box-shadow:none}
+@media(max-width:560px){
+  .cassiellos-public-flow .cpf-footer{flex-wrap:wrap;gap:8px;padding-bottom:18px}
+  .cassiellos-public-flow .cpf-privacy-links{justify-content:flex-start}
+  .cassiellos-public-flow .cpf-privacy-minimal{padding-bottom:20px}
+}
