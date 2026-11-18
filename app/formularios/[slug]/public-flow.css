@@ -54,3 +54,17 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 .cpf-contact-already{margin:7px 0!important;font-size:13px!important;color:#4f6071!important}
 .cpf-contact-already strong{color:#17263c}
 @media(max-width:560px){.cpf-cover h1{font-size:29px!important}.cpf-cover ul li{font-size:13px}}
+
+/* Consentimento de marketing do formulário público: categorias equivalentes, não sobrepõe perguntas. */
+.cassiellos-public-flow .consent-notice{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:18px 22px;margin-bottom:18px;color:#344254;box-shadow:0 8px 24px rgba(25,43,66,.04)}
+.cassiellos-public-flow .consent-notice h2{font-size:15px;line-height:1.4;margin:0 0 11px;font-weight:800}
+.cassiellos-public-flow .consent-category{margin:12px 0;padding:12px 0;border-top:1px solid #e7ecf1}
+.cassiellos-public-flow .consent-category h3{font-size:13px;margin:0 0 6px}
+.cassiellos-public-flow .consent-notice p{font-size:12px;line-height:1.6;margin:0 0 10px;color:#5b6776}
+.cassiellos-public-flow .consent-notice-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.cassiellos-public-flow .consent-choice{border:1px solid #c9d1dc;background:white;border-radius:7px;color:#233044;font-weight:700;padding:9px 14px;min-height:39px;cursor:pointer}
+.cassiellos-public-flow .consent-choice:hover,.cassiellos-public-flow .consent-choice:focus-visible{border-color:#e84659;outline:2px solid #e8465922}
+.cassiellos-public-flow .consent-choice[aria-pressed=true]{background:#f2f4f6}
+.cassiellos-public-flow .consent-notice-links a,.cassiellos-public-flow .consent-preferences-button{font-size:12px;color:#ce3449;background:none;border:0;text-decoration:underline;cursor:pointer;padding:0}
+.cassiellos-public-flow .cpf-footer .consent-preferences-button{color:#657a94;text-decoration:none}
+@media(max-width:560px){.cassiellos-public-flow .consent-notice{padding:14px}.cassiellos-public-flow .consent-notice-actions{display:grid;grid-template-columns:1fr 1fr}.cassiellos-public-flow .consent-choice{padding:8px 9px;font-size:12px}.cpf-footer{gap:10px}}
