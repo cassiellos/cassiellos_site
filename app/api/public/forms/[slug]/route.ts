@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { getCrmPool } from '@/lib/crm/db'
 import { getPublishedFlow } from '@/lib/crm/form-builder/store'
 import { routeFlow } from '@/lib/crm/form-builder/flow'
@@ -11,10 +11,11 @@ import { sanitizeAttribution } from '@/lib/crm/attribution'
 import { resolveMarketingConsent, META_CLICK_ID_PARAM } from '@/lib/marketing/meta'
 import { saveLeadSubmission } from '@/lib/crm/lead-intake'
 import { classifyNewLeadAsTest, getCrmBookingMode } from '@/lib/crm/booking-mode'
+import { dispatchLeadToMeta, metaLeadClientFromHeaders, pgLeadCapiStore, metaLeadConfig } from '@/lib/crm/meta-lead-capi'
 
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
-export const maxDuration=20
+export const maxDuration=60
 const headers={'Cache-Control':'no-store, private','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer'}
 const send=(data:unknown,status=200)=>NextResponse.json(data,{status,headers})
 export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string}>}){
@@ -67,7 +68,19 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string
       marketing,eventSourceUrl:CRM_CANONICAL_ORIGIN+'/formularios/'+doc.slug,
       flow:{id:doc.id,version:doc.publishedVersion,outcome:result.result.outcome,path:result.path},
     })
-    return send({ok:true,reused:saved.reused,outcome:result.result.outcome,
+    // Somente cadastro novo de lead real gera conversão. Reenvio, lead de teste e recusa não disparam Meta.
+    const leadEventId=!saved.reused&&!saved.resubmitted&&saved.isTest===false&&marketing.consent
+      ? saved.leadEventId : null
+    const capi=leadEventId?metaLeadConfig():null
+    if(leadEventId&&capi?.mode==='live'){
+      const client=metaLeadClientFromHeaders(req.headers)
+      after(()=>dispatchLeadToMeta({config:capi,store:pgLeadCapiStore(getCrmPool()),
+        fetch:(url,init)=>fetch(url,{...init,cache:'no-store'}),
+        log:entry=>console.info(JSON.stringify(entry))},
+        {eventId:leadEventId,...client}).then(()=>undefined))
+    }
+    return send({ok:true,reused:saved.reused,
+      ...(leadEventId?{tracking:{lead:{eventName:'Lead',eventId:leadEventId}}}:{}),outcome:result.result.outcome,
       title:result.result.title,description:result.result.description,
       actionLabel:result.result.actionLabel,actionHref:result.result.actionHref},saved.reused?200:201)
   }catch{
