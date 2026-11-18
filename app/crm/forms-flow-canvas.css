@@ -11,7 +11,7 @@
 #cassiellos-crm .cvf-connect-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#3c2535;border-bottom:1px solid #9c5160;color:#ffe0e5;font-size:12px}
 #cassiellos-crm .cvf-connect-banner button{border:1px solid #bd6b7c;border-radius:8px;color:#fff;background:#512738;padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap}
 #cassiellos-crm .cvf-notice{padding:9px 16px;background:#183a38;color:#abf4d8;font-size:11px;border-bottom:1px solid #29685c}
-#cassiellos-crm .cvf-stage{height:610px;width:100%;position:relative;overflow:hidden;cursor:grab;touch-action:none;outline:none;isolation:isolate;
+#cassiellos-crm .cvf-stage{height:610px;width:100%;position:relative;overflow:hidden;cursor:grab;touch-action:none;overscroll-behavior:none;outline:none;isolation:isolate;contain:paint;
   background-color:#0b182b;
   background-image:radial-gradient(circle,rgba(142,170,200,.14) 1px,transparent 1.3px);
   background-size:24px 24px}

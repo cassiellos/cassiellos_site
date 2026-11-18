@@ -1,8 +1,8 @@
 'use client'
 
-import { useLayoutEffect, useId, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
+import { useLayoutEffect, useEffect, useId, useMemo, useRef, useState, type PointerEvent } from 'react'
 import type { FlowDefinition, FlowQuestion } from '@/lib/crm/form-builder/flow'
-import { diagramModel, fitDiagramCamera, NODE_WIDTH, PORT_TOP, PORT_HEIGHT, type DiagramPoint, type DiagramNode } from '@/lib/crm/form-builder/diagram'
+import { diagramModel, fitDiagramCamera, zoomDiagramCameraAt, NODE_WIDTH, PORT_TOP, PORT_HEIGHT, type DiagramPoint, type DiagramNode } from '@/lib/crm/form-builder/diagram'
 import './forms-flow-canvas.css'
 
 type PendingConnection = { source: string; answer: string | null; label: string }
@@ -17,7 +17,7 @@ type Props = {
   onResetLayout: () => void
 }
 const MIN_ZOOM = .2
-const MAX_ZOOM = 1.6
+const MAX_ZOOM = 3
 const WIDTH = NODE_WIDTH
 const clamp = (value:number,min:number,max:number) => Math.min(max,Math.max(min,value))
 
@@ -98,28 +98,78 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
   }
   function zoomAt(amount:number){
     cameraTouched.current=true
-    setCamera(prev=>{
-      const next=clamp(prev.zoom*amount,MIN_ZOOM,MAX_ZOOM)
-      const x=(size.w/2-prev.x)/prev.zoom
-      const y=(size.h/2-prev.y)/prev.zoom
-      return {zoom:next,x:size.w/2-next*x,y:size.h/2-next*y}
-    })
+    const rect=stage.current?.getBoundingClientRect()
+    const w=rect?.width??size.w
+    const h=rect?.height??size.h
+    setCamera(prev=>zoomDiagramCameraAt(prev,amount,{x:w/2,y:h/2},MIN_ZOOM,MAX_ZOOM))
   }
-  function onWheel(e:WheelEvent<HTMLDivElement>){
-    e.preventDefault()
-    cameraTouched.current=true
-    if(e.ctrlKey||e.metaKey){
-      const rect=stage.current?.getBoundingClientRect()
-      const px=e.clientX-(rect?.left||0)
-      const py=e.clientY-(rect?.top||0)
-      setCamera(prev=>{
-        const zoom=clamp(prev.zoom*Math.exp(-e.deltaY*.008),MIN_ZOOM,MAX_ZOOM)
-        return {zoom,x:px-(px-prev.x)/prev.zoom*zoom,y:py-(py-prev.y)/prev.zoom*zoom}
-      })
-    }else{
-      setCamera(prev=>({...prev,x:prev.x-e.deltaX,y:prev.y-e.deltaY}))
+
+  // React 19 delegates wheel listeners as passive on the root. Calling preventDefault()
+  // in React onWheel does NOT prevent Chromium/macOS from enlarging the entire browser
+  // page when a trackpad pinch arrives as Ctrl+wheel. The native non-passive listener
+  // must be attached to the canvas itself and removed on unmount.
+  useEffect(()=>{
+    const el=stage.current
+    if(!el)return
+
+    const zoomFromCursor=(factor:number,clientX:number,clientY:number)=>{
+      const rect=el.getBoundingClientRect()
+      // Safari gesture coordinates can be absent: anchor at the canvas center.
+      const valid=Number.isFinite(clientX)&&Number.isFinite(clientY) && (clientX!==0||clientY!==0)
+      const x=valid?clamp(clientX-rect.left,0,rect.width):rect.width/2
+      const y=valid?clamp(clientY-rect.top,0,rect.height):rect.height/2
+      setCamera(prev=>zoomDiagramCameraAt(prev,factor,{x,y},MIN_ZOOM,MAX_ZOOM))
     }
-  }
+
+    const wheel=(event:globalThis.WheelEvent)=>{
+      if(event.cancelable)event.preventDefault()
+      cameraTouched.current=true
+      const lineFactor=event.deltaMode===1?16:event.deltaMode===2?el.clientHeight:1
+      if(event.ctrlKey||event.metaKey){
+        // Trackpad pinch: only the diagram changes; never the browser zoom.
+        zoomFromCursor(Math.exp(-event.deltaY*lineFactor*.008),event.clientX,event.clientY)
+      }else{
+        // Two-finger scroll still pans the map inside the clipped canvas.
+        setCamera(prev=>({...prev,
+          x:prev.x-event.deltaX*lineFactor,
+          y:prev.y-event.deltaY*lineFactor,
+        }))
+      }
+    }
+
+    // Safari uses gesturestart/gesturechange for a pinch instead of Ctrl+wheel.
+    type SafariGesture=Event & {scale?:number;clientX?:number;clientY?:number}
+    let previousScale=1
+    const startGesture=(event:Event)=>{
+      if(event.cancelable)event.preventDefault()
+      previousScale=1
+    }
+    const changeGesture=(event:Event)=>{
+      if(event.cancelable)event.preventDefault()
+      const gesture=event as SafariGesture
+      const nextScale=gesture.scale
+      if(!Number.isFinite(nextScale)||!nextScale||nextScale<=0)return
+      cameraTouched.current=true
+      zoomFromCursor(nextScale/previousScale,gesture.clientX??NaN,gesture.clientY??NaN)
+      previousScale=nextScale
+    }
+    const endGesture=(event:Event)=>{
+      if(event.cancelable)event.preventDefault()
+      previousScale=1
+    }
+
+    el.addEventListener('wheel',wheel,{passive:false})
+    el.addEventListener('gesturestart',startGesture,{passive:false})
+    el.addEventListener('gesturechange',changeGesture,{passive:false})
+    el.addEventListener('gestureend',endGesture,{passive:false})
+    return ()=>{
+      el.removeEventListener('wheel',wheel)
+      el.removeEventListener('gesturestart',startGesture)
+      el.removeEventListener('gesturechange',changeGesture)
+      el.removeEventListener('gestureend',endGesture)
+    }
+  },[])
+
   function startPan(e:PointerEvent<HTMLDivElement>){
     if(e.button!==0)return
     if((e.target as Element).closest('.cvf-node'))return
@@ -229,7 +279,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
     {notice&&!pending&&<div className="cvf-notice" role="status">{notice}</div>}
     <div ref={stage} className="cvf-stage" tabIndex={0} data-measured={measured}
       onPointerDown={startPan} onPointerMove={panMove} onPointerUp={finishPan} onPointerCancel={finishPan}
-      onWheel={onWheel} aria-label="Área do fluxograma. Arraste o fundo para navegar; Ctrl mais rolagem para zoom.">
+      aria-label="Área do fluxograma. Pinça do touchpad ou Ctrl mais rolagem amplia o mapa sem alterar a página; arraste o fundo para navegar.">
       <div className="cvf-world" style={{visibility:measured?'visible':'hidden',width:model.width,height:model.height,
         transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
         <svg aria-hidden="true" className="cvf-lines" width="100%" height="100%"
@@ -303,7 +353,7 @@ export default function FormsFlowCanvas({flow,selectedStep,onSelect,onMove,onCon
         })}
       </div>
       {!measured&&<div className="cvf-stage-loading" role="status">Preparando visualização do fluxograma…</div>}
-      <div className="cvf-stage-tip">Arraste os cartões · Arraste o fundo · Clique na saída e depois no destino · Ctrl/⌘ + rolar para ampliar</div>
+      <div className="cvf-stage-tip">Arraste os cartões · Arraste o fundo · Clique na saída e depois no destino · Pinça/⌘ + rolar: zoom só no mapa</div>
     </div>
     <div className="cvf-legend"><span><i className="cvf-green"/> Resposta Sim</span><span><i className="cvf-amber"/> Resposta Não</span><span><i className="cvf-slate"/> Caminho padrão</span><span className="cvf-foot-tip">As mudanças só afetam o rascunho até você publicar.</span></div>
   </div>

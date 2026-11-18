@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe,it } from 'node:test'
-import { diagramModel,diagramPorts,validateDiagramLayout,fitDiagramCamera,removeDiagramStep } from './diagram'
+import { diagramModel,diagramPorts,validateDiagramLayout,fitDiagramCamera,zoomDiagramCameraAt,removeDiagramStep } from './diagram'
 import { newFlowTemplate, routeFlow, validateFlow } from './flow'
 
 describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
@@ -62,6 +62,29 @@ describe('Editor de fluxograma — mapa, conexões e persistência',()=>{
     const first=model.nodes.find(n=>n.id==='clinic')!
     assert.ok(camera.x+first.x*camera.zoom>=-first.w*camera.zoom)
     assert.ok(camera.y+first.y*camera.zoom>=-first.h*camera.zoom)
+  })
+  it('amplia no ponto sob o cursor, sem alterar a coordenada focal',()=>{
+    const initial={x:50,y:-20,zoom:.5}
+    const pointer={x:275,y:180}
+    const worldBefore={x:(pointer.x-initial.x)/initial.zoom,y:(pointer.y-initial.y)/initial.zoom}
+    const zoomed=zoomDiagramCameraAt(initial,2,pointer)
+    assert.equal(zoomed.zoom,1)
+    assert.equal(zoomed.x+worldBefore.x*zoomed.zoom,pointer.x)
+    assert.equal(zoomed.y+worldBefore.y*zoomed.zoom,pointer.y)
+    const restored=zoomDiagramCameraAt(zoomed,.5,pointer)
+    assert.deepEqual(restored,initial)
+  })
+  it('permite aproximar até 300% com pinça, limitando extremos sem saltar a página',()=>{
+    const camera={x:120,y:80,zoom:1}
+    const pointer={x:320,y:210}
+    const maximum=zoomDiagramCameraAt(camera,100,pointer)
+    assert.equal(maximum.zoom,3)
+    const zoomAgain=zoomDiagramCameraAt(maximum,10,pointer)
+    assert.deepEqual(zoomAgain,maximum)
+    const minimum=zoomDiagramCameraAt(camera,.001,pointer)
+    assert.equal(minimum.zoom,.2)
+    assert.deepEqual(zoomDiagramCameraAt(camera,Number.NaN,pointer),camera)
+    assert.deepEqual(zoomDiagramCameraAt(camera,0,pointer),camera)
   })
   it('valida posições por ID, tamanho e faixa antes de persistir no JSONB',()=>{
     const flow=sample()
