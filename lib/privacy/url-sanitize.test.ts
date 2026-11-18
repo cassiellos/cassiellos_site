@@ -26,7 +26,7 @@ describe('privacidade — funções base (sem efeito até ligar as chaves dos gr
     assert.ok(CLICK_ID_PARAMS.includes('gclid'))
   })
   it('escopo: CRM (funil e painel) × site institucional', () => {
-    for (const p of ['/agendar/odontologia', '/agendar', '/crm', '/crm/login', '/mini-crm']) assert.equal(isCrmScopePath(p), true, p)
-    for (const p of ['/', '/sobre', '/en', '/politica-de-privacidade', '/agendamento', '/crmx']) assert.equal(isCrmScopePath(p), false, p)
+    for (const p of ['/agendar/odontologia', '/agendar', '/formularios/hamburguerias', '/crm', '/crm/login', '/mini-crm']) assert.equal(isCrmScopePath(p), true, p)
+    for (const p of ['/', '/sobre', '/en', '/politica-de-privacidade', '/agendamento', '/formularios-falso', '/crmx']) assert.equal(isCrmScopePath(p), false, p)
   })
 })

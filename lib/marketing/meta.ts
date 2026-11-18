@@ -10,7 +10,7 @@
 import { CONSENT_COOKIE, parseConsent, readCookie } from '../privacy/consent'
 
 /** Páginas públicas do funil (prefixos). Ajuste aqui, não espalhe pelo código. */
-export const META_TRACKED_PATH_PREFIXES: readonly string[] = ['/agendar/']
+export const META_TRACKED_PATH_PREFIXES: readonly string[] = ['/agendar/', '/formularios/']
 /**
  * Páginas públicas do funil (caminho exato). A página pública atual é `/agendar`: o antigo `/agendar/odontologia`
  * redireciona permanentemente para ela (app/agendar/[slug]/page.tsx), então o caminho exato precisa ser aceito.
