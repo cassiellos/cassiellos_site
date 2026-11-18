@@ -73,3 +73,29 @@
 #cassiellos-crm .crm-forms-cover-heading small{font-size:11px;color:#a2b4c7}
 #cassiellos-crm .crm-forms-cover-bullets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 @media(max-width:800px){#cassiellos-crm .crm-forms-cover-bullets{grid-template-columns:1fr}}
+
+
+/* Editor seguro: histórico e inserção sempre deixam explícito que é um rascunho. */
+#cassiellos-crm .crm-forms-history{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#cassiellos-crm .crm-forms-toolbar .crm-btn:disabled,
+#cassiellos-crm .crm-forms-flow-actions .crm-btn:disabled{opacity:.42;cursor:not-allowed}
+#cassiellos-crm .crm-forms-discard{color:#ffb3bb;border-color:#804052;background:#281928}
+#cassiellos-crm .crm-forms-help{font-size:11px;color:#9fbbcf;flex:1 1 180px}
+#cassiellos-crm .crm-forms-help strong{color:#d2e4f5}
+#cassiellos-crm .crm-forms-insert-where{display:flex;flex-direction:column;gap:5px;flex:1 1 260px;min-width:200px}
+#cassiellos-crm .crm-forms-insert-where>strong{color:#e8f3ff;font-size:12px}
+#cassiellos-crm .crm-forms-insert-where>span{font-size:12px;color:#9fb5cd;overflow-wrap:anywhere}
+#cassiellos-crm .crm-forms-insert-where label{font-size:11px;color:#a7bfd9;display:grid;gap:5px;max-width:390px}
+#cassiellos-crm .crm-forms-insert-where select{font-size:12px;padding:9px 11px}
+#cassiellos-crm .crm-forms-flow-actions{align-items:end;padding:15px 16px;border:1px solid #2b435c;background:#101f33;border-radius:11px}
+#cassiellos-crm .crm-forms-flow-actions>small{flex:1 1 100%;font-size:11px;line-height:1.6}
+#cassiellos-crm .crm-forms-delete-destination{background:#281f2a;border:1px solid #603b4d;border-radius:9px;padding:12px;color:#ffd8de;font-size:12px}
+#cassiellos-crm .crm-forms-delete-destination small{font-size:11px;line-height:1.5;color:#d0acbb}
+#cassiellos-crm .crm-forms-remove:disabled{opacity:.4;cursor:not-allowed}
+#cassiellos-crm .crm-forms-remove:not(:disabled){cursor:pointer}
+@media(max-width:680px){
+  #cassiellos-crm .crm-forms-history{width:100%}
+  #cassiellos-crm .crm-forms-history .crm-btn{flex:1 1 30%}
+  #cassiellos-crm .crm-forms-flow-actions>button{flex:1 1 100%}
+  #cassiellos-crm .crm-forms-insert-where{flex-basis:100%}
+}
