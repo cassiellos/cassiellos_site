@@ -257,15 +257,24 @@ type Dialog =
 export default function FinancePanel() {
   const [tab, setTab] = useState<Tab>('geral')
   const [drilldown, setDrilldown] = useState<DrilldownMode>('month')
+  // Navegação financeira secundária, sem criar outra barra inferior junto ao menu global.
+  const [mobileAreasOpen,setMobileAreasOpen] = useState(false)
+  const [mobileFiltersOpen,setMobileFiltersOpen] = useState(false)
+  const mobileTabsRef = useRef<HTMLElement>(null)
   // Receitas: recorte mensal por Vencimento (padrão) ou Competência — só apresentação (lib/crm/finance/month-filter.ts).
   const [revenueBasis, setRevenueBasis] = useState<MonthBasis>('due')
   const tabsRef = useRef<HTMLElement>(null)
   const navigateTo = (destination: Tab, mode: DrilldownMode = 'month') => {
     setTab(destination)
+    setMobileAreasOpen(false)
     if (destination === 'rateio') setFilters({ client: '', category: '', source: '' })
     setDrilldown(mode)
-    // O usuário permanece no mesmo Financeiro; posiciona a aba escolhida no início da tela.
-    requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    // Rola até a navegação visível do dispositivo, sem depender de abas ocultas no celular.
+    requestAnimationFrame(() => {
+      const mobile = window.matchMedia('(max-width: 830px)').matches
+      const target = mobile ? mobileTabsRef.current : tabsRef.current
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
   // O Financeiro da Cassiellos começou em 2026; o filtro visível fica em 2026–2030.
   const MIN_FINANCE_MONTH = '2026-01'
@@ -273,6 +282,8 @@ export default function FinancePanel() {
   const limitFinanceMonth = (value: string) => value < MIN_FINANCE_MONTH ? MIN_FINANCE_MONTH : value > MAX_FINANCE_MONTH ? MAX_FINANCE_MONTH : value
   const [month, setMonth] = useState(() => limitFinanceMonth(todayInBrazil().slice(0, 7)))
   const [filters, setFilters] = useState({ client: '', category: '', source: '' })
+  const activeFilterCount = [filters.client,filters.category,filters.source].filter(Boolean).length
+  const inMoreFinanceArea = !(['geral','receitas','despesas'] as Tab[]).includes(tab)
   // Cada resposta fica ligada à consulta (filtros) que a produziu. Os números só aparecem quando essa chave é a dos
   // filtros atuais — nunca valores de um período sob o rótulo de outro.
   const [result, setResult] = useState<{ key: string; body: Overview } | null>(null)
@@ -352,6 +363,23 @@ export default function FinancePanel() {
     <nav ref={tabsRef} className="crm-fin-tabs" aria-label="Seções do Financeiro">
       {TABS.map(t => <button key={t.id} type="button" data-active={tab === t.id} aria-current={tab === t.id ? 'page' : undefined} onClick={() => navigateTo(t.id)}>{t.label}</button>)}
     </nav>
+    <nav ref={mobileTabsRef} className="crm-fin-mobile-nav" aria-label="Navegação do Financeiro no celular">
+      <div className="crm-fin-mobile-primary">
+        {([{id:'geral',label:'Resumo'},{id:'receitas',label:'Receitas'},{id:'despesas',label:'Despesas'}] as const)
+          .map(item=><button key={item.id} type="button" data-active={tab===item.id}
+            aria-current={tab===item.id?'page':undefined} onClick={()=>navigateTo(item.id)}>{item.label}</button>)}
+        <button type="button" data-active={inMoreFinanceArea} aria-expanded={mobileAreasOpen}
+          aria-controls="crm-fin-mobile-areas" onClick={()=>setMobileAreasOpen(v=>!v)}>
+          Mais <span aria-hidden="true">{mobileAreasOpen?'⌃':'⌄'}</span>
+        </button>
+      </div>
+      {mobileAreasOpen&&<div id="crm-fin-mobile-areas" className="crm-fin-mobile-areas">
+        {TABS.filter(item=>!(['geral','receitas','despesas'] as Tab[]).includes(item.id))
+          .map(item=><button type="button" key={item.id} data-active={tab===item.id}
+            aria-current={tab===item.id?'page':undefined} onClick={()=>navigateTo(item.id)}>{item.label}<span aria-hidden="true">›</span></button>)}
+      </div>}
+      {inMoreFinanceArea&&!mobileAreasOpen&&<p className="crm-fin-current-area">Área atual: <strong>{TABS.find(x=>x.id===tab)?.label}</strong></p>}
+    </nav>
 
     <section className="crm-fin-filters" aria-label="Filtros">
       <Field label="Mês"><div className="crm-fin-month">
@@ -359,6 +387,14 @@ export default function FinancePanel() {
         <input type="month" value={month} min={MIN_FINANCE_MONTH} max={MAX_FINANCE_MONTH} onChange={e => e.target.value && setMonth(limitFinanceMonth(e.target.value))} aria-label="Mês de referência"/>
         <button type="button" className="crm-btn" aria-label="Próximo mês" disabled={month >= MAX_FINANCE_MONTH} onClick={() => setMonth(limitFinanceMonth(addMonths(month, 1)))}>›</button>
       </div></Field>
+      <button type="button" className="crm-fin-mobile-filter-toggle" aria-expanded={mobileFiltersOpen}
+        aria-controls="crm-fin-advanced-fields" onClick={()=>setMobileFiltersOpen(v=>!v)}>
+        <span aria-hidden="true">☷</span>
+        <span>Filtrar por cliente, categoria ou fonte</span>
+        {activeFilterCount>0&&<strong className="crm-fin-filter-count">{activeFilterCount}</strong>}
+        <span aria-hidden="true">{mobileFiltersOpen?'⌃':'⌄'}</span>
+      </button>
+      <div className="crm-fin-advanced-fields" id="crm-fin-advanced-fields" data-open={mobileFiltersOpen}>
       <Field label="Ano"><select value={month.slice(0, 4)} onChange={e => setMonth(e.target.value + '-' + month.slice(5, 7))}>
         {[2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={String(y)}>{y}</option>)}</select></Field>
       <Field label="Cliente"><select value={filters.client} onChange={e => setFilters({ ...filters, client: e.target.value })}>
@@ -369,7 +405,8 @@ export default function FinancePanel() {
         <optgroup label="Despesas">{Object.entries(EXPENSE_CATEGORIES).map(([id, l]) => <option key={id} value={id}>{l}</option>)}</optgroup></select></Field>
       <Field label="Fonte de receita / despesa"><select value={filters.source} onChange={e => setFilters({ ...filters, source: e.target.value })}>
         <option value="">Todas</option>{(options?.sources ?? []).map(s => <option key={s.id} value={s.id}>{(s.direction === 'in' ? 'Receita · ' : 'Despesa · ') + s.description}</option>)}</select></Field>
-      {(filters.client || filters.category || filters.source) && <button type="button" className="crm-btn" onClick={() => setFilters({ client: '', category: '', source: '' })}>Limpar filtros</button>}
+      {(filters.client || filters.category || filters.source) && <button type="button" className="crm-btn crm-fin-clear-filters" onClick={() => setFilters({ client: '', category: '', source: '' })}>Limpar filtros</button>}
+      </div>
     </section>
 
     {message && <p className="crm-fin-message" data-kind={message.kind} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p>}
