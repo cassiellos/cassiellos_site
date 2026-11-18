@@ -101,6 +101,24 @@ describe('Editor intuitivo — inserir, excluir e manter conexões válidas', ()
     assert.equal(validateFlow(flow).ok,true)
   })
 
+  it('permite remover a etapa com ramificações se o usuário confirmar também os órfãos', () => {
+    const flow=newFlowTemplate('Hamburguerias')
+    const cautious=removeStepAndReconnect(flow,'budget')
+    assert.equal(cautious.ok,false)
+    if(!cautious.ok){
+      assert.deepEqual(cautious.orphanSteps?.map(s=>s.id),['limited'])
+      assert.match(cautious.reason,/Confirme a exclusão/)
+    }
+    const confirmed=removeStepAndReconnect(flow,'budget',undefined,true)
+    assert.equal(confirmed.ok,true)
+    if(confirmed.ok){
+      assert.equal(confirmed.flow.steps.some(s=>s.id==='budget'||s.id==='limited'),false)
+      assert.equal(confirmed.flow.steps.length,3)
+      assert.equal(routeFlow(confirmed.flow,{clinic:'Loja X',revenue:'Até R$ 10 mil'})?.result.outcome,'qualified')
+      assert.equal(validateFlow(confirmed.flow).ok,true)
+    }
+    assert.equal(flow.steps.length,5,'não afeta o original enquanto não salvar')
+  })
   it('exclui pergunta inicial e faz a próxima assumir o início da jornada', () => {
     const flow = newFlowTemplate('Hamburguerias')
     const plan = removeStepAndReconnect(flow,'clinic')
