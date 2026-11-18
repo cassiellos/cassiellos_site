@@ -42,6 +42,18 @@ export async function getPublishedFlow(db: Pool,slug: string): Promise<FlowDocum
     return r.rows[0] ? normalize(r.rows[0]) : null
   } catch (e) { if ((e as {code?:string})?.code === '42P01') return null; throw e }
 }
+/** Prévia privada: acessa a versão salva do rascunho sem publicá-la. */
+export async function getDraftFlowBySlug(db: Pool, slug: string): Promise<FlowDocument | null> {
+  if (!validFlowSlug(slug)) return null
+  try {
+    const result = await db.query<DbRow>(`SELECT ${SELECT} FROM crm.form_flows WHERE slug=$1 LIMIT 1`, [slug])
+    return result.rows[0] ? normalize(result.rows[0]) : null
+  } catch (error) {
+    if ((error as { code?: string })?.code === '42P01') return null
+    throw error
+  }
+}
+
 export async function createFlowDocument(db: Pool,title: string,slug: string): Promise<FlowDocument> {
   if (!titleValid(title)||!validFlowSlug(slug)) throw new FlowStoreError('INVALID')
   const flow = newFlowTemplate(title.trim())
