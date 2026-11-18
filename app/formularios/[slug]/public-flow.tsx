@@ -6,7 +6,7 @@ import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
 import { validateBrazilianPhone } from '@/lib/crm/contact-validation'
 import { isValidWebPresence } from '@/lib/crm/booking-forms'
 import MetaPixel from '@/components/marketing/meta-pixel'
-import ConsentNotice, { ConsentPreferencesButton } from '@/components/privacy/consent-notice'
+import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
@@ -14,6 +14,9 @@ type PublicFlowProps = {slug:string;title:string;description:string;version:numb
 export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,previewOnly=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
+  // Mesmo padrão aprovado no /agendar: nunca interromper a primeira pergunta com avisos de cookies.
+  // Sem opção explícita, Analytics e Meta Pixel continuam desligados (consent-gated).
+  const [showPrivacyPreferences,setShowPrivacyPreferences]=useState(false)
   const [answers,setAnswers]=useState<Record<string,string>>({})
   const [freeText,setFreeText]=useState('')
   const [name,setName]=useState('')
@@ -104,7 +107,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     <div className="cpf-shell">
       <div className="cpf-topline"><span>{flow.cover?'DIAGNÓSTICO PARA HAMBURGUERIAS':'FORMULÁRIO PERSONALIZADO'}</span><span>{coverOpen?'INÍCIO':status==='complete'?'Concluído':String(visited.length).padStart(2,'0')+' / '+String(flow.steps.length).padStart(2,'0')}</span></div>
       <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(95,visited.length/flow.steps.length*100))+'%'}}/></div>
-      {!previewOnly&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>}
+      {/* Aviso opcional não aparece ao abrir o formulário. O visitante pode acessar as escolhas no rodapé. */}
       <section className="cpf-card" aria-live="polite">
         {coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{flow.cover.headline}</h1>
@@ -151,7 +154,23 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         {error&&<div className="cpf-error" role="alert">{error}</div>}
         {canBack&&!coverOpen&&status!=='complete'&&<button type="button" className="cpf-back" onClick={back}>← Voltar à pergunta anterior</button>}
       </section>
-      <footer className="cpf-footer"><span>© Agência Cassiellos · {new Date().getFullYear()}</span><span>{!previewOnly&&<><ConsentPreferencesButton/> · </>}<a href="/politica-de-privacidade" target={previewOnly?'_blank':undefined} rel={previewOnly?'noopener noreferrer':undefined}>Privacidade</a></span></footer>
+      <footer className="cpf-footer">
+        <span>© Agência Cassiellos · {new Date().getFullYear()}</span>
+        <span className="cpf-privacy-links">
+          <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+          {!previewOnly&&<>
+            <span aria-hidden="true"> · </span>
+            <button type="button" className="cpf-privacy-toggle" data-consent-ui=""
+              aria-expanded={showPrivacyPreferences} aria-controls="cpf-privacy-preferences"
+              onClick={()=>setShowPrivacyPreferences(current=>!current)}>
+              Preferências de cookies
+            </button>
+          </>}
+        </span>
+      </footer>
+      {!previewOnly&&<aside className="cpf-privacy-minimal" id="cpf-privacy-preferences" aria-label="Preferências de privacidade">
+        {showPrivacyPreferences&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>}
+      </aside>}
     </div>
   </main>
 }
