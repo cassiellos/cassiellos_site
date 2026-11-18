@@ -135,7 +135,9 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
             ? 'Esta foi apenas uma simulação. Nenhuma resposta ou dado pessoal foi enviado ou salvo.'
             : 'Seus dados foram registrados para atendimento conforme nossa Política de Privacidade.'}</p>
         </div>:current?.type==='question'?<div className="cpf-question" key={current.id}>
-          <div className="cpf-eyebrow">{title}</div>
+          <div className="cpf-step-marker" aria-label={'Etapa '+currentStep+' de '+totalSteps}>
+            <span>{currentStep}</span><i aria-hidden="true">*</i>
+          </div>
           <h1>{current.title}</h1>{(current.description||(!flow.cover&&description))&&<p>{current.description||description}</p>}
           {current.input==='select'?<div className="cpf-options">{current.options.map((option,index)=>
             <button type="button" className="cpf-option" key={option} onClick={()=>next(current,option)}>
@@ -143,7 +145,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
               <span className="cpf-option-label">{option}</span><span className="cpf-option-arrow" aria-hidden="true">→</span>
             </button>)}</div>:
             <form onSubmit={e=>{e.preventDefault();next(current,freeText)}}>
-              <label className="cpf-label">{phoneEntry?'Seu WhatsApp com DDD':'Sua resposta'}
+              <label className="cpf-label"><span className="cpf-sr-only">{phoneEntry?'Seu WhatsApp com DDD':'Sua resposta'}</span>
                 <input required={current.required} autoComplete={current.field==='name'?'name':current.field==='phone'?'tel-national':'off'}
                   type={current.field==='phone'?'tel':'text'} inputMode={current.field==='phone'?'numeric':undefined}
                   value={freeText} minLength={2} maxLength={current.field==='phone'?15:160}
@@ -158,7 +160,9 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
               <span className="cpf-enter-hint">ou pressione Enter ↵</span>
             </form>}
         </div>:current?.type==='result'?<div className="cpf-contact">
-          <div className="cpf-eyebrow">ÚLTIMA ETAPA</div>
+          <div className="cpf-step-marker" aria-label={'Última etapa, '+currentStep+' de '+totalSteps}>
+            <span>{currentStep}</span><i aria-hidden="true">*</i>
+          </div>
           <h1>{current.title}</h1><p>{current.description}</p>
           <form onSubmit={submit} noValidate>
             {!flow.steps.some(step=>step.type==='question'&&step.field==='name')?<label className="cpf-label">Nome completo<input required minLength={2} maxLength={120} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label>:<p className="cpf-contact-already">Nome: <strong>{name}</strong></p>}
