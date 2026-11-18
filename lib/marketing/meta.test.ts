@@ -48,8 +48,10 @@ describe('Meta Pixel — configuração e rotas', () => {
     assert.equal(isMetaTrackedPath('/agendar'), true)
     assert.equal(isMetaTrackedPath('/agendar/odontologia'), true)
     assert.equal(isMetaTrackedPath('/agendar/outro-nicho'), true)
+    assert.equal(isMetaTrackedPath('/formularios/hamburguerias'), true)
+    assert.equal(isMetaTrackedPath('/formularios/escolas'), true)
     for (const path of ['/crm', '/crm/login', '/api/booking/leads', '/', '/sobre', '/politica-de-privacidade', '/mini-crm', null,
-      '/agendarx', '/agendar-falso', '/api/agendar', '/crm/agendar']) {
+      '/formularios', '/formularios-falso', '/agendarx', '/agendar-falso', '/api/agendar', '/crm/agendar']) {
       assert.equal(isMetaTrackedPath(path), false, String(path))
     }
   })
