@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   EMAIL_MESSAGE, PHONE_MESSAGES, formatPhoneInput, nationalPhoneDigits, nextPhoneInput,
-  validateBrazilianPhone, validateEmailAddress,
+  validateBrazilianPhone, validateBrazilianMobilePhone, validateEmailAddress,
 } from './contact-validation'
 import { validatedEmail, validatedPhone } from './booking-intake-request'
 
@@ -66,6 +66,23 @@ describe('telefone brasileiro', () => {
   it('dígitos nacionais', () => {
     assert.equal(nationalPhoneDigits('+55 31 3456-7890'), '3134567890')
     assert.equal(nationalPhoneDigits(42), '')
+  })
+})
+
+describe('WhatsApp celular estrito dos formulários Chronos', () => {
+  it('aceita apenas 2 dígitos de DDD válidos + 9 + oito dígitos, inclusive com +55', () => {
+    for (const phone of ['(31) 99876-5432', '31998765432', '+55 (11) 99876-5432', '(55) 99876-5432']) {
+      assert.equal(validateBrazilianMobilePhone(phone).ok, true, phone)
+    }
+  })
+  it('recusa telefone fixo, DDD inexistente, falta de 9, tamanho errado e dígitos artificiais', () => {
+    for(const phone of ['(31) 3456-7890','(20) 99876-5432','(31) 89876-5432','(31) 9876-5432',
+      '(31) 99876-54321','(31) 99999-9999','(11) 90000-0000','(31) 99876-543']) {
+      assert.equal(validateBrazilianMobilePhone(phone).ok, false, phone)
+    }
+  })
+  it('aplicar máscara evita mais de 11 dígitos ainda que a pessoa cole números extras', () => {
+    assert.equal(nextPhoneInput('', '+55 31 99876-543299'), '(31) 99876-5432')
   })
 })
 
