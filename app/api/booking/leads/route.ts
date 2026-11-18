@@ -77,7 +77,9 @@ export async function POST(request: NextRequest) {
   const turnstileConfig = getTurnstileConfig()
   const hostnames = expectedHostnames(turnstileConfig.status === 'ready' && turnstileConfig.usingTestKeys)
   const result = await handleLeadIntake({
-    getForm: getBookingForm,
+    // Hamburguerias só agenda após percorrer o fluxo qualificado público;
+    // impedir a API legada de criar sessão por um formulário vazio.
+    getForm: slug => slug === 'hamburguerias' ? null : getBookingForm(slug),
     turnstileConfig,
     expectedHostnames: hostnames,
     verifyTurnstile: ({ token, secretKey, remoteIp }) => verifyTurnstileToken({
