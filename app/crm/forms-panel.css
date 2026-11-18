@@ -99,3 +99,13 @@
   #cassiellos-crm .crm-forms-flow-actions>button{flex:1 1 100%}
   #cassiellos-crm .crm-forms-insert-where{flex-basis:100%}
 }
+
+#cassiellos-crm .crm-forms-action-feedback{padding:11px 12px;background:#17352f;border:1px solid #367c68;border-radius:8px;font-size:12px;color:#d4fff1;line-height:1.55}
+#cassiellos-crm .crm-forms-step-actions{padding:13px;background:#111e30;border:1px solid #344862;border-radius:10px;display:flex;flex-direction:column;gap:9px}
+#cassiellos-crm .crm-forms-step-actions>strong{font-size:12px;color:#d3e9fc}
+#cassiellos-crm .crm-forms-step-actions label{font-size:11px}
+#cassiellos-crm .crm-forms-step-actions select{font-size:12px!important;padding:9px 10px}
+#cassiellos-crm .crm-forms-step-actions-buttons{display:flex;flex-wrap:wrap;gap:6px}
+#cassiellos-crm .crm-forms-step-actions-buttons .crm-btn{flex:1 1 140px}
+#cassiellos-crm .crm-forms-step-actions .crm-btn:disabled{opacity:.4;cursor:not-allowed}
+#cassiellos-crm .crm-forms-step-actions small{font-size:11px;color:#97aec7;line-height:1.5}
