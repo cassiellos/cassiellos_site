@@ -11,6 +11,16 @@ import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
 type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;previewOnly?:boolean}
+// Apenas apresentação: preserva os textos do CRM, destacando a promessa como na referência.
+function coverHeadline(text: string) {
+  const match=text.match(/^(.*?)(vender mais!?)(\s*)$/iu)
+  if(!match)return text
+  return <>{match[1]}<strong>{match[2]}</strong>{match[3]}</>
+}
+function coverCtaLabel(text: string) {
+  return text.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,prefix: string,letter: string)=>
+    prefix+letter.toLocaleUpperCase('pt-BR'))
+}
 export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,previewOnly=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
@@ -108,7 +118,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       setToken(null);setResetSignal(n=>n+1)
     }
   }
-  return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)}>
+  return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)} data-screen={coverOpen?'cover':status==='complete'?'complete':current?.type==='result'?'contact':'question'}>
     {!previewOnly&&<MetaPixel pixelId={metaPixelId}/>}
     <header className="cpf-header">{previewOnly
       ? <div className="cpf-brand"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></div>
@@ -121,10 +131,10 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       {/* Aviso opcional não aparece ao abrir o formulário. O visitante pode acessar as escolhas no rodapé. */}
       <section className="cpf-card" aria-live="polite">
         {coverOpen&&flow.cover?<div className="cpf-cover">
-          <h1>{flow.cover.headline}</h1>
+          <h1>{coverHeadline(flow.cover.headline)}</h1>
           <ul>{flow.cover.bullets.map((bullet,i)=><li key={i}>{bullet}</li>)}</ul>
-          <p className="cpf-cover-qualifier"><em>→ {flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
-          <button type="button" className="cpf-primary" onClick={()=>setCoverOpen(false)}>{flow.cover.cta} →</button>
+          <p className="cpf-cover-qualifier"><em>{flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
+          <button type="button" className="cpf-primary" onClick={()=>setCoverOpen(false)}>{coverCtaLabel(flow.cover.cta)} <span aria-hidden="true">→</span></button>
         </div>:status==='complete'&&complete?<div className="cpf-result">
           <div className="cpf-success">{previewOnly?'✓ Simulação concluída':'✓ Envio recebido'}</div>
           <h1>{complete.title}</h1><p>{complete.description}</p>
