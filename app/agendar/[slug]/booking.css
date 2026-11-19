@@ -280,6 +280,29 @@ body:has(#cassiellos-booking) .progress,body:has(#cassiellos-booking) [class*="s
 #cassiellos-booking .booking-confirmed-actions .booking-secondary{
   text-align:center;min-height:38px;font-size:10px;text-decoration:none
 }
+/* CTA final do WhatsApp: visual claro e separado dos links opcionais de agenda. */
+#cassiellos-booking .booking-whatsapp-cta{
+  margin-top:18px;padding:17px 16px;border:1px solid #d9eee2;border-radius:10px;
+  background:#f3fbf6;text-align:left
+}
+#cassiellos-booking .booking-whatsapp-cta h3{
+  margin:0 0 6px;color:#123d2d;font-size:14px;font-weight:700
+}
+#cassiellos-booking .booking-whatsapp-cta>p{
+  margin:0 0 13px;color:#345447;font-size:11px;line-height:1.55
+}
+#cassiellos-booking .booking-whatsapp-button{
+  display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+  min-height:44px;padding:11px 14px;border:1px solid #08783e;border-radius:7px;
+  background:#08783e;color:#fff;font-size:12px;font-weight:700;line-height:1.4;
+  text-align:center;text-decoration:none;transition:background .15s,border-color .15s
+}
+#cassiellos-booking .booking-whatsapp-button:hover{
+  background:#056234;border-color:#056234;color:#fff
+}
+#cassiellos-booking .booking-whatsapp-cta>.booking-whatsapp-note{
+  margin:9px 0 0;color:#557364;font-size:10px
+}
 /* Disclosures stay accessible, but no longer dominate the mobile form. */
 #cassiellos-booking .booking-cookie-notice{width:min(100% - 34px,520px);margin:0 auto}
 #cassiellos-booking .consent-notice{

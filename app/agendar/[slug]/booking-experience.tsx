@@ -171,6 +171,7 @@ export default function BookingExperience({
   const [confirming, setConfirming] = useState(false)
   const [confirmationError, setConfirmationError] = useState('')
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [availabilityError, setAvailabilityError] = useState('')
   const [serverCalendar, setServerCalendar] = useState<ServerCalendar | null>(null)
@@ -204,6 +205,33 @@ export default function BookingExperience({
     window.addEventListener(CONSENT_CHANGE_EVENT, sync)
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
   }, [marketingEnabled, bookingToken])
+
+  // O WhatsApp só fica disponível após uma confirmação real do servidor.
+  // O backend valida a sessão assinada e entrega apenas wa.me + referência opaca.
+  // Nada é enviado automaticamente ao clicar; o lead precisa tocar em Enviar no WhatsApp.
+  useEffect(() => {
+    if (!confirmation?.bookingRequestId || !bookingToken || !bookingEnabled) return
+    const controller = new AbortController()
+    setWhatsappUrl(null)
+    fetch('/api/booking/whatsapp', {
+      method: 'POST', cache: 'no-store', credentials: 'same-origin',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingToken, bookingRequestId: confirmation.bookingRequestId }),
+    }).then(async response => {
+      if (!response.ok) return
+      const data: unknown = await response.json()
+      if (!data || typeof data !== 'object' || !('url' in data)) return
+      if (typeof data.url !== 'string') return
+      try {
+        const link = new URL(data.url)
+        if (link.protocol !== 'https:' || link.hostname !== 'wa.me') return
+        if (!/^\\/55\\d{10,11}$/.test(link.pathname)) return
+        setWhatsappUrl(data.url)
+      } catch { /* link inválido não aparece ao lead */ }
+    }).catch(() => { /* sem número configurado ou rede indisponível: não cria CTA falsa */ })
+    return () => controller.abort()
+  }, [confirmation, bookingToken, bookingEnabled])
 
   // Modo de envio resolvido no servidor. Sem a flag explícita, visitantes reais ficam OFF.
   // O próprio trackChronosEvent valida consentimento de marketing em CADA evento.
@@ -840,8 +868,8 @@ export default function BookingExperience({
             data-state={confirmation?.state ?? 'confirmed'}>
             {confirmation?.state === 'link_pending' ? <div className="booking-card-heading">
               <h2>Seu horário foi reservado!</h2>
-              <p>O link da reunião ainda está sendo preparado. Nossa equipe entrará em contato pelo WhatsApp informado
-                para enviar as instruções de acesso.</p>
+              <p>O link da reunião ainda está sendo preparado. Após concluir, você poderá falar com nossa equipe
+                pelo WhatsApp usando o botão abaixo, quando disponível.</p>
             </div> : <div className="booking-card-heading">
               <h2>Reunião confirmada!</h2>
               <p>Seu agendamento já foi concluído. Você não precisa marcar outro horário.</p>
@@ -849,8 +877,8 @@ export default function BookingExperience({
                 ? <p>Pedimos ao Google Agenda que envie o convite para <strong>{attendee.email}</strong>. Ele pode levar alguns
                   minutos para chegar — confira também as pastas de spam e promoções. O link e os botões abaixo continuam
                   disponíveis caso prefira salvar a reunião agora.</p>
-                : <p>Guarde o link abaixo. <strong>Não enviamos convite automático por e-mail</strong>: se quiser, use os
-                  botões para salvar a reunião na sua agenda.</p>}
+                : <p>Guarde o link abaixo. O convite do Google Agenda não foi solicitado automaticamente.
+                  Você pode salvar a reunião na sua agenda pelos botões abaixo.</p>}
             </div>}
             <div className="booking-review-list">
               <div><small>DATA</small><strong>{confirmation ? dateFormat.format(new Date(confirmation.startAt)) : date && humanDate(date)}</strong></div>
@@ -889,6 +917,15 @@ export default function BookingExperience({
               }))}><Icon name="calendar"/>Baixar para Apple / Outlook (.ics)</button>
               </div>
             </>}
+            {whatsappUrl && <section className="booking-whatsapp-cta" aria-label="Continuar pelo WhatsApp">
+              <h3>Receba também pelo WhatsApp</h3>
+              <p>Envie uma mensagem pronta para a Cassiellos. Nossa equipe poderá confirmar os detalhes com você por lá.</p>
+              <a className="booking-whatsapp-button" href={whatsappUrl} target="_blank"
+                 rel="noopener noreferrer" referrerPolicy="no-referrer">
+                <span aria-hidden="true">✆</span> Enviar mensagem no WhatsApp
+              </a>
+              <p className="booking-whatsapp-note">O WhatsApp abrirá com o texto preenchido. Confira e toque em Enviar para iniciar a conversa.</p>
+            </section>}
             {bookingRestricted && <p className="booking-privacy">Esta confirmação ocorreu apenas no ambiente de teste autorizado.</p>}
           </div>}
         </div>
