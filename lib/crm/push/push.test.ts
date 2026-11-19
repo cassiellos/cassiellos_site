@@ -278,7 +278,7 @@ describe('Service worker do PWA', () => {
   it('recibo exibida aguarda showNotification: uma falha não pode registrar exibição', async () => {
     const handlers: Record<string, (e: unknown) => void> = {}
     let receiptCount = 0
-    let failShow: ((error: Error) => void) | null = null
+    let failShow: (error: Error) => void = () => { throw new Error('Reject handler not assigned') }
     const showPromise = new Promise<void>((_resolve, reject) => { failShow = reject })
     const self = {
       location: { origin: 'https://crm.cassiellos.com.br' },
@@ -294,8 +294,7 @@ describe('Service worker do PWA', () => {
       waitUntil: (p: Promise<unknown>) => { held = p } })
     await Promise.resolve()
     assert.equal(receiptCount, 0, 'não emitir recibo antes da exibição')
-    assert.ok(failShow)
-    failShow!(new Error('iOS recusou exibir'))
+    failShow(new Error('iOS recusou exibir'))
     await assert.rejects(held)
     assert.equal(receiptCount, 0, 'uma exibição rejeitada não pode ser registrada como exibida')
   })
