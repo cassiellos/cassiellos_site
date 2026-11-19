@@ -135,7 +135,7 @@ test('Modo A: mesmo dia usa hoje; horários com minutos e datas futuras estão c
   assert.match(leadWhatsappMessage(ref, '2026-11-19T20:00:00Z', now)!, /hoje às 17 horas/)
   assert.match(leadWhatsappMessage(ref, '2026-11-20T20:30:00Z', now)!, /amanhã às 17h30/)
   assert.match(leadWhatsappMessage(ref, '2027-01-02T17:30:00Z', now)!, /no dia 02\/01\/2027 às 14h30/)
-  assert.match(leadWhatsappMessage(ref, '2026-11-19T04:00:00Z', new Date('2026-11-18T23:00:00Z'))!, /hoje à 1 hora/)
+  assert.match(leadWhatsappMessage(ref, '2026-11-19T04:00:00Z', new Date('2026-11-19T03:10:00Z'))!, /hoje à 1 hora/)
 })
 
 test('Modo A: usa o dia de Brasília na virada da meia-noite, não o dia UTC', () => {
