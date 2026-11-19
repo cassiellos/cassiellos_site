@@ -918,8 +918,8 @@ export default function BookingExperience({
               </div>
             </>}
             {whatsappUrl && <section className="booking-whatsapp-cta" aria-label="Continuar pelo WhatsApp">
-              <h3>Receba também pelo WhatsApp</h3>
-              <p>Envie uma mensagem pronta para a Cassiellos. Nossa equipe poderá confirmar os detalhes com você por lá.</p>
+              <h3>Confirme também pelo WhatsApp</h3>
+              <p>Confirme a data e o horário da sua reunião enviando a mensagem pronta para nossa equipe.</p>
               <a className="booking-whatsapp-button" href={whatsappUrl} target="_blank"
                  rel="noopener noreferrer" referrerPolicy="no-referrer">
                 <span aria-hidden="true">✆</span> Enviar mensagem no WhatsApp
