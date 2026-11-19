@@ -6,7 +6,7 @@ import {
 import type { PushEnvStatus } from './config'
 import {
   changePushSettings, dispatchNotifications, enqueueTestNotification, listDevices, listHistory, loadPushSettings,
-  registerSubscription, revokeSubscription, subscriptionStatus, sweepPushQueue, type PushDeps,
+  registerSubscription, revokeSubscription, subscriptionForEndpoint, sweepPushQueue, type PushDeps,
 } from './store'
 
 /**
@@ -73,8 +73,10 @@ export async function handlePushAdmin(deps: PushAdminDeps, req: PushAdminRequest
         return { status: 200, body: { ok: true, deviceId: r.id } }
       }
       case 'device_status': {
-        const s = await subscriptionStatus(deps.pool, (data.endpoint as unknown) ?? null).catch(() => null)
-        return { status: 200, body: { ok: true, status: s } }
+        // Requisição exige sessão administrativa + origem confiável. O endpoint completo
+        // fica no navegador/servidor, só a ID opaca volta ao aparelho que é seu titular.
+        const sub = await subscriptionForEndpoint(deps.pool, data.endpoint ?? null).catch(() => null)
+        return { status: 200, body: { ok: true, status: sub?.status ?? null, deviceId: sub?.id ?? null } }
       }
       case 'unsubscribe_self':
       case 'revoke': {

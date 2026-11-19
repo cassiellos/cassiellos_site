@@ -9,7 +9,7 @@
  *   que exige a sessão administrativa (sem sessão → login → volta para a ficha).
  * - Sem botões de ação na notificação (nem todo navegador suporta).
  */
-export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-5'
+export const SERVICE_WORKER_VERSION = 'crm-cassiellos-sw-6'
 
 export const SERVICE_WORKER_SOURCE = `'use strict';
 const VERSION = '${SERVICE_WORKER_VERSION}';
@@ -44,7 +44,12 @@ self.addEventListener('push', event => {
     lang: 'pt-BR',
     data: { url: safeUrl(data && data.u), d: data && data.d, r: data && data.r },
   };
-  event.waitUntil(Promise.all([self.registration.showNotification(title, options), receipt(data, 'displayed')]));
+  // O recibo de "exibida" só segue DEPOIS que o navegador confirmar showNotification.
+  // Ainda assim, iOS/Foco pode silenciar a apresentação visual: não é garantia de leitura.
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, options);
+    await receipt(data, 'displayed');
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
