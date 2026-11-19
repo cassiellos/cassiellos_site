@@ -275,6 +275,29 @@ describe('Service worker do PWA', () => {
     assert.deepEqual(sw.opened, ['https://crm.cassiellos.com.br/crm/notificacoes/abrir/' + UUID_A])
     assert.equal((sw.receipts[1] as { e: string }).e, 'clicked')
   })
+  it('recibo exibida aguarda showNotification: uma falha não pode registrar exibição', async () => {
+    const handlers: Record<string, (e: unknown) => void> = {}
+    let receiptCount = 0
+    let failShow: (error: Error) => void = () => { throw new Error('Reject handler not assigned') }
+    const showPromise = new Promise<void>((_resolve, reject) => { failShow = reject })
+    const self = {
+      location: { origin: 'https://crm.cassiellos.com.br' },
+      addEventListener: (type: string, callback: (e: unknown) => void) => { handlers[type] = callback },
+      skipWaiting: () => undefined,
+      registration: { showNotification: () => showPromise },
+      clients: { claim: async () => undefined, matchAll: async () => [], openWindow: async () => undefined },
+    }
+    const fetch = async () => { receiptCount++; return {} }
+    vm.runInNewContext(SERVICE_WORKER_SOURCE, { self, fetch, URL, JSON, Promise })
+    let held: Promise<unknown> = Promise.resolve()
+    handlers.push({ data: { json: () => ({ t: 'Teste', d: UUID_B, r: 'opaque' }) },
+      waitUntil: (p: Promise<unknown>) => { held = p } })
+    await Promise.resolve()
+    assert.equal(receiptCount, 0, 'não emitir recibo antes da exibição')
+    failShow(new Error('iOS recusou exibir'))
+    await assert.rejects(held)
+    assert.equal(receiptCount, 0, 'uma exibição rejeitada não pode ser registrada como exibida')
+  })
   it('payload estranho: título padrão e destino sempre dentro do CRM', async () => {
     const sw = load()
     await fire(sw.handlers.push, { data: { json: () => ({ t: 123, u: 'https://evil.example', g: 'x' }) } })

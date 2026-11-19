@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import './notifications-panel.css'
 
 /**
- * NOTIFICAÇÕES (Etapa 5 — PWA + Web Push). Somente administradores, somente Preview.
+ * NOTIFICAÇÕES (Etapa 5 — PWA + Web Push). Somente administradores, no CRM autorizado.
  * A permissão do navegador só é pedida depois de um toque explícito em "Ativar notificações neste aparelho".
  * Os avisos podem mostrar primeiro nome e dia/horário na tela bloqueada. Telefone, e-mail e link do Meet
  * permanecem protegidos no CRM autenticado; WhatsApp só é enviado manualmente.
@@ -65,8 +65,8 @@ export default function NotificationsPanel() {
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [template, setTemplate] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
-  const [device, setDevice] = useState<{ supported: boolean; ios: boolean; standalone: boolean; permission: string; endpoint: string | null; registered: string | null }>(
-    { supported: false, ios: false, standalone: false, permission: 'default', endpoint: null, registered: null })
+  const [device, setDevice] = useState<{ supported: boolean; ios: boolean; standalone: boolean; permission: string; endpoint: string | null; registered: string | null; subscriptionId: string | null }>(
+    { supported: false, ios: false, standalone: false, permission: 'default', endpoint: null, registered: null, subscriptionId: null })
   const [installEvent, setInstallEvent] = useState<BeforeInstallPrompt | null>(null)
   const [label, setLabel] = useState('')
 
@@ -97,6 +97,7 @@ export default function NotificationsPanel() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
     let endpoint: string | null = null
     let registered: string | null = null
+    let subscriptionId: string | null = null
     if (supported) {
       try {
         const reg = await navigator.serviceWorker.getRegistration('/crm')
@@ -105,11 +106,13 @@ export default function NotificationsPanel() {
         if (endpoint) {
           const r = await fetch('/api/crm/push', { method: 'POST', credentials: 'same-origin', cache: 'no-store',
             headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'device_status', endpoint }) })
-          registered = ((await r.json().catch(() => ({}))) as { status?: string | null }).status ?? null
+          const found = (await r.json().catch(() => ({}))) as { status?: string | null; deviceId?: string | null }
+          registered = found.status ?? null
+          subscriptionId = typeof found.deviceId === 'string' ? found.deviceId : null
         }
       } catch { /* sem inscrição */ }
     }
-    setDevice({ supported, ios, standalone, permission: 'Notification' in window ? Notification.permission : 'unsupported', endpoint, registered })
+    setDevice({ supported, ios, standalone, permission: 'Notification' in window ? Notification.permission : 'unsupported', endpoint, registered, subscriptionId })
   }, [])
 
   useEffect(() => {
@@ -119,10 +122,14 @@ export default function NotificationsPanel() {
     return () => window.removeEventListener('beforeinstallprompt', onPrompt)
   }, [load, inspectDevice])
 
-  /** Dispara apenas um aviso fictício; não registra lead/reunião e não envia WhatsApp. */
+  /** Testa SOMENTE este aparelho, não todos os cadastros antigos e inválidos. */
   async function sendSample(variant: 'meeting' | 'whatsapp') {
+    if (device.registered !== 'active' || !device.subscriptionId) {
+      setMessage({ kind: 'error', text: 'Este aparelho não está inscrito. Ative ou renove a inscrição antes do teste.' })
+      return
+    }
     const names = { meeting: 'Novo agendamento', whatsapp: 'Enviar WhatsApp' }
-    const r = await post({ action: 'test', variant })
+    const r = await post({ action: 'test', variant, deviceId: device.subscriptionId })
     if (r) {
       const accepted = typeof r.accepted === 'number' ? r.accepted : 0
       const total = typeof r.total === 'number' ? r.total : 0
@@ -133,7 +140,8 @@ export default function NotificationsPanel() {
     }
   }
 
-  async function enableHere() {
+  async function enableHere(renew = false) {
+    if (renew && !window.confirm('Renovar a inscrição de notificações somente neste aparelho? A inscrição antiga será revogada e uma nova será criada.')) return
     if (!status?.env.publicKey) { setMessage({ kind: 'error', text: ERRORS.VAPID_NOT_READY }); return }
     if (!device.supported) { setMessage({ kind: 'error', text: 'Este navegador não oferece notificações push.' }); return }
     if (device.ios && !device.standalone) {
@@ -153,6 +161,13 @@ export default function NotificationsPanel() {
       const reg = await navigator.serviceWorker.register('/crm-sw.js', { scope: '/crm', updateViaCache: 'none' })
       await navigator.serviceWorker.ready
       let sub = await reg.pushManager.getSubscription()
+      if (renew && sub) {
+        // Não deixar o endpoint antigo recebendo falhas. A revogação só ocorre
+        // após o toque explícito no botão "Renovar" e confirmação do titular.
+        if (!await post({ action: 'unsubscribe_self', endpoint: sub.endpoint })) return
+        if (!await sub.unsubscribe()) throw new Error('Falha ao remover inscrição antiga do navegador')
+        sub = null
+      }
       const key = keyBytes(status.env.publicKey)
       const current = sub?.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null
       if (sub && (!current || current.length !== key.length || current.some((b, i) => b !== key[i]))) { await sub.unsubscribe(); sub = null }
@@ -185,12 +200,14 @@ export default function NotificationsPanel() {
 
   const env = status.env
   const here = device.registered === 'active'
+  const canTestHere = here && !!device.subscriptionId
   const dirty = template !== status.settings.whatsappTemplate
 
   return <>
     <section className="crm-card crm-panel crm-push" aria-labelledby="push-title">
       <div className="crm-panel-title" id="push-title">Notificações</div>
       <div className="crm-panel-subtitle">Avisos objetivos para celular · nome e horário podem aparecer na tela bloqueada; sem e-mail, telefone ou link do Meet.</div>
+      <p className="crm-push-sub">A chave geral de avisos automáticos é controlada pela produção do CRM. “Autorizado neste aparelho” significa somente que ele está inscrito, não que os avisos automáticos estejam ligados.</p>
       <div className="crm-push-grid">
         <div><span>Avisos automáticos</span><strong data-on={env.ready}>{env.ready ? 'LIGADOS' : 'DESLIGADOS'}</strong></div>
         <div><span>Chaves VAPID</span><strong>{env.vapidReady ? 'Configuradas' : 'Pendentes'}</strong></div>
@@ -210,15 +227,16 @@ export default function NotificationsPanel() {
         <input value={label} maxLength={80} placeholder={typeof navigator === 'undefined' ? '' : deviceLabel()} onChange={e => setLabel(e.target.value)} />
       </label>
       <div className="crm-push-actions">
-        {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={enableHere}>Ativar notificações neste aparelho</button>}
+        {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={() => void enableHere()}>Ativar notificações neste aparelho</button>}
+        {here && <button type="button" className="crm-btn" disabled={busy || !env.vapidReady} onClick={() => void enableHere(true)}>Renovar inscrição neste aparelho</button>}
         {here && <button type="button" className="crm-btn" disabled={busy} onClick={disableHere}>Desativar neste aparelho</button>}
-        <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
-          onClick={() => void sendSample('meeting')}>Testar: reunião</button>
-        <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !status.devices.some(d => d.status === 'active')}
-          onClick={() => void sendSample('whatsapp')}>Testar: WhatsApp</button>
+        <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !canTestHere}
+          onClick={() => void sendSample('meeting')}>Testar reunião neste aparelho</button>
+        <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !canTestHere}
+          onClick={() => void sendSample('whatsapp')}>Testar WhatsApp neste aparelho</button>
         {installEvent && !device.standalone && <button type="button" className="crm-btn" onClick={install}>Instalar aplicativo</button>}
       </div>
-      <p className="crm-push-sub">Notificações automáticas só após reunião confirmada. Os testes usam Márcio (exemplo) e não criam leads nem agendamentos. Aguarde 30 segundos entre testes.</p>
+      <p className="crm-push-sub">Notificações automáticas são geradas após uma nova reunião confirmada. Os testes usam dados fictícios, são enviados apenas a este aparelho e não criam leads nem agendamentos. Aguarde 30 segundos entre testes. Se não aparecerem, confira Ajustes → Notificações → CRM e os modos Foco do iPhone.</p>
       {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className="crm-push-message" data-kind={message.kind}>{message.text}</p>}
     </section>
 

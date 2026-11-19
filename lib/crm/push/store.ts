@@ -165,9 +165,15 @@ export async function listDevices(pool: Queryable): Promise<DeviceRow[]> {
 }
 
 /** O navegador atual está inscrito e ativo? (pelo endpoint, que só o próprio navegador conhece) */
-export async function subscriptionStatus(pool: Queryable, endpoint: unknown): Promise<string | null> {
+/** Somente API autenticada de administração: devolve ID opaco para testar O PRÓPRIO aparelho. */
+export async function subscriptionForEndpoint(pool: Queryable, endpoint: unknown): Promise<{ id: string; status: string } | null> {
   if (typeof endpoint !== 'string' || endpoint.length > 1024) return null
-  return (await pool.query<{ status: string }>('SELECT status FROM crm.push_subscriptions WHERE endpoint = $1', [endpoint])).rows[0]?.status ?? null
+  return (await pool.query<{ id: string; status: string }>(
+    'SELECT id, status FROM crm.push_subscriptions WHERE endpoint = $1', [endpoint])).rows[0] ?? null
+}
+
+export async function subscriptionStatus(pool: Queryable, endpoint: unknown): Promise<string | null> {
+  return (await subscriptionForEndpoint(pool, endpoint))?.status ?? null
 }
 
 /* -------------------------------------------------------------- enqueue */
