@@ -14,7 +14,7 @@ import type { PlannedMessage } from './plan'
  * Nenhum endereço real é gravado aqui (ver mask.ts).
  */
 
-export type Queryable = Pick<Pool, 'query'>
+export type Queryable = Pick<Pool, 'query'> & Partial<Pick<Pool, 'connect'>>
 
 export const MAX_ATTEMPTS = 5
 
@@ -114,13 +114,78 @@ export async function enqueueMessages(
 }
 
 /** Reserva a linha para envio. null = outra execução já pegou, ou o estado mudou. */
-export async function claimForSend(pool: Queryable, id: string): Promise<CommsMessage | null> {
-  const result = await pool.query<Row>(
-    `UPDATE crm.comms_messages
-        SET attempts = attempts + 1, status = 'sending', updated_at = now()
-      WHERE id = $1 AND status = 'pending' AND attempts < $2
-      RETURNING ${COLUMNS}`, [id, MAX_ATTEMPTS])
-  return result.rows[0] ? toMessage(result.rows[0]) : null
+export type EmailQuota = { dailyCap: number; monthlyCap: number; now?: Date }
+
+/**
+ * Reserve an email under a single PostgreSQL transaction and account-wide advisory lock.
+ * The lock serializes distinct meetings, not just duplicate calls for the same message.
+ * Capacity is conservatively reserved on BOTH the provider-submission date and scheduled-delivery
+ * date; reminders may only use 80% of daily / 90% of monthly headroom, keeping space for confirmations.
+ * Requires a real pg.Pool.connect(): silently falling back to independent pool.query calls would
+ * recreate the original concurrency race, so missing transaction support fails closed.
+ */
+export async function claimForSend(pool: Queryable, id: string, quota?: EmailQuota): Promise<CommsMessage | null> {
+  if (typeof pool.connect !== 'function') throw new Error('TRANSACTIONAL_POOL_REQUIRED')
+  const client = await pool.connect()
+  const now = quota?.now ?? new Date()
+  const dailyCap = Math.max(1, Math.min(100, quota?.dailyCap ?? 100))
+  const monthlyCap = Math.max(1, Math.min(3000, quota?.monthlyCap ?? 3000))
+  const day = (d: Date) => [
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())),
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)),
+  ] as const
+  const month = (d: Date) => [
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)),
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)),
+  ] as const
+  try {
+    await client.query('BEGIN')
+    // Shared advisory lock: all CRM email reservations serialize across serverless instances.
+    await client.query('SELECT pg_advisory_xact_lock(726901, 1)')
+    const pending = await client.query<{ kind: string; scheduled_for: Date | null }>(
+      `SELECT kind, scheduled_for FROM crm.comms_messages
+        WHERE id = $1 AND channel = 'email' AND status = 'pending'
+          AND attempts < $2 FOR UPDATE`, [id, MAX_ATTEMPTS])
+    const current = pending.rows[0]
+    if (!current) { await client.query('COMMIT'); return null }
+    const target = current.scheduled_for && new Date(current.scheduled_for) > now
+      ? new Date(current.scheduled_for) : now
+    const reminder = current.kind !== 'confirmation'
+    const limits = { day: reminder ? Math.max(1, Math.floor(dailyCap * .8)) : dailyCap,
+                     month: reminder ? Math.max(1, Math.floor(monthlyCap * .9)) : monthlyCap }
+    const checked = new Set<string>()
+    for (const [scope, date] of [['day', now], ['day', target], ['month', now], ['month', target]] as const) {
+      const [first, last] = scope === 'day' ? day(date) : month(date)
+      const key = scope + ':' + first.toISOString()
+      if (checked.has(key)) continue
+      checked.add(key)
+      const counter = await client.query<{ total: string }>(
+        `SELECT count(*)::text AS total FROM crm.comms_messages
+          WHERE channel = 'email'
+            AND status IN ('sending', 'scheduled', 'sent', 'delivered', 'cancel_requested', 'needs_review')
+            AND ((claimed_at >= $1 AND claimed_at < $2)
+                 OR (scheduled_for >= $1 AND scheduled_for < $2 AND scheduled_for > claimed_at))`,
+        [first.toISOString(), last.toISOString()])
+      if (Number(counter.rows[0]?.total ?? '0') >= limits[scope]) {
+        await client.query(
+          `UPDATE crm.comms_messages SET status = 'skipped', last_error = $2, updated_at = now()
+            WHERE id = $1 AND status = 'pending'`,
+          [id, scope === 'day' ? 'DAILY_CAP' : 'MONTHLY_CAP'])
+        await client.query('COMMIT')
+        return null
+      }
+    }
+    const claimed = await client.query<Row>(
+      `UPDATE crm.comms_messages
+          SET attempts = attempts + 1, status = 'sending', claimed_at = $3, updated_at = now()
+        WHERE id = $1 AND status = 'pending' AND attempts < $2
+        RETURNING ${COLUMNS}`, [id, MAX_ATTEMPTS, now.toISOString()])
+    await client.query('COMMIT')
+    return claimed.rows[0] ? toMessage(claimed.rows[0]) : null
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* preserve original error */ }
+    throw error
+  } finally { client.release() }
 }
 
 export async function markSent(

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const requeued = await requeueForResend(pool, messageId)
     // Estado não reenviável (já entregue, ou em andamento) devolve 409 em vez de fingir sucesso.
     if (!requeued) return json({ error: 'NOT_RESENDABLE' }, 409)
-    const claimed = await claimForSend(pool, requeued.id)
+    const claimed = await claimForSend(pool, requeued.id, { dailyCap: config.dailyCap, monthlyCap: config.monthlyCap })
     const delivered = claimed
       ? await deliverMessage({ pool, config, fetch: (url, init) => fetch(url, init) }, claimed)
       : false

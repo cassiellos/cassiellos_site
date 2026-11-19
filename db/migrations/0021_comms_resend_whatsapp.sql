@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS crm.comms_messages (
     recipient_masked    text,
     scheduled_for       timestamptz,
     sent_at             timestamptz,
+    claimed_at          timestamptz,
     provider_message_id text,
     status              text NOT NULL DEFAULT 'pending',
     attempts            integer NOT NULL DEFAULT 0,
@@ -62,6 +63,10 @@ CREATE INDEX IF NOT EXISTS comms_messages_due_idx
     WHERE status = 'pending' AND scheduled_for IS NOT NULL;
 
 -- Consumo do mês (franquia gratuita do provedor), por canal.
+CREATE INDEX IF NOT EXISTS comms_messages_reservations_idx
+    ON crm.comms_messages (channel, claimed_at, scheduled_for)
+    WHERE claimed_at IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS comms_messages_usage_idx
     ON crm.comms_messages (channel, sent_at)
     WHERE sent_at IS NOT NULL;

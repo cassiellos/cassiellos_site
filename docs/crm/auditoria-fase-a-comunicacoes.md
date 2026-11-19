@@ -39,3 +39,11 @@ Branch `feat/comms-resend-whatsapp-20261118`; PR #57. **NÃO ATIVAR RESEND/WHATS
 - https://resend.com/pricing
 - https://resend.com/changelog/account-usage-api
 - https://resend.com/changelog/idempotency-keys
+
+## Reserva de quota e concorrência (correção A1, pendente de integração DB)
+
+- `claimForSend()` exige transação de `pg.Pool.connect()`, usa advisory lock global do canal, consulta `claimed_at` (data de submissão) e `scheduled_for` (data alvo futura), e muda `pending` para `sending` antes de chamar a Resend.
+- Os limiares de lembretes reservam 20% da capacidade diária e 10% da mensal para confirmações; datas futuras são contabilizadas conservadoramente.
+- `claimed_at` foi acrescentado à migration 0021, ainda não aplicada. Não executar contra produção nesta etapa.
+- **Restrições:** contadores internos não incluem outras keys nem e-mails recebidos; deve-se comparar com `GET /usage` da Resend antes de ativar envios. Teste de concorrência real com PostgreSQL isolado ainda é obrigatório.
+- `sending` abandonado por morte da função não é reenviado automaticamente; requer reconciliação, pois a idempotência do provedor expira em 24h.

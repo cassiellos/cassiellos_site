@@ -171,7 +171,7 @@ export async function scheduleMeetingEmails(
       const sendAt = message.scheduledFor ? Date.parse(message.scheduledFor) : now.getTime()
       // Fora da janela nativa fica para a varredura: a Resend não aceita além de 30 dias.
       if (sendAt > now.getTime() && !withinNativeScheduleWindow(new Date(sendAt), now)) continue
-      const claimed = await claimForSend(deps.pool, message.id)
+      const claimed = await claimForSend(deps.pool, message.id, { dailyCap: deps.config.dailyCap, monthlyCap: deps.config.monthlyCap, now })
       if (claimed && await deliverMessage(deps, claimed)) delivered++
     }
     return { created: created.length, delivered }
