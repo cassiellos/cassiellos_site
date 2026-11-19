@@ -62,7 +62,12 @@ function asArray(value: unknown): unknown[] {
 }
 
 /** Extrai só as mensagens de TEXTO recebidas. Status de entrega e outros tipos são ignorados. */
-export function parseIncomingMessages(body: unknown): IncomingMessage[] {
+/**
+ * Mensagens de texto recebidas. Com `expectedPhoneNumberId`, só entram eventos cujo
+ * `metadata.phone_number_id` é exatamente o número configurado (WHATSAPP_PHONE_NUMBER_ID):
+ * eventos de qualquer outro número que chegue ao mesmo app são descartados sem processamento.
+ */
+export function parseIncomingMessages(body: unknown, expectedPhoneNumberId?: string | null): IncomingMessage[] {
   if (!body || typeof body !== 'object') return []
   if ((body as { object?: unknown }).object !== 'whatsapp_business_account') return []
   const out: IncomingMessage[] = []
@@ -70,6 +75,10 @@ export function parseIncomingMessages(body: unknown): IncomingMessage[] {
     for (const change of asArray((entry as { changes?: unknown })?.changes)) {
       const c = change as { field?: unknown; value?: unknown }
       if (c.field !== 'messages') continue
+      if (expectedPhoneNumberId !== undefined) {
+        const target = (c.value as { metadata?: { phone_number_id?: unknown } })?.metadata?.phone_number_id
+        if (!expectedPhoneNumberId || target !== expectedPhoneNumberId) continue
+      }
       for (const raw of asArray((c.value as { messages?: unknown })?.messages)) {
         const m = raw as { id?: unknown; from?: unknown; type?: unknown; timestamp?: unknown; text?: unknown }
         if (m.type !== 'text') continue
@@ -95,17 +104,25 @@ export type SenderCheck = 'match' | 'mismatch' | 'unknown_contact'
  * repassada. Divergência = nenhum dado da reunião é devolvido (o link do Meet não sai daqui),
  * e o caso fica registrado para conferência manual.
  */
+/**
+ * O `from`/`wa_id` da Meta para celulares brasileiros costuma vir SEM o 9 adicional (55 + DDD + 8
+ * dígitos, ex.: 553182988766). O parser do CRM recusa 8 dígitos iniciados por 6–9 (seriam celulares
+ * sem o 9), então o titular era tratado como remetente divergente. Aqui o 9 é recolocado SOMENTE
+ * nesse formato exato; qualquer outro valor segue para o parser sem alteração.
+ */
+export function normalizeWhatsappSender(from: string): string {
+  const digits = typeof from === 'string' ? from.replace(/\D/g, '') : ''
+  return /^55\d{2}[6-9]\d{7}$/.test(digits) ? digits.slice(0, 4) + '9' + digits.slice(4) : from
+}
+
 export function checkSender(leadWhatsapp: string | null, from: string): SenderCheck {
   const expected = parseBrazilianWhatsapp(leadWhatsapp)
   if (!expected) return 'unknown_contact'
-  const sender = parseBrazilianWhatsapp(from)
+  const sender = parseBrazilianWhatsapp(normalizeWhatsappSender(from))
   if (!sender) return 'mismatch'
-  // O WhatsApp entrega números do Brasil com e sem o 9 adicional conforme o cadastro antigo da linha;
-  // comparar pelos 8 últimos dígitos com o mesmo DDD evita recusar o titular por esse detalhe.
-  const tail = (value: string) => value.slice(-8)
-  const ddd = (value: string) => value.slice(2, 4)
-  return tail(expected.e164Digits) === tail(sender.e164Digits) && ddd(expected.e164Digits) === ddd(sender.e164Digits)
-    ? 'match' : 'mismatch'
+  // Comparação EXATA do número completo (55 + DDD + assinante), depois de recolocar o 9 que a Meta
+  // omite no wa_id. Nada de "últimos 8 dígitos": um fixo e um celular do mesmo DDD podem terminar igual.
+  return expected.e164Digits === sender.e164Digits ? 'match' : 'mismatch'
 }
 
 export function withinServiceWindow(userSentAt: Date, now: Date = new Date()): boolean {
