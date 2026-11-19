@@ -25,6 +25,7 @@ const KIND_LABEL: Record<string, string> = {
   confirmation: 'E-mail de confirmação',
   reminder_morning: 'Lembrete — 8h do dia da reunião',
   reminder_1h: 'Lembrete — 1 hora antes',
+  reminder_15m: 'Último aviso — 15 minutos antes',
   whatsapp_auto_reply: 'WhatsApp — resposta automática',
 }
 
