@@ -171,7 +171,7 @@ export function AssetCardView({ a, now, onSync, syncing, syncNote }: { a: AssetC
     {a.alerts.length > 0 && <ul className="mi-asset-alerts">{a.alerts.map(x => <li key={x.kind}>{x.message}</li>)}</ul>}
     {onSync && confirmed && <div className="mi-asset-actions">
       <button type="button" className="crm-btn" onClick={() => onSync(a.assetId)} disabled={syncing || !canClick}
-        title={!canClick ? (a.manualSync.reason ?? undefined) : 'Simulação: nada é gravado em banco; limite de 1 atualização a cada 15 minutos por conta'}>
+        title={!canClick ? (a.manualSync.reason ?? undefined) : realMode ? 'Sincroniza dados reais da plataforma e registra os resultados no banco. Limite de uma atualização a cada 15 minutos por conta.' : 'Simulação: nada é gravado em banco; limite de 1 atualização a cada 15 minutos por conta'}>
         {realMode ? (syncing ? 'Sincronizando…' : 'Sincronizar agora') : syncing ? 'Atualizando (simulação)…' : 'Atualizar agora (simulação)'}</button>
       {!canClick && <small className="mi-asset-why">{waitUntil ? 'Limite de 1 atualização a cada 15 minutos por conta. Disponível às ' + new Date(waitUntil).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.' : a.manualSync.reason}</small>}
       {syncNote && <small role="status">{syncNote}</small>}
