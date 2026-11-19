@@ -13,7 +13,7 @@ import { parseBrazilianWhatsapp, type BrazilianPhone } from '../whatsapp'
  * - RESEND_API_KEY .................. credencial do servidor (variável Sensitive na Vercel).
  * - RESEND_FROM ..................... remetente verificado; padrão DEFAULT_FROM.
  * - COMMS_EMAIL_CONFIRMATION=true ... e-mail de confirmação após a reunião gravada.
- * - COMMS_EMAIL_REMINDERS=true ...... lembretes de 24 h e 1 h.
+ * - COMMS_EMAIL_REMINDERS=true ...... lembretes às 8h, 1 h e 15 minutos antes.
  * - RESEND_WEBHOOK_SECRET ........... segredo Svix do webhook de status (entregue, devolvido, …).
  * - COMMS_EMAIL_DAILY_CAP / COMMS_EMAIL_MONTHLY_CAP: travas conservadoras do plano Free
  *   (100/dia e 3.000/mês em 18/11/2026). Conferir a página de preços antes de alterar.
