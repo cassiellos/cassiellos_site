@@ -58,7 +58,7 @@ const COPY: Record<EmailKind, { subject: string; eyebrow: string; lead: (n: stri
     subject: 'Hoje: sua reunião com a Cassiellos',
     eyebrow: 'É HOJE',
     lead: n => 'Olá, ' + n + '! Passando para lembrar: sua reunião de diagnóstico estratégico com a Cassiellos é hoje.',
-    closing: 'Se precisar remarcar, é só responder a este e-mail.',
+    closing: 'Se precisar remarcar, entre em contato com a equipe Cassiellos.',
   },
   reminder_1h: {
     subject: 'Em 1 hora: sua reunião com a Cassiellos',
@@ -141,7 +141,7 @@ export function renderMeetingEmail(kind: EmailKind, input: MeetingEmailInput): R
     '<tr><td style="padding:22px 32px 28px">' +
       '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:' + MUTED + '">' +
         'Você recebeu este e-mail porque agendou uma reunião com a Agência Cassiellos. ' +
-        'Para remarcar ou cancelar, responda a esta mensagem.</p>' +
+        'Para remarcar ou cancelar, entre em contato com a equipe Cassiellos.</p>' +
     '</td></tr>' +
 
     '</table></td></tr></table></body></html>'
@@ -154,7 +154,7 @@ export function renderMeetingEmail(kind: EmailKind, input: MeetingEmailInput): R
     '', 'Adicionar à agenda: ' + calendarUrl,
     '', copy.closing,
     '', 'Até breve!', 'Equipe Cassiellos',
-    '', 'Para remarcar ou cancelar, responda a esta mensagem.',
+    '', 'Para remarcar ou cancelar, entre em contato com a equipe Cassiellos.',
   ].join('\n')
 
   return { subject: copy.subject, html, text }

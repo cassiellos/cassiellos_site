@@ -13,7 +13,7 @@ import { deliverMessage } from '@/lib/crm/comms/send'
  *
  * GET  ?appointmentId=… → estado das mensagens + situação das chaves gerais (sem segredo nenhum).
  * POST { action: 'resend', messageId } → recoloca na fila UMA mensagem de e-mail que falhou,
- *        foi pulada ou cancelada, e tenta entregar na hora.
+ *        foi pulada, desde que não esteja vencida ou cancelada. Confirmações saem na hora; lembretes mantêm o horário original.
  *
  * O reenvio continua idempotente do lado da Resend? Não: por isso ele zera o provider_message_id e
  * conta como um envio novo para as travas do plano gratuito. Só é permitido a partir de um estado

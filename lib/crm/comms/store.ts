@@ -212,13 +212,19 @@ export async function listForAppointment(pool: Queryable, appointmentId: string)
   return result.rows.map(toMessage)
 }
 
-/** Reenvio administrativo: devolve a linha para 'pending' e zera as tentativas. */
+/** Reenvio administrativo: nunca ressuscita mensagem cancelada ou lembrete vencido.
+ * Lembretes futuros mantêm o horário original; só confirmação é imediata. */
 export async function requeueForResend(pool: Queryable, id: string): Promise<CommsMessage | null> {
   const result = await pool.query<Row>(
     `UPDATE crm.comms_messages
         SET status = 'pending', attempts = 0, last_error = NULL,
-            provider_message_id = NULL, sent_at = NULL, scheduled_for = now(), updated_at = now()
-      WHERE id = $1 AND channel = 'email' AND status IN ('failed', 'skipped', 'cancelled')
+            provider_message_id = NULL, sent_at = NULL,
+            scheduled_for = CASE WHEN kind = 'confirmation' THEN now() ELSE scheduled_for END,
+            updated_at = now()
+      WHERE id = $1 AND channel = 'email' AND status IN ('failed', 'skipped')
+        AND EXISTS (SELECT 1 FROM crm.appointments a WHERE a.id = appointment_id
+                    AND a.status IN ('pending', 'confirmed') AND a.starts_at > now())
+        AND (kind = 'confirmation' OR scheduled_for >= now() - interval '5 minutes')
       RETURNING ${COLUMNS}`, [id])
   return result.rows[0] ? toMessage(result.rows[0]) : null
 }

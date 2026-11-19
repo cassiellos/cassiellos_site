@@ -611,3 +611,11 @@ test('Fora dos ambientes do CRM nada liga, nem com todas as chaves', () => {
   assert.equal(email.ready, false, 'Production do site institucional não é o CRM')
   assert.ok(email.issues.includes('ENV_NOT_SUPPORTED'))
 })
+
+test('modelos não prometem resposta em caixa de e-mail sem inbox confirmado', () => {
+  for (const kind of ['confirmation', 'reminder_morning', 'reminder_1h'] as const) {
+    const email = renderMeetingEmail(kind, MEETING)
+    assert.equal(/responda a est[ea] (?:mensagem|e-mail)/i.test(email.text), false)
+    assert.equal(/responda a est[ea] (?:mensagem|e-mail)/i.test(email.html), false)
+  }
+})

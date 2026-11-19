@@ -317,3 +317,23 @@ test('remarcação: cancela a sequência antiga antes de recalcular', async () =
   await rescheduleMeetingEmails(deps(pool, fetcher), APPT)
   assert.deepEqual(order, ['cancelou', 'releu a reunião'])
 })
+
+test('atraso de varredura: lembrete das 8h não é enviado horas depois', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch()
+  const expired = new Date(NOW.getTime() - 2 * 60 * 60_000).toISOString()
+  assert.equal(await deliverMessage(deps(pool, fetcher),
+    message({ kind: 'reminder_morning', scheduledFor: expired })), false)
+  assert.equal(sent.length, 0)
+  assert.ok(pool.updates.some(u => String(u.params[1]) === 'REMINDER_EXPIRED'))
+})
+
+test('confirmação atrasada nunca sai depois do início da reunião', async () => {
+  const pool = fakePool({ meeting: { id: APPT, lead_id: 'l', full_name: 'Ana', email: 'ana@exemplo.com',
+    whatsapp: null, starts_at: new Date('2026-11-18T09:00:00.000Z'),
+    ends_at: new Date('2026-11-18T09:30:00.000Z'), meeting_url: null, status: 'confirmed' } })
+  const { fetcher, sent } = fakeFetch()
+  assert.equal(await deliverMessage(deps(pool, fetcher), message({ kind: 'confirmation' })), false)
+  assert.equal(sent.length, 0)
+  assert.ok(pool.updates.some(u => String(u.params[1]) === 'MEETING_ALREADY_STARTED'))
+})

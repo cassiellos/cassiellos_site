@@ -36,6 +36,9 @@ const LIVE_STATUSES = new Set(['pending', 'confirmed'])
 
 const KINDS: ReadonlySet<string> = new Set(['confirmation', 'reminder_morning', 'reminder_1h'])
 
+/** Grace limit to avoid sending a stale reminder after provider/network delays. */
+export const REMINDER_LATE_GRACE_MS = 5 * 60_000
+
 function startOfDayUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 }
@@ -81,10 +84,18 @@ export async function deliverMessage(deps: SendDeps, message: CommsMessage): Pro
     await markSkipped(deps.pool, message.id, 'MEETING_NOT_ACTIVE:' + meeting.status)
     return false
   }
-  // Nunca enviar lembrete depois da hora da reunião.
-  if (message.kind !== 'confirmation' && Date.parse(meeting.startAt) <= now.getTime()) {
+  // A confirmação também não deve ser reprocessada após o início da reunião.
+  if (Date.parse(meeting.startAt) <= now.getTime()) {
     await markSkipped(deps.pool, message.id, 'MEETING_ALREADY_STARTED')
     return false
+  }
+  if (message.kind !== 'confirmation') {
+    const plannedAt = message.scheduledFor ? Date.parse(message.scheduledFor) : NaN
+    // Varredura ou retentativa tardia não transforma o lembrete das 8h em e-mail à tarde.
+    if (!Number.isFinite(plannedAt) || now.getTime() - plannedAt > REMINDER_LATE_GRACE_MS) {
+      await markSkipped(deps.pool, message.id, 'REMINDER_EXPIRED')
+      return false
+    }
   }
   const to = meeting.email?.trim()
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {

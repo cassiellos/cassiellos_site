@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
   skipped: 'Não enviado',
 }
 
-const RESENDABLE = new Set(['failed', 'skipped', 'cancelled'])
+const RESENDABLE = new Set(['failed', 'skipped'])
 const when = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 })
