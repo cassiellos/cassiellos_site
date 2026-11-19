@@ -226,7 +226,7 @@ export default function BookingExperience({
       try {
         const link = new URL(data.url)
         if (link.protocol !== 'https:' || link.hostname !== 'wa.me') return
-        if (!/^\\/55\\d{10,11}$/.test(link.pathname)) return
+        if (!/^\/55\d{10,11}$/.test(link.pathname)) return
         setWhatsappUrl(data.url)
       } catch { /* link inválido não aparece ao lead */ }
     }).catch(() => { /* sem número configurado ou rede indisponível: não cria CTA falsa */ })
