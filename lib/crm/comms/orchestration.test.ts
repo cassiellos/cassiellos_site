@@ -203,7 +203,7 @@ test('agendamento: com confirmação e lembretes desligados não toca no banco',
 const whatsappConfig = (overrides: Partial<WhatsappConfig> = {}): WhatsappConfig => ({
   buttonReady: true, businessPhone: null, cloudReady: true, autoReply: true,
   verifyToken: 't', appSecret: 's', phoneNumberId: '123', accessToken: 'tok',
-  freeTier: 1000, issues: [], ...overrides,
+  freeTier: 1000, replyAllowlist: 'ALL', issues: [], ...overrides,
 })
 
 const incoming = (overrides: Record<string, unknown> = {}) => ({
@@ -280,6 +280,40 @@ test('WhatsApp: caminho completo responde com os dados reais e sem template pago
   assert.equal(payload.to, '5531991234567')
   assert.ok(payload.text.body.includes('https://meet.google.com/abc-defg-hij'))
   assert.ok(payload.text.body.includes('Ana'))
+})
+
+test('WhatsApp: aparelho NÃO autorizado não recebe resposta nem toca o banco', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch(200, { messages: [{ id: 'wamid.resp' }] })
+  const locked = whatsappConfig({ replyAllowlist: ['5531998765432'] })
+  assert.equal(await handleIncomingMessage(replyDeps(pool, fetcher, locked), incoming()), 'not_allowlisted')
+  assert.equal(sent.length, 0)
+  assert.equal(pool.calls.length, 0)
+})
+
+test('WhatsApp: lista vazia = ninguém recebe resposta automática', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch(200, { messages: [{ id: 'wamid.resp' }] })
+  assert.equal(await handleIncomingMessage(replyDeps(pool, fetcher,
+    whatsappConfig({ replyAllowlist: [] })), incoming()), 'not_allowlisted')
+  assert.equal(sent.length, 0)
+})
+
+test('WhatsApp: remetente autorizado pode chegar da Meta sem o nono dígito', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch(200, { messages: [{ id: 'wamid.resp' }] })
+  const allowed = whatsappConfig({ replyAllowlist: ['5531991234567'] })
+  assert.equal(await handleIncomingMessage(replyDeps(pool, fetcher, allowed),
+    incoming({ from: '553191234567' })), 'sent')
+  assert.equal(sent.length, 1)
+})
+
+test('WhatsApp: resposta automática desligada continua desligada sem lista', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch()
+  assert.equal(await handleIncomingMessage(replyDeps(pool, fetcher,
+    whatsappConfig({ autoReply: false, replyAllowlist: [] })), incoming()), 'auto_reply_off')
+  assert.equal(sent.length, 0)
 })
 
 test('nada retroativo: reunião que já começou não gera comunicação nenhuma', async () => {

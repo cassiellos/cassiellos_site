@@ -7,9 +7,9 @@ import { parseBrazilianWhatsapp } from '../whatsapp'
  * Nada aqui roda sem COMMS_WHATSAPP_CLOUD=true e as quatro credenciais. Nenhuma função deste
  * arquivo é chamada pelo Modo A: o botão wa.me continua funcionando com a Cloud API desligada.
  *
- * Premissa do projeto: o número comercial da Cassiellos permanece no aplicativo WhatsApp Business.
- * Este código assume a modalidade de COEXISTÊNCIA já homologada; ele não registra, não migra e não
- * desconecta número nenhum — só recebe webhooks e responde dentro da janela de atendimento.
+ * O número comercial da Cassiellos permanece no aplicativo WhatsApp Business.
+ * O modo B usa um segundo número exclusivo da Cloud API: este código não registra nem migra
+ * números, apenas recebe webhooks e responde dentro da janela de atendimento.
  *
  * Referência conferida em 18/11/2026: a Meta assina o corpo com X-Hub-Signature-256 (HMAC-SHA256 do
  * corpo cru com o App Secret) e verifica o endpoint com hub.mode/hub.verify_token/hub.challenge.
@@ -17,7 +17,7 @@ import { parseBrazilianWhatsapp } from '../whatsapp'
  * toda ação derivada daqui precisa ser idempotente.
  */
 
-export const GRAPH_VERSION = 'v21.0'
+export const GRAPH_VERSION = 'v27.0'
 /** Janela de atendimento: 24 h a contar da última mensagem do usuário. Fora dela, só template (pago). */
 export const SERVICE_WINDOW_MS = 24 * 60 * 60_000
 

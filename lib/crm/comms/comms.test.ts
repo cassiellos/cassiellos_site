@@ -14,6 +14,7 @@ import {
   checkSender, normalizeWhatsappSender, parseIncomingMessages, verifyChallenge, verifyPayloadSignature, withinServiceWindow,
 } from './whatsapp-cloud'
 import { parseBrazilianWhatsapp } from '../whatsapp'
+import { parseReplyAllowlist, replyAllowed } from './config'
 
 /** Ambiente mínimo que o CRM considera válido (Production do projeto cassiellos-crm). */
 const PROD = { VERCEL_ENV: 'production', CRM_PRODUCTION_ENABLED: 'true' }
@@ -685,4 +686,31 @@ test('cancelamento Resend: HTTP 404 é resultado incerto, não confirmação', a
   const fetcher = async () => new Response('{"message":"Not found"}', { status: 404 })
   const result = await cancelEmail(fetcher, 're_test', 'email-id')
   assert.equal(result.ok, false)
+})
+
+test('trava de resposta: ausente ou vazia = ninguém; ALL = todos; lista normalizada', () => {
+  assert.deepEqual(parseReplyAllowlist(undefined), [])
+  assert.deepEqual(parseReplyAllowlist('  '), [])
+  assert.equal(parseReplyAllowlist('ALL'), 'ALL')
+  assert.deepEqual(parseReplyAllowlist('all'), [], 'só ALL em maiúsculas libera geral')
+  assert.deepEqual(parseReplyAllowlist('+55 (31) 99876-5432, 553198765432; lixo 123'), ['5531998765432'])
+  assert.equal(replyAllowed(['5531998765432'], '553198765432'), true)
+  assert.equal(replyAllowed(['5531998765432'], '5531998765432'), true)
+  assert.equal(replyAllowed(['5531998765432'], '553138765432'), false, 'fixo com final parecido não passa')
+  assert.equal(replyAllowed([], '5531998765432'), false)
+  assert.equal(replyAllowed('ALL', '5531998765432'), true)
+})
+
+test('config: resposta automática ligada sem lista acusa REPLY_ALLOWLIST_EMPTY e não expõe números', () => {
+  const env = { ...PROD, COMMS_WHATSAPP_CLOUD: 'true', COMMS_WHATSAPP_AUTO_REPLY: 'true',
+    WHATSAPP_VERIFY_TOKEN: 'v', WHATSAPP_APP_SECRET: 's', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_ACCESS_TOKEN: 't' }
+  const conf = readWhatsappConfig(env)
+  assert.equal(conf.autoReply, true)
+  assert.deepEqual(conf.replyAllowlist, [])
+  assert.ok(conf.issues.includes('REPLY_ALLOWLIST_EMPTY'))
+  const withList = readWhatsappConfig({ ...env, COMMS_WHATSAPP_REPLY_ALLOWLIST: '5531998765432' })
+  assert.ok(!withList.issues.includes('REPLY_ALLOWLIST_EMPTY'))
+  const status = publicCommsStatus({ ...env, COMMS_WHATSAPP_REPLY_ALLOWLIST: '5531998765432' })
+  assert.equal(status.whatsapp.replyScope, 1)
+  assert.ok(!JSON.stringify(status).includes('998765432'), 'o status público não revela números')
 })

@@ -1,5 +1,6 @@
 import { crmRuntime } from '../runtime-env'
 import { parseBrazilianWhatsapp, type BrazilianPhone } from '../whatsapp'
+import { normalizeWhatsappSender } from './whatsapp-cloud'
 
 /**
  * Chaves gerais das comunicações transacionais (e-mail pela Resend e WhatsApp). SOMENTE no servidor.
@@ -22,8 +23,10 @@ import { parseBrazilianWhatsapp, type BrazilianPhone } from '../whatsapp'
  * - COMMS_WHATSAPP_NUMBER ........... número comercial da Cassiellos (quem RECEBE a mensagem do lead).
  * - COMMS_WHATSAPP_BUTTON=true ...... Modo A: botão wa.me na confirmação. Não usa API nenhuma.
  * - COMMS_WHATSAPP_CLOUD=true ....... Modo B: Cloud API oficial. DESLIGADO por padrão; só depois da
- *   homologação da coexistência e de autorização expressa do titular.
+ *   homologação de um número exclusivo da API e de autorização expressa do titular.
  * - COMMS_WHATSAPP_AUTO_REPLY=true .. resposta automática do Modo B (exige COMMS_WHATSAPP_CLOUD).
+ * - COMMS_WHATSAPP_REPLY_ALLOWLIST .. falha fechada: vazia = ninguém, lista = aparelhos autorizados;
+ *   'ALL' libera geral somente após homologação final aprovada.
  * - WHATSAPP_VERIFY_TOKEN / WHATSAPP_APP_SECRET / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN.
  * - COMMS_WHATSAPP_FREE_TIER ........ trava conservadora de mensagens de serviço por mês.
  *
@@ -127,12 +130,34 @@ export type WhatsappConfig = {
   phoneNumberId: string | null
   accessToken: string | null
   freeTier: number
+  /** 'ALL' ou números brasileiros normalizados (55 + DDD + telefone); [] = ninguém. */
+  replyAllowlist: 'ALL' | string[]
   issues: WhatsappIssue[]
 }
 
 export type WhatsappIssue =
   | 'ENV_NOT_SUPPORTED' | 'PREVIEW_NOT_ENABLED' | 'BUTTON_OFF' | 'NUMBER_MISSING' | 'NUMBER_INVALID'
-  | 'CLOUD_OFF' | 'CLOUD_CREDENTIALS_MISSING' | 'AUTO_REPLY_OFF'
+  | 'CLOUD_OFF' | 'CLOUD_CREDENTIALS_MISSING' | 'AUTO_REPLY_OFF' | 'REPLY_ALLOWLIST_EMPTY'
+
+/** Falha fechada: sem lista explícita, nenhuma resposta automática é autorizada. */
+export function parseReplyAllowlist(raw: string | undefined): 'ALL' | string[] {
+  const value = raw?.trim() ?? ''
+  if (value === 'ALL') return 'ALL'
+  const out = new Set<string>()
+  for (const item of value.split(/[\s,;]+/)) {
+    if (!item) continue
+    const phone = parseBrazilianWhatsapp(normalizeWhatsappSender(item))
+    if (phone) out.add(phone.e164Digits)
+  }
+  return [...out]
+}
+
+/** Compara o número integralmente, aceitando variação do nono dígito da Meta. */
+export function replyAllowed(allowlist: 'ALL' | string[], from: string): boolean {
+  if (allowlist === 'ALL') return true
+  const sender = parseBrazilianWhatsapp(normalizeWhatsappSender(from))
+  return Boolean(sender && allowlist.includes(sender.e164Digits))
+}
 
 export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
   const issues: WhatsappIssue[] = []
@@ -154,6 +179,10 @@ export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
   if (!cloudOn) issues.push('CLOUD_OFF')
   if (!credentialsOk) issues.push('CLOUD_CREDENTIALS_MISSING')
   if (!on(env.COMMS_WHATSAPP_AUTO_REPLY)) issues.push('AUTO_REPLY_OFF')
+  const replyAllowlist = parseReplyAllowlist(env.COMMS_WHATSAPP_REPLY_ALLOWLIST)
+  if (on(env.COMMS_WHATSAPP_AUTO_REPLY) && replyAllowlist !== 'ALL' && replyAllowlist.length === 0) {
+    issues.push('REPLY_ALLOWLIST_EMPTY')
+  }
 
   const cloudReady = supported && cloudOn && credentialsOk
   return {
@@ -166,6 +195,7 @@ export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
     phoneNumberId: phoneNumberId || null,
     accessToken: accessToken || null,
     freeTier: cap(env.COMMS_WHATSAPP_FREE_TIER, WHATSAPP_DEFAULT_FREE_TIER),
+    replyAllowlist,
     issues,
   }
 }
@@ -185,6 +215,7 @@ export function publicCommsStatus(env: Env = process.env) {
       businessPhone: whatsapp.businessPhone?.display ?? null,
       cloudReady: whatsapp.cloudReady, autoReply: whatsapp.autoReply,
       freeTier: whatsapp.freeTier, issues: whatsapp.issues,
+      replyScope: whatsapp.replyAllowlist === 'ALL' ? 'ALL' : whatsapp.replyAllowlist.length,
     },
   }
 }
