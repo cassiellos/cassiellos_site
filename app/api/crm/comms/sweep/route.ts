@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { getCrmPool } from '@/lib/crm/db'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { readEmailConfig } from '@/lib/crm/comms/config'
-import { sweepDueMessages } from '@/lib/crm/comms/send'
+import { processProviderCancellations, sweepDueMessages } from '@/lib/crm/comms/send'
 
 /**
  * Varredura dos envios que não couberam no agendamento nativo da Resend (reuniões marcadas com mais
@@ -42,9 +42,11 @@ async function run(request: NextRequest) {
   if (!authorized(request.headers.get('authorization'), secret)) return json({ error: 'FORBIDDEN' }, 403)
 
   const config = readEmailConfig()
-  if (!config.ready) return json({ ok: true, skipped: 'EMAIL_DISABLED', issues: config.issues }, 200)
-
   try {
+    const cancelled = await processProviderCancellations({
+      pool: getCrmPool(), config, fetch: (url, init) => fetch(url, init),
+    })
+    if (!config.ready) return json({ ok: true, skipped: 'EMAIL_DISABLED', cancelled, issues: config.issues }, 200)
     const result = await sweepDueMessages({
       pool: getCrmPool(), config, fetch: (url, init) => fetch(url, init),
     })

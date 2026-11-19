@@ -125,8 +125,8 @@ export async function cancelEmail(
 ): Promise<{ ok: boolean; error?: string }> {
   const result = await call(fetcher, apiKey, '/emails/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
   if (result.status === null) return { ok: false, error: 'NETWORK_OR_TIMEOUT' }
-  // 404 = já saiu ou nunca existiu: para o nosso fim (não enviar), o resultado é o mesmo.
-  if ((result.status >= 200 && result.status < 300) || result.status === 404) return { ok: true }
+  // HTTP 404 does not prove cancellation: an email may have already been delivered.
+  if (result.status >= 200 && result.status < 300) return { ok: true }
   return { ok: false, error: errorMessage(result.body, 'HTTP_' + result.status) }
 }
 

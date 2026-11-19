@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS crm.comms_messages (
     -- 'failed'    = recusada ou devolvida; 'cancelled' = reunião cancelada/remarcada antes do envio;
     -- 'skipped'   = não enviada por regra (franquia, canal desligado, destinatário inválido).
     CONSTRAINT comms_messages_status_check CHECK (status IN (
-        'pending', 'scheduled', 'sent', 'delivered', 'failed', 'cancelled', 'skipped')),
+        'pending', 'sending', 'scheduled', 'sent', 'delivered', 'failed', 'cancel_requested', 'cancelled', 'skipped', 'needs_review')),
     CONSTRAINT comms_messages_attempts_check CHECK (attempts >= 0 AND attempts <= 20),
     CONSTRAINT comms_messages_dedupe_len CHECK (char_length(dedupe_key) BETWEEN 8 AND 200),
     CONSTRAINT comms_messages_masked_len CHECK (recipient_masked IS NULL OR char_length(recipient_masked) <= 120),

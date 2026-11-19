@@ -72,6 +72,8 @@ export type EmailConfig = {
   confirmation: boolean
   reminders: boolean
   apiKey: string | null
+  /** Remains usable for cancellation when new sending is disabled. */
+  cancellationKey?: string | null
   from: string
   dailyCap: number
   monthlyCap: number
@@ -102,6 +104,7 @@ export function readEmailConfig(env: Env = process.env): EmailConfig {
     confirmation: ready && on(env.COMMS_EMAIL_CONFIRMATION),
     reminders: ready && on(env.COMMS_EMAIL_REMINDERS),
     apiKey: ready ? apiKey : null,
+    cancellationKey: commsEnvAllowed(env) && apiKey ? apiKey : null,
     from,
     dailyCap: cap(env.COMMS_EMAIL_DAILY_CAP, FREE_PLAN_DAILY_CAP),
     monthlyCap: cap(env.COMMS_EMAIL_MONTHLY_CAP, FREE_PLAN_MONTHLY_CAP),

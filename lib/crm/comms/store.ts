@@ -18,7 +18,7 @@ export type Queryable = Pick<Pool, 'query'>
 
 export const MAX_ATTEMPTS = 5
 
-export type CommsStatus = 'pending' | 'scheduled' | 'sent' | 'delivered' | 'failed' | 'cancelled' | 'skipped'
+export type CommsStatus = 'pending' | 'sending' | 'scheduled' | 'sent' | 'delivered' | 'failed' | 'cancel_requested' | 'cancelled' | 'skipped' | 'needs_review'
 
 export type CommsMessage = {
   id: string
@@ -117,7 +117,7 @@ export async function enqueueMessages(
 export async function claimForSend(pool: Queryable, id: string): Promise<CommsMessage | null> {
   const result = await pool.query<Row>(
     `UPDATE crm.comms_messages
-        SET attempts = attempts + 1, updated_at = now()
+        SET attempts = attempts + 1, status = 'sending', updated_at = now()
       WHERE id = $1 AND status = 'pending' AND attempts < $2
       RETURNING ${COLUMNS}`, [id, MAX_ATTEMPTS])
   return result.rows[0] ? toMessage(result.rows[0]) : null
@@ -125,12 +125,15 @@ export async function claimForSend(pool: Queryable, id: string): Promise<CommsMe
 
 export async function markSent(
   pool: Queryable, id: string, input: { providerMessageId: string; scheduled: boolean },
-): Promise<void> {
+): Promise<boolean> {
   // 'scheduled' = aceita com horário futuro; 'sent' = aceita para envio imediato. Nenhum dos dois é "entregue".
-  await pool.query(
+  const result = await pool.query<{ status: string }>(
     `UPDATE crm.comms_messages
-        SET status = $2, provider_message_id = $3, sent_at = now(), last_error = NULL, updated_at = now()
-      WHERE id = $1`, [id, input.scheduled ? 'scheduled' : 'sent', input.providerMessageId])
+        SET status = CASE WHEN status = 'cancel_requested' THEN status ELSE $2 END,
+            provider_message_id = $3, sent_at = now(), last_error = NULL, updated_at = now()
+      WHERE id = $1 AND status IN ('sending', 'cancel_requested')
+      RETURNING status`, [id, input.scheduled ? 'scheduled' : 'sent', input.providerMessageId])
+  return result.rows[0]?.status === 'cancel_requested'
 }
 
 /** Erro retriável volta a 'pending' até esgotar as tentativas; o resto encerra em 'failed'. */
@@ -139,15 +142,15 @@ export async function markFailure(
 ): Promise<void> {
   await pool.query(
     `UPDATE crm.comms_messages
-        SET status = CASE WHEN $3::boolean AND attempts < $4 THEN 'pending' ELSE 'failed' END,
+        SET status = CASE WHEN $2 = 'NETWORK_OR_TIMEOUT' THEN 'needs_review' WHEN $3::boolean AND attempts < $4 THEN 'pending' ELSE 'failed' END,
             last_error = left($2, 400), updated_at = now()
-      WHERE id = $1`, [id, input.error, input.retriable, MAX_ATTEMPTS])
+      WHERE id = $1 AND status = 'sending'`, [id, input.error, input.retriable, MAX_ATTEMPTS])
 }
 
 export async function markSkipped(pool: Queryable, id: string, reason: string): Promise<void> {
   await pool.query(
     `UPDATE crm.comms_messages SET status = 'skipped', last_error = left($2, 400), updated_at = now()
-      WHERE id = $1 AND status = 'pending'`, [id, reason])
+      WHERE id = $1 AND status IN ('pending', 'sending')`, [id, reason])
 }
 
 /**
@@ -176,8 +179,9 @@ export async function dueMessages(
 export async function cancelPending(pool: Queryable, appointmentId: string): Promise<string[]> {
   const result = await pool.query<{ provider_message_id: string | null }>(
     `UPDATE crm.comms_messages
-        SET status = 'cancelled', updated_at = now()
-      WHERE appointment_id = $1 AND status IN ('pending', 'scheduled')
+        SET status = CASE WHEN status = 'pending' THEN 'cancelled' ELSE 'cancel_requested' END,
+            updated_at = now()
+      WHERE appointment_id = $1 AND status IN ('pending', 'sending', 'scheduled')
       RETURNING provider_message_id`, [appointmentId])
   return result.rows.map(r => r.provider_message_id).filter((v): v is string => typeof v === 'string' && v.length > 0)
 }
@@ -192,9 +196,42 @@ export async function applyProviderStatus(
         SET status = $2, provider_status_at = now(), updated_at = now(),
             last_error = COALESCE(left($3, 400), last_error)
       WHERE provider_message_id = $1
-        AND status NOT IN ('cancelled', 'delivered', 'failed')`,
+        AND status NOT IN ('cancel_requested', 'cancelled', 'delivered', 'failed', 'needs_review')`,
     [providerMessageId, status, error ?? null])
   return (result.rowCount ?? 0) > 0
+}
+
+/** Reconciles cancellations after interrupted serverless callbacks. */
+export async function reconcileProviderCancellations(pool: Queryable): Promise<void> {
+  await pool.query(
+    `UPDATE crm.comms_messages m
+        SET status = 'cancel_requested', updated_at = now()
+       FROM crm.appointments a
+      WHERE a.id = m.appointment_id AND m.channel = 'email'
+        AND a.status NOT IN ('pending', 'confirmed')
+        AND m.status IN ('scheduled', 'sending')`)
+}
+
+export async function cancellationQueue(pool: Queryable, limit = 25): Promise<string[]> {
+  const result = await pool.query<{ provider_message_id: string }>(
+    `SELECT provider_message_id FROM crm.comms_messages
+       WHERE channel = 'email' AND status = 'cancel_requested'
+         AND provider_message_id IS NOT NULL
+         AND updated_at < now() - interval '1 minute'
+       ORDER BY updated_at ASC LIMIT $1`, [Math.min(limit, 50)])
+  return result.rows.map(row => row.provider_message_id)
+}
+
+export async function confirmProviderCancellation(pool: Queryable, id: string): Promise<void> {
+  await pool.query(
+    `UPDATE crm.comms_messages SET status = 'cancelled', last_error = NULL, updated_at = now()
+      WHERE provider_message_id = $1 AND status = 'cancel_requested'`, [id])
+}
+
+export async function recordProviderCancellationError(pool: Queryable, id: string, error: string): Promise<void> {
+  await pool.query(
+    `UPDATE crm.comms_messages SET last_error = left($2, 400), updated_at = now()
+      WHERE provider_message_id = $1 AND status = 'cancel_requested'`, [id, 'CANCEL_UNCONFIRMED:' + error])
 }
 
 /** Consumo do período para as travas do plano gratuito (conta o que foi entregue ao provedor). */

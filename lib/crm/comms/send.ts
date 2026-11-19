@@ -4,8 +4,10 @@ import { planMeetingEmails, type PlannedMessage } from './plan'
 import { renderMeetingEmail, type EmailKind } from './templates'
 import { cancelEmail, sendEmail, withinNativeScheduleWindow, type Fetcher } from './resend'
 import {
-  cancelPending, claimForSend, dueMessages, enqueueMessages, loadMeeting, markFailure, markSent,
-  markSkipped, usageSince, type CommsMessage, type Queryable,
+  cancelPending, cancellationQueue, claimForSend, confirmProviderCancellation, dueMessages,
+  enqueueMessages, loadMeeting, markFailure, markSent, markSkipped,
+  reconcileProviderCancellations, recordProviderCancellationError, usageSince,
+  type CommsMessage, type Queryable,
 } from './store'
 
 /**
@@ -124,7 +126,13 @@ export async function deliverMessage(deps: SendDeps, message: CommsMessage): Pro
   })
 
   if (result.ok) {
-    await markSent(deps.pool, message.id, { providerMessageId: result.id, scheduled: result.scheduled })
+    const cancelledDuringSend = await markSent(deps.pool, message.id, {
+      providerMessageId: result.id, scheduled: result.scheduled,
+    })
+    if (cancelledDuringSend) {
+      await attemptProviderCancellation(deps, result.id)
+      return false
+    }
     log('accepted', { messageId: message.id, kind: message.kind, scheduled: result.scheduled })
     return true
   }
@@ -195,12 +203,33 @@ export async function sweepDueMessages(deps: SendDeps, limit = 25): Promise<{ pr
  * Cancelado na Resend não volta, por isso a remarcação não reaproveita: ela cria mensagens novas,
  * com outro dedupe_key (que inclui o horário da reunião).
  */
+async function attemptProviderCancellation(deps: SendDeps, id: string): Promise<boolean> {
+  const apiKey = deps.config.cancellationKey ?? deps.config.apiKey
+  if (!apiKey) return false
+  const result = await cancelEmail(deps.fetch, apiKey, id)
+  if (result.ok) {
+    await confirmProviderCancellation(deps.pool, id)
+    return true
+  }
+  await recordProviderCancellationError(deps.pool, id, result.error ?? 'UNKNOWN')
+  return false
+}
+
+/** Reprocesses provider cancellations even if the new-send switch is off. */
+export async function processProviderCancellations(deps: SendDeps, limit = 25): Promise<number> {
+  await reconcileProviderCancellations(deps.pool)
+  if (!(deps.config.cancellationKey ?? deps.config.apiKey)) return 0
+  const ids = await cancellationQueue(deps.pool, limit)
+  let confirmed = 0
+  for (const id of ids) if (await attemptProviderCancellation(deps, id)) confirmed++
+  return confirmed
+}
+
 export async function cancelMeetingEmails(deps: SendDeps, appointmentId: string): Promise<number> {
   try {
-    const providerIds = await cancelPending(deps.pool, appointmentId)
-    if (!deps.config.apiKey) return providerIds.length
-    for (const id of providerIds) await cancelEmail(deps.fetch, deps.config.apiKey, id)
-    return providerIds.length
+    const ids = await cancelPending(deps.pool, appointmentId)
+    for (const id of ids) await attemptProviderCancellation(deps, id)
+    return ids.length
   } catch {
     return 0
   }

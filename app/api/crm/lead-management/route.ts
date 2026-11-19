@@ -123,7 +123,7 @@ async function adminAction(req:NextRequest,leadId:string,action:string,data:Reco
   // Resend (ela guarda o agendamento do lado dela). Roda depois da resposta e nunca falha o cancelamento.
   if(r.outcome==='cancelled'){
    const emailConfig=readEmailConfig()
-   if(emailConfig.ready)after(()=>cancelMeetingEmails({pool,config:emailConfig,fetch:(url,init)=>fetch(url,init)},appointmentId).then(()=>undefined))
+   after(()=>cancelMeetingEmails({pool,config:emailConfig,fetch:(url,init)=>fetch(url,init)},appointmentId).then(()=>undefined))
   }
   const errors:Record<string,string>={not_found:'NOT_FOUND',not_cancellable:'MEETING_NOT_CANCELLABLE',
    already_ended:'MEETING_ALREADY_ENDED',google_not_confirmed:'GOOGLE_CANCEL_NOT_CONFIRMED'}

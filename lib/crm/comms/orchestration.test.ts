@@ -295,7 +295,7 @@ test('nada retroativo: reunião que já começou não gera comunicação nenhuma
 test('cancelamento: a fila local é cancelada e o agendamento na Resend também', async () => {
   const cancelled: string[] = []
   const pool: Queryable = { query: async (sql: string) => {
-    if (sql.includes("status = 'cancelled'")) {
+    if (sql.includes("status = CASE WHEN status = 'pending' THEN 'cancelled'")) {
       return { rows: [{ provider_message_id: 'resend-a' }, { provider_message_id: 'resend-b' }], rowCount: 2 }
     }
     return { rows: [], rowCount: 0 }
@@ -309,7 +309,7 @@ test('cancelamento: a fila local é cancelada e o agendamento na Resend também'
 test('remarcação: cancela a sequência antiga antes de recalcular', async () => {
   const order: string[] = []
   const pool: Queryable = { query: async (sql: string) => {
-    if (sql.includes("status = 'cancelled'")) { order.push('cancelou'); return { rows: [], rowCount: 0 } }
+    if (sql.includes("status = CASE WHEN status = 'pending' THEN 'cancelled'")) { order.push('cancelou'); return { rows: [], rowCount: 0 } }
     if (sql.includes('FROM crm.appointments a JOIN crm.leads')) { order.push('releu a reunião'); return { rows: [], rowCount: 0 } }
     return { rows: [], rowCount: 0 }
   } } as unknown as Queryable
