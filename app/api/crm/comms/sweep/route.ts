@@ -9,11 +9,12 @@ import { processProviderCancellations, sweepDueMessages } from '@/lib/crm/comms/
  * Varredura dos envios que não couberam no agendamento nativo da Resend (reuniões marcadas com mais
  * de 30 dias de antecedência) e nova tentativa dos que falharam de forma retriável.
  *
- * Chamada por um agendador EXTERNO, com `Authorization: Bearer <COMMS_SWEEP_SECRET>` — a mesma
- * convenção já usada por /api/crm/push/process. O `vercel.json` é COMPARTILHADO pelos dois projetos
- * Vercel (site institucional e CRM), então declarar um Cron lá criaria um agendamento também no site
- * institucional, onde esta rota não existe para ser chamada. Por isso o agendamento fica fora do
- * repositório: um Cron criado no projeto cassiellos-crm, ou qualquer agendador que faça a chamada.
+ * Chamada pelo Vercel Cron do projeto `cassiellos-crm` em Production (branch `crm-production`),
+ * configurado em `vercel.json` nessa branch, a cada 10 minutos. O arquivo não é publicado na
+ * branch `main`, usada pelo projeto institucional. Não misturar essas configurações ao integrar branches.
+ * A Vercel fornece `Authorization: Bearer <CRON_SECRET>`; `CRON_SECRET` e
+ * `COMMS_SWEEP_SECRET` devem ter o MESMO valor secreto em Production. A rota valida
+ * `COMMS_SWEEP_SECRET` em comparação de tempo constante, aceitando também agendador externo.
  *
  * Sem COMMS_SWEEP_SECRET (mínimo de 32 caracteres): 404. Sem a Resend ligada: não faz nada.
  * Rodar duas vezes é seguro — a reserva de cada linha é um UPDATE condicional e a Resend recebe a
