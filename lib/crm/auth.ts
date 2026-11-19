@@ -5,14 +5,28 @@ import { getCrmPool } from '@/lib/crm/db'
 import { crmDatabaseUrl } from '@/lib/crm/homolog-mode'
 
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
-type SessionPayload = { v: 1; sub: 'admin'; iat: number; exp: number; pwv: string }
+export type CrmAccount = 'admin' | 'guilherme'
+type SessionPayload = { v: 1; sub: CrmAccount; iat: number; exp: number; pwv: string }
+
+/**
+ * Two independent administrator logins. The existing "admin" credentials remain untouched;
+ * Guilherme's secret is independent, stored only as a password hash in Vercel.
+ * Password changes revoke that account's sessions without affecting the other.
+ */
+const PASSWORD_HASH_FORMAT = /^(?:scrypt\$16384\$8\$1|pbkdf2_sha256\$600000)\$[a-f0-9]{32}\$[a-f0-9]{64}$/i
+
+function credentialHashForAccount(account: string): string | null {
+  const hash = account === 'admin' ? process.env.CRM_ADMIN_PASSWORD_HASH
+    : account === 'guilherme' ? process.env.CRM_GUILHERME_PASSWORD_HASH : null
+  return hash && PASSWORD_HASH_FORMAT.test(hash) ? hash : null
+}
 
 export function isCrmAuthConfigured(): boolean {
   const secret = process.env.CRM_SESSION_SECRET
   const passwordHash = process.env.CRM_ADMIN_PASSWORD_HASH
   return Boolean(
     secret && /^[a-f0-9]{64,}$/i.test(secret) && secret.length % 2 === 0 &&
-    passwordHash && /^(?:scrypt\$16384\$8\$1|pbkdf2_sha256\$600000)\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(passwordHash) &&
+    passwordHash && PASSWORD_HASH_FORMAT.test(passwordHash) &&
     crmDatabaseUrl()?.trim()
   )
 }
@@ -32,15 +46,16 @@ function sign(encodedPayload: string, secret: Buffer): Buffer {
   return createHmac('sha256', secret).update(encodedPayload).digest()
 }
 
-function passwordVersion(secret: Buffer): string {
-  return createHmac('sha256', secret).update(process.env.CRM_ADMIN_PASSWORD_HASH ?? '').digest('base64url')
+function passwordVersion(secret: Buffer, passwordHash: string): string {
+  return createHmac('sha256', secret).update(passwordHash).digest('base64url')
 }
 
-export function issueCrmSession(): string {
+export function issueCrmSession(account: CrmAccount = 'admin'): string {
   const secret = getSessionSecret()
-  if (!secret || !isCrmAuthConfigured()) throw new Error('CRM_AUTH_NOT_CONFIGURED')
+  const accountHash = credentialHashForAccount(account)
+  if (!secret || !isCrmAuthConfigured() || !accountHash) throw new Error('CRM_AUTH_NOT_CONFIGURED')
   const now = Math.floor(Date.now() / 1000)
-  const payload: SessionPayload = { v: 1, sub: 'admin', iat: now, exp: now + SESSION_DURATION_SECONDS, pwv: passwordVersion(secret) }
+  const payload: SessionPayload = { v: 1, sub: account, iat: now, exp: now + SESSION_DURATION_SECONDS, pwv: passwordVersion(secret, accountHash) }
   const encoded = Buffer.from(JSON.stringify({ ...payload, nonce: randomBytes(16).toString('hex') })).toString('base64url')
   return encoded + '.' + sign(encoded, secret).toString('base64url')
 }
@@ -56,7 +71,8 @@ export function verifyCrmSession(token?: string | null): boolean {
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return false
     const data = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as Partial<SessionPayload>
     const now = Math.floor(Date.now() / 1000)
-    return data.v === 1 && data.sub === 'admin' && data.pwv === passwordVersion(secret) &&
+    const accountHash = typeof data.sub === 'string' ? credentialHashForAccount(data.sub) : null
+    return data.v === 1 && Boolean(accountHash) && data.pwv === passwordVersion(secret, accountHash!) &&
       typeof data.iat === 'number' && typeof data.exp === 'number' &&
       data.iat <= now + 30 && data.exp > now &&
       data.exp - data.iat <= SESSION_DURATION_SECONDS &&
@@ -78,9 +94,11 @@ function derivePassword(password: string, salt: Buffer, algorithm: 'scrypt' | 'p
 }
 
 export async function verifyAdminCredentials(username: string, password: string): Promise<boolean> {
-  const stored = process.env.CRM_ADMIN_PASSWORD_HASH
-  if (!stored || !isCrmAuthConfigured()) return false
+  if (!isCrmAuthConfigured()) return false
   if (password.length < 12 || password.length > 256 || username.length > 100) return false
+  const account = username.trim().toLowerCase()
+  const stored = credentialHashForAccount(account)
+  if (!stored) return false
   const parts = stored.split('$')
   const isPbkdf2 = parts[0] === 'pbkdf2_sha256' && parts[1] === '600000' && parts.length === 4
   const isScrypt = parts[0] === 'scrypt' && parts[1] === '16384' && parts[2] === '8' &&
@@ -90,8 +108,7 @@ export async function verifyAdminCredentials(username: string, password: string)
     const expected = Buffer.from(isPbkdf2 ? parts[3] : parts[5], 'hex')
     const salt = Buffer.from(isPbkdf2 ? parts[2] : parts[4], 'hex')
     const calculated = await derivePassword(password, salt, isPbkdf2 ? 'pbkdf2_sha256' : 'scrypt')
-    return expected.length === calculated.length && timingSafeEqual(expected, calculated) &&
-      username.trim().toLowerCase() === 'admin'
+    return expected.length === calculated.length && timingSafeEqual(expected, calculated)
   } catch {
     return false
   }
