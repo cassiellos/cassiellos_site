@@ -17,7 +17,7 @@ import { parseBrazilianWhatsapp } from '../whatsapp'
  * toda ação derivada daqui precisa ser idempotente.
  */
 
-export const GRAPH_VERSION = 'v21.0'
+export const GRAPH_VERSION = 'v27.0'
 /** Janela de atendimento: 24 h a contar da última mensagem do usuário. Fora dela, só template (pago). */
 export const SERVICE_WINDOW_MS = 24 * 60 * 60_000
 
