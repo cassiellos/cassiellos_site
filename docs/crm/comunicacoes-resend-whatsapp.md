@@ -7,7 +7,7 @@ variáveis abaixo sejam definidas na Vercel. O número comercial da Cassiellos *
 
 | Parte | Estado |
 |---|---|
-| Serviço de e-mail (Resend), modelos, confirmação e lembretes de 24 h e 1 h | implementado e testado com mocks; **aguardando credenciais e verificação de domínio** |
+| Serviço de e-mail (Resend), modelos, confirmação e lembretes dinâmicos (8h do dia + 1 h) | implementado e testado com mocks; **aguardando credenciais e verificação de domínio** |
 | Webhook de status da Resend (entregue, devolvido, spam, falhou) | implementado; aguardando `RESEND_WEBHOOK_SECRET` |
 | Varredura dos envios fora da janela de 30 dias (Vercel Cron) | implementada; aguardando `CRON_SECRET` |
 | Botão "Receber confirmação pelo WhatsApp" na confirmação (Modo A) | implementado; **aguardando o número comercial** |
@@ -23,7 +23,7 @@ variáveis abaixo sejam definidas na Vercel. O número comercial da Cassiellos *
 | `RESEND_API_KEY` | credencial (marcar **Sensitive**) | canal desligado |
 | `RESEND_FROM` | remetente; padrão `Agência Cassiellos <agendamentos@cassiellos.com.br>` | usa o padrão |
 | `COMMS_EMAIL_CONFIRMATION` | liga o e-mail de confirmação (`true`) | não envia confirmação |
-| `COMMS_EMAIL_REMINDERS` | liga os lembretes de 24 h e 1 h (`true`) | não envia lembretes |
+| `COMMS_EMAIL_REMINDERS` | liga os lembretes (`true`) | não envia lembretes |
 | `RESEND_WEBHOOK_SECRET` | segredo Svix do webhook | estados param em "aceito", nunca viram "entregue" |
 | `COMMS_EMAIL_DAILY_CAP` | trava diária; padrão e **teto** 100 | usa 100 |
 | `COMMS_EMAIL_MONTHLY_CAP` | trava mensal; padrão e **teto** 3000 | usa 3000 |
@@ -106,11 +106,49 @@ Nenhum e-mail ou telefone em claro é gravado nessas tabelas: fica só o destina
 (`jo***@gmail.com`), para o administrador reconhecer a linha. O endereço real é lido de `crm.leads`
 no momento do envio.
 
+## Sequência de comunicação (ajuste de 18/11/2026)
+
+A campanha roda 24 horas por dia e o lead agenda com poucas horas de antecedência, então um lembrete
+fixo "24 h antes" quase nunca caberia — para quem agenda às 23h30 uma reunião das 10h30, ele nasceria
+no passado. A regra fixa foi substituída por esta sequência (`lib/crm/comms/plan.ts`):
+
+1. **Confirmação**, na hora da confirmação da reunião. Prioridade absoluta, nunca descartada.
+2. **Lembrete da manhã**, às **8h do dia da reunião**, no fuso de Brasília.
+3. **Lembrete de 1 hora**, 60 minutos antes do início.
+
+Nenhum dos lembretes é obrigatório. Um lembrete só entra se estiver **no futuro** e se houver pelo
+menos **60 minutos de respiro** em relação à mensagem vizinha. Quando a manhã e o lembrete de 1 hora
+disputam o mesmo espaço, fica o de 1 hora: perto da reunião ele é o mais útil. Nunca saem três
+mensagens coladas só para completar a automação.
+
+| Agendamento | Reunião | Sai |
+|---|---|---|
+| 23h30 | 10h30 do dia seguinte | 23h30, 8h, 9h30 |
+| 7h | 12h | 7h, 8h, 11h |
+| 9h | 12h | 9h, 11h (as 8h já passaram) |
+| 10h | 10h30 | só a confirmação |
+| qualquer | 9h | confirmação + 8h? **não** — 8h e o lembrete de 1 hora colidiriam; fica o de 1 hora |
+
+As 8h são calculadas **lendo o deslocamento do próprio fuso** (`lib/crm/comms/sao-paulo.ts`), não
+somando três horas fixas: hoje o Brasil não usa horário de verão, mas somar à mão quebraria em
+silêncio se voltasse a usar. O "dia da reunião" é o dia **em Brasília**, não em UTC — uma reunião às
+22h30 usa as 8h daquele mesmo dia, não do seguinte.
+
+### Remarcação
+
+A chave de idempotência do e-mail inclui o **horário** da reunião. Confirmar duas vezes o mesmo
+horário dá a mesma chave e nada duplica; remarcar para outro horário gera chaves novas, que não
+colidem com a sequência antiga (que fica cancelada no histórico).
+
+Hoje o CRM **não tem fluxo de remarcação**: remarcar é cancelar e o lead agendar de novo, o que já
+cria outra reunião com sua própria sequência. `rescheduleMeetingEmails()` existe para que, quando
+esse fluxo for criado, haja um único ponto a chamar — e não nasça uma segunda automação ao lado desta.
+
 ## Decisões que valem registrar
 
 1. **Agendamento nativo até 30 dias.** A Resend aceita `scheduled_at` com até 30 dias de
-   antecedência (não 72 h). Com a janela de agendamento padrão do CRM (3 dias), os dois lembretes
-   cabem no agendamento nativo e a varredura nem chega a ser usada. Ela existe para o caso de
+   antecedência (não 72 h). Com a janela de agendamento padrão do CRM (3 dias), os lembretes cabem
+   no agendamento nativo e a varredura nem chega a ser usada. Ela existe para o caso de
    `windowDays` ser elevado (o limite do CRM é 90).
 2. **A varredura diária basta.** Ela entrega ao provedor tudo que já cabe na janela de 30 dias, não
    só o que venceu. Assim uma reunião marcada para daqui a 80 dias tem o lembrete de 1 h entregue à

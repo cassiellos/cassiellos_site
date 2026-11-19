@@ -23,7 +23,7 @@ type Status = {
 
 const KIND_LABEL: Record<string, string> = {
   confirmation: 'E-mail de confirmação',
-  reminder_24h: 'Lembrete — 24 horas antes',
+  reminder_morning: 'Lembrete — 8h do dia da reunião',
   reminder_1h: 'Lembrete — 1 hora antes',
   whatsapp_auto_reply: 'WhatsApp — resposta automática',
 }

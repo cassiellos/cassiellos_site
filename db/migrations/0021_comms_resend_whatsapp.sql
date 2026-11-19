@@ -4,7 +4,7 @@
 -- Não altera, não remove e não faz backfill de nenhum registro existente.
 -- Nada aqui liga envios: as chaves gerais ficam em lib/crm/comms/config.ts (desligadas por padrão).
 --
--- 1) crm.comms_messages: uma linha por mensagem LÓGICA (confirmação, lembrete de 24 h, lembrete de 1 h,
+-- 1) crm.comms_messages: uma linha por mensagem LÓGICA (confirmação, lembrete da manhã, lembrete de 1 h,
 --    resposta automática do WhatsApp). dedupe_key é a idempotência: a mesma reunião nunca gera
 --    duas vezes a mesma mensagem, mesmo com reenvio, retentativa ou dupla chamada do webhook.
 -- 2) crm.comms_whatsapp_refs: referência PÚBLICA opaca e temporária que vai no texto do wa.me.
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS crm.comms_messages (
     CONSTRAINT comms_messages_dedupe_key_unique UNIQUE (dedupe_key),
     CONSTRAINT comms_messages_channel_check CHECK (channel IN ('email', 'whatsapp')),
     CONSTRAINT comms_messages_kind_check CHECK (kind IN (
-        'confirmation', 'reminder_24h', 'reminder_1h', 'whatsapp_auto_reply')),
+        'confirmation', 'reminder_morning', 'reminder_1h', 'whatsapp_auto_reply')),
     -- 'pending'   = a gravar/enviar;      'scheduled' = aceita pelo provedor com horário futuro;
     -- 'sent'      = aceita pelo provedor; 'delivered' = confirmada pelo webhook (≠ aceita);
     -- 'failed'    = recusada ou devolvida; 'cancelled' = reunião cancelada/remarcada antes do envio;

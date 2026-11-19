@@ -34,7 +34,7 @@ const defaultLog = (event: string, details: Record<string, unknown>) =>
 /** Estados da reunião que ainda merecem comunicação. */
 const LIVE_STATUSES = new Set(['pending', 'confirmed'])
 
-const KINDS: ReadonlySet<string> = new Set(['confirmation', 'reminder_24h', 'reminder_1h'])
+const KINDS: ReadonlySet<string> = new Set(['confirmation', 'reminder_morning', 'reminder_1h'])
 
 function startOfDayUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
@@ -180,8 +180,9 @@ export async function sweepDueMessages(deps: SendDeps, limit = 25): Promise<{ pr
 }
 
 /**
- * Reunião cancelada ou remarcada: cancela a fila local E o que já estava agendado na Resend.
- * Cancelado na Resend não volta — a remarcação cria mensagens novas, com outro dedupe_key.
+ * Reunião cancelada: cancela a fila local E o que já estava agendado na Resend.
+ * Cancelado na Resend não volta, por isso a remarcação não reaproveita: ela cria mensagens novas,
+ * com outro dedupe_key (que inclui o horário da reunião).
  */
 export async function cancelMeetingEmails(deps: SendDeps, appointmentId: string): Promise<number> {
   try {
@@ -192,4 +193,21 @@ export async function cancelMeetingEmails(deps: SendDeps, appointmentId: string)
   } catch {
     return 0
   }
+}
+
+/**
+ * Remarcação: cancela a sequência antiga (local e na Resend) e recalcula a nova a partir do
+ * horário atual da reunião. É idempotente: rodar duas vezes com o mesmo horário não duplica nada,
+ * porque as chaves do e-mail incluem o horário.
+ *
+ * Hoje o CRM não tem fluxo de remarcação — remarcar é cancelar e o lead agendar de novo, o que já
+ * cria outra reunião com sua própria sequência. Esta função existe para que, quando o fluxo for
+ * criado, ele tenha um único ponto a chamar, em vez de nascer uma segunda automação ao lado desta.
+ */
+export async function rescheduleMeetingEmails(
+  deps: SendDeps, appointmentId: string,
+): Promise<{ cancelled: number; created: number; delivered: number }> {
+  const cancelled = await cancelMeetingEmails(deps, appointmentId)
+  const { created, delivered } = await scheduleMeetingEmails(deps, appointmentId)
+  return { cancelled, created, delivered }
 }

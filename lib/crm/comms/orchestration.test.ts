@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import type { EmailConfig, WhatsappConfig } from './config'
-import { deliverMessage, scheduleMeetingEmails, type SendDeps } from './send'
+import {
+  cancelMeetingEmails, deliverMessage, rescheduleMeetingEmails, scheduleMeetingEmails, type SendDeps,
+} from './send'
 import { handleIncomingMessage } from './whatsapp-reply'
 import type { CommsMessage, Queryable } from './store'
 
@@ -118,7 +120,7 @@ test('envio: lembrete dentro da janela vai com scheduled_at', async () => {
   const pool = fakePool()
   const { fetcher, sent } = fakeFetch()
   const scheduledFor = new Date('2026-11-19T17:30:00.000Z').toISOString()
-  await deliverMessage(deps(pool, fetcher), message({ kind: 'reminder_24h', scheduledFor }))
+  await deliverMessage(deps(pool, fetcher), message({ kind: 'reminder_morning', scheduledFor }))
   assert.equal(JSON.parse(String(sent[0].init.body)).scheduled_at, scheduledFor)
 })
 
@@ -288,4 +290,30 @@ test('nada retroativo: reunião que já começou não gera comunicação nenhuma
   assert.deepEqual(result, { created: 0, delivered: 0 })
   assert.equal(sent.length, 0)
   assert.equal(pool.updates.length, 0, 'nenhuma linha criada no banco')
+})
+
+test('cancelamento: a fila local é cancelada e o agendamento na Resend também', async () => {
+  const cancelled: string[] = []
+  const pool: Queryable = { query: async (sql: string) => {
+    if (sql.includes("status = 'cancelled'")) {
+      return { rows: [{ provider_message_id: 'resend-a' }, { provider_message_id: 'resend-b' }], rowCount: 2 }
+    }
+    return { rows: [], rowCount: 0 }
+  } } as unknown as Queryable
+  const fetcher = async (url: string) => { cancelled.push(url); return new Response('{}', { status: 200 }) }
+  const total = await cancelMeetingEmails(deps(pool, fetcher), APPT)
+  assert.equal(total, 2)
+  assert.deepEqual(cancelled.map(u => u.split('/emails/')[1]), ['resend-a/cancel', 'resend-b/cancel'])
+})
+
+test('remarcação: cancela a sequência antiga antes de recalcular', async () => {
+  const order: string[] = []
+  const pool: Queryable = { query: async (sql: string) => {
+    if (sql.includes("status = 'cancelled'")) { order.push('cancelou'); return { rows: [], rowCount: 0 } }
+    if (sql.includes('FROM crm.appointments a JOIN crm.leads')) { order.push('releu a reunião'); return { rows: [], rowCount: 0 } }
+    return { rows: [], rowCount: 0 }
+  } } as unknown as Queryable
+  const { fetcher } = fakeFetch()
+  await rescheduleMeetingEmails(deps(pool, fetcher), APPT)
+  assert.deepEqual(order, ['cancelou', 'releu a reunião'])
 })

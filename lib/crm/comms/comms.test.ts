@@ -5,7 +5,8 @@ import { test } from 'node:test'
 import { readEmailConfig, readWhatsappConfig, publicCommsStatus, FREE_PLAN_DAILY_CAP } from './config'
 import { generatePublicReference, isPublicReference, REFERENCE_LENGTH } from './reference'
 import { buildLeadWhatsappLink, leadWhatsappMessage, referenceFromIncomingMessage } from './whatsapp-lead'
-import { dedupeKey, planMeetingEmails } from './plan'
+import { dedupeKey, planMeetingEmails, MIN_GAP_MS } from './plan'
+import { fromWallClock, hourOfMeetingDay, wallClock } from './sao-paulo'
 import { renderMeetingEmail, renderWhatsappAutoReply, escapeHtml } from './templates'
 import { maskEmail, maskPhone } from './mask'
 import { parseWebhookEvent, verifyWebhookSignature, withinNativeScheduleWindow } from './resend'
@@ -159,54 +160,216 @@ test('Modo B: lê a referência da mensagem recebida, com e sem acento', () => {
 /* -------------------------------------------------------------- plano/fila */
 
 const APPT = '11111111-2222-3333-4444-555555555555'
-const NOW = new Date('2026-11-18T12:00:00.000Z')
-const inHours = (h: number) => new Date(NOW.getTime() + h * 3_600_000).toISOString()
 
-test('plano: reunião distante gera confirmação e os dois lembretes', () => {
+/** Horário de parede em Brasília → instante, para os testes serem lidos como a agência pensa. */
+function sp(text: string): Date {
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/)
+  if (!m) throw new Error('data de teste inválida: ' + text)
+  return fromWallClock(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]))
+}
+
+/** Devolve a sequência como horários de Brasília, para comparar com o que foi pedido. */
+function sequence(bookedAt: string, meetingAt: string): [string, string][] {
   const planned = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(72), confirmation: true, reminders: true }, NOW)
-  assert.deepEqual(planned.map(p => p.kind), ['confirmation', 'reminder_24h', 'reminder_1h'])
-  assert.equal(planned[1].sendAt, inHours(48))
-  assert.equal(planned[2].sendAt, inHours(71))
-  assert.ok(planned.every(p => p.dedupeKey.startsWith('email:')))
+    { appointmentId: APPT, startAt: sp(meetingAt).toISOString(), confirmation: true, reminders: true },
+    sp(bookedAt))
+  return planned.map(p => {
+    const w = wallClock(new Date(p.sendAt))
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return [p.kind, pad(w.day) + '/' + pad(w.month) + ' ' + pad(w.hour) + ':' + pad(w.minute)] as [string, string]
+  })
+}
+
+/* Os quatro exemplos obrigatórios, escritos como foram especificados. */
+
+test('exemplo 1 — agenda 23h30 para reunião 10h30 do dia seguinte: 23h30, 8h e 9h30', () => {
+  assert.deepEqual(sequence('2026-11-18 23:30', '2026-11-19 10:30'), [
+    ['confirmation', '18/11 23:30'],
+    ['reminder_morning', '19/11 08:00'],
+    ['reminder_1h', '19/11 09:30'],
+  ])
 })
 
-test('plano: reunião em 2 h não gera lembrete de 24 h (nada retroativo)', () => {
-  const planned = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(2), confirmation: true, reminders: true }, NOW)
-  assert.deepEqual(planned.map(p => p.kind), ['confirmation', 'reminder_1h'])
+test('exemplo 2 — agenda 7h para reunião 12h: 7h, 8h e 11h', () => {
+  assert.deepEqual(sequence('2026-11-18 07:00', '2026-11-18 12:00'), [
+    ['confirmation', '18/11 07:00'],
+    ['reminder_morning', '18/11 08:00'],
+    ['reminder_1h', '18/11 11:00'],
+  ])
 })
 
-test('plano: reunião em 30 min só gera a confirmação', () => {
+test('exemplo 3 — agenda 9h para reunião 12h: 9h e 11h (as 8h já passaram)', () => {
+  assert.deepEqual(sequence('2026-11-18 09:00', '2026-11-18 12:00'), [
+    ['confirmation', '18/11 09:00'],
+    ['reminder_1h', '18/11 11:00'],
+  ])
+})
+
+test('exemplo 4 — agenda 10h para reunião 10h30: só a confirmação', () => {
+  assert.deepEqual(sequence('2026-11-18 10:00', '2026-11-18 10:30'), [
+    ['confirmation', '18/11 10:00'],
+  ])
+})
+
+/* Regras de prioridade e respiro mínimo. */
+
+test('prioridade: perto da reunião, quem fica é o lembrete de 1 hora, não o das 8h', () => {
+  // Reunião às 9h: as 8h e o lembrete de 1 hora cairiam no mesmo instante.
+  assert.deepEqual(sequence('2026-11-18 20:00', '2026-11-19 09:00').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
+})
+
+test('o lembrete das 8h exige 1 hora de respiro até o de 1 hora', () => {
+  // Reunião às 9h30 → 1 hora antes é 8h30: 30 minutos depois das 8h, perto demais.
+  assert.deepEqual(sequence('2026-11-18 20:00', '2026-11-19 09:30').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
+  // Reunião às 10h → 1 hora antes é 9h: exatamente 1 hora depois das 8h, cabe.
+  assert.deepEqual(sequence('2026-11-18 20:00', '2026-11-19 10:00').map(p => p[0]),
+    ['confirmation', 'reminder_morning', 'reminder_1h'])
+})
+
+test('reunião de manhã cedo: as 8h cairiam depois dela e não são enviadas', () => {
+  assert.deepEqual(sequence('2026-11-18 20:00', '2026-11-19 07:00').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
+})
+
+test('o lembrete de 1 hora exige 1 hora de respiro desde a confirmação', () => {
+  // Confirmou 10h para reunião 11h30 → lembrete às 10h30, meia hora depois: vira ruído.
+  assert.deepEqual(sequence('2026-11-18 10:00', '2026-11-18 11:30').map(p => p[0]), ['confirmation'])
+  // Confirmou 10h para reunião 12h → lembrete às 11h, uma hora depois: cabe.
+  assert.deepEqual(sequence('2026-11-18 10:00', '2026-11-18 12:00').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
+})
+
+test('nunca três mensagens coladas: há sempre ao menos 1 hora entre elas', () => {
+  const casos = [
+    ['2026-11-18 23:30', '2026-11-19 10:30'], ['2026-11-18 07:00', '2026-11-18 12:00'],
+    ['2026-11-18 06:00', '2026-11-18 09:30'], ['2026-11-17 15:00', '2026-11-18 16:00'],
+    ['2026-11-18 07:30', '2026-11-18 20:00'], ['2026-11-18 08:00', '2026-11-18 10:00'],
+  ]
+  for (const [booked, meeting] of casos) {
+    const planned = planMeetingEmails(
+      { appointmentId: APPT, startAt: sp(meeting).toISOString(), confirmation: true, reminders: true },
+      sp(booked))
+    const times = planned.map(p => Date.parse(p.sendAt))
+    for (let i = 1; i < times.length; i++) {
+      assert.ok(times[i] - times[i - 1] >= MIN_GAP_MS,
+        booked + ' → ' + meeting + ': mensagens a menos de 1 hora uma da outra')
+      assert.ok(times[i] < Date.parse(sp(meeting).toISOString()), 'mensagem depois da reunião')
+    }
+  }
+})
+
+test('a sequência sai sempre em ordem cronológica', () => {
   const planned = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(0.5), confirmation: true, reminders: true }, NOW)
+    { appointmentId: APPT, startAt: sp('2026-11-19 10:30').toISOString(), confirmation: true, reminders: true },
+    sp('2026-11-18 23:30'))
+  const times = planned.map(p => Date.parse(p.sendAt))
+  assert.deepEqual(times, [...times].sort((a, b) => a - b))
+})
+
+/* Virada de dia e fuso. */
+
+test('virada de dia: reunião logo após a meia-noite usa as 8h do DIA DELA', () => {
+  // Reunião 00h30 do dia 19 → as 8h do dia 19 são DEPOIS da reunião; só o lembrete de 1 hora.
+  assert.deepEqual(sequence('2026-11-18 14:00', '2026-11-19 00:30').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
+})
+
+test('virada de dia: reunião às 23h usa as 8h do mesmo dia, não do dia seguinte', () => {
+  assert.deepEqual(sequence('2026-11-18 06:00', '2026-11-18 23:00'), [
+    ['confirmation', '18/11 06:00'],
+    ['reminder_morning', '18/11 08:00'],
+    ['reminder_1h', '18/11 22:00'],
+  ])
+})
+
+test('fuso: as 8h são lidas do fuso, não somadas à mão', () => {
+  // Sem horário de verão (hoje): 8h em Brasília = 11h UTC.
+  assert.equal(hourOfMeetingDay(new Date('2026-11-20T17:30:00Z'), 8).toISOString(), '2026-11-20T11:00:00.000Z')
+  // Com horário de verão (regra vigente em 2018, UTC−2): 8h em Brasília = 10h UTC.
+  assert.equal(hourOfMeetingDay(new Date('2018-01-15T15:00:00Z'), 8).toISOString(), '2018-01-15T10:00:00.000Z')
+})
+
+test('fuso: o dia da reunião é o dia em BRASÍLIA, não em UTC', () => {
+  // 01h30 UTC do dia 21 é 22h30 do dia 20 em Brasília: as 8h são do dia 20.
+  assert.equal(hourOfMeetingDay(new Date('2026-11-21T01:30:00Z'), 8).toISOString(), '2026-11-20T11:00:00.000Z')
+})
+
+/* Desligamentos e idempotência. */
+
+test('lembretes desligados: só a confirmação', () => {
+  const planned = planMeetingEmails(
+    { appointmentId: APPT, startAt: sp('2026-11-19 10:30').toISOString(), confirmation: true, reminders: false },
+    sp('2026-11-18 23:30'))
   assert.deepEqual(planned.map(p => p.kind), ['confirmation'])
 })
 
-test('plano: lembretes desligados não criam linha nenhuma', () => {
+test('confirmação desligada: os lembretes continuam valendo por si', () => {
   const planned = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(72), confirmation: true, reminders: false }, NOW)
-  assert.deepEqual(planned.map(p => p.kind), ['confirmation'])
+    { appointmentId: APPT, startAt: sp('2026-11-19 10:30').toISOString(), confirmation: false, reminders: true },
+    sp('2026-11-18 23:30'))
+  assert.deepEqual(planned.map(p => p.kind), ['reminder_morning', 'reminder_1h'])
 })
 
-test('plano: além de 30 dias o lembrete sai da janela nativa da Resend', () => {
-  const planned = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(24 * 60), confirmation: false, reminders: true }, NOW)
-  assert.deepEqual(planned.map(p => p.nativeSchedule), [false, false])
+test('data inválida não gera mensagem nenhuma', () => {
+  assert.deepEqual(planMeetingEmails(
+    { appointmentId: APPT, startAt: 'nao-e-data', confirmation: true, reminders: true }), [])
+})
+
+test('além de 30 dias os lembretes saem da janela nativa da Resend', () => {
+  const longe = planMeetingEmails(
+    { appointmentId: APPT, startAt: sp('2027-02-10 14:00').toISOString(), confirmation: false, reminders: true },
+    sp('2026-11-18 10:00'))
+  assert.deepEqual(longe.map(p => p.nativeSchedule), [false, false])
   const perto = planMeetingEmails(
-    { appointmentId: APPT, startAt: inHours(24 * 10), confirmation: false, reminders: true }, NOW)
+    { appointmentId: APPT, startAt: sp('2026-11-28 14:00').toISOString(), confirmation: false, reminders: true },
+    sp('2026-11-18 10:00'))
   assert.deepEqual(perto.map(p => p.nativeSchedule), [true, true])
 })
 
-test('plano: a chave de idempotência é por reunião e tipo', () => {
-  assert.equal(dedupeKey('email', 'confirmation', APPT), 'email:confirmation:' + APPT)
-  assert.notEqual(dedupeKey('email', 'reminder_1h', APPT), dedupeKey('email', 'reminder_24h', APPT))
+test('plano: a chave de idempotência distingue reunião, tipo e horário', () => {
+  const t1 = '2026-11-19T13:30:00.000Z'
+  const t2 = '2026-11-19T16:00:00.000Z'
+  assert.equal(dedupeKey('email', 'confirmation', APPT, t1), 'email:confirmation:' + APPT + ':202611191330')
+  assert.notEqual(dedupeKey('email', 'reminder_1h', APPT, t1), dedupeKey('email', 'reminder_morning', APPT, t1))
+  // Remarcação: mesmo tipo e mesma reunião, horário diferente → chave diferente, sem colidir com a cancelada.
+  assert.notEqual(dedupeKey('email', 'reminder_1h', APPT, t1), dedupeKey('email', 'reminder_1h', APPT, t2))
+  // Reconfirmar o MESMO horário dá a mesma chave: nada duplica.
+  assert.equal(dedupeKey('email', 'reminder_1h', APPT, t1), dedupeKey('email', 'reminder_1h', APPT, t1))
+  // WhatsApp ignora o horário: uma resposta automática por reunião, sempre.
+  assert.equal(dedupeKey('whatsapp', 'whatsapp_auto_reply', APPT, t1),
+    dedupeKey('whatsapp', 'whatsapp_auto_reply', APPT, t2))
+})
+
+test('remarcação: a sequência inteira é recalculada para o novo horário', () => {
+  const antes = planMeetingEmails(
+    { appointmentId: APPT, startAt: sp('2026-11-19 10:30').toISOString(), confirmation: false, reminders: true },
+    sp('2026-11-18 23:30'))
+  const depois = planMeetingEmails(
+    { appointmentId: APPT, startAt: sp('2026-11-19 16:00').toISOString(), confirmation: false, reminders: true },
+    sp('2026-11-18 23:30'))
+  assert.deepEqual(antes.map(p => p.kind), ['reminder_morning', 'reminder_1h'])
+  assert.deepEqual(depois.map(p => p.kind), ['reminder_morning', 'reminder_1h'])
+  // As 8h continuam sendo as 8h; o lembrete final acompanha o novo horário.
+  assert.equal(antes[0].sendAt, depois[0].sendAt)
+  assert.notEqual(antes[1].sendAt, depois[1].sendAt)
+  // E nenhuma chave da sequência nova colide com a antiga.
+  const antigas = new Set(antes.map(p => p.dedupeKey))
+  assert.ok(depois.every(p => !antigas.has(p.dedupeKey)))
+})
+
+test('remarcação para cima da hora: a nova sequência pode encolher', () => {
+  // Remarcada de 10h30 para 8h30 do mesmo dia: as 8h não cabem mais, só o lembrete de 1 hora.
+  assert.deepEqual(sequence('2026-11-18 23:30', '2026-11-19 08:30').map(p => p[0]),
+    ['confirmation', 'reminder_1h'])
 })
 
 test('janela nativa: passado e futuro distante ficam de fora', () => {
-  assert.equal(withinNativeScheduleWindow(new Date(NOW.getTime() - 1000), NOW), false)
-  assert.equal(withinNativeScheduleWindow(new Date(NOW.getTime() + 1000), NOW), true)
-  assert.equal(withinNativeScheduleWindow(new Date(NOW.getTime() + 31 * 86_400_000), NOW), false)
+  const now = new Date('2026-11-18T12:00:00.000Z')
+  assert.equal(withinNativeScheduleWindow(new Date(now.getTime() - 1000), now), false)
+  assert.equal(withinNativeScheduleWindow(new Date(now.getTime() + 1000), now), true)
+  assert.equal(withinNativeScheduleWindow(new Date(now.getTime() + 31 * 86_400_000), now), false)
 })
 
 /* ---------------------------------------------------------------- modelos */
@@ -229,7 +392,7 @@ test('e-mail: confirmação traz nome, data, horário de Brasília, Meet e agend
 })
 
 test('e-mail: lembretes têm assunto próprio e o mesmo conteúdo essencial', () => {
-  for (const kind of ['reminder_24h', 'reminder_1h'] as const) {
+  for (const kind of ['reminder_morning', 'reminder_1h'] as const) {
     const mail = renderMeetingEmail(kind, MEETING)
     assert.notEqual(mail.subject, 'Sua reunião com a Cassiellos está confirmada!')
     assert.ok(mail.html.includes('https://meet.google.com/abc-defg-hij'))
