@@ -9,6 +9,7 @@ import { loadPushSettings } from '@/lib/crm/push/store'
 import { safeCrmReturnPath } from '@/lib/crm/return-path'
 import { DEFAULT_WHATSAPP_TEMPLATE, renderWhatsappMessage } from '@/lib/crm/whatsapp-message'
 import { parseBrazilianWhatsapp } from '@/lib/crm/whatsapp'
+import { publicCommsStatus } from '@/lib/crm/comms/config'
 import MeetingWhatsapp from './meeting-whatsapp'
 import MeetingComms from './meeting-comms'
 import '../../crm.css'
@@ -65,6 +66,10 @@ export default async function MeetingPage({ params, searchParams }: {
   const active = (row.status === 'confirmed' || row.status === 'pending') && !row.ended
   const statusLabel = row.status === 'cancelled' ? 'Cancelada' : row.ended ? 'Encerrada' : row.status === 'confirmed' ? 'Confirmada' : row.status
   const start = new Date(row.starts_at)
+  // Não consulta as tabelas da migration 0021 até que a integração seja configurada.
+  // A publicação do código pode preceder a migration sem degradar a ficha existente.
+  const comms = publicCommsStatus()
+  const showComms = comms.email.ready || comms.whatsapp.buttonReady || comms.whatsapp.cloudReady
   const message = renderWhatsappMessage(template, {
     name: row.full_name, company: row.company, startsAt: row.starts_at, endsAt: row.ends_at, meetingUrl: meetUrl, meetingName,
   })
@@ -93,7 +98,7 @@ export default async function MeetingPage({ params, searchParams }: {
         </div>
       </section>
       <MeetingWhatsapp initialText={message} whatsapp={row.whatsapp} active={active} focus={focusWhatsapp} meetPending={!meetUrl} />
-      <MeetingComms appointmentId={row.id} />
+      {showComms && <MeetingComms appointmentId={row.id} />}
     </main>
   </div>
 }
