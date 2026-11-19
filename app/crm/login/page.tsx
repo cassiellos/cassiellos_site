@@ -45,7 +45,7 @@ export default async function CrmLoginPage({ searchParams }: LoginProps) {
         <form action="/api/crm/auth/login" method="POST" className="crm-auth-form">
           {next && <input type="hidden" name="next" value={next} />}
           <label htmlFor="crm-username">Usuário</label>
-          <input id="crm-username" name="username" type="text" required autoComplete="username" autoCapitalize="none" autoCorrect="off" maxLength={100} placeholder="admin" disabled={!configured} />
+          <input id="crm-username" name="username" type="text" required autoComplete="username" autoCapitalize="none" autoCorrect="off" maxLength={100} placeholder="admin ou guilherme" disabled={!configured} />
           <label htmlFor="crm-password">Senha</label>
           <input id="crm-password" name="password" type="password" required minLength={12} maxLength={256} autoComplete="current-password" placeholder="Sua senha de acesso" disabled={!configured} />
           <button className="crm-btn crm-btn-primary crm-auth-submit" type="submit" disabled={!configured}>Acessar meu CRM <span aria-hidden="true">→</span></button>
