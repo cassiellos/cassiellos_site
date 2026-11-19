@@ -1,0 +1,89 @@
+name: CRM Communications QA (PR 57)
+
+on:
+  push:
+    branches:
+      - feat/comms-resend-whatsapp-20261118
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crm_comms_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crm_comms_qa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/crm_comms_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run complete regression suite
+        run: npm test
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+      - name: Test migration 0021 and real PostgreSQL concurrency
+        run: |
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA crm; CREATE TABLE crm.appointments (id uuid PRIMARY KEY, status text NOT NULL)"
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO crm.appointments(id,status) VALUES('11111111-2222-3333-4444-555555555555','confirmed')"
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0021_comms_resend_whatsapp.sql
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0021_comms_resend_whatsapp.sql
+          node --import tsx --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import { randomUUID } from 'node:crypto'
+          import pg from 'pg'
+          import { claimForSend, cancelPending, markSent } from './lib/crm/comms/store.ts'
+          const pool = new pg.Pool({connectionString:process.env.TEST_PG_URL,max:12})
+          const appointment = '11111111-2222-3333-4444-555555555555'
+          const now = new Date()
+          async function seed(kind='confirmation', status='pending', when=now, claimed=null, provider=null) {
+            const id=randomUUID()
+            await pool.query("INSERT INTO crm.comms_messages(id,appointment_id,channel,kind,dedupe_key,status,scheduled_for,claimed_at,provider_message_id) VALUES($1,$2,'email',$3,$4,$5,$6,$7,$8)",[id,appointment,kind,'test:'+id,status,when,claimed,provider])
+            return id
+          }
+          const clear=()=>pool.query('TRUNCATE crm.comms_messages')
+          try {
+            const id=await seed()
+            const same=await Promise.all(Array.from({length:10},()=>claimForSend(pool,id,{dailyCap:100,monthlyCap:3000,now})))
+            assert.equal(same.filter(Boolean).length,1,'same message must only be claimed once')
+            await clear()
+            const ids=await Promise.all(Array.from({length:6},()=>seed()))
+            const wins=await Promise.all(ids.map(id=>claimForSend(pool,id,{dailyCap:1,monthlyCap:100,now})))
+            assert.equal(wins.filter(Boolean).length,1,'quota must be atomic across distinct messages')
+            await clear()
+            const future=new Date(now.getTime()+3*86400000)
+            await seed('reminder_1h','scheduled',future,new Date(now.getTime()-86400000))
+            const futureId=await seed('reminder_morning','pending',future)
+            assert.equal(await claimForSend(pool,futureId,{dailyCap:1,monthlyCap:100,now}),null,'future delivery quota must be reserved')
+            await clear()
+            const cancelId=await seed('reminder_1h','scheduled',future,null,'remote-cancel-test')
+            assert.deepEqual(await cancelPending(pool,appointment),['remote-cancel-test'])
+            const cancelled=await pool.query('SELECT status FROM crm.comms_messages WHERE id=$1',[cancelId])
+            assert.equal(cancelled.rows[0].status,'cancel_requested')
+            await clear()
+            const inFlightId=await seed('reminder_1h','sending',future)
+            await cancelPending(pool,appointment)
+            assert.equal(await markSent(pool,inFlightId,{providerMessageId:'remote-late-test',scheduled:true}),true)
+            const race=await pool.query('SELECT status FROM crm.comms_messages WHERE id=$1',[inFlightId])
+            assert.equal(race.rows[0].status,'cancel_requested')
+            console.log('PostgreSQL QA: migration twice, atomic same-message and cross-message quota, future quota, cancellation and in-flight race all passed.')
+          } finally { await pool.end() }
+          NODE

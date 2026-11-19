@@ -22,3 +22,15 @@
 #cassiellos-crm .crm-meeting-field textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;background:#0a1425;border:1px solid #36506d;border-radius:10px;color:#f2f6fc;padding:12px;font:inherit;font-size:15px;font-weight:400;line-height:1.5;resize:vertical}
 #cassiellos-crm .crm-meeting-field textarea:focus{border-color:var(--crm-red);outline:0}
 @media(max-width:420px){#cassiellos-crm .crm-meeting-grid{grid-template-columns:1fr}#cassiellos-crm .crm-meeting-card h1{font-size:22px}}
+
+/* Comunicações (e-mail/WhatsApp) — lista discreta dentro da ficha, sem painel novo. */
+#cassiellos-crm .crm-comms-flags{font-size:11px;line-height:1.6;margin-bottom:14px}
+#cassiellos-crm .crm-comms-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+#cassiellos-crm .crm-comms-list li{border:1px solid var(--crm-border);border-radius:10px;padding:11px 13px}
+#cassiellos-crm .crm-comms-head{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+#cassiellos-crm .crm-comms-head strong{font-size:13px}
+#cassiellos-crm .crm-comms-head span{font-size:11px;font-weight:700;color:var(--crm-muted)}
+#cassiellos-crm .crm-comms-head span[data-comms-status=delivered]{color:#34d6a0}
+#cassiellos-crm .crm-comms-head span[data-comms-status=failed]{color:var(--crm-red)}
+#cassiellos-crm .crm-comms-list li p{margin:5px 0 0;font-size:11px}
+#cassiellos-crm .crm-comms-list li .crm-btn{margin-top:9px;font-size:11px;padding:6px 11px}

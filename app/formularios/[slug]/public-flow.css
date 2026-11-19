@@ -1063,6 +1063,53 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   font:500 12px/1.4 var(--font-lato),Lato,Arial,sans-serif;
   cursor:pointer;
 }
+
+/* WhatsApp (Modo A): seção adicional da confirmação. Só aparece quando o servidor devolve o link;
+   não substitui nem reposiciona os botões de agenda nem o link do Meet acima. */
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats{
+  margin-top:26px;
+  padding-top:22px;
+  border-top:1px solid #e9eef3;
+}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats h2{
+  margin:0 0 5px;
+  font:600 15px/1.4 var(--font-lato),Lato,Arial,sans-serif;
+  color:#1f2a37;
+}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats>p{
+  margin:0 0 14px;
+  font-size:13px;
+  line-height:1.6;
+  color:#67727f;
+}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  padding:12px 19px;
+  border-radius:8px;
+  background:#1faf54;
+  color:#fff;
+  text-decoration:none;
+  font:600 14px/1.2 var(--font-lato),Lato,Arial,sans-serif;
+}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats-btn:hover{background:#1a9648}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats-btn:focus-visible{
+  outline:2px solid #0f6c37;
+  outline-offset:2px;
+}
+.cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats-note{
+  margin:11px 0 0;
+  font-size:12px;
+  line-height:1.6;
+  color:#8b939f;
+}
+@media(max-width:720px){
+  .cassiellos-public-flow[data-chronos=true] .cpf-schedule-whats-btn{
+    width:100%;
+    justify-content:center;
+  }
+}
 @media(max-width:720px){
   .cassiellos-public-flow[data-chronos=true] .cpf-calendar-layout{
     grid-template-columns:minmax(0,1fr);
