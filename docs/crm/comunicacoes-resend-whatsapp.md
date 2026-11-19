@@ -115,19 +115,21 @@ no passado. A regra fixa foi substituída por esta sequência (`lib/crm/comms/pl
 1. **Confirmação**, na hora da confirmação da reunião. Prioridade absoluta, nunca descartada.
 2. **Lembrete da manhã**, às **8h do dia da reunião**, no fuso de Brasília.
 3. **Lembrete de 1 hora**, 60 minutos antes do início.
+4. **Lembrete final de 15 minutos**, com a mesma identidade visual e o link do Meet.
 
-Nenhum dos lembretes é obrigatório. Um lembrete só entra se estiver **no futuro** e se houver pelo
-menos **60 minutos de respiro** em relação à mensagem vizinha. Quando a manhã e o lembrete de 1 hora
-disputam o mesmo espaço, fica o de 1 hora: perto da reunião ele é o mais útil. Nunca saem três
-mensagens coladas só para completar a automação.
+Nenhum dos lembretes é obrigatório. Os avisos tradicionais exigem **60 minutos de respiro**; o de
+15 minutos exige pelo menos **15 minutos desde a confirmação**. A diferença normal entre o aviso
+de 1 hora e o último aviso é de **45 minutos**. Quando manhã e 1 hora disputam o mesmo horário,
+fica o de 1 hora. Reuniões agendadas em cima da hora podem receber apenas a confirmação.
 
 | Agendamento | Reunião | Sai |
 |---|---|---|
-| 23h30 | 10h30 do dia seguinte | 23h30, 8h, 9h30 |
-| 7h | 12h | 7h, 8h, 11h |
-| 9h | 12h | 9h, 11h (as 8h já passaram) |
-| 10h | 10h30 | só a confirmação |
-| qualquer | 9h | confirmação + 8h? **não** — 8h e o lembrete de 1 hora colidiriam; fica o de 1 hora |
+| 23h30 | 10h30 do dia seguinte | 23h30, 8h, 9h30, 10h15 |
+| 7h | 12h | 7h, 8h, 11h, 11h45 |
+| 9h | 12h | 9h, 11h, 11h45 (as 8h já passaram) |
+| 10h | 10h30 | 10h e 10h15 (intervalo de 15 min) |
+| 10h | 10h20 | só a confirmação (não mandar outro e-mail 5 min depois) |
+| qualquer | 9h | as 8h e o lembrete de 1 hora colidem; fica o de 1 hora e, se couber, o de 15 min |
 
 As 8h são calculadas **lendo o deslocamento do próprio fuso** (`lib/crm/comms/sao-paulo.ts`), não
 somando três horas fixas: hoje o Brasil não usa horário de verão, mas somar à mão quebraria em

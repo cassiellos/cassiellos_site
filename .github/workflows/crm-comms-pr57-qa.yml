@@ -42,12 +42,16 @@ jobs:
         run: npx tsc --noEmit
       - name: Smoke individual CRM logins (isolated dummy credentials)
         run: node --conditions=react-server --import tsx scripts/crm-dual-auth-smoke.mjs
-      - name: Test migration 0021 and real PostgreSQL concurrency
+      - name: Test migrations 0021 and 0022 and real PostgreSQL concurrency
         run: |
           psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA crm; CREATE TABLE crm.appointments (id uuid PRIMARY KEY, status text NOT NULL)"
           psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO crm.appointments(id,status) VALUES('11111111-2222-3333-4444-555555555555','confirmed')"
           psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0021_comms_resend_whatsapp.sql
           psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0021_comms_resend_whatsapp.sql
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0022_comms_reminder_15m.sql
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -f db/migrations/0022_comms_reminder_15m.sql
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO crm.comms_messages(appointment_id,channel,kind,dedupe_key) VALUES('11111111-2222-3333-4444-555555555555','email','reminder_15m','test:15-minute-reminder')"
+          psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM crm.comms_messages WHERE dedupe_key='test:15-minute-reminder'"
           node --import tsx --input-type=module <<'NODE'
           import assert from 'node:assert/strict'
           import { randomUUID } from 'node:crypto'

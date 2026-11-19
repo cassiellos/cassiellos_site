@@ -10,10 +10,12 @@ import { hourOfMeetingDay } from './sao-paulo'
  *
  *   1. CONFIRMAÇÃO, na hora — sempre, e é a prioridade absoluta;
  *   2. LEMBRETE DA MANHÃ, às 8h (horário de Brasília) do DIA da reunião;
- *   3. LEMBRETE DE 1 HORA, 60 minutos antes do início.
+ *   3. LEMBRETE DE 1 HORA, 60 minutos antes do início;
+ *   4. LEMBRETE FINAL, 15 minutos antes do início.
  *
  * Nenhum dos lembretes é obrigatório. Uma mensagem só entra se ainda estiver no futuro e se houver
- * pelo menos MIN_GAP_MS de respiro em relação à mensagem vizinha — é o que impede três e-mails em
+ * pelo menos MIN_GAP_MS de respiro entre os avisos tradicionais; o aviso de 15 minutos tem
+ * intervalo mínimo próprio e só sai quando não colidir com a confirmação. É o que impede e-mails em
  * sequência só para "completar a automação". Quando manhã e 1 hora brigam pelo mesmo espaço, quem
  * fica é o de 1 hora: perto da reunião ele é o mais útil.
  *
@@ -21,13 +23,17 @@ import { hourOfMeetingDay } from './sao-paulo'
  *   23h30 → reunião 10h30 do dia seguinte .... 23h30, 8h, 9h30
  *   7h    → reunião 12h ...................... 7h, 8h, 11h
  *   9h    → reunião 12h ...................... 9h, 11h          (as 8h já passaram)
- *   10h   → reunião 10h30 .................... só a confirmação  (nada mais cabe)
+ *   10h   → reunião 10h30 .................... 10h, 10h15 (15 min de respiro)
  */
 
 /** Hora do lembrete da manhã, no fuso de Brasília. */
 export const MORNING_HOUR = 8
 /** Antecedência do lembrete final. */
 export const ONE_HOUR_MS = 60 * 60_000
+/** Lembrete de acesso: enviado exatamente 15 minutos antes do início. */
+export const FIFTEEN_MIN_MS = 15 * 60_000
+/** Respiro mínimo entre uma confirmação e o aviso final de 15 minutos. */
+export const FINAL_MIN_GAP_MS = 15 * 60_000
 /**
  * Respiro mínimo entre duas mensagens da sequência. 60 minutos: com menos que isso o lead recebe
  * dois e-mails quase juntos e o segundo vira ruído. O limite é inclusivo — exatamente 60 minutos
@@ -36,7 +42,7 @@ export const ONE_HOUR_MS = 60 * 60_000
  */
 export const MIN_GAP_MS = 60 * 60_000
 
-export type PlannedKind = 'confirmation' | 'reminder_morning' | 'reminder_1h'
+export type PlannedKind = 'confirmation' | 'reminder_morning' | 'reminder_1h' | 'reminder_15m'
 
 export type PlannedMessage = {
   kind: PlannedKind
@@ -108,6 +114,18 @@ export function planMeetingEmails(input: PlanInput, now: Date = new Date()): Pla
   }
   if (oneHourFits) {
     planned.push(entry('reminder_1h', new Date(oneHourAtMs), true, input, now))
+  }
+
+  // 4. Último aviso 15 minutos antes. Se a reunião foi agendada muito em cima da hora,
+  // não sobrepomos um lembrete quase imediato à confirmação. O intervalo de 1 h para 15 min
+  // é naturalmente de 45 min e deve ser preservado: a etapa final é intencional.
+  const finalAtMs = start - FIFTEEN_MIN_MS
+  const finalFits = finalAtMs > nowMs &&
+    (confirmationAt === null || finalAtMs - confirmationAt >= FINAL_MIN_GAP_MS) &&
+    (!oneHourFits || finalAtMs - oneHourAtMs >= FINAL_MIN_GAP_MS) &&
+    (!morningFits || finalAtMs - morningAtMs >= FINAL_MIN_GAP_MS)
+  if (finalFits) {
+    planned.push(entry('reminder_15m', new Date(finalAtMs), true, input, now))
   }
   return planned
 }
