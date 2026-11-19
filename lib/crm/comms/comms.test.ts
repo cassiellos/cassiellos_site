@@ -9,7 +9,7 @@ import { dedupeKey, planMeetingEmails, MIN_GAP_MS } from './plan'
 import { fromWallClock, hourOfMeetingDay, wallClock } from './sao-paulo'
 import { renderMeetingEmail, renderWhatsappAutoReply, escapeHtml } from './templates'
 import { maskEmail, maskPhone } from './mask'
-import { parseWebhookEvent, verifyWebhookSignature, withinNativeScheduleWindow } from './resend'
+import { cancelEmail, parseWebhookEvent, verifyWebhookSignature, withinNativeScheduleWindow } from './resend'
 import {
   checkSender, parseIncomingMessages, verifyChallenge, verifyPayloadSignature, withinServiceWindow,
 } from './whatsapp-cloud'
@@ -618,4 +618,10 @@ test('modelos não prometem resposta em caixa de e-mail sem inbox confirmado', (
     assert.equal(/responda a est[ea] (?:mensagem|e-mail)/i.test(email.text), false)
     assert.equal(/responda a est[ea] (?:mensagem|e-mail)/i.test(email.html), false)
   }
+})
+
+test('cancelamento Resend: HTTP 404 é resultado incerto, não confirmação', async () => {
+  const fetcher = async () => new Response('{"message":"Not found"}', { status: 404 })
+  const result = await cancelEmail(fetcher, 're_test', 'email-id')
+  assert.equal(result.ok, false)
 })

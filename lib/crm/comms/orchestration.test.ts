@@ -6,7 +6,7 @@ import {
   cancelMeetingEmails, deliverMessage, rescheduleMeetingEmails, scheduleMeetingEmails, type SendDeps,
 } from './send'
 import { handleIncomingMessage } from './whatsapp-reply'
-import type { CommsMessage, Queryable } from './store'
+import { claimForSend, type CommsMessage, type Queryable } from './store'
 
 /**
  * Orquestração com banco e rede FALSOS. Nenhum e-mail e nenhuma mensagem de WhatsApp saem daqui.
@@ -113,7 +113,7 @@ test('envio: caminho feliz entrega à Resend e marca como aceita', async () => {
   assert.equal(payload.scheduled_at, undefined, 'confirmação sai agora, sem agendamento')
   const headers = sent[0].init.headers as Record<string, string>
   assert.equal(headers['Idempotency-Key'], 'email:confirmation:' + APPT)
-  assert.ok(pool.updates.some(u => u.sql.includes("status = $2") && u.params.includes('resend-1')))
+  assert.ok(pool.updates.some(u => u.sql.includes("provider_message_id = $3") && u.params.includes('resend-1')))
 })
 
 test('envio: lembrete dentro da janela vai com scheduled_at', async () => {
@@ -336,4 +336,49 @@ test('confirmação atrasada nunca sai depois do início da reunião', async () 
   assert.equal(await deliverMessage(deps(pool, fetcher), message({ kind: 'confirmation' })), false)
   assert.equal(sent.length, 0)
   assert.ok(pool.updates.some(u => String(u.params[1]) === 'MEETING_ALREADY_STARTED'))
+})
+
+test('quota: transação serializa antes de reservar envio', async () => {
+  const sqls: string[] = []
+  const connection = {
+    query: async (sql: string) => {
+      sqls.push(sql)
+      if (sql.includes('SELECT kind, scheduled_for')) {
+        return { rows: [{ kind: 'confirmation', scheduled_for: NOW }], rowCount: 1 }
+      }
+      if (sql.includes('count(*)::text')) return { rows: [{ total: '0' }], rowCount: 1 }
+      if (sql.includes("status = 'sending'") && sql.includes('RETURNING')) {
+        return { rows: [row({ status: 'sending' })], rowCount: 1 }
+      }
+      return { rows: [], rowCount: 0 }
+    },
+    release: () => { sqls.push('RELEASE') },
+  }
+  const pool = { connect: async () => connection, query: async () => { throw Error('independent pool.query forbidden') } } as unknown as Queryable
+  const claimed = await claimForSend(pool, 'msg-1', { dailyCap: 100, monthlyCap: 3000, now: NOW })
+  assert.equal(claimed?.status, 'sending')
+  assert.ok(sqls.some(sql => sql.includes('pg_advisory_xact_lock')))
+  assert.ok(sqls.some(sql => sql.includes('claimed_at = $3')))
+  assert.equal(sqls.at(-2), 'COMMIT')
+  assert.equal(sqls.at(-1), 'RELEASE')
+})
+
+test('quota: bloqueia antes de enviar quando a reserva diária está esgotada', async () => {
+  const sqls: string[] = []
+  const connection = {
+    query: async (sql: string) => {
+      sqls.push(sql)
+      if (sql.includes('SELECT kind, scheduled_for')) {
+        return { rows: [{ kind: 'confirmation', scheduled_for: NOW }], rowCount: 1 }
+      }
+      if (sql.includes('count(*)::text')) return { rows: [{ total: '100' }], rowCount: 1 }
+      return { rows: [], rowCount: 0 }
+    },
+    release: () => {},
+  }
+  const pool = { connect: async () => connection } as unknown as Queryable
+  assert.equal(await claimForSend(pool, 'msg-1', { dailyCap: 100, monthlyCap: 3000, now: NOW }), null)
+  assert.ok(sqls.some(sql => sql.includes("status = 'skipped'")))
+  assert.equal(sqls.includes('COMMIT'), true)
+  assert.equal(sqls.some(sql => sql.includes("status = 'sending'")), false)
 })

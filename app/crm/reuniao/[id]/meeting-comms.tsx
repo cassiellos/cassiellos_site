@@ -30,6 +30,9 @@ const KIND_LABEL: Record<string, string> = {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pendente',
+  sending: 'Enviando',
+  cancel_requested: 'Cancelamento pendente',
+  needs_review: 'Revisão necessária',
   scheduled: 'Agendado no provedor',
   sent: 'Aceito pelo provedor',
   delivered: 'Entregue',

@@ -148,7 +148,7 @@ export async function claimForSend(pool: Queryable, id: string, quota?: EmailQuo
           AND attempts < $2 FOR UPDATE`, [id, MAX_ATTEMPTS])
     const current = pending.rows[0]
     if (!current) { await client.query('COMMIT'); return null }
-    const target = current.scheduled_for && new Date(current.scheduled_for) > now
+    const target = current.scheduled_for && new Date(current.scheduled_for).getTime() > now.getTime()
       ? new Date(current.scheduled_for) : now
     const reminder = current.kind !== 'confirmation'
     const limits = { day: reminder ? Math.max(1, Math.floor(dailyCap * .8)) : dailyCap,
