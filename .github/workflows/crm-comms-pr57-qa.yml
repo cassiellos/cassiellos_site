@@ -1,9 +1,9 @@
-name: CRM Communications QA (PR 57)
+name: CRM Communications QA
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/comms-resend-whatsapp-20261118
+      - crm-production
 
 permissions:
   contents: read
