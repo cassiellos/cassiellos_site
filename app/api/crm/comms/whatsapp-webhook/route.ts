@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
 
   let body: unknown = null
   try { body = JSON.parse(raw) } catch { return json({ ok: true, ignored: 'INVALID_JSON' }, 200) }
-  const messages = parseIncomingMessages(body)
+  // Só o número configurado (WHATSAPP_PHONE_NUMBER_ID). Eventos de outro número: 200 sem processar.
+  const messages = parseIncomingMessages(body, config.phoneNumberId)
   if (!messages.length) return json({ ok: true, handled: 0 }, 200)
 
   const outcomes: string[] = []

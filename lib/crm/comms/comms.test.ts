@@ -11,9 +11,10 @@ import { renderMeetingEmail, renderWhatsappAutoReply, escapeHtml } from './templ
 import { maskEmail, maskPhone } from './mask'
 import { cancelEmail, parseWebhookEvent, verifyWebhookSignature, withinNativeScheduleWindow } from './resend'
 import {
-  checkSender, parseIncomingMessages, verifyChallenge, verifyPayloadSignature, withinServiceWindow,
+  checkSender, normalizeWhatsappSender, parseIncomingMessages, verifyChallenge, verifyPayloadSignature, withinServiceWindow,
 } from './whatsapp-cloud'
 import { parseBrazilianWhatsapp } from '../whatsapp'
+import { parseReplyAllowlist, replyAllowed } from './config'
 
 /** Ambiente mínimo que o CRM considera válido (Production do projeto cassiellos-crm). */
 const PROD = { VERCEL_ENV: 'production', CRM_PRODUCTION_ENABLED: 'true' }
@@ -585,6 +586,43 @@ test('Cloud: remetente precisa bater com o contato da reunião', () => {
   assert.equal(checkSender('31991234567', '999'), 'mismatch')
 })
 
+test('Cloud: comparação de remetente é exata — fixo e celular com o mesmo final não se confundem', () => {
+  // Fixo (31) 3298-8766 e celular (31) 9 3298-8766 terminam igual; a regra antiga (DDD + 8 finais) aceitaria.
+  assert.equal(checkSender('3132988766', '5531932988766'), 'mismatch')
+  assert.equal(checkSender('31932988766', '553132988766'), 'mismatch')
+  assert.equal(checkSender('3132988766', '553132988766'), 'match')
+})
+
+test('Cloud: só processa eventos do Phone Number ID configurado', () => {
+  const body = (phoneNumberId: string) => ({
+    object: 'whatsapp_business_account',
+    entry: [{ changes: [{ field: 'messages', value: {
+      metadata: { phone_number_id: phoneNumberId },
+      messages: [{ id: 'wamid.1', from: '5531991234567', type: 'text', timestamp: '1795000000', text: { body: 'oi' } }],
+    } }] }],
+  })
+  assert.equal(parseIncomingMessages(body('1450355021493980'), '1450355021493980').length, 1)
+  assert.equal(parseIncomingMessages(body('1166007406600137'), '1450355021493980').length, 0)
+  assert.equal(parseIncomingMessages(body('1450355021493980'), null).length, 0)
+  assert.equal(parseIncomingMessages(body('1450355021493980'), '').length, 0)
+  // Sem o segundo argumento o comportamento anterior é mantido (usado só em testes/ferramentas).
+  assert.equal(parseIncomingMessages(body('qualquer')).length, 1)
+})
+
+test('Cloud: remetente no formato wa_id da Meta sem o 9 (55 + DDD + 8 dígitos) é o titular', () => {
+  // Formato real entregue pela Meta para a linha +55 31 98298-8766 (exibida como +55 31 8298-8766).
+  assert.equal(checkSender('31982988766', '553182988766'), 'match')
+  assert.equal(checkSender('5531982988766', '553182988766'), 'match')
+  // Outro DDD ou outro número continuam recusados.
+  assert.equal(checkSender('31982988766', '552182988766'), 'mismatch')
+  assert.equal(checkSender('31982988766', '553182988767'), 'mismatch')
+  // Fixo (8 dígitos iniciados por 2–5) não recebe 9 e continua sendo comparado como fixo.
+  assert.equal(normalizeWhatsappSender('553132221234'), '553132221234')
+  assert.equal(normalizeWhatsappSender('553182988766'), '5531982988766')
+  assert.equal(normalizeWhatsappSender('5531982988766'), '5531982988766')
+  assert.equal(normalizeWhatsappSender('15551934650'), '15551934650')
+})
+
 test('Cloud: a janela de atendimento é de 24 h a partir da mensagem do lead', () => {
   const sent = new Date('2026-11-18T12:00:00.000Z')
   assert.equal(withinServiceWindow(sent, new Date('2026-11-18T20:00:00.000Z')), true)
@@ -648,4 +686,31 @@ test('cancelamento Resend: HTTP 404 é resultado incerto, não confirmação', a
   const fetcher = async () => new Response('{"message":"Not found"}', { status: 404 })
   const result = await cancelEmail(fetcher, 're_test', 'email-id')
   assert.equal(result.ok, false)
+})
+
+test('trava de resposta: ausente ou vazia = ninguém; ALL = todos; lista normalizada', () => {
+  assert.deepEqual(parseReplyAllowlist(undefined), [])
+  assert.deepEqual(parseReplyAllowlist('  '), [])
+  assert.equal(parseReplyAllowlist('ALL'), 'ALL')
+  assert.deepEqual(parseReplyAllowlist('all'), [], 'só ALL em maiúsculas libera geral')
+  assert.deepEqual(parseReplyAllowlist('+55 (31) 99876-5432, 553198765432; lixo 123'), ['5531998765432'])
+  assert.equal(replyAllowed(['5531998765432'], '553198765432'), true)
+  assert.equal(replyAllowed(['5531998765432'], '5531998765432'), true)
+  assert.equal(replyAllowed(['5531998765432'], '553138765432'), false, 'fixo com final parecido não passa')
+  assert.equal(replyAllowed([], '5531998765432'), false)
+  assert.equal(replyAllowed('ALL', '5531998765432'), true)
+})
+
+test('config: resposta automática ligada sem lista acusa REPLY_ALLOWLIST_EMPTY e não expõe números', () => {
+  const env = { ...PROD, COMMS_WHATSAPP_CLOUD: 'true', COMMS_WHATSAPP_AUTO_REPLY: 'true',
+    WHATSAPP_VERIFY_TOKEN: 'v', WHATSAPP_APP_SECRET: 's', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_ACCESS_TOKEN: 't' }
+  const conf = readWhatsappConfig(env)
+  assert.equal(conf.autoReply, true)
+  assert.deepEqual(conf.replyAllowlist, [])
+  assert.ok(conf.issues.includes('REPLY_ALLOWLIST_EMPTY'))
+  const withList = readWhatsappConfig({ ...env, COMMS_WHATSAPP_REPLY_ALLOWLIST: '5531998765432' })
+  assert.ok(!withList.issues.includes('REPLY_ALLOWLIST_EMPTY'))
+  const status = publicCommsStatus({ ...env, COMMS_WHATSAPP_REPLY_ALLOWLIST: '5531998765432' })
+  assert.equal(status.whatsapp.replyScope, 1)
+  assert.ok(!JSON.stringify(status).includes('998765432'), 'o status público não revela números')
 })

@@ -1,4 +1,4 @@
-import type { WhatsappConfig } from './config'
+import { replyAllowed, type WhatsappConfig } from './config'
 import { maskPhone } from './mask'
 import { dedupeKey } from './plan'
 import { renderWhatsappAutoReply } from './templates'
@@ -37,7 +37,7 @@ export type ReplyDeps = {
 export type ReplyOutcome =
   | 'no_reference' | 'unknown_reference' | 'meeting_not_active' | 'sender_mismatch'
   | 'outside_service_window' | 'quota_reached' | 'already_replied' | 'auto_reply_off'
-  | 'sent' | 'failed'
+  | 'not_allowlisted' | 'sent' | 'failed'
 
 const LIVE_STATUSES = new Set(['pending', 'confirmed'])
 
@@ -56,6 +56,12 @@ export async function handleIncomingMessage(
 
   const reference = referenceFromIncomingMessage(message.text)
   if (!reference) return 'no_reference'
+
+  // Restringe a resposta antes de consultar o banco ou acessar a API.
+  if (deps.config.autoReply && !replyAllowed(deps.config.replyAllowlist, message.from)) {
+    log('not_allowlisted', { messageId: message.messageId })
+    return 'not_allowlisted'
+  }
 
   const appointmentId = await appointmentByReference(deps.pool, reference, now)
   if (!appointmentId) {
