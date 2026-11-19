@@ -73,6 +73,7 @@ export default function InlineBookingCalendar({
   const [confirming, setConfirming] = useState(false)
   const [mustReview, setMustReview] = useState(false)
   const [confirmed, setConfirmed] = useState<Meeting | null>(null)
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
   const [reloadCalendar, setReloadCalendar] = useState(0)
   const [reloadSlots, setReloadSlots] = useState(0)
   const inFlight = useRef(false)
@@ -150,6 +151,26 @@ export default function InlineBookingCalendar({
     window.addEventListener(CONSENT_CHANGE_EVENT, sync)
     return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
   }, [previewOnly, bookingToken])
+
+  // Modo A do WhatsApp: pede o link só DEPOIS da reunião confirmada, numa rota separada, para não
+  // acrescentar nada ao caminho crítico da confirmação. Qualquer falha (ou a chave desligada no
+  // servidor) simplesmente deixa o botão de fora — a tela de confirmação segue igual.
+  useEffect(() => {
+    if (previewOnly || !confirmed || !bookingToken) return
+    const controller = new AbortController()
+    fetch('/api/booking/whatsapp', {
+      method:'POST',cache:'no-store',credentials:'same-origin',signal:controller.signal,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({bookingToken,bookingRequestId:confirmed.bookingRequestId}),
+    }).then(async response => {
+      if (!response.ok) return
+      const value: unknown = await response.json().catch(() => null)
+      if (isRecord(value) && typeof value.url === 'string' && value.url.startsWith('https://wa.me/')) {
+        setWhatsappUrl(value.url)
+      }
+    }).catch(() => { /* sem botão, sem erro visível */ })
+    return () => controller.abort()
+  }, [previewOnly, confirmed, bookingToken])
 
   async function confirmBooking() {
     if (previewOnly || !bookingEnabled || !bookingToken || !chosen ||
@@ -241,6 +262,17 @@ export default function InlineBookingCalendar({
           window.setTimeout(()=>URL.revokeObjectURL(url),1000)
         }}>Salvar na agenda do celular (.ics)</button>
       </div>
+      {whatsappUrl && <div className="cpf-schedule-whats">
+        <h2>Receba também pelo WhatsApp</h2>
+        <p>Tenha os detalhes da sua reunião diretamente na conversa com nossa equipe.</p>
+        <a className="cpf-schedule-whats-btn" href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.17 8.17 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.41a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.15.16-.29.18-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.29.37-.44.12-.15.16-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.56-1.35-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.16 0-.43.06-.65.31-.22.25-.85.84-.85 2.04s.87 2.37 1 2.53c.12.17 1.72 2.62 4.16 3.68.58.25 1.03.4 1.39.51.58.19 1.11.16 1.53.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.08.15-1.18-.06-.11-.22-.17-.47-.29Z"/>
+          </svg>
+          Receber confirmação pelo WhatsApp
+        </a>
+        <p className="cpf-schedule-whats-note">Ao clicar, o WhatsApp será aberto com uma mensagem pronta. Basta enviá-la.</p>
+      </div>}
     </div>
   }
 

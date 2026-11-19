@@ -18,6 +18,8 @@ import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/s
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { clientIpFrom, clientUserAgentFrom, dispatchScheduleToMeta, pgCapiStore, readCapiConfig } from '@/lib/crm/meta-capi'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { readEmailConfig } from '@/lib/crm/comms/config'
+import { scheduleMeetingEmails } from '@/lib/crm/comms/send'
 
 /** Homologação do Meta Pixel ativa (liberação deste navegador): reserva o único Schedule da liberação no banco. */
 function homologationClaims(cookieHeader: string | null) {
@@ -85,8 +87,9 @@ export async function POST(request: NextRequest) {
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })
+  const confirmedMeeting = confirmedMeetingFrom(result)
   // Etapa 5 (Web Push): só reunião NOVA (201). Desligado por padrão (PWA_PUSH_ENABLED); nunca afeta a confirmação.
-  await queueThenDeliver(confirmedMeetingFrom(result), {
+  await queueThenDeliver(confirmedMeeting, {
     switchReady: () => readPushEnv().ready,
     enqueue: meeting => enqueueMeetingNotifications(pushRuntimeDeps(), meeting).then(r => r.ids),
     schedule: task => after(task),
@@ -103,6 +106,17 @@ export async function POST(request: NextRequest) {
       config: capi, store: pgCapiStore(getCrmPool()), fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
       log: entry => console.info(JSON.stringify(entry)),
     }, { eventId: scheduleEventId, clientIp, userAgent }).then(() => undefined))
+  }
+  // Comunicações por e-mail (Resend): só reunião NOVA. DESLIGADO por padrão (COMMS_RESEND_ENABLED +
+  // COMMS_EMAIL_CONFIRMATION / COMMS_EMAIL_REMINDERS). Roda depois da resposta, com after(): uma falha
+  // de envio nunca desfaz a reunião nem muda o que o visitante vê. O WhatsApp (Modo A) não entra aqui:
+  // o botão pede o link em /api/booking/whatsapp, fora do caminho crítico da confirmação.
+  const emailConfig = readEmailConfig()
+  if (confirmedMeeting && (emailConfig.confirmation || emailConfig.reminders)) {
+    const appointmentId = confirmedMeeting.appointmentId
+    after(() => scheduleMeetingEmails({
+      pool: getCrmPool(), config: emailConfig, fetch: (url, init) => fetch(url, init),
+    }, appointmentId).then(() => undefined))
   }
   return json(result.body, result.status)
 }

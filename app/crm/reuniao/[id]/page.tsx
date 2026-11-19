@@ -10,6 +10,7 @@ import { safeCrmReturnPath } from '@/lib/crm/return-path'
 import { DEFAULT_WHATSAPP_TEMPLATE, renderWhatsappMessage } from '@/lib/crm/whatsapp-message'
 import { parseBrazilianWhatsapp } from '@/lib/crm/whatsapp'
 import MeetingWhatsapp from './meeting-whatsapp'
+import MeetingComms from './meeting-comms'
 import '../../crm.css'
 import './meeting.css'
 
@@ -92,6 +93,7 @@ export default async function MeetingPage({ params, searchParams }: {
         </div>
       </section>
       <MeetingWhatsapp initialText={message} whatsapp={row.whatsapp} active={active} focus={focusWhatsapp} meetPending={!meetUrl} />
+      <MeetingComms appointmentId={row.id} />
     </main>
   </div>
 }

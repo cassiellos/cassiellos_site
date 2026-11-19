@@ -1,4 +1,4 @@
-import { NextRequest,NextResponse } from 'next/server'
+import { NextRequest,NextResponse,after } from 'next/server'
 import { crmSessionCookieName,verifyCrmSession } from '@/lib/crm/auth'
 import { getCrmPool,withCrmReadOnlyTransaction } from '@/lib/crm/db'
 import { isCrmPreviewOrigin } from '@/lib/crm/preview-origins'
@@ -6,6 +6,8 @@ import { adminActorFromSession,cancelMeeting,markNoShow,setLeadClassification } 
 import { cancelBookingEvent } from '@/lib/crm/google-calendar'
 import { changeMarketingConsent,readMarketingConsentState } from '@/lib/crm/marketing-consent'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { readEmailConfig } from '@/lib/crm/comms/config'
+import { cancelMeetingEmails } from '@/lib/crm/comms/send'
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
 const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}
@@ -117,6 +119,12 @@ async function adminAction(req:NextRequest,leadId:string,action:string,data:Reco
    return send(r.status<300?{ok:true,outcome:r.outcome}:{error:errors[r.outcome]||'ACTION_FAILED'},r.status)
   }
   const r=await cancelMeeting({pool,cancelGoogleEvent:cancelBookingEvent},{leadId,appointmentId,actor,reason:data.reason})
+  // Reunião cancelada: nenhum lembrete pode sair. Cancela a fila local E o que já estava agendado na
+  // Resend (ela guarda o agendamento do lado dela). Roda depois da resposta e nunca falha o cancelamento.
+  if(r.outcome==='cancelled'){
+   const emailConfig=readEmailConfig()
+   if(emailConfig.ready)after(()=>cancelMeetingEmails({pool,config:emailConfig,fetch:(url,init)=>fetch(url,init)},appointmentId).then(()=>undefined))
+  }
   const errors:Record<string,string>={not_found:'NOT_FOUND',not_cancellable:'MEETING_NOT_CANCELLABLE',
    already_ended:'MEETING_ALREADY_ENDED',google_not_confirmed:'GOOGLE_CANCEL_NOT_CONFIRMED'}
   return send(r.status<300?{ok:true,outcome:r.outcome}:{error:errors[r.outcome]||'ACTION_FAILED'},r.status)
