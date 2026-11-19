@@ -28,6 +28,11 @@ import { parseBrazilianWhatsapp, type BrazilianPhone } from '../whatsapp'
  * - COMMS_WHATSAPP_FREE_TIER ........ trava conservadora de mensagens de serviço por mês.
  *
  * O Modo A nunca depende do Modo B: desligar a Cloud API não tira o botão do ar.
+ *
+ * PREVIEW: nenhuma automação roda em deploy de Preview a menos que COMMS_PREVIEW_ENABLED=true seja
+ * definida NAQUELE ambiente. É uma trava independente das chaves acima: mesmo com a Resend ligada e
+ * a credencial presente no projeto, um Preview não envia nada por conta própria. Serve para que um
+ * teste controlado seja uma decisão explícita, e não um efeito colateral de abrir uma branch.
  */
 
 type Env = Record<string, string | undefined>
@@ -42,6 +47,16 @@ export const RESEND_MAX_SCHEDULE_DAYS = 30
 export const WHATSAPP_DEFAULT_FREE_TIER = 1_000
 
 const on = (value: string | undefined) => value === 'true'
+
+/**
+ * Ambiente autorizado a executar automações de comunicação.
+ * Production do cassiellos-crm: sim. Preview: só com a trava explícita. Resto: não.
+ */
+export function commsEnvAllowed(env: Env): boolean {
+  const runtime = crmRuntime(env)
+  if (runtime === null) return false
+  return runtime === 'production' || on(env.COMMS_PREVIEW_ENABLED)
+}
 
 function cap(value: string | undefined, fallback: number): number {
   const parsed = Number(value?.trim())
@@ -65,7 +80,8 @@ export type EmailConfig = {
 }
 
 export type EmailIssue =
-  | 'ENV_NOT_SUPPORTED' | 'SWITCH_OFF' | 'API_KEY_MISSING' | 'FROM_INVALID' | 'WEBHOOK_SECRET_MISSING'
+  | 'ENV_NOT_SUPPORTED' | 'PREVIEW_NOT_ENABLED' | 'SWITCH_OFF' | 'API_KEY_MISSING'
+  | 'FROM_INVALID' | 'WEBHOOK_SECRET_MISSING'
 
 export function readEmailConfig(env: Env = process.env): EmailConfig {
   const issues: EmailIssue[] = []
@@ -74,6 +90,7 @@ export function readEmailConfig(env: Env = process.env): EmailConfig {
   const from = env.RESEND_FROM?.trim() || DEFAULT_FROM
   const webhookSecret = env.RESEND_WEBHOOK_SECRET?.trim() || ''
   if (!crmRuntime(env)) issues.push('ENV_NOT_SUPPORTED')
+  else if (!commsEnvAllowed(env)) issues.push('PREVIEW_NOT_ENABLED')
   if (!switchOn) issues.push('SWITCH_OFF')
   if (!apiKey) issues.push('API_KEY_MISSING')
   if (!FROM.test(from)) issues.push('FROM_INVALID')
@@ -111,15 +128,16 @@ export type WhatsappConfig = {
 }
 
 export type WhatsappIssue =
-  | 'ENV_NOT_SUPPORTED' | 'BUTTON_OFF' | 'NUMBER_MISSING' | 'NUMBER_INVALID'
+  | 'ENV_NOT_SUPPORTED' | 'PREVIEW_NOT_ENABLED' | 'BUTTON_OFF' | 'NUMBER_MISSING' | 'NUMBER_INVALID'
   | 'CLOUD_OFF' | 'CLOUD_CREDENTIALS_MISSING' | 'AUTO_REPLY_OFF'
 
 export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
   const issues: WhatsappIssue[] = []
   const raw = env.COMMS_WHATSAPP_NUMBER?.trim() || ''
   const businessPhone = raw ? parseBrazilianWhatsapp(raw) : null
-  const supported = Boolean(crmRuntime(env))
-  if (!supported) issues.push('ENV_NOT_SUPPORTED')
+  const supported = commsEnvAllowed(env)
+  if (!crmRuntime(env)) issues.push('ENV_NOT_SUPPORTED')
+  else if (!supported) issues.push('PREVIEW_NOT_ENABLED')
   if (!raw) issues.push('NUMBER_MISSING')
   else if (!businessPhone) issues.push('NUMBER_INVALID')
   if (!on(env.COMMS_WHATSAPP_BUTTON)) issues.push('BUTTON_OFF')

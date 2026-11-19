@@ -27,10 +27,27 @@ variáveis abaixo sejam definidas na Vercel. O número comercial da Cassiellos *
 | `RESEND_WEBHOOK_SECRET` | segredo Svix do webhook | estados param em "aceito", nunca viram "entregue" |
 | `COMMS_EMAIL_DAILY_CAP` | trava diária; padrão e **teto** 100 | usa 100 |
 | `COMMS_EMAIL_MONTHLY_CAP` | trava mensal; padrão e **teto** 3000 | usa 3000 |
-| `CRON_SECRET` | autentica a varredura do Vercel Cron | rota responde 404 |
+| `COMMS_SWEEP_SECRET` | autentica a varredura (mín. 32 caracteres) | rota responde 404 |
+| `COMMS_PREVIEW_ENABLED` | **só em Preview**: libera teste controlado | Preview não envia nada |
 
 As travas só podem ser **reduzidas** por variável, nunca aumentadas: um valor maior que o teto é
 ignorado. É o que impede uma variável mal digitada de virar cobrança.
+
+**Preview nunca envia por conta própria.** `COMMS_PREVIEW_ENABLED=true`, definida naquele ambiente,
+é uma trava independente de todas as outras: sem ela, um deploy de Preview não dispara e-mail nem
+exibe o botão de WhatsApp, mesmo com a Resend ligada e a credencial presente no projeto.
+
+### Agendamento da varredura
+
+O `vercel.json` é **compartilhado** pelos dois projetos Vercel (site institucional e CRM), então um
+Cron declarado nele criaria um agendamento também no site institucional. Por isso o repositório
+**não declara Cron nenhum** — a mesma convenção já adotada por `/api/crm/push/process`. A varredura
+é chamada por um agendador externo, ou por um Cron criado no painel do projeto `cassiellos-crm`,
+com `Authorization: Bearer <COMMS_SWEEP_SECRET>`.
+
+Com a janela de agendamento padrão do CRM (3 dias), a varredura não chega a ser necessária para os
+lembretes: ela serve para janelas maiores que 31 dias e para repetir envios que falharam de forma
+retriável.
 
 ### WhatsApp
 | Variável | Para quê |
@@ -49,16 +66,36 @@ O Modo A **não depende** do Modo B. Desligar a Cloud API não tira o botão do 
 
 ## DNS — a fazer no provedor do domínio
 
-A Resend gera os valores **na própria conta**, ao adicionar o domínio `cassiellos.com.br`
-(ou o subdomínio `agendamentos.cassiellos.com.br`, recomendado para isolar a reputação do envio
-transacional do e-mail corporativo). Os valores **não estão escritos aqui de propósito**: inventar
-SPF ou DKIM quebra a entrega.
+**Decisão do titular (18/11/2026): usar o domínio raiz `cassiellos.com.br`**, com o remetente
+`agendamentos@cassiellos.com.br`. A zona é administrada na **Cloudflare**.
 
-Serão pedidos, tipicamente: um registro **TXT de verificação** do domínio, um **CNAME ou TXT de
-DKIM** com o seletor que a Resend indicar, um **TXT de SPF** incluindo o mecanismo que a Resend
-indicar e, opcionalmente, **MX + TXT** para o subdomínio de retorno (Return-Path). Copiar os
-valores exatos do painel da Resend. Enquanto o domínio não estiver verificado, o envio real
-**não deve ser ligado**.
+Os valores exatos saem do painel da Resend ao adicionar o domínio. **Não estão escritos aqui de
+propósito**: inventar SPF ou DKIM quebra a entrega. Serão pedidos, tipicamente, um TXT de
+verificação, um CNAME ou TXT de DKIM com o seletor que a Resend indicar, um TXT de SPF com o
+mecanismo que ela indicar e, opcionalmente, MX + TXT do subdomínio de retorno.
+
+### Conferência de conflito ANTES de mexer na zona
+
+Não tenho acesso à Cloudflare e o ambiente onde rodo bloqueia consulta de DNS, então **não pude
+verificar a zona**. O que já se sabe pelo repositório: existe pelo menos um **TXT no apex (`@`)**,
+usado para verificar o domínio junto à Meta (`docs/crm/meta-pixel.md`). Conferir, na Cloudflare,
+antes de criar qualquer registro:
+
+| Verificar | Por que importa | O que fazer se houver conflito |
+|---|---|---|
+| Já existe um TXT `v=spf1…` no apex? | **Só pode existir UM registro SPF por domínio.** Dois quebram a autenticação do domínio inteiro, inclusive do e-mail que já funciona | **Editar o existente**, acrescentando o mecanismo da Resend antes do `~all` — nunca criar um segundo |
+| Quantos `include:` o SPF teria? | O SPF estoura em **10 consultas de DNS**; acima disso o resultado é `permerror` | Reduzir includes não usados, ou usar o subdomínio de envio |
+| Já existe MX no apex? | Se o domínio recebe e-mail hoje, o MX **não pode ser alterado** | Pedir à Resend só o MX do subdomínio de retorno (ex.: `send.`), nunca do apex |
+| O seletor DKIM que a Resend indicar já existe? | Colidir com um seletor de outro provedor invalida a assinatura dele | Usar seletor distinto |
+| Existe `_dmarc`? Com `p=reject` ou `p=quarantine`? | Com DMARC restritivo, e-mail sem SPF/DKIM alinhados **é descartado** | Verificar o domínio na Resend **antes** de ligar o envio |
+| O TXT de verificação da Meta no apex está preservado? | Criar registros no apex sem cuidado pode sobrescrevê-lo e derrubar a verificação do domínio na Meta | Adicionar, nunca substituir |
+| A Cloudflare está em modo proxy (nuvem laranja) nos registros de e-mail? | Registros de e-mail precisam ficar **DNS only** | Desligar o proxy nesses registros |
+
+O envio real **não deve ser ligado** enquanto o domínio não estiver verificado na Resend.
+
+Observação sobre a escolha do apex: ele concentra a reputação de envio do domínio principal. Um
+problema de entrega no transacional passa a afetar também o e-mail corporativo. Foi a decisão do
+titular; se o volume crescer, migrar para um subdomínio de envio continua possível.
 
 ## Migration
 
@@ -111,6 +148,7 @@ deles é causado por este código — ele não registra, não migra e não desco
 1. Verificar o domínio na Resend e publicar os registros DNS que ela gerar.
 2. Criar a `RESEND_API_KEY` e o webhook (1 endpoint no plano Free) apontando para
    `/api/crm/comms/resend-webhook`; guardar o segredo em `RESEND_WEBHOOK_SECRET`.
+2b. Definir `COMMS_SWEEP_SECRET` e criar o agendamento da varredura no projeto `cassiellos-crm`.
 3. Aplicar a migration 0021 no banco de destino.
 4. Informar o número comercial para `COMMS_WHATSAPP_NUMBER` e ligar `COMMS_WHATSAPP_BUTTON`.
 5. Ligar `COMMS_RESEND_ENABLED` + `COMMS_EMAIL_CONFIRMATION`, observar, e só depois os lembretes.

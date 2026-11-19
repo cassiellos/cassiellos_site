@@ -278,3 +278,14 @@ test('WhatsApp: caminho completo responde com os dados reais e sem template pago
   assert.ok(payload.text.body.includes('https://meet.google.com/abc-defg-hij'))
   assert.ok(payload.text.body.includes('Ana'))
 })
+
+test('nada retroativo: reunião que já começou não gera comunicação nenhuma', async () => {
+  const pool = fakePool({ meeting: { id: APPT, lead_id: 'l', full_name: 'Ana', email: 'ana@exemplo.com',
+    whatsapp: null, starts_at: new Date('2026-11-17T10:00:00.000Z'),
+    ends_at: new Date('2026-11-17T10:30:00.000Z'), meeting_url: null, status: 'confirmed' } })
+  const { fetcher, sent } = fakeFetch()
+  const result = await scheduleMeetingEmails(deps(pool, fetcher), APPT)
+  assert.deepEqual(result, { created: 0, delivered: 0 })
+  assert.equal(sent.length, 0)
+  assert.equal(pool.updates.length, 0, 'nenhuma linha criada no banco')
+})

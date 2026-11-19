@@ -404,3 +404,47 @@ test('Cloud: a janela de atendimento é de 24 h a partir da mensagem do lead', (
   assert.equal(withinServiceWindow(sent, new Date('2026-11-19T13:00:00.000Z')), false)
   assert.equal(withinServiceWindow(sent, new Date('2026-11-18T11:00:00.000Z')), false)
 })
+
+/* ----------------------------------------------- travas de ambiente (Preview) */
+
+test('Preview: sem a trava explícita, nenhuma automação roda', () => {
+  const preview = {
+    VERCEL_ENV: 'preview', COMMS_RESEND_ENABLED: 'true', RESEND_API_KEY: 're_x',
+    COMMS_EMAIL_CONFIRMATION: 'true', COMMS_EMAIL_REMINDERS: 'true',
+  }
+  const email = readEmailConfig(preview)
+  assert.equal(email.ready, false)
+  assert.equal(email.confirmation, false)
+  assert.equal(email.reminders, false)
+  assert.ok(email.issues.includes('PREVIEW_NOT_ENABLED'))
+})
+
+test('Preview: com COMMS_PREVIEW_ENABLED o teste controlado é possível', () => {
+  const email = readEmailConfig({
+    VERCEL_ENV: 'preview', COMMS_PREVIEW_ENABLED: 'true', COMMS_RESEND_ENABLED: 'true',
+    RESEND_API_KEY: 're_x', COMMS_EMAIL_CONFIRMATION: 'true',
+  })
+  assert.equal(email.ready, true)
+  assert.equal(email.confirmation, true)
+})
+
+test('Preview: o botão de WhatsApp também fica preso à trava', () => {
+  const base = { VERCEL_ENV: 'preview', COMMS_WHATSAPP_BUTTON: 'true', COMMS_WHATSAPP_NUMBER: '31991234567' }
+  assert.equal(readWhatsappConfig(base).buttonReady, false)
+  assert.equal(readWhatsappConfig({ ...base, COMMS_PREVIEW_ENABLED: 'true' }).buttonReady, true)
+})
+
+test('Production do CRM não precisa da trava de Preview', () => {
+  const email = readEmailConfig({ ...PROD, COMMS_RESEND_ENABLED: 'true', RESEND_API_KEY: 're_x' })
+  assert.equal(email.ready, true)
+  assert.equal(email.issues.includes('PREVIEW_NOT_ENABLED'), false)
+})
+
+test('Fora dos ambientes do CRM nada liga, nem com todas as chaves', () => {
+  const email = readEmailConfig({
+    VERCEL_ENV: 'production', COMMS_RESEND_ENABLED: 'true', RESEND_API_KEY: 're_x',
+    COMMS_PREVIEW_ENABLED: 'true', COMMS_EMAIL_CONFIRMATION: 'true',
+  })
+  assert.equal(email.ready, false, 'Production do site institucional não é o CRM')
+  assert.ok(email.issues.includes('ENV_NOT_SUPPORTED'))
+})

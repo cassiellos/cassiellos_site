@@ -134,6 +134,10 @@ export async function scheduleMeetingEmails(
     if (!deps.config.confirmation && !deps.config.reminders) return { created: 0, delivered: 0 }
     const meeting = await loadMeeting(deps.pool, appointmentId)
     if (!meeting || !LIVE_STATUSES.has(meeting.status)) return { created: 0, delivered: 0 }
+    // NADA RETROATIVO. Esta função só é chamada quando a confirmação devolve 201 (reunião nova), mas a
+    // trava fica aqui também: uma reunião que já começou nunca gera comunicação, qualquer que seja o
+    // chamador. É o que impede um disparo em massa para as reuniões já registradas no banco.
+    if (Date.parse(meeting.startAt) <= now.getTime()) return { created: 0, delivered: 0 }
 
     const planned: PlannedMessage[] = planMeetingEmails({
       appointmentId, startAt: meeting.startAt,
