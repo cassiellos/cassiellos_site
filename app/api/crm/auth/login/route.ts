@@ -55,7 +55,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await resetCrmLoginAttempts(ip)
 
     const response = NextResponse.redirect(new URL(next ?? '/crm', request.url), 303)
-    response.cookies.set(crmSessionCookieName(), issueCrmSession(), {
+    // Bind the session to the authenticated account, not a shared 'admin' identity.
+    const account = username.trim().toLowerCase() === 'guilherme' ? 'guilherme' : 'admin'
+    response.cookies.set(crmSessionCookieName(), issueCrmSession(account), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
