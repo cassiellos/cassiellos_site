@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const reference = await ensureWhatsappReference(pool, appointment.appointmentId)
     if (!reference) return json({ error: 'REFERENCE_UNAVAILABLE' }, 503)
 
-    const link = buildLeadWhatsappLink(config.businessPhone, reference)
+    const link = buildLeadWhatsappLink(config.businessPhone, reference, appointment.startAt)
     if (!link.ok) return json({ error: link.reason }, 503)
     // `status` é sempre "aguardando o lead": clicar não é enviar, e só o webhook oficial do Modo B
     // poderá dizer que a mensagem chegou.

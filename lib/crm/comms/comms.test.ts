@@ -119,33 +119,57 @@ test('referência: o sorteio usa todo o alfabeto (sem viés grosseiro)', () => {
 
 /* --------------------------------------------------- WhatsApp Modo A (link) */
 
-test('Modo A: a mensagem leva só a referência, nada do lead', () => {
+test('Modo A: o lead confirma a reunião amanhã às 17 horas, com referência e sem PII', () => {
   const ref = 'abcdefghjk'
-  const text = leadWhatsappMessage(ref)
-  assert.ok(text && text.includes(ref))
-  assert.ok(text.startsWith('Olá! Acabei de agendar'))
-  assert.equal(/@|\+55|meet\.google/.test(text), false, 'não pode conter dado pessoal nem link')
+  const now = new Date('2026-11-19T13:00:00Z') // 10h de Brasília, dia 19
+  const start = '2026-11-20T20:00:00Z' // 17h de Brasília, dia 20
+  const text = leadWhatsappMessage(ref, start, now)
+  assert.equal(text, 'Olá! Passando para confirmar nossa reunião amanhã às 17 horas. Referência: abcdefghjk.')
+  assert.equal(/@|\+55|meet\.google/.test(text!), false, 'sem PII ou link do Meet')
+  assert.equal(referenceFromIncomingMessage(text), ref, 'referência continua compatível com o webhook')
 })
 
-test('Modo A: link aponta para o número comercial e codifica o texto', () => {
+test('Modo A: mesmo dia usa hoje; horários com minutos e datas futuras estão corretos', () => {
+  const ref = 'abcdefghjk'
+  const now = new Date('2026-11-19T13:00:00Z')
+  assert.match(leadWhatsappMessage(ref, '2026-11-19T20:00:00Z', now)!, /hoje às 17 horas/)
+  assert.match(leadWhatsappMessage(ref, '2026-11-20T20:30:00Z', now)!, /amanhã às 17h30/)
+  assert.match(leadWhatsappMessage(ref, '2027-01-02T17:30:00Z', now)!, /no dia 02\/01\/2027 às 14h30/)
+  assert.match(leadWhatsappMessage(ref, '2026-11-19T04:00:00Z', new Date('2026-11-18T23:00:00Z'))!, /hoje à 1 hora/)
+})
+
+test('Modo A: usa o dia de Brasília na virada da meia-noite, não o dia UTC', () => {
+  const start = '2026-11-20T03:15:00Z' // 00h15 de Brasília em 20/11
+  const beforeLocalMidnight = new Date('2026-11-20T02:59:59Z')
+  const afterLocalMidnight = new Date('2026-11-20T03:00:00Z')
+  assert.match(leadWhatsappMessage('abcdefghjk', start, beforeLocalMidnight)!, /amanhã às 0h15/)
+  assert.match(leadWhatsappMessage('abcdefghjk', start, afterLocalMidnight)!, /hoje às 0h15/)
+})
+
+test('Modo A: link aponta para o número comercial e codifica texto e data no wa.me', () => {
   const phone = parseBrazilianWhatsapp('31991234567')
-  const link = buildLeadWhatsappLink(phone, 'abcdefghjk')
+  const link = buildLeadWhatsappLink(phone, 'abcdefghjk', '2026-11-20T20:00:00Z', new Date('2026-11-19T13:00:00Z'))
   assert.equal(link.ok, true)
   if (!link.ok) return
-  assert.ok(link.url.startsWith('https://wa.me/5531991234567?text='))
-  assert.ok(link.url.includes('abcdefghjk'))
+  const url = new URL(link.url)
+  assert.equal(url.origin, 'https://wa.me')
+  assert.equal(url.pathname, '/5531991234567')
+  assert.equal(url.searchParams.get('text'), 'Olá! Passando para confirmar nossa reunião amanhã às 17 horas. Referência: abcdefghjk.')
 })
 
 test('Modo A: sem número comercial não existe botão', () => {
-  const link = buildLeadWhatsappLink(null, 'abcdefghjk')
+  const link = buildLeadWhatsappLink(null, 'abcdefghjk', '2026-11-20T20:00:00Z')
   assert.equal(link.ok, false)
   if (link.ok) return
   assert.equal(link.reason, 'BUSINESS_NUMBER_UNAVAILABLE')
 })
 
-test('Modo A: referência inválida não vira link', () => {
-  const link = buildLeadWhatsappLink(parseBrazilianWhatsapp('31991234567'), 'nao-e-ref')
-  assert.equal(link.ok, false)
+test('Modo A: referência e data inválidas não geram link', () => {
+  const phone = parseBrazilianWhatsapp('31991234567')
+  const badRef = buildLeadWhatsappLink(phone, 'nao-e-ref', '2026-11-20T20:00:00Z')
+  const badDate = buildLeadWhatsappLink(phone, 'abcdefghjk', 'data-inválida')
+  assert.deepEqual(badRef, { ok: false, reason: 'INVALID_REFERENCE' })
+  assert.deepEqual(badDate, { ok: false, reason: 'INVALID_MEETING_DATE' })
 })
 
 test('Modo B: lê a referência da mensagem recebida, com e sem acento', () => {
