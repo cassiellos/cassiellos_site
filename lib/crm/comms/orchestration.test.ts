@@ -171,14 +171,15 @@ test('envio: destinatário sem e-mail válido é pulado', async () => {
   assert.ok(pool.updates.some(u => String(u.params[1]) === 'INVALID_RECIPIENT'))
 })
 
-test('envio: erro 500 da Resend fica retriável; 422 encerra', async () => {
-  for (const [status, retriable] of [[500, true], [422, false]] as const) {
+test('envio: erro 500 incerto exige revisão e 422 encerra', async () => {
+  for (const [status, retriable] of [[500, false], [422, false]] as const) {
     const pool = fakePool()
     const { fetcher } = fakeFetch(status, { message: 'erro' })
     assert.equal(await deliverMessage(deps(pool, fetcher), message()), false)
     const failure = pool.updates.find(u => u.sql.includes('CASE WHEN'))
     assert.ok(failure, 'marcou falha para ' + status)
     assert.equal(failure.params[2], retriable)
+    if (status === 500) assert.equal(failure.params[1], 'NETWORK_OR_TIMEOUT')
   }
 })
 

@@ -6,7 +6,7 @@ import { cancelEmail, sendEmail, withinNativeScheduleWindow, type Fetcher } from
 import {
   cancelPending, cancellationQueue, claimForSend, confirmProviderCancellation, dueMessages,
   enqueueMessages, loadMeeting, markFailure, markSent, markSkipped,
-  reconcileProviderCancellations, recordProviderCancellationError, usageSince,
+  reconcileProviderCancellations, recordProviderCancellationError, quarantineStaleInflight, usageSince,
   type CommsMessage, type Queryable,
 } from './store'
 
@@ -136,7 +136,14 @@ export async function deliverMessage(deps: SendDeps, message: CommsMessage): Pro
     log('accepted', { messageId: message.id, kind: message.kind, scheduled: result.scheduled })
     return true
   }
-  await markFailure(deps.pool, message.id, { error: result.error, retriable: result.retriable })
+  // Unknown acceptance (timeout, 408 or provider 5xx) must NOT be automatically retried past
+  // the provider's 24-hour idempotency window. Human reconciliation is safer than duplication.
+  const uncertain = result.status === null || result.status === 408 ||
+    (result.status !== null && result.status >= 500)
+  await markFailure(deps.pool, message.id, {
+    error: uncertain ? 'NETWORK_OR_TIMEOUT' : result.error,
+    retriable: !uncertain && result.retriable,
+  })
   log('rejected', { messageId: message.id, kind: message.kind, status: result.status, retriable: result.retriable })
   return false
 }
@@ -218,6 +225,7 @@ async function attemptProviderCancellation(deps: SendDeps, id: string): Promise<
 /** Reprocesses provider cancellations even if the new-send switch is off. */
 export async function processProviderCancellations(deps: SendDeps, limit = 25): Promise<number> {
   await reconcileProviderCancellations(deps.pool)
+  await quarantineStaleInflight(deps.pool)
   if (!(deps.config.cancellationKey ?? deps.config.apiKey)) return 0
   const ids = await cancellationQueue(deps.pool, limit)
   let confirmed = 0

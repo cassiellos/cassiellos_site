@@ -299,6 +299,20 @@ export async function recordProviderCancellationError(pool: Queryable, id: strin
       WHERE provider_message_id = $1 AND status = 'cancel_requested'`, [id, 'CANCEL_UNCONFIRMED:' + error])
 }
 
+/** Unknown remote state after an interrupted process is not safe to retry automatically. */
+export async function quarantineStaleInflight(pool: Queryable): Promise<void> {
+  await pool.query(
+    `UPDATE crm.comms_messages
+        SET status = 'needs_review', last_error = 'IN_FLIGHT_RESULT_UNKNOWN', updated_at = now()
+      WHERE channel = 'email' AND status = 'sending'
+        AND updated_at < now() - interval '20 minutes'`)
+  await pool.query(
+    `UPDATE crm.comms_messages
+        SET status = 'needs_review', last_error = 'CANCEL_WITHOUT_PROVIDER_ID', updated_at = now()
+      WHERE channel = 'email' AND status = 'cancel_requested'
+        AND provider_message_id IS NULL
+        AND updated_at < now() - interval '20 minutes'`)
+}
 /** Consumo do período para as travas do plano gratuito (conta o que foi entregue ao provedor). */
 export async function usageSince(pool: Queryable, channel: 'email' | 'whatsapp', since: Date): Promise<number> {
   const result = await pool.query<{ total: string }>(

@@ -47,3 +47,8 @@ Branch `feat/comms-resend-whatsapp-20261118`; PR #57. **NÃO ATIVAR RESEND/WHATS
 - `claimed_at` foi acrescentado à migration 0021, ainda não aplicada. Não executar contra produção nesta etapa.
 - **Restrições:** contadores internos não incluem outras keys nem e-mails recebidos; deve-se comparar com `GET /usage` da Resend antes de ativar envios. Teste de concorrência real com PostgreSQL isolado ainda é obrigatório.
 - `sending` abandonado por morte da função não é reenviado automaticamente; requer reconciliação, pois a idempotência do provedor expira em 24h.
+
+## Revisão de estados desconhecidos
+- HTTP 408, 5xx e timeouts de envio são tratados como resultado incerto: `needs_review`, sem retry automático.
+- Varredura coloca em `needs_review` operações `sending` abandonadas há mais de 20 minutos e cancelamentos sem id remoto após 20 minutos. Nenhum novo e-mail é enviado nessa reconciliação.
+- Continuidade do sweep depende de agendador externo autorizado. Sem ele, o processamento assíncrono inicial continua protegido, mas a reconciliação não acontece automaticamente.
