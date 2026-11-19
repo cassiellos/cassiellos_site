@@ -227,7 +227,7 @@ export default function NotificationsPanel() {
         <input value={label} maxLength={80} placeholder={typeof navigator === 'undefined' ? '' : deviceLabel()} onChange={e => setLabel(e.target.value)} />
       </label>
       <div className="crm-push-actions">
-        {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={enableHere}>Ativar notificações neste aparelho</button>}
+        {!here && <button type="button" className="crm-btn crm-btn-primary" disabled={busy || !env.vapidReady || status.migrationPending} onClick={() => void enableHere()}>Ativar notificações neste aparelho</button>}
         {here && <button type="button" className="crm-btn" disabled={busy || !env.vapidReady} onClick={() => void enableHere(true)}>Renovar inscrição neste aparelho</button>}
         {here && <button type="button" className="crm-btn" disabled={busy} onClick={disableHere}>Desativar neste aparelho</button>}
         <button type="button" className="crm-btn" disabled={busy || !env.vapidReady || status.migrationPending || !canTestHere}
