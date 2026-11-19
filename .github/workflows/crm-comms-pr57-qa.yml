@@ -40,6 +40,8 @@ jobs:
         run: npm test
       - name: Check TypeScript
         run: npx tsc --noEmit
+      - name: Smoke individual CRM logins (isolated dummy credentials)
+        run: node --conditions=react-server --import tsx scripts/crm-dual-auth-smoke.mjs
       - name: Test migration 0021 and real PostgreSQL concurrency
         run: |
           psql "$TEST_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA crm; CREATE TABLE crm.appointments (id uuid PRIMARY KEY, status text NOT NULL)"
