@@ -7,7 +7,8 @@ import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import styles from './site-footer.module.css'
 
 const WORDMARK = 'CASSIELLOS'
-const DEPTH = 9
+/** Faces do bloco ao redor do eixo horizontal: frente, baixo, trás e cima. */
+const FACES = [0, 1, 2, 3]
 
 export default function SiteFooter() {
   const pathname = usePathname()
@@ -59,9 +60,13 @@ export default function SiteFooter() {
         <div className={styles.wordmark}>
           {WORDMARK.split('').map((letter, index) => (
             <span className={styles.block} key={index} style={{ ['--i' as string]: index }}>
-              {Array.from({ length: DEPTH }, (_, layer) => (
-                <i key={layer} className={layer === DEPTH - 1 ? styles.face : styles.side} style={{ ['--z' as string]: layer }}>{letter}</i>
-              ))}
+              <span className={styles.cube}>
+                {FACES.map((face) => (
+                  <i key={face} className={face % 2 === 0 ? styles.faceGlass : styles.faceSolid} style={{ ['--f' as string]: face }}>
+                    <b>{letter}</b>
+                  </i>
+                ))}
+              </span>
             </span>
           ))}
         </div>
