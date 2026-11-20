@@ -96,8 +96,8 @@
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  animation: roll 6.4s cubic-bezier(.65, 0, .35, 1) infinite;
-  animation-delay: calc(var(--i) * .14s);
+  animation: roll 12s cubic-bezier(.65, 0, .35, 1) infinite;
+  animation-delay: calc(var(--i) * .24s);
 }
 
 .faceGlass,
@@ -145,12 +145,14 @@
   text-shadow: 0 calc(var(--size) * -.015) 0 rgba(0, 0, 0, .25), 0 calc(var(--size) * .015) 0 rgba(255, 255, 255, .9);
 }
 
+/* Vai e volta, sem giro completo: tomba um quarto de volta para cima (face branca),
+   volta para a frente (vidro), tomba para baixo (face branca) e volta. */
 @keyframes roll {
-  0%, 16% { transform: rotateX(0deg); }
-  25%, 41% { transform: rotateX(90deg); }
-  50%, 66% { transform: rotateX(180deg); }
-  75%, 91% { transform: rotateX(270deg); }
-  100% { transform: rotateX(360deg); }
+  0%, 18% { transform: rotateX(0deg); }
+  30%, 46% { transform: rotateX(90deg); }
+  58%, 68% { transform: rotateX(0deg); }
+  80%, 92% { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
 }
 
 .bottom {
