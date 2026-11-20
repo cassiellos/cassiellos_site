@@ -11,7 +11,7 @@
   --muted: #a3acbd;
   --rule: rgba(255, 255, 255, .08);
   --accent-text: #ff6b77;
-  --violet: #7b35f5;
+  --violet: #7b35f5; /* cor secundária da marca: só em detalhes discretos */
   background: var(--bg);
   color: var(--fg);
   overflow-x: clip;
@@ -197,7 +197,7 @@
   width: min(760px, 90vw);
   aspect-ratio: 2 / 1;
   transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, rgba(241, 60, 75, .26), rgba(123, 53, 245, .14) 55%, transparent);
+  background: radial-gradient(closest-side, rgba(241, 60, 75, .24), rgba(36, 107, 255, .16) 55%, transparent);
   filter: blur(20px);
 }
 
@@ -293,7 +293,7 @@
 }
 
 .heroTitle span {
-  background: linear-gradient(100deg, #f6f8ff 0%, #ffb3ba 35%, #ff6b77 65%, #b48cff 100%);
+  background: linear-gradient(100deg, #f6f8ff 0%, #ffb3ba 35%, #ff6b77 62%, #8fb4ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -384,7 +384,7 @@
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 70%, rgba(241, 60, 75, .9), rgba(255, 120, 60, .45) 32%, rgba(123, 53, 245, .25) 58%, transparent 72%);
+  background: radial-gradient(circle at 50% 70%, rgba(241, 60, 75, .9), rgba(255, 120, 60, .45) 32%, rgba(36, 107, 255, .22) 58%, transparent 72%);
   filter: blur(26px);
 }
 
@@ -420,7 +420,7 @@
 /* ---------- Serviços em cartões ---------- */
 .servicesV3 {
   background:
-    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(123, 53, 245, .14), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(36, 107, 255, .14), transparent 70%),
     var(--bg-2);
   border-radius: 40px 40px 0 0;
 }
@@ -510,7 +510,7 @@
 /* ---------- Resultados ---------- */
 .results {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(123, 53, 245, .35), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(36, 107, 255, .26), transparent 70%),
     var(--bg);
 }
 
@@ -718,7 +718,7 @@
   overflow: hidden;
   scroll-snap-align: start;
   color: #f6f8ff;
-  background: linear-gradient(150deg, #3a1d8f 0%, #1a1240 45%, #0f1018 100%);
+  background: linear-gradient(150deg, #1b4fd1 0%, #0d1f4d 45%, #0f1018 100%);
 }
 
 .approachCard[data-tone='1'] {
@@ -834,9 +834,9 @@
 /* ---------- Conteúdos ---------- */
 .blog {
   background:
-    radial-gradient(ellipse 80% 70% at 0% 0%, rgba(123, 53, 245, .45), transparent 70%),
+    radial-gradient(ellipse 80% 70% at 0% 0%, rgba(36, 107, 255, .4), transparent 70%),
     radial-gradient(ellipse 60% 60% at 100% 100%, rgba(241, 60, 75, .3), transparent 70%),
-    #120d2a;
+    #07101f;
   color: #f6f8ff;
 }
 
@@ -867,16 +867,16 @@
 .blogArt {
   display: block;
   background:
-    repeating-radial-gradient(circle at 30% 50%, #f13c4b 0 12px, #7b35f5 12px 24px);
+    repeating-radial-gradient(circle at 30% 50%, #f13c4b 0 12px, #246bff 12px 24px);
   opacity: .5;
 }
 
 .blogArt[data-tone='1'] {
-  background: repeating-linear-gradient(90deg, #7b35f5 0 18px, #f13c4b 18px 36px);
+  background: repeating-linear-gradient(90deg, #246bff 0 18px, #f13c4b 18px 36px);
 }
 
 .blogArt[data-tone='2'] {
-  background: repeating-conic-gradient(from 0deg at 50% 50%, #246bff 0 15deg, #7b35f5 15deg 30deg);
+  background: repeating-conic-gradient(from 0deg at 50% 50%, #246bff 0 15deg, #07101f 15deg 30deg);
 }
 
 .blogCard h3 {

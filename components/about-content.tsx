@@ -1,11 +1,12 @@
 'use client'
 
 import { motion, useReducedMotion } from 'motion/react'
-import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import { displayFont } from '@/lib/display-font'
 import { SHOW_PLACEHOLDERS } from '@/lib/home-proof'
 import styles from './home-v3.module.css'
 import about from './about-v3.module.css'
+import WhatsappCta from './whatsapp-cta'
+import wa from './whatsapp-cta.module.css'
 
 type Locale = 'pt' | 'en'
 
@@ -41,6 +42,7 @@ const COPY = {
       meta: ['Belo Horizonte / MG', 'Criatividade', 'Proximidade', 'Consistência'],
       primary: 'Falar com a Cassiellos',
       secondary: 'Conhecer o time',
+      wa: { identity: 'Quero trabalhar com a Cassiellos', culture: 'Falar com o time', people: 'Conversar com os fundadores', principles: 'Começar uma conversa', future: 'Fazer parte do próximo capítulo' },
     },
     identity: {
       eyebrow: 'Quem somos',
@@ -95,6 +97,7 @@ const COPY = {
       meta: ['Belo Horizonte / MG', 'Creativity', 'Proximity', 'Consistency'],
       primary: 'Talk to Cassiellos',
       secondary: 'Meet the team',
+      wa: { identity: 'I want to work with Cassiellos', culture: 'Talk to the team', people: 'Talk to the founders', principles: 'Start a conversation', future: 'Be part of the next chapter' },
     },
     identity: {
       eyebrow: 'Who we are',
@@ -176,7 +179,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
             {c.hero.meta.map((item) => <li key={item}>{item}</li>)}
           </motion.ul>
           <motion.div className={styles.heroActions} {...enter(0.45)}>
-            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{c.hero.primary}</a>
+            <WhatsappCta section="empresa-hero" label={c.hero.primary} />
             <a className="btn ghost" href="#time">{c.hero.secondary}</a>
           </motion.div>
         </div>
@@ -193,6 +196,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               {c.identity.paragraphs.map((text) => <p key={text}>{text}</p>)}
             </motion.div>
           </div>
+          <div className={wa.row}><WhatsappCta section="empresa-quem-somos" label={c.hero.wa.identity} /></div>
         </div>
       </section>
 
@@ -222,6 +226,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
+          <div className={wa.row}><WhatsappCta section="empresa-cultura" label={c.hero.wa.culture} variant="ghost" /></div>
         </div>
       </section>
 
@@ -253,6 +258,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
+          <div className={wa.row}><WhatsappCta section="empresa-time" label={c.hero.wa.people} /></div>
         </div>
       </section>
 
@@ -271,6 +277,7 @@ export default function AboutContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
+          <div className={wa.row}><WhatsappCta section="empresa-principios" label={c.hero.wa.principles} variant="ghost" /></div>
         </div>
       </section>
 
@@ -279,13 +286,14 @@ export default function AboutContent({ lang }: { lang: Locale }) {
           <span className={styles.eyebrow}>{c.future.eyebrow}</span>
           <h2 id="about-future-title" className={styles.display}>{c.future.title}</h2>
           <p>{c.future.body}</p>
+          <div className={wa.row}><WhatsappCta section="empresa-futuro" label={c.hero.wa.future} /></div>
         </motion.div>
       </section>
 
       <section className={styles.finalCta} aria-labelledby="about-final-title">
         <div className={`wrap ${styles.finalInner}`}>
           <h2 id="about-final-title" className={styles.display}>{c.final.title} <span>{c.final.brand}</span></h2>
-          <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{c.final.button}</a>
+          <WhatsappCta section="empresa-chamada-final" label={c.final.button} />
         </div>
       </section>
     </main>

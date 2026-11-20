@@ -3,7 +3,7 @@
   position: relative;
   overflow: hidden;
   padding: 0 !important;
-  background: linear-gradient(180deg, #090b11 0%, #0e1018 38%, #2a1468 72%, #7b35f5 100%) !important;
+  background: linear-gradient(180deg, #090b11 0%, #0b1428 40%, #123a8c 75%, #246bff 100%) !important;
   color: #f6f8ff !important;
   border-top: 1px solid rgba(255, 255, 255, .08);
 }
@@ -115,13 +115,13 @@
 .faceGlass {
   background: linear-gradient(180deg, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, .1) 55%, rgba(255, 255, 255, .2) 100%);
   border: 1px solid rgba(255, 255, 255, .6);
-  box-shadow: inset 0 calc(var(--size) * .03) calc(var(--size) * .06) rgba(255, 255, 255, .45), inset 0 calc(var(--size) * -.04) calc(var(--size) * .08) rgba(40, 20, 120, .35);
+  box-shadow: inset 0 calc(var(--size) * .03) calc(var(--size) * .06) rgba(255, 255, 255, .45), inset 0 calc(var(--size) * -.04) calc(var(--size) * .08) rgba(7, 16, 31, .35);
 }
 
 .faceSolid {
   background: linear-gradient(180deg, #ffffff 0%, #eceefb 60%, #cfd3ee 100%);
   border: 1px solid rgba(255, 255, 255, .9);
-  box-shadow: inset 0 calc(var(--size) * -.05) calc(var(--size) * .08) rgba(60, 40, 160, .25);
+  box-shadow: inset 0 calc(var(--size) * -.05) calc(var(--size) * .08) rgba(7, 16, 31, .25);
 }
 
 .faceGlass b,
@@ -136,12 +136,12 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 calc(var(--size) * .02) 0 rgba(40, 20, 120, .35));
+  filter: drop-shadow(0 calc(var(--size) * .02) 0 rgba(7, 16, 31, .35));
 }
 
 /* Letra "recortada" no bloco sólido: mostra o violeta do fundo. */
 .faceSolid b {
-  color: #5a37d8;
+  color: #1b4fd1;
   text-shadow: 0 calc(var(--size) * -.015) 0 rgba(0, 0, 0, .25), 0 calc(var(--size) * .015) 0 rgba(255, 255, 255, .9);
 }
 

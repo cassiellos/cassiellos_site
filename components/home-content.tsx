@@ -2,12 +2,13 @@
 
 import { useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
 import { displayFont } from '@/lib/display-font'
 import { ARTICLES, AWARDS, CASES, EXTRA_CLIENT_LOGOS, GUIDE, PARTNERS, SHOW_PLACEHOLDERS } from '@/lib/home-proof'
 import HeroChrome from './hero-chrome'
 import GlobeSquad from './globe-squad'
 import CountUp from './count-up'
+import WhatsappCta from './whatsapp-cta'
+import wa from './whatsapp-cta.module.css'
 import styles from './home-v3.module.css'
 
 export type Locale = 'pt' | 'en'
@@ -288,6 +289,16 @@ const PT_V3 = {
     button: 'Fale com a gente',
   },
   placeholder: 'A preencher',
+  wa: {
+    logos: 'Quero ser o próximo case',
+    squad: 'Montar meu time de marketing',
+    services: 'Quero esses serviços',
+    results: 'Quero resultados assim',
+    recognition: 'Falar com a Cassiellos',
+    approach: 'Começar pelo diagnóstico',
+    faq: 'Ainda tem dúvidas? Chame no WhatsApp',
+    blog: 'Conversar com um especialista',
+  },
 }
 
 const EN_V3: typeof PT_V3 = {
@@ -343,6 +354,16 @@ const EN_V3: typeof PT_V3 = {
     button: 'Talk to us',
   },
   placeholder: 'To be filled',
+  wa: {
+    logos: 'I want to be the next case',
+    squad: 'Build my marketing team',
+    services: 'I want these services',
+    results: 'I want results like these',
+    recognition: 'Talk to Cassiellos',
+    approach: 'Start with a diagnosis',
+    faq: 'Still have questions? Message us',
+    blog: 'Talk to a specialist',
+  },
 }
 
 function Placeholder({ text, label }: { text: string; label: string }) {
@@ -393,6 +414,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               ? <span className={styles.logoCell} key={logo.src}><img src={logo.src} alt={logo.alt} loading="lazy" /></span>
               : SHOW_PLACEHOLDERS && <span className={`${styles.logoCell} ${styles.logoEmpty}`} key={`vazio-${index}`}><Placeholder label={v.placeholder} text={guide.logo} /></span>)}
           </div>
+          <div className={wa.row}><WhatsappCta section="logos" label={v.wa.logos} variant="ghost" /></div>
         </div>
       </section>
 
@@ -409,6 +431,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
             </motion.div>
           </div>
           <GlobeSquad labels={v.squad.labels} />
+          <div className={wa.row}><WhatsappCta section="globo" label={v.wa.squad} /></div>
         </div>
       </section>
 
@@ -427,7 +450,8 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
-          <div className={styles.centerAction}>
+          <div className={wa.row}>
+            <WhatsappCta section="servicos" label={v.wa.services} />
             <a className="btn ghost" href="#como-funciona">{v.servicesGrid.more}</a>
           </div>
         </div>
@@ -468,8 +492,8 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               </motion.article>
             ))}
           </div>
-          <div className={styles.centerAction}>
-            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{v.results.button}</a>
+          <div className={wa.row}>
+            <WhatsappCta section="resultados" label={v.wa.results} />
           </div>
         </div>
       </section>
@@ -497,6 +521,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
                 </div>
               </>
             )}
+            <div className={wa.row}><WhatsappCta section="reconhecimentos" label={v.wa.recognition} variant="ghost" /></div>
           </div>
         </section>
       ) : null}
@@ -525,6 +550,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
             </li>
           ))}
         </ol>
+        <div className={`wrap ${wa.row}`}><WhatsappCta section="abordagem" label={v.wa.approach} /></div>
       </section>
 
       <section className={`${styles.section} ${styles.faqV3}`} aria-labelledby="faq-title">
@@ -541,6 +567,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               </details>
             ))}
           </div>
+          <div className={wa.row}><WhatsappCta section="faq" label={v.wa.faq} /></div>
         </div>
       </section>
 
@@ -567,6 +594,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
                   </div>
                 ))}
             </div>
+            <div className={wa.row}><WhatsappCta section="conteudos" label={v.wa.blog} variant="ghost" /></div>
           </div>
         </section>
       ) : null}
@@ -574,7 +602,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
       <section className={styles.finalCta} aria-labelledby="final-cta-title">
         <div className={`wrap ${styles.finalInner}`}>
           <h2 id="final-cta-title" className={styles.display}>{v.final.title} <span>{v.final.brand}</span></h2>
-          <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{v.final.button}</a>
+          <WhatsappCta section="chamada-final" label={v.final.button} />
         </div>
       </section>
     </main>

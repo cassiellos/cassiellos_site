@@ -1,6 +1,6 @@
 /* Padrão visual v3 aplicado às páginas de texto (políticas e termos). */
 .legalPage {
-  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(123, 53, 245, .18), transparent 70%), #090b11 !important;
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(36, 107, 255, .16), transparent 70%), #090b11 !important;
   color: #dfe4ee !important;
 }
 

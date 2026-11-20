@@ -59,8 +59,9 @@ function kindOfLink(anchor: HTMLAnchorElement) {
 
   try {
     const url = new URL(raw, window.location.href)
-    if (/^(wa\.me|api\.whatsapp\.com)$/i.test(url.hostname)) {
-      return { kind: 'whatsapp', destination: 'whatsapp' }
+    if (/^(wa\.me|wa\.link|api\.whatsapp\.com)$/i.test(url.hostname)) {
+      // A seção de origem (data-cta-section) mostra quais blocos da página mais geram conversas.
+      return { kind: 'whatsapp', destination: anchor.dataset.ctaSection ? `whatsapp:${anchor.dataset.ctaSection}` : 'whatsapp' }
     }
     if (url.origin === window.location.origin) {
       return { kind: 'internal', destination: url.pathname || '/' }

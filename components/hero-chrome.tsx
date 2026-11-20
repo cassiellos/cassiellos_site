@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '@/lib/scroll'
-import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
+import WhatsappCta from './whatsapp-cta'
 import { INFINITY_PATH } from './infinity-mark'
 import styles from './home-v3.module.css'
 
@@ -107,9 +107,7 @@ export default function HeroChrome({ lang }: { lang: Locale }) {
             : 'Planejamos, criamos e cuidamos do marketing da sua empresa — estratégia, conteúdo, campanhas, design, vídeos e operação — para gerar mais oportunidades e vendas sem tudo depender de você.'}
         </motion.p>
         <motion.div className={styles.heroActions} {...enter(0.45)}>
-          <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
-            {en ? 'I want to improve my marketing' : 'Quero melhorar meu marketing'}
-          </a>
+          <WhatsappCta section="hero" label={en ? 'I want to improve my marketing' : 'Quero melhorar meu marketing'} />
           <a className="btn ghost" href="#servicos">{en ? 'See what we do' : 'Ver o que fazemos'}</a>
         </motion.div>
       </div>

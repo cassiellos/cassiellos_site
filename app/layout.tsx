@@ -14,6 +14,7 @@ import SmoothScroll from '@/components/smooth-scroll'
 import ScrollProgress from '@/components/scroll-progress'
 import SiteNav from '@/components/site-nav'
 import SiteFooter from '@/components/site-footer'
+import { WhatsappFloat } from '@/components/whatsapp-cta'
 import SiteInteractionTracker from '@/components/site-interaction-tracker'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -81,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteNav />
         {children}
         <SiteFooter />
+        <WhatsappFloat />
         <Analytics />
         <SiteInteractionTracker />
         <SpeedInsights />
