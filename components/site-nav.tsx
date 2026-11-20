@@ -10,8 +10,6 @@ const SECTION_LINKS = [
   { href: '#servicos', label: 'Serviços', en: 'Services' },
   { href: '#como-funciona', label: 'Como funciona', en: 'How it works' },
   { href: '#clientes', label: 'Clientes', en: 'Clients' },
-  { href: '#cassiellos', label: 'cassiellOS', en: 'cassiellOS' },
-  { href: '#levi', label: 'Levi', en: 'Levi' },
   { href: '#faq-title', label: 'FAQ', en: 'FAQ' },
 ] as const
 
@@ -53,20 +51,13 @@ export default function SiteNav() {
       links: [{ ...SECTION_LINKS[2], href: resolveHref(SECTION_LINKS[2].href) }],
     },
     {
-      key: 'technology',
-      label: 'Tecnologia',
-      en: 'Technology',
-      primaryHref: resolveHref('#cassiellos'),
-      links: [SECTION_LINKS[3], SECTION_LINKS[4]].map((link) => ({ ...link, href: resolveHref(link.href) })),
-    },
-    {
       key: 'company',
       label: 'Empresa',
       en: 'Company',
       primaryHref: aboutHref,
       links: [
         { href: aboutHref, label: 'A Empresa', en: 'Company' },
-        { ...SECTION_LINKS[5], href: resolveHref(SECTION_LINKS[5].href) },
+        { ...SECTION_LINKS[3], href: resolveHref(SECTION_LINKS[3].href) },
       ],
     },
   ]
