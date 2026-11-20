@@ -1,0 +1,155 @@
+/* Rodapé grande: colunas de navegação e a marca CASSIELLOS em blocos 3D girando. */
+.footer {
+  position: relative;
+  overflow: hidden;
+  padding: 0 !important;
+  background: linear-gradient(180deg, #090b11 0%, #0e1018 38%, #2a1468 72%, #7b35f5 100%) !important;
+  color: #f6f8ff !important;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, .7fr));
+  gap: clamp(28px, 4vw, 56px);
+  padding: clamp(56px, 7vw, 96px) 0 clamp(40px, 5vw, 64px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-inter-tight), Arial, sans-serif;
+  font-size: 24px;
+}
+
+.brandCol p {
+  margin: 16px 0 24px;
+  max-width: 380px;
+  color: #a3acbd;
+  line-height: 1.6;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.col > span {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #ff8a94;
+}
+
+.col a {
+  color: #dfe4ee;
+  width: fit-content;
+  transition: color .2s;
+}
+
+.col a:hover {
+  color: #ffffff;
+}
+
+.col p {
+  margin: 0;
+  color: #a3acbd;
+}
+
+.todo {
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 107, 119, .55);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.stage {
+  perspective: 900px;
+  padding: clamp(20px, 4vw, 48px) 0 clamp(16px, 3vw, 32px);
+}
+
+.wordmark {
+  display: flex;
+  justify-content: center;
+  gap: clamp(2px, .5vw, 8px);
+  font-family: var(--font-display), Arial, sans-serif;
+  font-size: clamp(40px, 9.6vw, 168px);
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+}
+
+.block {
+  position: relative;
+  display: inline-grid;
+  transform-style: preserve-3d;
+  animation: turn 7s cubic-bezier(.45, 0, .2, 1) infinite;
+  animation-delay: calc(var(--i) * -0.32s);
+}
+
+.block i {
+  grid-area: 1 / 1;
+  font-style: normal;
+  transform: translateZ(calc(var(--z) * 2.4px));
+}
+
+.side {
+  color: #3b2a7d;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, .25);
+}
+
+.face {
+  background: linear-gradient(170deg, #ffffff 0%, #dfe3ef 28%, #8f97ad 52%, #f6f8ff 70%, #b9c0d2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, .25));
+}
+
+@keyframes turn {
+  0%, 100% { transform: rotateY(-24deg) rotateX(8deg); }
+  50% { transform: rotateY(24deg) rotateX(-6deg); }
+}
+
+.bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 22px 0 30px;
+  border-top: 1px solid rgba(255, 255, 255, .18);
+  font-size: 13px;
+  color: rgba(246, 248, 255, .85);
+}
+
+.bottom nav {
+  display: flex;
+  gap: 20px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .brandCol { grid-column: 1 / -1; }
+}
+
+@media (max-width: 520px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block { animation: none; transform: rotateY(-14deg); }
+}

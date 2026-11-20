@@ -1,10 +1,13 @@
 'use client'
 
+import { useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import { useLevi } from './levi-provider'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
+import { displayFont } from '@/lib/display-font'
+import { ARTICLES, AWARDS, CASES, EXTRA_CLIENT_LOGOS, GUIDE, PARTNERS, SHOW_PLACEHOLDERS } from '@/lib/home-proof'
 import HeroChrome from './hero-chrome'
-import LeviMark, { LeviWordmark } from './levi-mark'
+import GlobeSquad from './globe-squad'
+import CountUp from './count-up'
 import styles from './home-v3.module.css'
 
 export type Locale = 'pt' | 'en'
@@ -231,220 +234,347 @@ const EN = {
   },
 }
 
+/** Textos novos da estrutura v3 (globo, serviços em cartões, resultados, abordagem, blog, chamada final). */
+const PT_V3 = {
+  squad: {
+    eyebrow: 'Squad Cassiellos',
+    title: 'Seu time de marketing completo, em uma só estrutura.',
+    body: 'Estratégia, criação, mídia e operação trabalhando juntas, com um time que conhece o seu negócio e acompanha cada etapa até o resultado.',
+    button: 'Começar agora',
+    labels: ['Estratégia', 'Conteúdo', 'Branding', 'Mídia paga', 'Vídeo', 'Sites', 'Design'],
+  },
+  servicesGrid: {
+    eyebrow: 'Serviços',
+    title: 'Estratégia, criação e operação. Sem improviso.',
+    items: [
+      ['Estratégia e posicionamento', 'Diagnóstico, prioridades e um plano claro para o marketing avançar com direção.'],
+      ['Branding e design', 'Identidade visual e peças que fazem a sua empresa ser percebida, lembrada e escolhida.'],
+      ['Conteúdo e redes sociais', 'Calendário, roteiros e produção contínua para a marca aparecer com consistência.'],
+      ['Mídia paga', 'Campanhas planejadas, criadas e acompanhadas para gerar oportunidades reais.'],
+      ['Vídeo e motion', 'Audiovisual e animação que explicam, emocionam e vendem.'],
+      ['Sites e landing pages', 'Páginas rápidas e bonitas, pensadas para transformar visita em contato.'],
+    ],
+    more: 'Ver como funciona',
+  },
+  results: {
+    eyebrow: 'Clientes',
+    title: 'Considerada excelente por quem trabalha com a gente.',
+    button: 'Quero resultados assim',
+    fallbackAuthor: 'Cliente Cassiellos',
+  },
+  recognition: {
+    awards: 'Reconhecimentos e certificações',
+    partners: 'Plataformas e parceiros',
+  },
+  approach: {
+    eyebrow: 'Como trabalhamos',
+    title: 'Uma forma diferente de fazer marketing.',
+    body: 'Um processo simples de acompanhar, que concentra a sua participação nas decisões que realmente precisam de você.',
+    prev: 'Anterior',
+    next: 'Próximo',
+  },
+  faq: {
+    eyebrow: 'Perguntas frequentes',
+    title: 'Você tem dúvidas. A gente tem as respostas.',
+  },
+  blog: {
+    eyebrow: 'Conteúdos',
+    title: 'O que aprendemos fazendo marketing todos os dias.',
+    button: 'Ver todos os conteúdos',
+  },
+  final: {
+    title: 'Pronto para organizar seu marketing com a',
+    brand: 'Cassiellos?',
+    button: 'Fale com a gente',
+  },
+  placeholder: 'A preencher',
+}
+
+const EN_V3: typeof PT_V3 = {
+  squad: {
+    eyebrow: 'Cassiellos squad',
+    title: 'Your complete marketing team, in one structure.',
+    body: 'Strategy, creative, media and operations working together, with a team that knows your business and follows every step to the result.',
+    button: 'Get started',
+    labels: ['Strategy', 'Content', 'Branding', 'Paid media', 'Video', 'Websites', 'Design'],
+  },
+  servicesGrid: {
+    eyebrow: 'Services',
+    title: 'Strategy, creative and operations. No improvisation.',
+    items: [
+      ['Strategy and positioning', 'Diagnosis, priorities and a clear plan so marketing moves with direction.'],
+      ['Branding and design', 'Visual identity and pieces that help your company be noticed, remembered and chosen.'],
+      ['Content and social media', 'Calendar, scripts and continuous production so the brand shows up consistently.'],
+      ['Paid media', 'Campaigns planned, created and followed to generate real opportunities.'],
+      ['Video and motion', 'Audiovisual and animation that explain, move and sell.'],
+      ['Websites and landing pages', 'Fast, beautiful pages built to turn visits into conversations.'],
+    ],
+    more: 'See how it works',
+  },
+  results: {
+    eyebrow: 'Clients',
+    title: 'Rated excellent by the people who work with us.',
+    button: 'I want results like these',
+    fallbackAuthor: 'Cassiellos client',
+  },
+  recognition: {
+    awards: 'Recognition and certifications',
+    partners: 'Platforms and partners',
+  },
+  approach: {
+    eyebrow: 'How we work',
+    title: 'A different way to do marketing.',
+    body: 'A process that is easy to follow and keeps your participation focused on the decisions that actually need you.',
+    prev: 'Previous',
+    next: 'Next',
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    title: 'You have questions. We have the answers.',
+  },
+  blog: {
+    eyebrow: 'Insights',
+    title: 'What we learn doing marketing every day.',
+    button: 'See all insights',
+  },
+  final: {
+    title: 'Ready to organize your marketing with',
+    brand: 'Cassiellos?',
+    button: 'Talk to us',
+  },
+  placeholder: 'To be filled',
+}
+
+function Placeholder({ text, label }: { text: string; label: string }) {
+  if (!SHOW_PLACEHOLDERS) return null
+  return (
+    <span className={styles.placeholder} title={text}>
+      <b>{label}</b>
+      <small>{text}</small>
+    </span>
+  )
+}
+
 const ease = [0.22, 1, 0.36, 1] as const
-const SHOW_CASSIELLOS_TECH = false
 
 export default function HomeContent({ lang }: { lang: Locale }) {
   const c = lang === 'en' ? EN : PT
+  const v = lang === 'en' ? EN_V3 : PT_V3
+  const guide = GUIDE[lang]
+  const cases = CASES[lang]
   const reduced = useReducedMotion()
-  const { openChat } = useLevi()
+  const trackRef = useRef<HTMLOListElement>(null)
   const reveal = (delay = 0, y = 24) => reduced ? {} : {
     initial: { opacity: 0, y },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, amount: 0.16 },
     transition: { duration: 0.64, delay, ease },
   }
-  // Faixa de logos: a lista se repete para o letreiro girar sem emenda.
-  const marquee = [...c.proof.cases, ...c.proof.cases, ...c.proof.cases, ...c.proof.cases]
+  const slide = (direction: 1 | -1) => {
+    const track = trackRef.current
+    if (!track) return
+    const card = track.querySelector('li')
+    track.scrollBy({ left: direction * ((card?.clientWidth ?? 480) + 20), behavior: reduced ? 'auto' : 'smooth' })
+  }
+  const logos = [
+    ...cases.map((item) => ({ src: item.logo, alt: item.logoAlt })),
+    ...EXTRA_CLIENT_LOGOS,
+  ]
 
   return (
-    <main id="top" className={styles.page}>
+    <main id="top" className={`${styles.page} ${displayFont.variable}`}>
       <HeroChrome lang={lang} />
 
-      <section className={styles.logos} aria-label={c.logos}>
+      <section className={styles.logos} aria-labelledby="logos-title">
         <div className="wrap">
-          <p className={styles.logosTitle}>{c.logos}</p>
-        </div>
-        <div className={styles.marquee}>
-          <div className={`${styles.marqueeTrack} ${reduced ? styles.marqueeStill : ''}`}>
-            {marquee.map((item, index) => (
-              <span className={styles.logoChip} key={`${item.client}-${index}`} aria-hidden={index >= c.proof.cases.length}>
-                <img src={item.image} alt={index < c.proof.cases.length ? item.alt : ''} loading="lazy" />
-              </span>
-            ))}
+          <h2 id="logos-title" className={styles.logosTitle}>{c.logos}</h2>
+          <div className={styles.logoGrid}>
+            {logos.map((logo, index) => logo
+              ? <span className={styles.logoCell} key={logo.src}><img src={logo.src} alt={logo.alt} loading="lazy" /></span>
+              : SHOW_PLACEHOLDERS && <span className={`${styles.logoCell} ${styles.logoEmpty}`} key={`vazio-${index}`}><Placeholder label={v.placeholder} text={guide.logo} /></span>)}
           </div>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.what}`} aria-labelledby="problem-title">
+      <section className={`${styles.section} ${styles.squad}`} aria-labelledby="squad-title">
         <div className="wrap">
-          <div className={styles.statement}>
-            <motion.span className={styles.eyebrow} {...reveal()}>{c.problem.eyebrow}</motion.span>
-            <motion.h2 id="problem-title" {...reveal(0.05)}>{c.problem.title}</motion.h2>
-            <motion.p {...reveal(0.1)}>{c.problem.body}</motion.p>
+          <div className={styles.sectionHead}>
+            <motion.div {...reveal()}>
+              <span className={styles.eyebrow}>{v.squad.eyebrow}</span>
+              <h2 id="squad-title" className={styles.display}>{v.squad.title}</h2>
+            </motion.div>
+            <motion.div className={styles.headAside} {...reveal(0.08)}>
+              <p>{v.squad.body}</p>
+              <a className={styles.textLink} href="#contato">{v.squad.button} <span aria-hidden="true">→</span></a>
+            </motion.div>
           </div>
-          <div className={styles.painGrid}>
-            {c.problem.points.map(([title, text], index) => (
-              <motion.article key={title} className={styles.painCard} {...reveal(index * 0.05, 16)}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
+          <GlobeSquad labels={v.squad.labels} />
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.servicesV3}`} id="servicos" aria-labelledby="services-title">
+        <div className="wrap">
+          <motion.div className={styles.sectionHeadSolo} {...reveal()}>
+            <span className={styles.eyebrow}>{v.servicesGrid.eyebrow}</span>
+            <h2 id="services-title" className={styles.display}>{v.servicesGrid.title}</h2>
+          </motion.div>
+          <div className={styles.serviceCards}>
+            {v.servicesGrid.items.map(([title, text], index) => (
+              <motion.article key={title} className={styles.serviceCard} {...reveal(index * 0.05, 18)}>
+                <span className={styles.serviceNumber}>{String(index + 1).padStart(2, '0')}</span>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </motion.article>
             ))}
           </div>
-          <motion.p className={styles.whatClose} {...reveal(0.1)}>{c.problem.close}</motion.p>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.services}`} id="servicos" aria-labelledby="services-title">
-        <div className="wrap">
-          <div className={styles.sectionHead}>
-            <motion.div {...reveal()}>
-              <span className={styles.eyebrow}>{c.services.eyebrow}</span>
-              <h2 id="services-title">{c.services.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.services.body}</motion.p>
+          <div className={styles.centerAction}>
+            <a className="btn ghost" href="#como-funciona">{v.servicesGrid.more}</a>
           </div>
-          <ol className={styles.serviceList}>
-            {c.services.items.map((item, index) => (
-              <motion.li key={item.title} className={styles.serviceRow} {...reveal(index * 0.06, 18)}>
-                <span className={styles.serviceIndex}>{String(index + 1).padStart(2, '0')}</span>
-                <div className={styles.serviceMain}>
-                  <h3>{item.title}</h3>
-                  <p>{item.benefit}</p>
-                </div>
-                <ul className={styles.serviceTags} aria-label={item.title}>
-                  {item.details.split(' · ').map((tag) => <li key={tag}>{tag}</li>)}
-                </ul>
-              </motion.li>
-            ))}
-          </ol>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="benefits-title">
+      <div className={styles.ticker} aria-hidden="true">
+        <div className={`${styles.tickerTrack} ${reduced ? styles.marqueeStill : ''}`}>
+          {[...c.benefits.close, ...c.benefits.close, ...c.benefits.close, ...c.benefits.close].map((item, index) => (
+            <span key={`${item}-${index}`}>{item}<i>∞</i></span>
+          ))}
+        </div>
+      </div>
+
+      <section className={`${styles.section} ${styles.results}`} id="clientes" aria-labelledby="proof-title">
         <div className="wrap">
           <motion.div className={styles.sectionHeadSolo} {...reveal()}>
-            <span className={styles.eyebrowDark}>{c.benefits.eyebrow}</span>
-            <h2 id="benefits-title">{c.benefits.title}</h2>
+            <span className={styles.eyebrow}>{v.results.eyebrow}</span>
+            <h2 id="proof-title" className={styles.display}>{v.results.title}</h2>
           </motion.div>
-          <div className={styles.benefitGrid}>
-            {c.benefits.rows.map(([name, meaning], index) => (
-              <motion.div className={styles.benefitCell} key={name} {...reveal(index * 0.04, 12)}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{name}</strong>
-                <p>{meaning}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className={styles.clarityBand}>
-            {c.benefits.close.map((item, index) => <motion.strong key={item} {...reveal(index * 0.06, 14)}>{item}</motion.strong>)}
-          </div>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.cases}`} id="clientes" aria-labelledby="proof-title">
-        <div className="wrap">
-          <div className={styles.sectionHead}>
-            <motion.div {...reveal()}>
-              <span className={styles.eyebrow}>{c.proof.eyebrow}</span>
-              <h2 id="proof-title">{c.proof.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.proof.body}</motion.p>
-          </div>
-          <div className={styles.caseGrid}>
-            {c.proof.cases.map((item, index) => (
-              <motion.article className={styles.caseCard} key={item.client} {...reveal(index * 0.06, 18)}>
-                <figure><img src={item.image} alt={item.alt} loading="lazy" /></figure>
-                <div className={styles.caseCopy}>
-                  <span>{item.label}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
-                  <em>{item.services}</em>
+          <div className={styles.resultGrid}>
+            {cases.map((item, index) => (
+              <motion.article className={styles.resultCard} key={item.client} {...reveal(index * 0.06, 18)}>
+                <div className={styles.resultLogo}><img src={item.logo} alt={item.logoAlt} loading="lazy" /></div>
+                {item.quote
+                  ? <blockquote className={styles.resultQuote}>“{item.quote}”</blockquote>
+                  : <Placeholder label={v.placeholder} text={guide.quote} />}
+                <p className={styles.resultSummary}>{item.summary}</p>
+                <div className={styles.resultAuthor}>
+                  {item.author
+                    ? <>{item.author.photo && <img src={item.author.photo} alt="" />}<span><b>{item.author.name}</b><small>{item.author.role}</small></span></>
+                    : SHOW_PLACEHOLDERS ? <Placeholder label={v.placeholder} text={guide.author} /> : <span><b>{v.results.fallbackAuthor}</b></span>}
+                </div>
+                <div className={styles.resultMetric}>
+                  {item.metric
+                    ? <><strong><span aria-hidden="true">↑</span><CountUp value={item.metric.value} prefix={item.metric.prefix} suffix={item.metric.suffix} /></strong><small>{item.metric.label}</small></>
+                    : <Placeholder label="↑ —%" text={guide.metric} />}
                 </div>
               </motion.article>
             ))}
           </div>
+          <div className={styles.centerAction}>
+            <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{v.results.button}</a>
+          </div>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.method}`} id="como-funciona" aria-labelledby="method-title">
-        <div className={`wrap ${styles.methodGrid}`}>
-          <motion.div className={styles.methodIntro} {...reveal()}>
-            <span className={styles.eyebrow}>{c.method.eyebrow}</span>
-            <h2 id="method-title">{c.method.title}</h2>
-            <p>{c.method.body}</p>
-          </motion.div>
-          <ol className={styles.methodSteps}>
-            {c.method.steps.map(([title, text], index) => (
-              <motion.li key={title} className={styles.methodStep} {...reveal(index * 0.05, 14)}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <div><h3>{title}</h3><p>{text}</p></div>
-              </motion.li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {SHOW_CASSIELLOS_TECH && (
-        <section className={`${styles.section} ${styles.tech}`} id="cassiellos" aria-labelledby="os-title">
+      {SHOW_PLACEHOLDERS || AWARDS.some(Boolean) || PARTNERS.some(Boolean) ? (
+        <section className={styles.recognition} aria-label={v.recognition.awards}>
           <div className="wrap">
-            <div className={styles.sectionHead}>
-              <motion.div {...reveal()}>
-                <span className={styles.eyebrow}>{c.os.eyebrow}</span>
-                <h2 id="os-title">{c.os.title}</h2>
-              </motion.div>
-              <motion.p {...reveal(0.08)}>{c.os.body}</motion.p>
+            {(SHOW_PLACEHOLDERS || AWARDS.some(Boolean)) && (
+              <>
+                <h2 className={styles.logosTitle}>{v.recognition.awards}</h2>
+                <div className={styles.badgeRow}>
+                  {AWARDS.map((item, index) => item
+                    ? <span className={styles.badge} key={item.src}><img src={item.src} alt={item.alt} loading="lazy" /></span>
+                    : SHOW_PLACEHOLDERS && <span className={`${styles.badge} ${styles.logoEmpty}`} key={`premio-${index}`}><Placeholder label={v.placeholder} text={guide.award} /></span>)}
+                </div>
+              </>
+            )}
+            {(SHOW_PLACEHOLDERS || PARTNERS.some(Boolean)) && (
+              <>
+                <h2 className={styles.logosTitle}>{v.recognition.partners}</h2>
+                <div className={styles.badgeRow}>
+                  {PARTNERS.map((item, index) => item
+                    ? <span className={styles.badge} key={item.src}><img src={item.src} alt={item.alt} loading="lazy" /></span>
+                    : SHOW_PLACEHOLDERS && <span className={`${styles.badge} ${styles.logoEmpty}`} key={`parceiro-${index}`}><Placeholder label={v.placeholder} text={guide.partner} /></span>)}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      <section className={`${styles.section} ${styles.approach}`} id="como-funciona" aria-labelledby="method-title">
+        <div className="wrap">
+          <div className={styles.approachHead}>
+            <motion.div {...reveal()}>
+              <span className={styles.eyebrow}>{v.approach.eyebrow}</span>
+              <h2 id="method-title" className={styles.display}>{v.approach.title}</h2>
+              <p>{v.approach.body}</p>
+            </motion.div>
+            <div className={styles.carouselNav}>
+              <button type="button" onClick={() => slide(-1)} aria-label={v.approach.prev}>←</button>
+              <button type="button" onClick={() => slide(1)} aria-label={v.approach.next}>→</button>
             </div>
-            <div className={styles.techItems}>
-              {c.os.items.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}
-            </div>
-            <div className={styles.leviStrip} id="levi">
-              <LeviMark size="medium" />
-              <div>
-                <LeviWordmark />
-                <h3>{c.levi.title}</h3>
-                <p>{c.levi.body}</p>
-              </div>
-              <button className="btn" type="button" onClick={() => openChat()}>{c.levi.button}</button>
+          </div>
+        </div>
+        <ol className={styles.approachTrack} ref={trackRef}>
+          {c.method.steps.map(([title, text], index) => (
+            <li key={title} className={styles.approachCard} data-tone={index % 3}>
+              <span className={styles.approachNumber}>{index + 1}</span>
+              <i className={styles.approachArt} aria-hidden="true"><b /><b /><b /><b /></i>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className={`${styles.section} ${styles.faqV3}`} aria-labelledby="faq-title">
+        <div className={`wrap ${styles.faqCenter}`}>
+          <motion.div className={styles.centerHead} {...reveal()}>
+            <span className={styles.eyebrow}>{v.faq.eyebrow}</span>
+            <h2 id="faq-title" className={styles.display}>{v.faq.title}</h2>
+          </motion.div>
+          <div className={styles.faqCards}>
+            {c.faq.items.map(([question, answer]) => (
+              <details key={question}>
+                <summary>{question}<span aria-hidden="true">+</span></summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {SHOW_PLACEHOLDERS || ARTICLES.some(Boolean) ? (
+        <section className={`${styles.section} ${styles.blog}`} aria-labelledby="blog-title">
+          <div className="wrap">
+            <motion.div className={styles.sectionHeadSolo} {...reveal()}>
+              <span className={styles.eyebrow}>{v.blog.eyebrow}</span>
+              <h2 id="blog-title" className={styles.display}>{v.blog.title}</h2>
+            </motion.div>
+            <div className={styles.blogGrid}>
+              {ARTICLES.map((article, index) => article
+                ? (
+                  <a className={styles.blogCard} key={article.href} href={article.href}>
+                    {article.image && <img src={article.image} alt="" loading="lazy" />}
+                    <small>{article.date}</small>
+                    <h3>{article.title}</h3>
+                  </a>
+                )
+                : SHOW_PLACEHOLDERS && (
+                  <div className={`${styles.blogCard} ${styles.blogEmpty}`} key={`artigo-${index}`}>
+                    <i className={styles.blogArt} data-tone={index % 3} aria-hidden="true" />
+                    <Placeholder label={v.placeholder} text={guide.article} />
+                  </div>
+                ))}
             </div>
           </div>
         </section>
-      )}
+      ) : null}
 
-      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="fit-title">
-        <div className={`wrap ${styles.fitGrid}`}>
-          <motion.div {...reveal()}>
-            <span className={styles.eyebrowDark}>{c.fit.eyebrow}</span>
-            <h2 id="fit-title">{c.fit.title}</h2>
-            <p>{c.fit.body}</p>
-          </motion.div>
-          <ul className={styles.fitList}>
-            {c.fit.items.map((item, index) => <motion.li key={item} {...reveal(index * 0.04, 12)}><span aria-hidden="true">✓</span><p>{item}</p></motion.li>)}
-          </ul>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.faq}`} aria-labelledby="faq-title">
-        <div className={`wrap ${styles.faqGrid}`}>
-          <motion.div {...reveal()}>
-            <span className={styles.eyebrow}>{c.faq.eyebrow}</span>
-            <h2 id="faq-title">{c.faq.title}</h2>
-          </motion.div>
-          <div className={styles.faqList}>
-            {c.faq.items.map(([question, answer], index) => (
-              <motion.details key={question} {...reveal(index * 0.04, 10)}>
-                <summary>{question}<span aria-hidden="true">+</span></summary>
-                <p>{answer}</p>
-              </motion.details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.cta} aria-labelledby="cta-title">
-        <div className={styles.ctaGrid} aria-hidden="true" />
-        <div className={`wrap ${styles.ctaInner}`}>
-          <motion.div {...reveal()}>
-            <span className={styles.eyebrow}>{c.cta.eyebrow}</span>
-            <h2 id="cta-title">{c.cta.title}</h2>
-            <p>{c.cta.body}</p>
-            <div className={styles.ctaActions}>
-              <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{c.cta.primary}</a>
-              <a className="btn ghost" href="#contato">{c.cta.secondary}</a>
-            </div>
-            <small>{c.cta.note}</small>
-          </motion.div>
+      <section className={styles.finalCta} aria-labelledby="final-cta-title">
+        <div className={`wrap ${styles.finalInner}`}>
+          <h2 id="final-cta-title" className={styles.display}>{v.final.title} <span>{v.final.brand}</span></h2>
+          <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{v.final.button}</a>
         </div>
       </section>
     </main>
