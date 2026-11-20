@@ -25,12 +25,11 @@
   right: 20px;
   bottom: 20px;
   z-index: 65;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  place-items: center;
+  width: 56px;
   height: 56px;
-  padding: 0 20px 0 16px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: #25d366;
   color: #062b16;
   font-size: 15px;
@@ -65,18 +64,6 @@
   .float {
     right: 16px;
     bottom: 16px;
-    width: 58px;
-    height: 58px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .float span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
   }
 }
 

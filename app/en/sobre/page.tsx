@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import AboutContent from '@/components/about-content'
+import { BreadcrumbStructuredData } from '@/components/structured-data'
 
-const title = 'Company — Cassiellos'
-const description = 'Meet Cassiellos: a creative operations company from Minas Gerais built by people working across strategy, communication, design and audiovisual.'
+const title = 'About Cassiellos | Marketing Agency in Belo Horizonte, Brazil'
+const description = 'Meet Cassiellos, a marketing agency in Belo Horizonte, Brazil, serving companies nationwide with strategy, communication, design and audiovisual.'
 
 export const metadata: Metadata = {
   title,
@@ -23,5 +24,10 @@ export const metadata: Metadata = {
 }
 
 export default function EnglishAboutPage() {
-  return <AboutContent lang="en" />
+  return (
+    <>
+      <BreadcrumbStructuredData items={[{ name: 'Home', path: '/en' }, { name: 'About Cassiellos', path: '/en/sobre' }]} />
+      <AboutContent lang="en" />
+    </>
+  )
 }

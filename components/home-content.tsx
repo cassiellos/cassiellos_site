@@ -7,6 +7,7 @@ import { ARTICLES, AWARDS, CASES, EXTRA_CLIENT_LOGOS, GUIDE, PARTNERS, SHOW_PLAC
 import HeroChrome from './hero-chrome'
 import GlobeSquad from './globe-squad'
 import CountUp from './count-up'
+import { FAQ_EN, FAQ_PT } from '@/lib/home-faq'
 import WhatsappCta from './whatsapp-cta'
 import wa from './whatsapp-cta.module.css'
 import styles from './home-v3.module.css'
@@ -105,14 +106,7 @@ const PT = {
   faq: {
     eyebrow: '09 / Perguntas frequentes',
     title: 'Antes de conversar com a gente, talvez você queira saber isso.',
-    items: [
-      ['A Cassiellos faz apenas redes sociais?', 'Não. Redes sociais podem fazer parte da estratégia, mas também trabalhamos com planejamento, campanhas, anúncios, branding, design, audiovisual, sites e organização da operação de marketing.'],
-      ['Vocês também cuidam de anúncios?', 'Sim. Podemos planejar, criar e acompanhar campanhas de mídia paga quando esse canal fizer sentido para a estratégia da empresa.'],
-      ['Preciso contratar todos os serviços?', 'Não. A estrutura é definida de acordo com o momento, os objetivos e as necessidades da empresa.'],
-      ['Minha empresa precisa ter uma equipe de marketing?', 'Não necessariamente. Podemos trabalhar junto à sua equipe atual ou assumir partes da operação que hoje ainda não possuem estrutura.'],
-      ['Como sei o que está sendo feito?', 'O trabalho possui planejamento, acompanhamento e organização. Nosso objetivo é que você consiga entender o que está acontecendo sem precisar administrar cada tarefa.'],
-      ['Quanto preciso investir?', 'Isso depende da estrutura necessária, do volume de produção e dos objetivos da empresa. Na primeira conversa entendemos seu momento e indicamos uma estrutura compatível.'],
-    ],
+    items: FAQ_PT,
   },
   cta: {
     eyebrow: 'Próximo movimento',
@@ -216,14 +210,7 @@ const EN = {
   faq: {
     eyebrow: '09 / Frequently asked questions',
     title: 'Before talking to us, you may want to know this.',
-    items: [
-      ['Does Cassiellos only manage social media?', 'No. Social media can be part of the strategy, but we also work with planning, campaigns, ads, branding, design, audiovisual, websites and marketing operations.'],
-      ['Do you also manage ads?', 'Yes. We can plan, create and follow paid-media campaigns when that channel makes sense for the company’s strategy.'],
-      ['Do I need to hire every service?', 'No. The structure is defined according to the company’s current moment, goals and needs.'],
-      ['Does my company need an internal marketing team?', 'Not necessarily. We can work alongside your current team or take over parts of the operation that do not yet have structure.'],
-      ['How do I know what is being done?', 'The work has planning, follow-through and organization. Our goal is for you to understand what is happening without having to manage every task.'],
-      ['How much do I need to invest?', 'That depends on the structure, production volume and goals. In the first conversation, we understand your situation and recommend a compatible structure.'],
-    ],
+    items: FAQ_EN,
   },
   cta: {
     eyebrow: 'Next move',
@@ -469,7 +456,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
         <div className="wrap">
           <motion.div className={styles.sectionHeadSolo} {...reveal()}>
             <span className={styles.eyebrow}>{v.results.eyebrow}</span>
-            <h2 id="proof-title" className={styles.display}>{v.results.title}</h2>
+            <h2 id="proof-title" className={styles.display}>{cases.some((item) => item.quote) ? v.results.title : c.proof.title}</h2>
           </motion.div>
           <div className={styles.resultGrid}>
             {cases.map((item, index) => (
@@ -484,11 +471,13 @@ export default function HomeContent({ lang }: { lang: Locale }) {
                     ? <>{item.author.photo && <img src={item.author.photo} alt="" />}<span><b>{item.author.name}</b><small>{item.author.role}</small></span></>
                     : SHOW_PLACEHOLDERS ? <Placeholder label={v.placeholder} text={guide.author} /> : <span><b>{v.results.fallbackAuthor}</b></span>}
                 </div>
-                <div className={styles.resultMetric}>
-                  {item.metric
-                    ? <><strong><span aria-hidden="true">↑</span><CountUp value={item.metric.value} prefix={item.metric.prefix} suffix={item.metric.suffix} /></strong><small>{item.metric.label}</small></>
-                    : <Placeholder label="↑ —%" text={guide.metric} />}
-                </div>
+                {(item.metric || SHOW_PLACEHOLDERS) && (
+                  <div className={styles.resultMetric}>
+                    {item.metric
+                      ? <><strong><span aria-hidden="true">↑</span><CountUp value={item.metric.value} prefix={item.metric.prefix} suffix={item.metric.suffix} /></strong><small>{item.metric.label}</small></>
+                      : <Placeholder label="↑ —%" text={guide.metric} />}
+                  </div>
+                )}
               </motion.article>
             ))}
           </div>

@@ -94,7 +94,7 @@ export default function HeroChrome({ lang }: { lang: Locale }) {
         </motion.div>
 
         <motion.span className={styles.heroTag} {...enter(0.15)}>
-          Cassiellos · {en ? 'Creative operations' : 'Operações criativas'}
+          {en ? 'Marketing agency · Belo Horizonte, Brazil' : 'Agência de marketing em Belo Horizonte'}
         </motion.span>
         <motion.h1 id="home-hero-title" className={styles.heroTitle} {...enter(0.25)}>
           {en

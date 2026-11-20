@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import HomeContent from '@/components/home-content'
 import ContactIntakeSection from '@/components/contact/ContactIntakeSection'
+import { FaqStructuredData } from '@/components/structured-data'
+import { FAQ_EN } from '@/lib/home-faq'
 
-const title = 'Cassiellos — Creative Operations'
-const description = 'Strategy, content, creative and operations connected in one flow so companies can grow with more clarity, consistency and rhythm.'
+const title = 'Cassiellos | Marketing Agency in Belo Horizonte, Brazil'
+const description = 'Marketing agency based in Belo Horizonte serving companies across Brazil: strategy, branding, social media, paid media, video and websites.'
 
 export const metadata: Metadata = {
   title,
@@ -26,6 +28,7 @@ export const metadata: Metadata = {
 export default function EnglishHome() {
   return (
     <>
+      <FaqStructuredData items={FAQ_EN} />
       <HomeContent lang="en" />
       <ContactIntakeSection lang="en" />
     </>

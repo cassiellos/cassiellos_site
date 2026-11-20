@@ -24,7 +24,7 @@ export default function SiteFooter() {
             <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" aria-hidden="true" width="36" height="18" />
             <strong>Cassiellos</strong>
           </div>
-          <p>{english ? 'Strategy, creative and operations for companies that want to grow with organized marketing.' : 'Estratégia, criação e operação para empresas que querem crescer com marketing organizado.'}</p>
+          <p>{english ? 'Marketing agency in Belo Horizonte (MG), serving companies across Brazil with strategy, creative and operations.' : 'Agência de marketing em Belo Horizonte (MG), atendendo empresas de todo o Brasil com estratégia, criação e operação.'}</p>
           <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
             {english ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
           </a>

@@ -335,7 +335,8 @@
 
 .logoGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 200px));
+  justify-content: center;
   gap: 14px;
 }
 
@@ -912,7 +913,6 @@
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 1080px) {
-  .logoGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .serviceCards,
   .resultGrid,
   .blogGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -929,7 +929,7 @@
   .hero { min-height: auto; }
   .heroInner { padding-top: 32px; }
   .heroActions { flex-direction: column; align-items: stretch; width: 100%; }
-  .logoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .logoGrid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .logoCell { height: 84px; }
   .serviceCards,
   .resultGrid,

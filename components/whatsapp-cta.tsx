@@ -67,7 +67,6 @@ export function WhatsappFloat() {
       aria-label={label}
     >
       <WhatsappIcon className={styles.floatIcon} />
-      <span>{label}</span>
     </a>
   )
 }

@@ -15,7 +15,7 @@ export default function TermsPage() {
         <section><h2>5. Informações e resultados</h2><p>Empregamos cuidado na apresentação das informações, mas conteúdos podem ser atualizados. Exemplos, processos e resultados dependem do contexto de cada projeto e não representam garantia automática de desempenho futuro.</p></section>
         <section><h2>6. Links e serviços externos</h2><p>O site pode direcionar para WhatsApp, plataformas de hospedagem, análise ou outros serviços. Esses ambientes possuem termos e políticas próprios, pelos quais seus respectivos responsáveis respondem.</p></section>
         <section><h2>7. Disponibilidade</h2><p>Buscamos manter o site seguro e acessível, mas podem ocorrer interrupções para manutenção, atualização ou por fatores fora do nosso controle.</p></section>
-        <section><h2>8. Legislação e contato</h2><p>Estes termos são regidos pela legislação brasileira. Dúvidas podem ser enviadas para <a href="mailto:contato@agenciacassiellos.com.br">contato@agenciacassiellos.com.br</a>.</p></section>
+        <section><h2>8. Legislação e contato</h2><p>Estes termos são regidos pela legislação brasileira. Dúvidas podem ser enviadas para <a href="mailto:cassiellosagencia@gmail.com">cassiellosagencia@gmail.com</a>.</p></section>
       </div>
     </div></main>
   )

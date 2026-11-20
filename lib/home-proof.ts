@@ -6,7 +6,7 @@
  * orientação; com false, o item vazio simplesmente não aparece.
  * Nunca inventar números, depoimentos ou selos: só dado real e autorizado.
  */
-export const SHOW_PLACEHOLDERS = true
+export const SHOW_PLACEHOLDERS = false
 
 export type CaseProof = {
   client: string

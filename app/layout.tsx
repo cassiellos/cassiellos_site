@@ -20,6 +20,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 import { displayFont } from '@/lib/display-font'
+import StructuredData from '@/components/structured-data'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -40,11 +41,28 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   authors: [{ name: 'Agência Cassiellos' }],
   keywords: [
-    'operações criativas',
-    'estratégia de marca',
-    'conteúdo',
-    'agência de marketing',
+    'agência de marketing em Belo Horizonte',
+    'agência de marketing BH',
+    'agência de marketing digital',
+    'marketing digital Belo Horizonte',
+    'agência de publicidade Belo Horizonte',
+    'gestão de redes sociais',
+    'tráfego pago',
+    'branding',
+    'criação de sites',
+    'produção de vídeo',
+    'agência de marketing Brasil',
   ],
+  category: 'marketing',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
+  },
+  other: {
+    'geo.region': 'BR-MG',
+    'geo.placename': 'Belo Horizonte',
+  },
   alternates: { canonical: '/', languages: { 'pt-BR': '/', en: '/en' } },
   openGraph: {
     type: 'website',
@@ -71,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${inter.variable} ${interTight.variable} ${displayFont.variable}`}>
       <head>
+        <StructuredData />
         {/* Sem JS as animações não rodam: o conteúdo precisa aparecer mesmo assim. */}
         <noscript>
           <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important}`}</style>
