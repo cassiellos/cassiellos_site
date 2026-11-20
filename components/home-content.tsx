@@ -3,13 +3,14 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { useLevi } from './levi-provider'
 import { WHATSAPP_CONTACT_URL } from '@/lib/site-links'
-import Hero from './hero'
+import HeroChrome from './hero-chrome'
 import LeviMark, { LeviWordmark } from './levi-mark'
-import styles from './home-content.module.css'
+import styles from './home-v3.module.css'
 
 export type Locale = 'pt' | 'en'
 
 const PT = {
+  logos: 'Empresas que confiam na Cassiellos',
   problem: {
     eyebrow: '02 / Isso acontece na sua empresa?',
     title: 'Seu marketing não deveria depender de você para funcionar.',
@@ -52,7 +53,7 @@ const PT = {
     body: 'Trabalhamos ao lado de empresas de diferentes segmentos, construindo relações próximas e uma comunicação que acompanha o momento real de cada negócio.',
     cases: [
       { client: 'Minds English School', image: '/client-logos/current/minds.png', alt: 'Logo da Minds English School', label: 'Educação · Idiomas', title: 'Minds English School', text: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', services: 'Cliente Cassiellos' },
-      { client: 'Gira Moto Peças', image: '/client-logos/current/gira.png', alt: 'Logo da Gira Moto Peças', label: 'Varejo · Motopeças', title: 'Gira Moto Peças', text: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', services: 'Cliente Cassiellos' },
+      { client: 'Gira Moto Peças', image: '/client-logos/current/gira-official.svg', alt: 'Logo da Gira Moto Peças', label: 'Varejo · Motopeças', title: 'Gira Moto Peças', text: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', services: 'Cliente Cassiellos' },
       { client: 'Escola Santa Rita', image: '/client-logos/current/santa-rita.png', alt: 'Logo da Escola de Enfermagem Santa Rita', label: 'Educação · Saúde', title: 'Escola Santa Rita', text: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', services: 'Cliente Cassiellos' },
     ],
   },
@@ -120,6 +121,7 @@ const PT = {
 }
 
 const EN = {
+  logos: 'Companies that trust Cassiellos',
   problem: {
     eyebrow: '02 / Is this happening in your company?',
     title: 'Your marketing should not depend on you to work.',
@@ -162,7 +164,7 @@ const EN = {
     body: 'We work alongside companies from different industries, building close relationships and communication that follows the real moment of each business.',
     cases: [
       { client: 'Minds English School', image: '/client-logos/current/minds.png', alt: 'Minds English School logo', label: 'Education · Languages', title: 'Minds English School', text: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', services: 'Cassiellos client' },
-      { client: 'Gira Moto Peças', image: '/client-logos/current/gira.png', alt: 'Gira Moto Peças logo', label: 'Retail · Motorcycle parts', title: 'Gira Moto Peças', text: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', services: 'Cassiellos client' },
+      { client: 'Gira Moto Peças', image: '/client-logos/current/gira-official.svg', alt: 'Gira Moto Peças logo', label: 'Retail · Motorcycle parts', title: 'Gira Moto Peças', text: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', services: 'Cassiellos client' },
       { client: 'Escola Santa Rita', image: '/client-logos/current/santa-rita.png', alt: 'Escola Santa Rita logo', label: 'Education · Healthcare', title: 'Escola Santa Rita', text: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', services: 'Cassiellos client' },
     ],
   },
@@ -242,64 +244,83 @@ export default function HomeContent({ lang }: { lang: Locale }) {
     viewport: { once: true, amount: 0.16 },
     transition: { duration: 0.64, delay, ease },
   }
+  // Faixa de logos: a lista se repete para o letreiro girar sem emenda.
+  const marquee = [...c.proof.cases, ...c.proof.cases, ...c.proof.cases, ...c.proof.cases]
 
   return (
     <main id="top" className={styles.page}>
-      <Hero lang={lang} />
+      <HeroChrome lang={lang} />
 
-      <section className={`${styles.section} ${styles.problem}`} aria-labelledby="problem-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.splitIntro}>
-            <motion.div {...reveal()}>
-              <span className={`tag ${styles.eyebrow}`}>{c.problem.eyebrow}</span>
-              <h2 id="problem-title">{c.problem.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.problem.body}</motion.p>
+      <section className={styles.logos} aria-label={c.logos}>
+        <div className="wrap">
+          <p className={styles.logosTitle}>{c.logos}</p>
+        </div>
+        <div className={styles.marquee}>
+          <div className={`${styles.marqueeTrack} ${reduced ? styles.marqueeStill : ''}`}>
+            {marquee.map((item, index) => (
+              <span className={styles.logoChip} key={`${item.client}-${index}`} aria-hidden={index >= c.proof.cases.length}>
+                <img src={item.image} alt={index < c.proof.cases.length ? item.alt : ''} loading="lazy" />
+              </span>
+            ))}
           </div>
-          <div className={styles.problemGrid}>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.what}`} aria-labelledby="problem-title">
+        <div className="wrap">
+          <div className={styles.statement}>
+            <motion.span className={styles.eyebrow} {...reveal()}>{c.problem.eyebrow}</motion.span>
+            <motion.h2 id="problem-title" {...reveal(0.05)}>{c.problem.title}</motion.h2>
+            <motion.p {...reveal(0.1)}>{c.problem.body}</motion.p>
+          </div>
+          <div className={styles.painGrid}>
             {c.problem.points.map(([title, text], index) => (
-              <motion.article key={title} className={styles.problemCard} {...reveal(index * 0.05, 16)}>
+              <motion.article key={title} className={styles.painCard} {...reveal(index * 0.05, 16)}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </motion.article>
             ))}
           </div>
-          <motion.p className={styles.problemClose} {...reveal(0.12)}>{c.problem.close}</motion.p>
+          <motion.p className={styles.whatClose} {...reveal(0.1)}>{c.problem.close}</motion.p>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.paper}`} id="servicos" aria-labelledby="services-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.splitIntro}>
+      <section className={`${styles.section} ${styles.services}`} id="servicos" aria-labelledby="services-title">
+        <div className="wrap">
+          <div className={styles.sectionHead}>
             <motion.div {...reveal()}>
-              <span className={`tag ${styles.darkEyebrow}`}>{c.services.eyebrow}</span>
+              <span className={styles.eyebrow}>{c.services.eyebrow}</span>
               <h2 id="services-title">{c.services.title}</h2>
             </motion.div>
             <motion.p {...reveal(0.08)}>{c.services.body}</motion.p>
           </div>
-          <div className={styles.servicesGrid}>
+          <ol className={styles.serviceList}>
             {c.services.items.map((item, index) => (
-              <motion.article key={item.title} className={styles.serviceCard} {...reveal(index * 0.06, 18)}>
-                <span className={styles.cardIndex}>{String(index + 1).padStart(2, '0')}</span>
-                <h3>{item.title}</h3>
-                <p>{item.benefit}</p>
-                <small>{item.details}</small>
-              </motion.article>
+              <motion.li key={item.title} className={styles.serviceRow} {...reveal(index * 0.06, 18)}>
+                <span className={styles.serviceIndex}>{String(index + 1).padStart(2, '0')}</span>
+                <div className={styles.serviceMain}>
+                  <h3>{item.title}</h3>
+                  <p>{item.benefit}</p>
+                </div>
+                <ul className={styles.serviceTags} aria-label={item.title}>
+                  {item.details.split(' · ').map((tag) => <li key={tag}>{tag}</li>)}
+                </ul>
+              </motion.li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.benefits}`} aria-labelledby="benefits-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <motion.div {...reveal()}>
-            <span className={`tag ${styles.darkEyebrow}`}>{c.benefits.eyebrow}</span>
+      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="benefits-title">
+        <div className="wrap">
+          <motion.div className={styles.sectionHeadSolo} {...reveal()}>
+            <span className={styles.eyebrowDark}>{c.benefits.eyebrow}</span>
             <h2 id="benefits-title">{c.benefits.title}</h2>
           </motion.div>
-          <div className={styles.benefitRows}>
+          <div className={styles.benefitGrid}>
             {c.benefits.rows.map(([name, meaning], index) => (
-              <motion.div className={styles.benefitRow} key={name} {...reveal(index * 0.04, 12)}>
+              <motion.div className={styles.benefitCell} key={name} {...reveal(index * 0.04, 12)}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <strong>{name}</strong>
                 <p>{meaning}</p>
@@ -312,11 +333,11 @@ export default function HomeContent({ lang }: { lang: Locale }) {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.proof}`} id="clientes" aria-labelledby="proof-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.splitIntro}>
+      <section className={`${styles.section} ${styles.cases}`} id="clientes" aria-labelledby="proof-title">
+        <div className="wrap">
+          <div className={styles.sectionHead}>
             <motion.div {...reveal()}>
-              <span className={`tag ${styles.darkEyebrow}`}>{c.proof.eyebrow}</span>
+              <span className={styles.eyebrow}>{c.proof.eyebrow}</span>
               <h2 id="proof-title">{c.proof.title}</h2>
             </motion.div>
             <motion.p {...reveal(0.08)}>{c.proof.body}</motion.p>
@@ -327,7 +348,6 @@ export default function HomeContent({ lang }: { lang: Locale }) {
                 <figure><img src={item.image} alt={item.alt} loading="lazy" /></figure>
                 <div className={styles.caseCopy}>
                   <span>{item.label}</span>
-                  <small>{item.client}</small>
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
                   <em>{item.services}</em>
@@ -340,68 +360,65 @@ export default function HomeContent({ lang }: { lang: Locale }) {
 
       <section className={`${styles.section} ${styles.method}`} id="como-funciona" aria-labelledby="method-title">
         <div className={`wrap ${styles.methodGrid}`}>
-          <motion.div {...reveal()}>
-            <span className={`tag ${styles.eyebrow}`}>{c.method.eyebrow}</span>
+          <motion.div className={styles.methodIntro} {...reveal()}>
+            <span className={styles.eyebrow}>{c.method.eyebrow}</span>
             <h2 id="method-title">{c.method.title}</h2>
             <p>{c.method.body}</p>
           </motion.div>
-          <div className={styles.methodSteps}>
+          <ol className={styles.methodSteps}>
             {c.method.steps.map(([title, text], index) => (
-              <motion.article key={title} className={styles.methodStep} {...reveal(index * 0.05, 14)}>
+              <motion.li key={title} className={styles.methodStep} {...reveal(index * 0.05, 14)}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <div><h3>{title}</h3><p>{text}</p></div>
-              </motion.article>
+              </motion.li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
       {SHOW_CASSIELLOS_TECH && (
-      <section className={`${styles.section} ${styles.osSection}`} id="cassiellos" aria-labelledby="os-title">
-        <div className={`wrap ${styles.sectionInner}`}>
-          <div className={styles.osIntro}>
-            <motion.div {...reveal()}>
-              <span className={`tag ${styles.systemEyebrow}`}>{c.os.eyebrow}</span>
-              <h2 id="os-title">{c.os.title}</h2>
-            </motion.div>
-            <motion.p {...reveal(0.08)}>{c.os.body}</motion.p>
-          </div>
-          <motion.div className={styles.osPanel} {...reveal(0.12, 18)}>
-            <img src="/brand/current/cassiellos-os-paper.svg" alt="cassiellOS" />
-            <div className={styles.osItems}>
+        <section className={`${styles.section} ${styles.tech}`} id="cassiellos" aria-labelledby="os-title">
+          <div className="wrap">
+            <div className={styles.sectionHead}>
+              <motion.div {...reveal()}>
+                <span className={styles.eyebrow}>{c.os.eyebrow}</span>
+                <h2 id="os-title">{c.os.title}</h2>
+              </motion.div>
+              <motion.p {...reveal(0.08)}>{c.os.body}</motion.p>
+            </div>
+            <div className={styles.techItems}>
               {c.os.items.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}
             </div>
-          </motion.div>
-          <motion.div className={styles.leviStrip} id="levi" {...reveal(0.16, 16)}>
-            <LeviMark size="medium" />
-            <div>
-              <LeviWordmark />
-              <h3>{c.levi.title}</h3>
-              <p>{c.levi.body}</p>
+            <div className={styles.leviStrip} id="levi">
+              <LeviMark size="medium" />
+              <div>
+                <LeviWordmark />
+                <h3>{c.levi.title}</h3>
+                <p>{c.levi.body}</p>
+              </div>
+              <button className="btn" type="button" onClick={() => openChat()}>{c.levi.button}</button>
             </div>
-            <button className="btn" type="button" onClick={() => openChat()}>{c.levi.button}</button>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
       )}
 
-      <section className={`${styles.section} ${styles.fit}`} aria-labelledby="fit-title">
+      <section className={`${styles.section} ${styles.paper}`} aria-labelledby="fit-title">
         <div className={`wrap ${styles.fitGrid}`}>
           <motion.div {...reveal()}>
-            <span className={`tag ${styles.darkEyebrow}`}>{c.fit.eyebrow}</span>
+            <span className={styles.eyebrowDark}>{c.fit.eyebrow}</span>
             <h2 id="fit-title">{c.fit.title}</h2>
             <p>{c.fit.body}</p>
           </motion.div>
-          <div className={styles.fitList}>
-            {c.fit.items.map((item, index) => <motion.div key={item} {...reveal(index * 0.04, 12)}><span>✓</span><p>{item}</p></motion.div>)}
-          </div>
+          <ul className={styles.fitList}>
+            {c.fit.items.map((item, index) => <motion.li key={item} {...reveal(index * 0.04, 12)}><span aria-hidden="true">✓</span><p>{item}</p></motion.li>)}
+          </ul>
         </div>
       </section>
 
       <section className={`${styles.section} ${styles.faq}`} aria-labelledby="faq-title">
         <div className={`wrap ${styles.faqGrid}`}>
           <motion.div {...reveal()}>
-            <span className={`tag ${styles.eyebrow}`}>{c.faq.eyebrow}</span>
+            <span className={styles.eyebrow}>{c.faq.eyebrow}</span>
             <h2 id="faq-title">{c.faq.title}</h2>
           </motion.div>
           <div className={styles.faqList}>
@@ -416,14 +433,15 @@ export default function HomeContent({ lang }: { lang: Locale }) {
       </section>
 
       <section className={styles.cta} aria-labelledby="cta-title">
+        <div className={styles.ctaGrid} aria-hidden="true" />
         <div className={`wrap ${styles.ctaInner}`}>
           <motion.div {...reveal()}>
-            <span className={`tag ${styles.ctaEyebrow}`}>{c.cta.eyebrow}</span>
+            <span className={styles.eyebrow}>{c.cta.eyebrow}</span>
             <h2 id="cta-title">{c.cta.title}</h2>
             <p>{c.cta.body}</p>
             <div className={styles.ctaActions}>
               <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">{c.cta.primary}</a>
-              <a className={`${styles.ctaSecondary} btn`} href="#contato">{c.cta.secondary}</a>
+              <a className="btn ghost" href="#contato">{c.cta.secondary}</a>
             </div>
             <small>{c.cta.note}</small>
           </motion.div>
