@@ -1,6 +1,6 @@
 /** Perguntas frequentes da home: usadas na página e no dado estruturado FAQPage (SEO). */
 export const FAQ_PT: [string, string][] = [
-      ['A Cassiellos atende só em Belo Horizonte?', 'Não. Somos uma agência de marketing de Belo Horizonte (MG) e atendemos empresas em todo o Brasil, com reuniões online e acompanhamento contínuo.'],
+      ['A Cassiellos atende empresas de todo o Brasil?', 'Sim. Atendemos empresas de todo o Brasil, com reuniões online e acompanhamento contínuo.'],
       ['A Cassiellos faz apenas redes sociais?', 'Não. Redes sociais podem fazer parte da estratégia, mas também trabalhamos com planejamento, campanhas, anúncios, branding, design, audiovisual, sites e organização da operação de marketing.'],
       ['Vocês também cuidam de anúncios?', 'Sim. Podemos planejar, criar e acompanhar campanhas de mídia paga quando esse canal fizer sentido para a estratégia da empresa.'],
       ['Preciso contratar todos os serviços?', 'Não. A estrutura é definida de acordo com o momento, os objetivos e as necessidades da empresa.'],
@@ -10,7 +10,7 @@ export const FAQ_PT: [string, string][] = [
     ]
 
 export const FAQ_EN: [string, string][] = [
-      ['Does Cassiellos only work in Belo Horizonte?', 'No. We are a marketing agency based in Belo Horizonte (MG) and work with companies across Brazil, with online meetings and continuous follow-up.'],
+      ['Does Cassiellos work with companies across Brazil?', 'Yes. We work with companies across Brazil, with online meetings and continuous follow-up.'],
       ['Does Cassiellos only manage social media?', 'No. Social media can be part of the strategy, but we also work with planning, campaigns, ads, branding, design, audiovisual, websites and marketing operations.'],
       ['Do you also manage ads?', 'Yes. We can plan, create and follow paid-media campaigns when that channel makes sense for the company’s strategy.'],
       ['Do I need to hire every service?', 'No. The structure is defined according to the company’s current moment, goals and needs.'],

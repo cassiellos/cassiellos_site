@@ -107,7 +107,7 @@ export default async function OpengraphImage() {
             color: '#a8b4c9',
           }}
         >
-          <div style={{ display: 'flex' }}>Agência de marketing · Belo Horizonte</div>
+          <div style={{ display: 'flex' }}>Agência de marketing digital</div>
           <div style={{ display: 'flex' }}>cassiellos.com.br</div>
         </div>
       </div>

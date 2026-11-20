@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import AboutContent from '@/components/about-content'
 import { BreadcrumbStructuredData } from '@/components/structured-data'
 
-const title = 'About Cassiellos | Marketing Agency in Belo Horizonte, Brazil'
-const description = 'Meet Cassiellos, a marketing agency in Belo Horizonte, Brazil, serving companies nationwide with strategy, communication, design and audiovisual.'
+const title = 'About Cassiellos | Digital Marketing Agency in Brazil'
+const description = 'Meet Cassiellos, a marketing agency serving companies across Brazil with strategy, communication, design and audiovisual.'
 
 export const metadata: Metadata = {
   title,

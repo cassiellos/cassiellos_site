@@ -24,7 +24,7 @@ export default function SiteFooter() {
             <img src="/brand/cassiellos-symbol-signal-red.svg" alt="" aria-hidden="true" width="36" height="18" />
             <strong>Cassiellos</strong>
           </div>
-          <p>{english ? 'Marketing agency in Belo Horizonte (MG), serving companies across Brazil with strategy, creative and operations.' : 'Agência de marketing em Belo Horizonte (MG), atendendo empresas de todo o Brasil com estratégia, criação e operação.'}</p>
+          <p>{english ? 'Marketing agency serving companies across Brazil with strategy, creative and operations.' : 'Agência de marketing que atende empresas de todo o Brasil com estratégia, criação e operação.'}</p>
           <a className="btn" href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">
             {english ? 'Talk to Cassiellos' : 'Fale com a Cassiellos'}
           </a>
@@ -42,7 +42,6 @@ export default function SiteFooter() {
           <span>{english ? 'Contact' : 'Contato'}</span>
           <a href={WHATSAPP_CONTACT_URL} target="_blank" rel="noopener noreferrer">WhatsApp</a>
           <a href={`${home}#contato`}>{english ? 'Pre-diagnostic' : 'Pré-diagnóstico'}</a>
-          <p>Belo Horizonte / MG</p>
         </div>
 
         <div className={styles.col}>
@@ -74,7 +73,7 @@ export default function SiteFooter() {
       <p className={styles.srOnly}>Cassiellos</p>
 
       <div className={`wrap ${styles.bottom}`}>
-        <span>{english ? 'Creative operations' : 'Operações criativas'} · Belo Horizonte / MG · © 2026 Cassiellos</span>
+        <span>{english ? 'Creative operations' : 'Operações criativas'} · © 2026 Cassiellos</span>
         <nav aria-label={english ? 'Policies and terms' : 'Políticas e termos'}>
           <a href="/politica-de-privacidade">{english ? 'Privacy' : 'Privacidade'}</a>
           <a href="/termos-de-uso">{english ? 'Terms of Use' : 'Termos de Uso'}</a>

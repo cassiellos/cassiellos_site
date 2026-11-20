@@ -52,6 +52,8 @@ export const metadata: Metadata = {
     'criação de sites',
     'produção de vídeo',
     'agência de marketing Brasil',
+    'agência de marketing digital Brasil',
+    'agência de marketing para empresas',
   ],
   category: 'marketing',
   robots: {

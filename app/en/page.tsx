@@ -4,8 +4,8 @@ import ContactIntakeSection from '@/components/contact/ContactIntakeSection'
 import { FaqStructuredData } from '@/components/structured-data'
 import { FAQ_EN } from '@/lib/home-faq'
 
-const title = 'Cassiellos | Marketing Agency in Belo Horizonte, Brazil'
-const description = 'Marketing agency based in Belo Horizonte serving companies across Brazil: strategy, branding, social media, paid media, video and websites.'
+const title = 'Cassiellos | Digital Marketing Agency in Brazil'
+const description = 'Marketing agency serving companies across Brazil: strategy, branding, social media, paid media, video and websites.'
 
 export const metadata: Metadata = {
   title,

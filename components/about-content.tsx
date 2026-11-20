@@ -38,8 +38,8 @@ const COPY = {
     hero: {
       eyebrow: 'Cassiellos · A Empresa',
       title: 'Clareza em movimento.',
-      body: 'Somos uma empresa mineira de operações criativas, construída por pessoas que trabalham entre estratégia, comunicação, design e audiovisual. Gostamos de entender os negócios com que nos envolvemos, construir relações próximas e fazer o trabalho evoluir com consistência.',
-      meta: ['Belo Horizonte / MG', 'Criatividade', 'Proximidade', 'Consistência'],
+      body: 'Somos uma agência de operações criativas, construída por pessoas que trabalham entre estratégia, comunicação, design e audiovisual. Gostamos de entender os negócios com que nos envolvemos, construir relações próximas e fazer o trabalho evoluir com consistência.',
+      meta: ['Todo o Brasil', 'Criatividade', 'Proximidade', 'Consistência'],
       primary: 'Falar com a Cassiellos',
       secondary: 'Conhecer o time',
       wa: { identity: 'Quero trabalhar com a Cassiellos', culture: 'Falar com o time', people: 'Conversar com os fundadores', principles: 'Começar uma conversa', future: 'Fazer parte do próximo capítulo' },
@@ -93,8 +93,8 @@ const COPY = {
     hero: {
       eyebrow: 'Cassiellos · Company',
       title: 'Clarity in motion.',
-      body: 'We are a creative operations company from Minas Gerais, built by people working across strategy, communication, design and audiovisual. We like to understand the businesses we get involved with, build close relationships and help the work evolve consistently.',
-      meta: ['Belo Horizonte / MG', 'Creativity', 'Proximity', 'Consistency'],
+      body: 'We are a creative operations agency, built by people working across strategy, communication, design and audiovisual. We like to understand the businesses we get involved with, build close relationships and help the work evolve consistently.',
+      meta: ['Across Brazil', 'Creativity', 'Proximity', 'Consistency'],
       primary: 'Talk to Cassiellos',
       secondary: 'Meet the team',
       wa: { identity: 'I want to work with Cassiellos', culture: 'Talk to the team', people: 'Talk to the founders', principles: 'Start a conversation', future: 'Be part of the next chapter' },
