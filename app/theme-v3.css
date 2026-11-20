@@ -1,0 +1,49 @@
+/* Padrão visual v3 aplicado às páginas de texto (políticas e termos). */
+.legalPage {
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(123, 53, 245, .18), transparent 70%), #090b11 !important;
+  color: #dfe4ee !important;
+}
+
+.legalPage h1 {
+  font-family: var(--font-display), var(--font-inter-tight), Arial, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -.035em !important;
+  color: #f6f8ff !important;
+}
+
+.legalPage h2 {
+  font-family: var(--font-inter-tight), Arial, sans-serif;
+  color: #f6f8ff !important;
+}
+
+.legalPage p,
+.legalPage li {
+  color: #a3acbd !important;
+}
+
+.legalPage a {
+  color: #ff8a94 !important;
+}
+
+.legalPage .legalBack {
+  color: #a3acbd !important;
+}
+
+.legalPage .legalContent section {
+  border-color: rgba(255, 255, 255, .08) !important;
+}
+
+html[data-theme='light'] .legalPage {
+  background: #f6f8ff !important;
+  color: #07101f !important;
+}
+
+html[data-theme='light'] .legalPage h1,
+html[data-theme='light'] .legalPage h2 {
+  color: #07101f !important;
+}
+
+html[data-theme='light'] .legalPage p,
+html[data-theme='light'] .legalPage li {
+  color: #4a5770 !important;
+}

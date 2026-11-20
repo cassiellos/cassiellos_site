@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import AboutContent from '@/components/about-content'
 
 const title = 'A Empresa — Cassiellos'
-const description = 'Conheça quem é a Cassiellos: uma empresa mineira de operações criativas construída por pessoas de estratégia, comunicação, design, audiovisual e tecnologia.'
+const description = 'Conheça quem é a Cassiellos: uma empresa mineira de operações criativas construída por pessoas de estratégia, comunicação, design e audiovisual.'
 
 export const metadata: Metadata = {
   title,

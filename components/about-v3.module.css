@@ -1,0 +1,126 @@
+/* Página "A Empresa" no padrão novo (complementa home-v3.module.css). */
+.hero {
+  min-height: min(86svh, 820px);
+}
+
+.chips {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.chips li {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: rgba(21, 23, 31, .7);
+  font-size: 13px;
+  font-weight: 700;
+  color: #dfe4ee;
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.team {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.person {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 26px;
+  align-items: center;
+  padding: 22px;
+  border: 1px solid var(--rule);
+  border-radius: 24px;
+  background: var(--card);
+}
+
+.portrait {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #3a1d8f, #c42230);
+}
+
+.portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portrait span {
+  font-family: var(--font-display), Arial, sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .92);
+}
+
+.photoTodo {
+  position: absolute;
+  inset: auto 8px 8px;
+  padding: 6px 8px;
+  border: 1px dashed rgba(255, 255, 255, .6);
+  border-radius: 8px;
+  background: rgba(9, 11, 17, .6);
+  font-size: 11px;
+  line-height: 1.35;
+  color: #f6f8ff;
+  text-align: center;
+}
+
+.personCopy h3 {
+  font-family: var(--font-display), Arial, sans-serif !important;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.personCopy strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--accent-text);
+  font-size: 14px;
+}
+
+.personCopy p {
+  margin-top: 10px !important;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.principles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.future p {
+  margin: 22px auto 0 !important;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+@media (max-width: 980px) {
+  .team { grid-template-columns: minmax(0, 1fr); }
+  .principles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .person { grid-template-columns: minmax(0, 1fr); }
+  .portrait { max-width: 220px; }
+  .principles { grid-template-columns: minmax(0, 1fr); }
+}

@@ -8,19 +8,17 @@ import './theme-system-v2.css'
 import './about-team.css'
 import './navigation-client-fixes.css'
 import './section07-brand-device.css'
+import './theme-v3.css'
 
 import SmoothScroll from '@/components/smooth-scroll'
 import ScrollProgress from '@/components/scroll-progress'
 import SiteNav from '@/components/site-nav'
 import SiteFooter from '@/components/site-footer'
-import { LeviProvider } from '@/components/levi-provider'
-import LeviWidget from '@/components/levi-widget'
 import SiteInteractionTracker from '@/components/site-interaction-tracker'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
-
-const SHOW_LEVI_WIDGET = false
+import { displayFont } from '@/lib/display-font'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -44,7 +42,6 @@ export const metadata: Metadata = {
     'operações criativas',
     'estratégia de marca',
     'conteúdo',
-    'cassiellOS',
     'agência de marketing',
   ],
   alternates: { canonical: '/', languages: { 'pt-BR': '/', en: '/en' } },
@@ -71,7 +68,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${interTight.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${interTight.variable} ${displayFont.variable}`}>
       <head>
         {/* Sem JS as animações não rodam: o conteúdo precisa aparecer mesmo assim. */}
         <noscript>
@@ -79,14 +76,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
       </head>
       <body>
-        <LeviProvider>
-          <SmoothScroll />
-          <ScrollProgress />
-          <SiteNav />
-          {children}
-          <SiteFooter />
-          {SHOW_LEVI_WIDGET && <LeviWidget />}
-        </LeviProvider>
+        <SmoothScroll />
+        <ScrollProgress />
+        <SiteNav />
+        {children}
+        <SiteFooter />
         <Analytics />
         <SiteInteractionTracker />
         <SpeedInsights />
