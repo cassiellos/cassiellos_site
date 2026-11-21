@@ -40,6 +40,7 @@ function memoryStore(ctx: ScheduleContext | null, gates: ScheduleGate[] = [{ app
       rows.set(trackingId, { id, payload, status: 'pending', attempts: 0, updates: [] })
       return id
     },
+    recordCustomResult: async (id, result) => { for (const r of rows.values()) if (r.id === id) r.payload.customResult = result },
     markAttempt: async id => { for (const r of rows.values()) if (r.id === id) r.attempts += 1 },
     finish: async (id, update) => { for (const r of rows.values()) if (r.id === id) { r.status = update.status; r.updates.push(update) } },
   }
@@ -137,6 +138,140 @@ describe('CAPI Schedule — envio, deduplicação e falhas (Meta simulada)', () 
     assert.deepEqual(row.payload.userDataFields, ['client_user_agent', 'client_ip_address'])
     assert.deepEqual(row.updates.at(-1)?.response, { fbtrace_id: 'AbCdEf123', events_received: 1 })
     assertNoSecretsOrPii(logs)
+  })
+
+  it('flag opt-in: duas requisições independentes com event_ids distintos e status persistidos', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([OK, {status: 200, json: {events_received: 1, fbtrace_id: 'MetaTest2'}}])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA })
+    assert.deepEqual(outcome, { status: 'accepted', attempts: 1, httpStatus: 200 })
+    assert.equal(f.calls.length, 2, 'nunca enviar Schedule e personalizado no mesmo lote')
+    const standard = JSON.parse(f.calls[0].body.get('data')!) as Array<Record<string, unknown>>
+    const custom = JSON.parse(f.calls[1].body.get('data')!) as Array<Record<string, unknown>>
+    assert.equal(standard.length, 1)
+    assert.equal(custom.length, 1)
+    assert.equal(standard[0].event_name, 'Schedule')
+    assert.equal(standard[0].event_id, EVENT_ID)
+    assert.equal(custom[0].event_name, 'Cassiellos_Scheduled')
+    assert.equal(custom[0].event_id, 'cassiellos_scheduled_' + EVENT_ID.slice('chronos_scheduled_'.length))
+    assert.deepEqual(custom[0].user_data, standard[0].user_data)
+    assert.deepEqual(custom[0].custom_data, standard[0].custom_data)
+    const row = [...m.rows.values()][0]
+    assert.equal(row.status, 'accepted')
+    assert.deepEqual(row.payload.customEvent, { event_name: 'Cassiellos_Scheduled', event_id: custom[0].event_id })
+    assert.deepEqual(row.payload.customResult, {
+      status: 'accepted', attempts: 1, httpStatus: 200, response: {fbtrace_id: 'MetaTest2', events_received: 1},
+    })
+    assertNoSecretsOrPii(row.payload)
+    assert.deepEqual(await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA }), {status: 'duplicate'})
+    assert.equal(f.calls.length, 2, 'nova chamada não repete nenhum evento')
+  })
+
+  it('falha no personalizado não muda o Schedule aceito e guarda customResult', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([OK, {status: 400, json: {error: {code: 100, error_subcode: 1487}}}])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.equal(outcome.status, 'accepted')
+    assert.equal(f.calls.length, 2)
+    const row = [...m.rows.values()][0]
+    assert.equal(row.status, 'accepted')
+    assert.deepEqual(row.payload.customResult, {
+      status: 'rejected', attempts: 1, httpStatus: 400, error: 'http_400:100/1487',
+    })
+  })
+
+  it('Schedule recusado continua separado do personalizado aceito', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([{status: 400, json: {error: {code: 100}}}, OK])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.deepEqual(outcome, {status: 'rejected', attempts: 1, httpStatus: 400, error: 'http_400:100'})
+    const row = [...m.rows.values()][0]
+    assert.equal(row.status, 'rejected')
+    assert.equal((row.payload.customResult as {status: string}).status, 'accepted')
+    assert.equal(f.calls.length, 2)
+  })
+
+  it('resposta parcial do personalizado não altera o status do Schedule', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([OK, {status: 200, json: {events_received: 0}}])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.equal(outcome.status, 'accepted')
+    assert.equal([...m.rows.values()][0].status, 'accepted')
+    assert.equal((([...m.rows.values()][0].payload.customResult) as {status: string}).status, 'rejected')
+  })
+
+  it('retry do personalizado revalida as travas sem alterar tentativas do Schedule', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([OK, {status: 429, json: {error: {code: 17}}}, OK])
+    const delays: number[] = []
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+      sleep: async delay => { delays.push(delay) },
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.equal(outcome.status, 'accepted')
+    assert.equal(f.calls.length, 3)
+    assert.deepEqual(delays, [2_000])
+    const row = [...m.rows.values()][0]
+    assert.equal(row.attempts, 1, 'tentativas do Schedule nunca somam retries do customizado')
+    assert.equal((row.payload.customResult as {status: string; attempts: number}).status, 'accepted')
+    assert.equal((row.payload.customResult as {status: string; attempts: number}).attempts, 2)
+  })
+
+  it('consentimento revogado entre Schedule e customizado impede segundo envio', async () => {
+    const m = memoryStore(context(), [
+      {appointmentStatus: 'confirmed', consentGranted: true},
+      {appointmentStatus: 'confirmed', consentGranted: false},
+    ])
+    const f = fakeFetch([OK])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.equal(outcome.status, 'accepted')
+    assert.equal(f.calls.length, 1)
+    const row = [...m.rows.values()][0]
+    assert.equal(row.status, 'accepted')
+    assert.deepEqual(row.payload.customResult, {
+      status: 'skipped', attempts: 0, httpStatus: null, error: 'no_marketing_consent',
+    })
+  })
+
+  it('reunião cancelada após Schedule não gera evento personalizado', async () => {
+    const m = memoryStore(context(), [
+      {appointmentStatus: 'confirmed', consentGranted: true},
+      {appointmentStatus: 'cancelled', consentGranted: true},
+    ])
+    const f = fakeFetch([OK])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, {eventId: EVENT_ID, clientIp: IP, userAgent: UA})
+    assert.equal(outcome.status, 'accepted')
+    assert.equal(f.calls.length, 1)
+    assert.equal((([ ...m.rows.values()][0].payload.customResult) as {status: string}).status, 'skipped')
+  })
+
+  it('homologação não envia evento personalizado comercial, mesmo com a flag ativada', async () => {
+    const m = memoryStore(context({
+      metadata: { formSlug: 'hamburguerias', isTest: true }, leadIsTest: true, homologationClaimed: true,
+    }))
+    const f = fakeFetch([OK])
+    const result = await dispatchScheduleToMeta({
+      config: TEST_MODE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA })
+    assert.equal(result.status, 'accepted')
+    const data = JSON.parse(f.calls[0].body.get('data')!) as Array<Record<string, unknown>>
+    assert.equal(data.length, 1)
+    assert.equal(data[0].event_name, 'Schedule')
+    assert.equal(f.calls[0].body.get('test_event_code'), 'TEST93849')
   })
 
   it('sem IP válido continua enviando só o user agent (exigido); sem user agent nada sai', async () => {

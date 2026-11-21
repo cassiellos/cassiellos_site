@@ -11,7 +11,7 @@ import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;previewOnly?:boolean}
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean}
 // Apenas apresentação: preserva os textos do CRM, destacando a promessa como na referência.
 function coverHeadline(text: string) {
   const match=text.match(/^(.*?)(vender mais!?)(\s*)$/iu)
@@ -22,7 +22,7 @@ function coverCtaLabel(text: string) {
   return text.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,prefix: string,letter: string)=>
     prefix+letter.toLocaleUpperCase('pt-BR'))
 }
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,previewOnly=false}:PublicFlowProps){
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   // Mesmo padrão aprovado no /agendar: nunca interromper a primeira pergunta com avisos de cookies.
@@ -147,7 +147,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       <section className="cpf-card" aria-live="polite">
         {status==='calendar'?<InlineBookingCalendar formSlug={slug}
           bookingToken={bookingToken} email={email} bookingEnabled={bookingEnabled}
-          previewOnly={previewOnly}/>:
+          previewOnly={previewOnly} customScheduleEnabled={!previewOnly && customScheduleEnabled}/>:
         coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{coverHeadline(flow.cover.headline)}</h1>
           <ul>{flow.cover.bullets.map((bullet,i)=><li key={i}>{bullet}</li>)}</ul>

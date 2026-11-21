@@ -11,7 +11,7 @@ import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
 import ConsentNotice from '@/components/privacy/consent-notice'
-import { readMarketingConsent, trackChronosEvent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import { readMarketingConsent, trackChronosEvent, trackMetaConversion, trackMetaCustomBooking } from '@/lib/marketing/meta-client'
 import type { ChronosCustomEvent, ChronosDispatchMode } from '@/lib/marketing/meta'
 import MetaPixel from '@/components/marketing/meta-pixel'
 import { nextPhoneInput, validateBrazilianPhone, validateEmailAddress } from '@/lib/crm/contact-validation'
@@ -136,7 +136,7 @@ function errorCode(error: unknown, fallback: string): string {
 }
 
 export default function BookingExperience({
-  form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null, chronosMode = 'off',
+  form, bookingEnabled, bookingRestricted = false, invitesEnabled = false, turnstileSiteKey, analyticsMode, metaPixelId = null, metaHomologation = null, chronosMode = 'off', customScheduleEnabled = false,
 }: {
   form: BookingForm; bookingEnabled: boolean; bookingRestricted?: boolean; invitesEnabled?: boolean; turnstileSiteKey: string | null; analyticsMode: FunnelMode; metaPixelId?: string | null
   /**
@@ -146,6 +146,7 @@ export default function BookingExperience({
   metaHomologation?: { expiresAt: string; scope?: 'conversions' | 'chronos' } | null
   /** Fica OFF até uma liberação comercial futura. Resolvido pelo servidor por Preview/live/Pixel/flag. */
   chronosMode?: ChronosDispatchMode
+  customScheduleEnabled?: boolean
 }) {
   // Meta Pixel habilitado no servidor (META_PIXEL_ENABLED + META_PIXEL_ID). Desligado: nada de marketing nesta página.
   const marketingEnabled = Boolean(metaPixelId)
@@ -604,6 +605,8 @@ export default function BookingExperience({
       const schedule = (value.tracking as { schedule?: { eventId?: unknown } } | undefined)?.schedule
       if ((analyticsMode === 'live' || metaHomologation) && value.alreadyConfirmed !== true && schedule) {
         trackMetaConversion('Schedule', schedule.eventId, { content_name: form.slug, homologation: Boolean(metaHomologation) })
+        if (customScheduleEnabled && analyticsMode === 'live' && !metaHomologation)
+          trackMetaCustomBooking(schedule.eventId, { content_name: form.slug })
       }
       setStep(4)
       // Somente reunião confirmada pelo backend (id da reserva presente). A repetição idempotente

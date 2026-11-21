@@ -1,7 +1,7 @@
 'use client'
 
 import { getConsent, marketingAllowed } from '@/lib/privacy/consent-client'
-import { chronosEventId, isChronosCustomEvent, type ChronosCustomEvent, type MarketingConsentInput, type MetaEventName } from './meta'
+import { chronosEventId, isChronosCustomEvent, META_CUSTOM_BOOKING_EVENT, metaCustomScheduleEventId, type ChronosCustomEvent, type MarketingConsentInput, type MetaEventName } from './meta'
 
 /**
  * Funções de navegador do Meta Pixel. Nenhuma delas envia dados pessoais:
@@ -66,6 +66,22 @@ export function trackMetaConversion(
   if (params.homologation === true) safe.cassiellos_teste = 'homologacao'
   window.fbq('track', eventName, safe, { eventID: eventId })
   markSent(eventId)
+  return true
+}
+
+/** Evento personalizado de reunião confirmada, com id próprio mas mesmo booking que o Schedule.
+ * Só dispara após a confirmação do backend e quando a página autorizar a feature flag.
+ */
+export function trackMetaCustomBooking(
+  scheduleEventId: unknown, params: { content_name?: string } = {},
+): boolean {
+  if (typeof window === 'undefined' || typeof window.fbq !== 'function' || !marketingAllowed()) return false
+  const customId = metaCustomScheduleEventId(scheduleEventId)
+  if (!customId || sentIds().includes(customId)) return false
+  const safe: Record<string, string> = typeof params.content_name === 'string' && /^[a-z0-9-]{1,64}$/.test(params.content_name)
+    ? { content_name: params.content_name } : {}
+  window.fbq('trackCustom', META_CUSTOM_BOOKING_EVENT, safe, { eventID: customId })
+  markSent(customId)
   return true
 }
 

@@ -4,7 +4,7 @@ import { CONSENT_VERSION, hasMarketingConsent, parseConsent, serializeConsent } 
 
 const mk = (marketing: boolean, now?: Date) => serializeConsent({ analytics: null, marketing }, now)
 import {
-  META_EVENT_MAP, chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig, isMetaTrackedPath, isValidFbc, isValidFbp,
+  META_EVENT_MAP, chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig, getMetaCustomScheduleEnabled, metaCustomScheduleEventId, isMetaTrackedPath, isValidFbc, isValidFbp,
   leadTrackingEventId, metaEventNameFor, resolveMarketingConsent, sanitizeMarketingConsent,
 } from './meta'
 
@@ -65,6 +65,21 @@ describe('Meta Pixel — configuração e rotas', () => {
     const id = '3F2B1C4D-0000-4000-8000-00000000ABCD'
     assert.equal(leadTrackingEventId(id), 'lead_3f2b1c4d00004000800000000000abcd')
     assert.equal(leadTrackingEventId(id), leadTrackingEventId(id.toLowerCase()))
+  })
+})
+
+describe('evento Cassiellos_Scheduled — independente de Schedule', () => {
+  it('chave opt-in desabilitada por padrão; apenas true literal habilita', () => {
+    assert.equal(getMetaCustomScheduleEnabled({}), false)
+    assert.equal(getMetaCustomScheduleEnabled({ META_CUSTOM_SCHEDULE_ENABLED: 'yes' }), false)
+    assert.equal(getMetaCustomScheduleEnabled({ META_CUSTOM_SCHEDULE_ENABLED: 'true' }), true)
+  })
+  it('event_id determinado pelo booking e distinto do Schedule original', () => {
+    const original = 'chronos_scheduled_' + 'a'.repeat(32)
+    assert.equal(metaCustomScheduleEventId(original), 'cassiellos_scheduled_' + 'a'.repeat(32))
+    for (const bad of ['Schedule', '', 'chronos_scheduled_', 'chronos_scheduled_' + 'Z'.repeat(32), null]) {
+      assert.equal(metaCustomScheduleEventId(bad), null)
+    }
   })
 })
 

@@ -40,6 +40,22 @@ export const META_EVENT_MAP = {
 export type InternalTrackedEvent = keyof typeof META_EVENT_MAP
 export type MetaEventName = (typeof META_EVENT_MAP)[InternalTrackedEvent]
 
+/** Evento INDEPENDENTE enviado à Meta para otimização de Vendas com reunião realmente confirmada.
+ * Não é uma conversão personalizada derivada do padrão Schedule (que a Meta bloqueia em Vendas).
+ * Opt-in explícito: novos eventos só saem após META_CUSTOM_SCHEDULE_ENABLED=true no servidor.
+ */
+export const META_CUSTOM_BOOKING_EVENT = 'Cassiellos_Scheduled' as const
+
+export function getMetaCustomScheduleEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.META_CUSTOM_SCHEDULE_ENABLED?.trim() === 'true'
+}
+
+/** event_id determinístico próprio para o evento personalizado, sem dados pessoais. */
+export function metaCustomScheduleEventId(scheduleEventId: unknown): string | null {
+  if (typeof scheduleEventId !== 'string' || !/^chronos_scheduled_[a-f0-9]{32}$/.test(scheduleEventId)) return null
+  return 'cassiellos_scheduled_' + scheduleEventId.slice('chronos_scheduled_'.length)
+}
+
 export function metaEventNameFor(internal: string): MetaEventName | null {
   return Object.prototype.hasOwnProperty.call(META_EVENT_MAP, internal)
     ? META_EVENT_MAP[internal as InternalTrackedEvent] : null
