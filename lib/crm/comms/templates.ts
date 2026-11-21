@@ -30,7 +30,7 @@ export function escapeHtml(value: string): string {
 
 const MEET_URL = /^https:\/\/meet\.google\.com\/[a-z0-9-]{3,64}(?:\?[^\s]*)?$/i
 
-export type EmailKind = 'confirmation' | 'reminder_morning' | 'reminder_1h'
+export type EmailKind = 'confirmation' | 'reminder_morning' | 'reminder_1h' | 'reminder_15m'
 
 export type MeetingEmailInput = {
   name: string | null
@@ -65,6 +65,12 @@ const COPY: Record<EmailKind, { subject: string; eyebrow: string; lead: (n: stri
     eyebrow: 'COMEÇA EM 1 HORA',
     lead: n => 'Olá, ' + n + '! Sua reunião de diagnóstico estratégico com a Cassiellos começa em 1 hora.',
     closing: 'Deixe o link do Meet à mão para entrar no horário.',
+  },
+  reminder_15m: {
+    subject: 'Sua reunião com a Cassiellos começa em 15 minutos!',
+    eyebrow: 'COMEÇA EM 15 MINUTOS',
+    lead: n => 'Olá, ' + n + '! Faltam apenas 15 minutos para nossa reunião de diagnóstico estratégico com a Cassiellos.',
+    closing: 'Estamos quase começando! Separe alguns minutos para se preparar e acesse a reunião pelo botão acima no horário combinado.',
   },
 }
 

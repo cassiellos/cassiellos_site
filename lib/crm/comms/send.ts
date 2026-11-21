@@ -36,7 +36,7 @@ const defaultLog = (event: string, details: Record<string, unknown>) =>
 /** Estados da reunião que ainda merecem comunicação. */
 const LIVE_STATUSES = new Set(['pending', 'confirmed'])
 
-const KINDS: ReadonlySet<string> = new Set(['confirmation', 'reminder_morning', 'reminder_1h'])
+const KINDS: ReadonlySet<string> = new Set(['confirmation', 'reminder_morning', 'reminder_1h', 'reminder_15m'])
 
 /** Grace limit to avoid sending a stale reminder after provider/network delays. */
 export const REMINDER_LATE_GRACE_MS = 5 * 60_000
