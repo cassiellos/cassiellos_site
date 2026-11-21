@@ -4,7 +4,7 @@ import { getCrmPool } from '@/lib/crm/db'
 import { getPublishedFlow } from '@/lib/crm/form-builder/store'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
-import { getMetaPixelConfig } from '@/lib/marketing/meta'
+import { getMetaPixelConfig, getMetaCustomScheduleEnabled } from '@/lib/marketing/meta'
 import PublicFlow from './public-flow'
 import './public-flow.css'
 
@@ -23,5 +23,6 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
   const pixel=getMetaPixelConfig()
   return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.publishedMeta?.title||doc.title}
     description={doc.publishedMeta?.description||doc.description} version={doc.publishedVersion} flow={doc.published}
-    turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null} metaPixelId={pixel.enabled?pixel.pixelId:null}/>
+    turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null} metaPixelId={pixel.enabled?pixel.pixelId:null}
+    customScheduleEnabled={pixel.enabled && getMetaCustomScheduleEnabled()}/>
 }
