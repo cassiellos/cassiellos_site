@@ -249,6 +249,14 @@ const PT_V3 = {
     title: 'Considerada excelente por quem trabalha com a gente.',
     button: 'Quero resultados assim',
     fallbackAuthor: 'Cliente Cassiellos',
+    more: 'Leia mais',
+    sample: {
+      tag: 'Modelo a preencher',
+      quote: 'Frase de destaque do cliente, curta e entre aspas.',
+      name: 'Nome do cliente',
+      role: 'Cargo na empresa',
+      metric: 'o que cresceu, em quanto tempo',
+    },
   },
   recognition: {
     awards: 'Reconhecimentos e certificações',
@@ -314,6 +322,14 @@ const EN_V3: typeof PT_V3 = {
     title: 'Rated excellent by the people who work with us.',
     button: 'I want results like these',
     fallbackAuthor: 'Cassiellos client',
+    more: 'Read more',
+    sample: {
+      tag: 'Template to fill',
+      quote: 'Short highlight quote from the client.',
+      name: 'Client name',
+      role: 'Role at the company',
+      metric: 'what grew, over what period',
+    },
   },
   recognition: {
     awards: 'Recognition and certifications',
@@ -459,27 +475,53 @@ export default function HomeContent({ lang }: { lang: Locale }) {
             <h2 id="proof-title" className={styles.display}>{cases.some((item) => item.quote) ? v.results.title : c.proof.title}</h2>
           </motion.div>
           <div className={styles.resultGrid}>
-            {cases.map((item, index) => (
-              <motion.article className={styles.resultCard} key={item.client} {...reveal(index * 0.06, 18)}>
-                <div className={styles.resultLogo}><img src={item.logo} alt={item.logoAlt} loading="lazy" /></div>
-                {item.quote
-                  ? <blockquote className={styles.resultQuote}>“{item.quote}”</blockquote>
-                  : <Placeholder label={v.placeholder} text={guide.quote} />}
-                <p className={styles.resultSummary}>{item.summary}</p>
-                <div className={styles.resultAuthor}>
-                  {item.author
-                    ? <>{item.author.photo && <img src={item.author.photo} alt="" />}<span><b>{item.author.name}</b><small>{item.author.role}</small></span></>
-                    : SHOW_PLACEHOLDERS ? <Placeholder label={v.placeholder} text={guide.author} /> : <span><b>{v.results.fallbackAuthor}</b></span>}
-                </div>
-                {(item.metric || SHOW_PLACEHOLDERS) && (
-                  <div className={styles.resultMetric}>
-                    {item.metric
-                      ? <><strong><span aria-hidden="true">↑</span><CountUp value={item.metric.value} prefix={item.metric.prefix} suffix={item.metric.suffix} /></strong><small>{item.metric.label}</small></>
-                      : <Placeholder label="↑ —%" text={guide.metric} />}
+            {cases.map((item, index) => {
+              const model = SHOW_PLACEHOLDERS && !item.quote
+              const name = item.author?.name ?? (model ? v.results.sample.name : v.results.fallbackAuthor)
+              const role = item.author?.role ?? (model ? v.results.sample.role : null)
+              const words = name.split(/\s+/).filter(Boolean)
+              const initials = (words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? '').slice(0, 2)).toUpperCase()
+              const showMetric = item.metric || model
+              const showMore = item.href || model
+              return (
+                <motion.article className={`${styles.resultCard} ${model ? styles.resultModel : ''}`} key={item.client} {...reveal(index * 0.06, 18)}>
+                  {model && <span className={styles.resultTag} title={guide.quote}>{v.results.sample.tag}</span>}
+                  <div className={styles.resultLogo}><img src={item.logo} alt={item.logoAlt} loading="lazy" /></div>
+                  <div className={styles.resultBody}>
+                    {(item.quote || model) && (
+                      <blockquote className={styles.resultQuote} title={model ? guide.quote : undefined}>“{item.quote ?? v.results.sample.quote}”</blockquote>
+                    )}
+                    <p className={styles.resultSummary}>{item.summary}</p>
+                    <div className={styles.resultAuthor} title={model ? guide.author : undefined}>
+                      {item.author?.photo
+                        ? <img src={item.author.photo} alt="" loading="lazy" />
+                        : (item.author || model) && <span className={styles.resultAvatar} aria-hidden="true">{initials}</span>}
+                      <span className={styles.resultName}><b>{name}</b>{role && <small>{role}</small>}</span>
+                    </div>
                   </div>
-                )}
-              </motion.article>
-            ))}
+                  {(showMetric || showMore) && (
+                    <div className={styles.resultFoot}>
+                      {showMetric && (
+                        <div className={styles.resultMetric} title={model ? guide.metric : undefined}>
+                          <strong>
+                            <span className={styles.resultArrow} aria-hidden="true">↑</span>
+                            {item.metric
+                              ? <CountUp value={item.metric.value} prefix={item.metric.prefix} suffix={item.metric.suffix} />
+                              : <span>000%</span>}
+                          </strong>
+                          <small>{item.metric?.label ?? v.results.sample.metric}</small>
+                        </div>
+                      )}
+                      {showMore && (
+                        item.href
+                          ? <a className={styles.resultMore} href={item.href}>{v.results.more} <span aria-hidden="true">→</span></a>
+                          : <span className={styles.resultMore}>{v.results.more} <span aria-hidden="true">→</span></span>
+                      )}
+                    </div>
+                  )}
+                </motion.article>
+              )
+            })}
           </div>
           <div className={wa.row}>
             <WhatsappCta section="resultados" label={v.wa.results} />

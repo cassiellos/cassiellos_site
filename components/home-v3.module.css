@@ -518,93 +518,191 @@
 .resultGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(18px, 2.6vw, 48px);
 }
 
 .resultCard {
+  position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 26px;
-  border: 1px solid var(--rule);
+  padding: 36px;
+  border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 24px;
+  background: linear-gradient(180deg, #2a2d36 0%, #23262f 100%);
+  box-shadow: 0 30px 60px -40px rgba(0, 0, 0, .7);
+}
+
+.resultCard:has(.resultFoot) {
+  min-height: 540px;
+}
+
+:global(html[data-theme='light']) .resultCard {
+  border-color: var(--rule);
   background: var(--card);
 }
 
+/* Logo do cliente em monocromático, como na referência. */
 .resultLogo {
-  display: grid;
-  place-items: center start;
+  display: flex;
+  align-items: center;
   height: 64px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: #ffffff;
-  width: fit-content;
 }
 
 .resultLogo img {
-  height: 44px;
+  height: 52px;
   width: auto;
-  max-width: 180px;
+  max-width: 220px;
   object-fit: contain;
+  object-position: left center;
+  filter: brightness(0) invert(1);
+}
+
+:global(html[data-theme='light']) .resultLogo img {
+  filter: brightness(0);
+}
+
+.resultBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: clamp(56px, 6vw, 84px);
 }
 
 .resultQuote {
   margin: 0;
   font-family: var(--font-inter-tight), Arial, sans-serif;
-  font-size: 21px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: clamp(22px, 2vw, 28px);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.22;
 }
 
 .resultSummary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
 }
 
 .resultAuthor {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  margin-top: 6px;
 }
 
-.resultAuthor img {
-  width: 40px;
-  height: 40px;
+.resultAuthor img,
+.resultAvatar {
+  flex: none;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.resultAuthor span {
+.resultAvatar {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1b4fd1, #07101f);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.resultName {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.resultAuthor b {
+  font-weight: 600;
 }
 
 .resultAuthor small {
   color: var(--muted);
+  font-size: 15px;
 }
 
-.resultMetric {
+.resultFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
   margin-top: auto;
-  padding-top: 18px;
-  border-top: 1px solid var(--rule);
+  padding-top: 40px;
 }
 
 .resultMetric strong {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 4px;
   font-family: var(--font-display), Arial, sans-serif;
-  font-size: clamp(40px, 4vw, 56px);
+  /* Cabe ao lado do "Leia mais" em qualquer largura de cartão. */
+  font-size: clamp(38px, calc((100cqi - 112px) / 4.6), 60px);
   font-weight: 700;
-  letter-spacing: -.04em;
+  letter-spacing: -.03em;
   line-height: 1;
+}
+
+.resultArrow {
+  font-family: var(--font-inter), Arial, sans-serif;
+  font-size: .72em;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: .02em;
 }
 
 .resultMetric small {
   display: block;
+  width: 0;
+  min-width: 100%; /* o rótulo acompanha a largura do número, sem empurrar o "Leia mais" */
   margin-top: 8px;
   color: var(--muted);
+  font-size: 13px;
+}
+
+.resultMore {
+  flex: none;
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid currentColor;
+  color: var(--fg);
+  font-size: 16px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .2s ease;
+}
+
+a.resultMore:hover {
+  color: var(--accent-text);
+}
+
+/* Cartão-modelo (só em prévia): mostra onde entra cada informação. */
+.resultModel .resultQuote,
+.resultModel .resultAuthor,
+.resultModel .resultMetric {
+  opacity: .55;
+}
+
+.resultTag {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 4px 10px;
+  border: 1px dashed rgba(255, 255, 255, .35);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 /* ---------- Reconhecimentos e parceiros ---------- */
@@ -935,6 +1033,8 @@
   .resultGrid,
   .blogGrid { grid-template-columns: minmax(0, 1fr); }
   .serviceCard { min-height: 0; }
+  .resultCard, .resultCard:has(.resultFoot) { min-height: 0; padding: 28px; }
+  .resultBody { margin-top: 40px; }
   .globeStage { aspect-ratio: 1 / 1; }
   .globeLabels { --orbit-x: 36%; --orbit-y: 44%; }
   .globeLabels li { font-size: 11px; padding: 5px 10px; }

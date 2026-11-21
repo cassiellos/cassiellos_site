@@ -1,12 +1,16 @@
 /**
  * Provas da home (resultados, depoimentos, prêmios, parceiros, artigos).
  *
- * Tudo que for `null` ainda não foi fornecido pela Cassiellos. Enquanto
- * SHOW_PLACEHOLDERS for true, o site mostra um quadro "a preencher" com a
+ * Tudo que for `null` ainda não foi fornecido pela Cassiellos. Quando
+ * SHOW_PLACEHOLDERS é true, o site mostra o quadro-modelo "a preencher" com a
  * orientação; com false, o item vazio simplesmente não aparece.
- * Nunca inventar números, depoimentos ou selos: só dado real e autorizado.
+ * Os modelos aparecem só em prévias da Vercel e no ambiente local
+ * (NEXT_PUBLIC_SHOW_PLACEHOLDERS=1); em produção ficam sempre desligados.
+ * Depoimento e número atribuídos a um cliente real precisam ser verdadeiros
+ * e aprovados por ele (CDC art. 37 e Código do CONAR).
  */
-export const SHOW_PLACEHOLDERS = false
+export const SHOW_PLACEHOLDERS =
+  process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview' || process.env.NEXT_PUBLIC_SHOW_PLACEHOLDERS === '1'
 
 export type CaseProof = {
   client: string
@@ -14,23 +18,26 @@ export type CaseProof = {
   logoAlt: string
   /** Depoimento real, com autorização por escrito do cliente. */
   quote: string | null
-  /** Resumo do trabalho (1 a 2 frases). */
+  /** Texto de apoio abaixo da frase (continuação do depoimento ou resumo do trabalho). Corta em 2 linhas. */
   summary: string
+  /** Quem deu o depoimento. Sem foto, aparece um círculo com as iniciais. */
   author: { name: string; role: string; photo: string | null } | null
   /** Resultado medido: valor, unidade e o que foi medido, no período informado. */
   metric: { value: number; prefix?: string; suffix: string; label: string } | null
+  /** Link do "Leia mais" (case completo, post ou vídeo). `null` = sem link. */
+  href: string | null
 }
 
 export const CASES: Record<'pt' | 'en', CaseProof[]> = {
   pt: [
-    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Logo da Minds English School', quote: null, summary: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', author: null, metric: null },
-    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Logo da Gira Moto Peças', quote: null, summary: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', author: null, metric: null },
-    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Logo da Escola de Enfermagem Santa Rita', quote: null, summary: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', author: null, metric: null },
+    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Logo da Minds English School', quote: null, summary: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', author: null, metric: null, href: null },
+    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Logo da Gira Moto Peças', quote: null, summary: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', author: null, metric: null, href: null },
+    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Logo da Escola de Enfermagem Santa Rita', quote: null, summary: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', author: null, metric: null, href: null },
   ],
   en: [
-    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Minds English School logo', quote: null, summary: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', author: null, metric: null },
-    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Gira Moto Peças logo', quote: null, summary: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', author: null, metric: null },
-    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Escola Santa Rita logo', quote: null, summary: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', author: null, metric: null },
+    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Minds English School logo', quote: null, summary: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', author: null, metric: null, href: null },
+    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Gira Moto Peças logo', quote: null, summary: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', author: null, metric: null, href: null },
+    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Escola Santa Rita logo', quote: null, summary: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', author: null, metric: null, href: null },
   ],
 }
 
