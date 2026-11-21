@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
-import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import { readMarketingConsent, trackMetaConversion, trackMetaCustomBooking } from '@/lib/marketing/meta-client'
 import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
@@ -21,6 +21,7 @@ type Props = {
   email: string
   previewOnly?: boolean
   bookingEnabled?: boolean
+  customScheduleEnabled?: boolean
 }
 
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -58,7 +59,7 @@ export function calendarDays(month: string): (string | null)[] {
  * Nenhum dado de contato é pedido outra vez.
  */
 export default function InlineBookingCalendar({
-  formSlug, bookingToken, email, previewOnly = false, bookingEnabled = true,
+  formSlug, bookingToken, email, previewOnly = false, bookingEnabled = true, customScheduleEnabled = false,
 }: Props) {
   const [calendar, setCalendar] = useState<CalendarWindow | null>(null)
   const [month, setMonth] = useState('')
@@ -201,6 +202,8 @@ export default function InlineBookingCalendar({
       const schedule = isRecord(value.tracking) && isRecord(value.tracking.schedule) ? value.tracking.schedule : null
       if (value.alreadyConfirmed !== true && schedule && schedule.eventName === 'Schedule') {
         trackMetaConversion('Schedule',schedule.eventId,{content_name:formSlug})
+        if (customScheduleEnabled && !previewOnly)
+          trackMetaCustomBooking(schedule.eventId, {content_name:formSlug})
       }
     } catch (error) {
       const code = error instanceof Error?error.message:'BOOKING_UNAVAILABLE'
