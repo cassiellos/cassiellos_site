@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { getBookingForm } from '@/lib/crm/booking-forms'
+import { getMetaCustomScheduleEnabled } from '@/lib/marketing/meta'
 import { verifyBookingGrant } from '@/lib/crm/booking-grant'
 import { confirmBookingRequest } from '@/lib/crm/booking-confirmation'
 import { parseLimitExemptMailboxes } from '@/lib/crm/booking-reservation'
@@ -103,7 +104,8 @@ export async function POST(request: NextRequest) {
     const clientIp = clientIpFrom(request.headers)
     const userAgent = clientUserAgentFrom(request.headers)
     after(() => dispatchScheduleToMeta({
-      config: capi, store: pgCapiStore(getCrmPool()), fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
+      config: capi, customScheduleEnabled: getMetaCustomScheduleEnabled(),
+      store: pgCapiStore(getCrmPool()), fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
       log: entry => console.info(JSON.stringify(entry)),
     }, { eventId: scheduleEventId, clientIp, userAgent }).then(() => undefined))
   }
