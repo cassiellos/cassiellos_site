@@ -481,7 +481,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               // Rascunho (approved: false) só aparece na prévia; em produção some frase, autor e foto.
               const visible = raw.approved || SHOW_PLACEHOLDERS
               const draft = SHOW_PLACEHOLDERS && !raw.approved && !!raw.quote
-              const item = visible ? raw : { ...raw, quote: null, author: null }
+              const item = visible ? raw : { ...raw, quote: null, author: null, metric: null }
               const model = SHOW_PLACEHOLDERS && !item.quote
               const name = item.author?.name ?? (model ? v.results.sample.name : v.results.fallbackAuthor)
               const role = item.author?.role ?? (model ? v.results.sample.role : null)
@@ -491,7 +491,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               const showMore = item.href || model || draft
               return (
                 <motion.article className={`${styles.resultCard} ${model ? styles.resultModel : ''}`} key={item.client} {...reveal(index * 0.06, 18)}>
-                  {(model || draft) && <span className={styles.resultTag} title={guide.quote}>{draft ? v.results.sample.draft : v.results.sample.tag}</span>}
+                  {model && <span className={styles.resultTag} title={guide.quote}>{v.results.sample.tag}</span>}
                   <div className={styles.resultLogo}><img src={item.logoMono ?? item.logo} alt={item.logoAlt} loading="lazy" /></div>
                   <div className={styles.resultBody}>
                     {(item.quote || model) && (
