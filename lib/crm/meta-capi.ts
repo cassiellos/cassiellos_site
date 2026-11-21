@@ -1,4 +1,5 @@
 import { isIP } from 'node:net'
+import { META_CUSTOM_BOOKING_EVENT, metaCustomScheduleEventId } from '../marketing/meta'
 import { HOMOLOGATION_ACTIVITY } from './meta-homologation-claims'
 import { readMarketingConsentState } from './marketing-consent'
 import { buildMetaServerEvent, formatMetaServerEvent, type MetaServerEvent, type TrackingEventRow } from './meta-events'
@@ -111,6 +112,8 @@ export type CapiLog = (entry: {
 
 export type CapiDeps = {
   config: CapiConfig
+  /** Opt-in: envia o evento independente junto do Schedule; desativado por padrão. */
+  customScheduleEnabled?: boolean
   store: CapiStore
   fetch: FetchLike
   sleep?: (ms: number) => Promise<void>
@@ -156,33 +159,48 @@ export function decideScheduleRoute(
   return { route: null, reason: 'test_or_unclassified' }
 }
 
-/** Corpo do POST (application/x-www-form-urlencoded): `data`, `access_token` e, na homologação, `test_event_code`. */
+/** Aceita eventos padrão e personalizados em um mesmo lote CAPI, preservando o event_id de cada tipo. */
+export type WireMetaEvent = Omit<MetaServerEvent, 'event_name'> & { event_name: string }
+
+/** Lista independente somente em eventos reais; homologação continua enviando apenas Schedule. */
+export function scheduleWireEvents(route: Route, customEnabled: boolean): WireMetaEvent[] {
+  const events: WireMetaEvent[] = [route.payload]
+  const customId = customEnabled && route.route === 'live' ? metaCustomScheduleEventId(route.payload.event_id) : null
+  if (customId) events.push({ ...route.payload, event_name: META_CUSTOM_BOOKING_EVENT, event_id: customId })
+  return events
+}
+
+/** Corpo do POST (application/x-www-form-urlencoded): data, access_token e test_event_code na homologação. */
 export function buildRequestBody(
-  event: MetaServerEvent, client: { ip: string | null; userAgent: string }, accessToken: string, testEventCode: string | null,
+  event: WireMetaEvent | readonly WireMetaEvent[], client: { ip: string | null; userAgent: string },
+  accessToken: string, testEventCode: string | null,
 ): string {
-  const wire = {
-    ...event,
+  const events: readonly WireMetaEvent[] = Array.isArray(event) ? event : [event as WireMetaEvent]
+  const wire = events.map(e => ({
+    ...e,
     user_data: {
-      ...event.user_data,
+      ...e.user_data,
       client_user_agent: client.userAgent,
       ...(client.ip ? { client_ip_address: client.ip } : {}),
     },
-  }
+  }))
   const form = new URLSearchParams()
-  form.set('data', JSON.stringify([wire]))
+  form.set('data', JSON.stringify(wire))
   if (testEventCode) form.set('test_event_code', testEventCode)
   form.set('access_token', accessToken)
   return form.toString()
 }
 
 /** Cópia gravada na fila: SEM IP, user agent ou token (apenas quais campos de correspondência foram usados). */
-export function storedPayload(route: Route, apiVersion: string, client: { ip: string | null }): Record<string, unknown> {
+export function storedPayload(route: Route, apiVersion: string, client: { ip: string | null }, customEnabled = false): Record<string, unknown> {
   const { user_data: _notStored, ...event } = route.payload
+  const customId = customEnabled && route.route === 'live' ? metaCustomScheduleEventId(route.payload.event_id) : null
   return {
     route: route.route,
     apiVersion,
     testEventCode: route.route === 'homologation',
     event,
+    ...(customId ? { customEvent: { event_name: META_CUSTOM_BOOKING_EVENT, event_id: customId } } : {}),
     userDataFields: ['client_user_agent', ...(client.ip ? ['client_ip_address'] : [])],
   }
 }
@@ -230,7 +248,7 @@ export async function dispatchScheduleToMeta(
     let route = decideScheduleRoute(config, ctx, await deps.store.readGate(ctx), now())
     if (route.route === null) return skip(route.reason)
 
-    deliveryId = await deps.store.claimDelivery(ctx.trackingId, storedPayload(route, config.apiVersion, client))
+    deliveryId = await deps.store.claimDelivery(ctx.trackingId, storedPayload(route, config.apiVersion, client, deps.customScheduleEnabled === true))
     if (!deliveryId) {
       log({ scope: 'meta_capi', event: 'Schedule', outcome: 'duplicate', route: route.route })
       return { status: 'duplicate' }
@@ -252,7 +270,8 @@ export async function dispatchScheduleToMeta(
       }
       attempts += 1
       await deps.store.markAttempt(deliveryId)
-      const body = buildRequestBody(route.payload, client, config.accessToken,
+      const events = scheduleWireEvents(route, deps.customScheduleEnabled === true)
+      const body = buildRequestBody(events, client, config.accessToken,
         route.route === 'homologation' ? route.testEventCode : null)
       let transient = false
       try {
@@ -270,7 +289,7 @@ export async function dispatchScheduleToMeta(
             ...(typeof trace === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(trace) ? { fbtrace_id: trace } : {}),
             ...(typeof received === 'number' ? { events_received: received } : {}),
           }
-          if (received === 1) {
+          if (received === events.length) {
             await deps.store.finish(deliveryId, { status: 'accepted', httpStatus: response.status, error: null, response: responseInfo })
             log({ scope: 'meta_capi', event: 'Schedule', outcome: 'accepted', route: route.route, httpStatus: response.status, attempts, delivery: deliveryId })
             return { status: 'accepted', attempts, httpStatus: response.status }
