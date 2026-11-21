@@ -139,6 +139,45 @@ describe('CAPI Schedule — envio, deduplicação e falhas (Meta simulada)', () 
     assertNoSecretsOrPii(logs)
   })
 
+  it('flag opt-in: envia Schedule e Cassiellos_Scheduled no mesmo lote; event_id corresponde ao Pixel', async () => {
+    const m = memoryStore(context())
+    const f = fakeFetch([{ status: 200, json: { events_received: 2, fbtrace_id: 'MetaTest2' } }])
+    const outcome = await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA })
+    assert.deepEqual(outcome, { status: 'accepted', attempts: 1, httpStatus: 200 })
+    const data = JSON.parse(f.calls[0].body.get('data')!) as Array<Record<string, unknown>>
+    assert.equal(data.length, 2)
+    assert.equal(data[0].event_name, 'Schedule')
+    assert.equal(data[0].event_id, EVENT_ID)
+    assert.equal(data[1].event_name, 'Cassiellos_Scheduled')
+    assert.equal(data[1].event_id, 'cassiellos_scheduled_' + EVENT_ID.slice('chronos_scheduled_'.length))
+    assert.deepEqual(data[1].user_data, data[0].user_data)
+    assert.deepEqual(data[1].custom_data, data[0].custom_data)
+    const row = [...m.rows.values()][0]
+    assert.deepEqual(row.payload.customEvent, {event_name: 'Cassiellos_Scheduled', event_id: data[1].event_id})
+    assertNoSecretsOrPii(row.payload)
+    assert.deepEqual(await dispatchScheduleToMeta({
+      config: LIVE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA }), { status: 'duplicate' })
+    assert.equal(f.calls.length, 1)
+  })
+
+  it('homologação não envia evento personalizado comercial, mesmo com a flag ativada', async () => {
+    const m = memoryStore(context({
+      metadata: { formSlug: 'hamburguerias', isTest: true }, leadIsTest: true, homologationClaimed: true,
+    }))
+    const f = fakeFetch([OK])
+    const result = await dispatchScheduleToMeta({
+      config: TEST_MODE, customScheduleEnabled: true, store: m.store, fetch: f.fetch, now: () => NOW,
+    }, { eventId: EVENT_ID, clientIp: IP, userAgent: UA })
+    assert.equal(result.status, 'accepted')
+    const data = JSON.parse(f.calls[0].body.get('data')!) as Array<Record<string, unknown>>
+    assert.equal(data.length, 1)
+    assert.equal(data[0].event_name, 'Schedule')
+    assert.equal(f.calls[0].body.get('test_event_code'), 'TEST93849')
+  })
+
   it('sem IP válido continua enviando só o user agent (exigido); sem user agent nada sai', async () => {
     const f = fakeFetch([OK])
     assert.equal((await run(LIVE, memoryStore(context()).store, f.fetch, { clientIp: null }).done).status, 'accepted')
