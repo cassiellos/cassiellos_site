@@ -15,6 +15,8 @@ export const SHOW_PLACEHOLDERS =
 export type CaseProof = {
   client: string
   logo: string
+  /** Versão monocromática opcional para os cartões escuros (quando o filtro branco apaga detalhes). */
+  logoMono?: string
   logoAlt: string
   /** Depoimento real, com autorização por escrito do cliente. */
   quote: string | null
@@ -33,11 +35,17 @@ export const CASES: Record<'pt' | 'en', CaseProof[]> = {
     { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Logo da Minds English School', quote: null, summary: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', author: null, metric: null, href: null },
     { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Logo da Gira Moto Peças', quote: null, summary: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', author: null, metric: null, href: null },
     { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Logo da Escola de Enfermagem Santa Rita', quote: null, summary: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', author: null, metric: null, href: null },
+    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Logo da Auto Perícia Virtual', quote: null, summary: 'Identidade de marca, posicionamento e comunicação digital para a perícia veicular feita pelo celular.', author: null, metric: null, href: null },
+    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Logo do Instituto Mineiro de Perícias', quote: null, summary: 'Marca, site institucional e marketing digital para um instituto de perícias técnicas.', author: null, metric: null, href: null },
+    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Logo da Terriê Serralheria', quote: null, summary: 'Identidade visual, site e presença no Google para uma serralheria.', author: null, metric: null, href: null },
   ],
   en: [
     { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Minds English School logo', quote: null, summary: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', author: null, metric: null, href: null },
     { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Gira Moto Peças logo', quote: null, summary: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', author: null, metric: null, href: null },
     { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Escola Santa Rita logo', quote: null, summary: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', author: null, metric: null, href: null },
+    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Auto Perícia Virtual logo', quote: null, summary: 'Brand identity, positioning and digital communication for vehicle inspections done by smartphone.', author: null, metric: null, href: null },
+    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Instituto Mineiro de Perícias logo', quote: null, summary: 'Brand, institutional website and digital marketing for a technical forensics institute.', author: null, metric: null, href: null },
+    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Terriê Serralheria logo', quote: null, summary: 'Visual identity, website and Google presence for a metalwork shop.', author: null, metric: null, href: null },
   ],
 }
 

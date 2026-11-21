@@ -335,9 +335,12 @@
 
 .logoGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 200px));
-  justify-content: center;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
+}
+
+@media (max-width: 1080px) {
+  .logoGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .logoCell {
@@ -353,6 +356,11 @@
   max-width: 100%;
   max-height: 64px;
   object-fit: contain;
+}
+
+/* Logo oficial da Terriê só existe em branco: no quadro branco vira preto. */
+.logoCell img[src$="terrie.png"] {
+  filter: brightness(0);
 }
 
 .logoEmpty {
@@ -1029,6 +1037,7 @@ a.resultMore:hover {
   .heroActions { flex-direction: column; align-items: stretch; width: 100%; }
   .logoGrid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .logoCell { height: 84px; }
+  .logoEmpty { height: auto; min-height: 84px; }
   .serviceCards,
   .resultGrid,
   .blogGrid { grid-template-columns: minmax(0, 1fr); }

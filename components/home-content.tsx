@@ -486,7 +486,7 @@ export default function HomeContent({ lang }: { lang: Locale }) {
               return (
                 <motion.article className={`${styles.resultCard} ${model ? styles.resultModel : ''}`} key={item.client} {...reveal(index * 0.06, 18)}>
                   {model && <span className={styles.resultTag} title={guide.quote}>{v.results.sample.tag}</span>}
-                  <div className={styles.resultLogo}><img src={item.logo} alt={item.logoAlt} loading="lazy" /></div>
+                  <div className={styles.resultLogo}><img src={item.logoMono ?? item.logo} alt={item.logoAlt} loading="lazy" /></div>
                   <div className={styles.resultBody}>
                     {(item.quote || model) && (
                       <blockquote className={styles.resultQuote} title={model ? guide.quote : undefined}>“{item.quote ?? v.results.sample.quote}”</blockquote>
