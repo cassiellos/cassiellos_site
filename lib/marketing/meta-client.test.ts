@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
-import { chronosSessionId, readMarketingConsent, trackChronosEvent, trackMetaConversion } from './meta-client'
+import { chronosSessionId, readMarketingConsent, trackChronosEvent, trackMetaConversion, trackMetaCustomBooking } from './meta-client'
 import { setAnalyticsConsent, setMarketingConsent } from '../privacy/consent-client'
 
 /*
@@ -85,6 +85,23 @@ describe('Meta Pixel — conversões no navegador', () => {
     delete win.fbq
     assert.equal(trackMetaConversion('Lead', 'lead_' + 'b'.repeat(32)), false)
     win.fbq = fbq
+  })
+})
+
+describe('Meta Pixel — evento Cassiellos_Scheduled independente', () => {
+  it('só envia com consentimento e identificador de reunião confirmado válido', () => {
+    setMarketingConsent(false)
+    assert.equal(trackMetaCustomBooking(SCHEDULE), false)
+    setMarketingConsent(true)
+    assert.equal(trackMetaCustomBooking('invalid'), false)
+    assert.equal(trackMetaCustomBooking('lead_' + 'f'.repeat(32)), false)
+    assert.equal(fbqCalls.length, 0)
+    const id = 'chronos_scheduled_' + '9'.repeat(32)
+    assert.equal(trackMetaCustomBooking(id, { content_name: 'hamburguerias' }), true)
+    assert.deepEqual(fbqCalls, [['trackCustom', 'Cassiellos_Scheduled', { content_name: 'hamburguerias' },
+      { eventID: 'cassiellos_scheduled_' + '9'.repeat(32) }]])
+    assert.equal(trackMetaCustomBooking(id), false, 'um envio por booking nesta aba')
+    assert.equal(fbqCalls.length, 1)
   })
 })
 
