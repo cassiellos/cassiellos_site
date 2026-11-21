@@ -252,6 +252,7 @@ const PT_V3 = {
     more: 'Leia mais',
     sample: {
       tag: 'Modelo a preencher',
+      draft: 'Rascunho · aprovar com o cliente',
       quote: 'Frase de destaque do cliente, curta e entre aspas.',
       name: 'Nome do cliente',
       role: 'Cargo na empresa',
@@ -325,6 +326,7 @@ const EN_V3: typeof PT_V3 = {
     more: 'Read more',
     sample: {
       tag: 'Template to fill',
+      draft: 'Draft · approve with client',
       quote: 'Short highlight quote from the client.',
       name: 'Client name',
       role: 'Role at the company',
@@ -472,20 +474,24 @@ export default function HomeContent({ lang }: { lang: Locale }) {
         <div className="wrap">
           <motion.div className={styles.sectionHeadSolo} {...reveal()}>
             <span className={styles.eyebrow}>{v.results.eyebrow}</span>
-            <h2 id="proof-title" className={styles.display}>{cases.some((item) => item.quote) ? v.results.title : c.proof.title}</h2>
+            <h2 id="proof-title" className={styles.display}>{cases.some((item) => item.quote && (item.approved || SHOW_PLACEHOLDERS)) ? v.results.title : c.proof.title}</h2>
           </motion.div>
           <div className={styles.resultGrid}>
-            {cases.map((item, index) => {
+            {cases.map((raw, index) => {
+              // Rascunho (approved: false) só aparece na prévia; em produção some frase, autor e foto.
+              const visible = raw.approved || SHOW_PLACEHOLDERS
+              const draft = SHOW_PLACEHOLDERS && !raw.approved && !!raw.quote
+              const item = visible ? raw : { ...raw, quote: null, author: null }
               const model = SHOW_PLACEHOLDERS && !item.quote
               const name = item.author?.name ?? (model ? v.results.sample.name : v.results.fallbackAuthor)
               const role = item.author?.role ?? (model ? v.results.sample.role : null)
               const words = name.split(/\s+/).filter(Boolean)
               const initials = (words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? '').slice(0, 2)).toUpperCase()
-              const showMetric = item.metric || model
-              const showMore = item.href || model
+              const showMetric = item.metric || model || draft
+              const showMore = item.href || model || draft
               return (
                 <motion.article className={`${styles.resultCard} ${model ? styles.resultModel : ''}`} key={item.client} {...reveal(index * 0.06, 18)}>
-                  {model && <span className={styles.resultTag} title={guide.quote}>{v.results.sample.tag}</span>}
+                  {(model || draft) && <span className={styles.resultTag} title={guide.quote}>{draft ? v.results.sample.draft : v.results.sample.tag}</span>}
                   <div className={styles.resultLogo}><img src={item.logoMono ?? item.logo} alt={item.logoAlt} loading="lazy" /></div>
                   <div className={styles.resultBody}>
                     {(item.quote || model) && (

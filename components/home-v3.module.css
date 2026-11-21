@@ -1038,6 +1038,7 @@ a.resultMore:hover {
   .logoGrid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .logoCell { height: 84px; }
   .logoEmpty { height: auto; min-height: 84px; }
+  .resultTag { position: static; align-self: flex-start; margin-bottom: 18px; }
   .serviceCards,
   .resultGrid,
   .blogGrid { grid-template-columns: minmax(0, 1fr); }

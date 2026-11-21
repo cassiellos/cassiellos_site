@@ -18,11 +18,17 @@ export type CaseProof = {
   /** Versão monocromática opcional para os cartões escuros (quando o filtro branco apaga detalhes). */
   logoMono?: string
   logoAlt: string
-  /** Depoimento real, com autorização por escrito do cliente. */
+  /**
+   * Depoimento aprovado pelo cliente? Enquanto `false`, frase, autor e foto são
+   * RASCUNHO: aparecem só na prévia (para mostrar e aprovar com o cliente) e
+   * nunca em produção. Virar `true` só com o OK do cliente e nome/foto reais.
+   */
+  approved: boolean
+  /** Depoimento (rascunho até `approved`). */
   quote: string | null
   /** Texto de apoio abaixo da frase (continuação do depoimento ou resumo do trabalho). Corta em 2 linhas. */
   summary: string
-  /** Quem deu o depoimento. Sem foto, aparece um círculo com as iniciais. */
+  /** Quem deu o depoimento. Sem foto, aparece um círculo com as iniciais. Os de `/avatars/exemplo-*` são ilustrações de exemplo. */
   author: { name: string; role: string; photo: string | null } | null
   /** Resultado medido: valor, unidade e o que foi medido, no período informado. */
   metric: { value: number; prefix?: string; suffix: string; label: string } | null
@@ -32,20 +38,20 @@ export type CaseProof = {
 
 export const CASES: Record<'pt' | 'en', CaseProof[]> = {
   pt: [
-    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Logo da Minds English School', quote: null, summary: 'Estratégia, conteúdo, campanhas e comunicação conectados à rotina comercial e institucional da escola.', author: null, metric: null, href: null },
-    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Logo da Gira Moto Peças', quote: null, summary: 'Conteúdo, posicionamento, audiovisual e campanhas para uma operação que reúne loja, oficina e comunidade.', author: null, metric: null, href: null },
-    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Logo da Escola de Enfermagem Santa Rita', quote: null, summary: 'Comunicação, conteúdo e campanhas para cursos técnicos, matrículas e relacionamento com futuros alunos.', author: null, metric: null, href: null },
-    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Logo da Auto Perícia Virtual', quote: null, summary: 'Identidade de marca, posicionamento e comunicação digital para a perícia veicular feita pelo celular.', author: null, metric: null, href: null },
-    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Logo do Instituto Mineiro de Perícias', quote: null, summary: 'Marca, site institucional e marketing digital para um instituto de perícias técnicas.', author: null, metric: null, href: null },
-    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Logo da Terriê Serralheria', quote: null, summary: 'Identidade visual, site e presença no Google para uma serralheria.', author: null, metric: null, href: null },
+    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Logo da Minds English School', approved: false, quote: 'Hoje a Minds aparece com constância, e as famílias já chegam sabendo quem somos.', summary: 'Conteúdo e campanhas de matrícula que viraram canal de captação.', author: { name: 'Camila Rezende', role: 'Diretora pedagógica', photo: '/avatars/exemplo-1.svg' }, metric: null, href: null },
+    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Logo da Gira Moto Peças', approved: false, quote: 'A Gira deixou de ser só mais uma loja de peças e virou ponto de encontro de quem vive de moto.', summary: 'Audiovisual e campanhas para loja, oficina e comunidade motociclista.', author: { name: 'Rafael Gomes', role: 'Sócio-proprietário', photo: '/avatars/exemplo-2.svg' }, metric: null, href: null },
+    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Logo da Escola de Enfermagem Santa Rita', approved: false, quote: 'Nossa comunicação ganhou a seriedade que a enfermagem pede, e os alunos certos começaram a chegar.', summary: 'Campanhas para cursos técnicos de enfermagem, do contato à matrícula.', author: { name: 'Patrícia Moura', role: 'Coordenadora de matrículas', photo: '/avatars/exemplo-3.svg' }, metric: null, href: null },
+    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Logo da Auto Perícia Virtual', approved: false, quote: 'Precisávamos explicar uma ideia nova em segundos. A marca passou a fazer isso por nós.', summary: 'Marca e comunicação digital para a perícia veicular feita pelo celular.', author: { name: 'Eduardo Lima', role: 'Fundador', photo: '/avatars/exemplo-4.svg' }, metric: null, href: null },
+    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Logo do Instituto Mineiro de Perícias', approved: false, quote: 'A marca passou a transmitir a credibilidade técnica que o nosso trabalho sempre teve.', summary: 'Identidade, site institucional e marketing digital para perícias técnicas.', author: { name: 'Mariana Costa', role: 'Diretora técnica', photo: '/avatars/exemplo-5.svg' }, metric: null, href: null },
+    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Logo da Terriê Serralheria', approved: false, quote: 'Antes dependíamos só de indicação. Agora o cliente nos encontra no Google e já chega pedindo orçamento.', summary: 'Identidade visual, site e presença no Google para uma serralheria.', author: { name: 'Thiago Ferreira', role: 'Proprietário', photo: '/avatars/exemplo-6.svg' }, metric: null, href: null },
   ],
   en: [
-    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Minds English School logo', quote: null, summary: 'Strategy, content, campaigns and communication connected to the school’s commercial and institutional routine.', author: null, metric: null, href: null },
-    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Gira Moto Peças logo', quote: null, summary: 'Content, positioning, audiovisual and campaigns for an operation that brings store, workshop and community together.', author: null, metric: null, href: null },
-    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Escola Santa Rita logo', quote: null, summary: 'Communication, content and campaigns for technical courses, enrollment and relationships with future students.', author: null, metric: null, href: null },
-    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Auto Perícia Virtual logo', quote: null, summary: 'Brand identity, positioning and digital communication for vehicle inspections done by smartphone.', author: null, metric: null, href: null },
-    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Instituto Mineiro de Perícias logo', quote: null, summary: 'Brand, institutional website and digital marketing for a technical forensics institute.', author: null, metric: null, href: null },
-    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Terriê Serralheria logo', quote: null, summary: 'Visual identity, website and Google presence for a metalwork shop.', author: null, metric: null, href: null },
+    { client: 'Minds English School', logo: '/client-logos/current/minds.png', logoAlt: 'Minds English School logo', approved: false, quote: 'Minds now shows up consistently, and families arrive already knowing who we are.', summary: 'Content and enrollment campaigns that became a student acquisition channel.', author: { name: 'Camila Rezende', role: 'Academic director', photo: '/avatars/exemplo-1.svg' }, metric: null, href: null },
+    { client: 'Gira Moto Peças', logo: '/client-logos/current/gira-official.svg', logoAlt: 'Gira Moto Peças logo', approved: false, quote: 'Gira stopped being just another parts store and became a meeting point for people who live on two wheels.', summary: 'Audiovisual and campaigns for store, workshop and rider community.', author: { name: 'Rafael Gomes', role: 'Co-owner', photo: '/avatars/exemplo-2.svg' }, metric: null, href: null },
+    { client: 'Escola Santa Rita', logo: '/client-logos/current/santa-rita.png', logoAlt: 'Escola Santa Rita logo', approved: false, quote: 'Our communication gained the seriousness nursing demands, and the right students started to arrive.', summary: 'Campaigns for technical nursing courses, from first contact to enrollment.', author: { name: 'Patrícia Moura', role: 'Enrollment coordinator', photo: '/avatars/exemplo-3.svg' }, metric: null, href: null },
+    { client: 'Auto Perícia Virtual', logo: '/client-logos/current/auto-pericia.png', logoAlt: 'Auto Perícia Virtual logo', approved: false, quote: 'We needed to explain a new idea in seconds. The brand now does that for us.', summary: 'Brand and digital communication for vehicle inspections by smartphone.', author: { name: 'Eduardo Lima', role: 'Founder', photo: '/avatars/exemplo-4.svg' }, metric: null, href: null },
+    { client: 'Instituto Mineiro de Perícias', logo: '/client-logos/current/imp.svg', logoMono: '/client-logos/current/imp-mono.svg', logoAlt: 'Instituto Mineiro de Perícias logo', approved: false, quote: 'Our brand now conveys the technical credibility our work has always had.', summary: 'Identity, institutional website and digital marketing for forensics.', author: { name: 'Mariana Costa', role: 'Technical director', photo: '/avatars/exemplo-5.svg' }, metric: null, href: null },
+    { client: 'Terriê Serralheria', logo: '/client-logos/current/terrie.png', logoAlt: 'Terriê Serralheria logo', approved: false, quote: 'We used to rely only on referrals. Now clients find us on Google and arrive asking for a quote.', summary: 'Visual identity, website and Google presence for a metalwork shop.', author: { name: 'Thiago Ferreira', role: 'Owner', photo: '/avatars/exemplo-6.svg' }, metric: null, href: null },
   ],
 }
 
