@@ -5,7 +5,7 @@ import { getBookingForm } from '@/lib/crm/booking-forms'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
 import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
-import { chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig } from '@/lib/marketing/meta'
+import { chronosDispatchMode, getChronosLiveEnabled, getMetaPixelConfig, getMetaCustomScheduleEnabled } from '@/lib/marketing/meta'
 import { activeHomologation } from '@/lib/marketing/homologation'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import BookingExperience from './[slug]/booking-experience'
@@ -58,5 +58,6 @@ export default async function PublicBookingPage() {
   })
   return <BookingExperience form={form} bookingEnabled={bookingEnabled} bookingRestricted={access.restrictedToAllowedEmail} invitesEnabled={access.sendInvites} turnstileSiteKey={turnstileSiteKey}
     analyticsMode={analyticsMode} metaPixelId={metaPixelId} chronosMode={chronosMode}
+    customScheduleEnabled={getMetaCustomScheduleEnabled() && Boolean(metaPixelId)}
     metaHomologation={homologation ? { expiresAt: homologation.expiresAt, scope: homologation.scope } : null} />
 }
