@@ -10,9 +10,14 @@ O CRM já envia o evento interno `Chronos_Scheduled` como **Schedule** ao Pixel 
 - Nome do novo evento: `Cassiellos_Scheduled`, enviado por Pixel com `fbq('trackCustom', ...)` e pela CAPI (`event_name` igual).
 - `event_id` novo e determinístico: `cassiellos_scheduled_<bookingId_sem_hifens>`.
 - Evento padrão `Schedule` continua exatamente como antes, com ID `chronos_scheduled_<bookingId_sem_hifens>`.
-- Um lote CAPI contém os dois eventos quando a flag está ativada, sem alterar a fila única `crm.meta_deliveries`. Em caso de resposta parcial, a entrega não é marcada como aceita.
+- A CAPI envia primeiro `Schedule` sozinho e, se a flag estiver ativada, tenta `Cassiellos_Scheduled` em uma segunda requisição independente. O resultado do evento novo fica em `crm.meta_deliveries.payload.customResult`, sem alterar o status da entrega principal. O controle de idempotência continua único por agendamento.
 - Consentimento de marketing, confirmação real do Google/CRM, teste vs. real, idempotência e privacidade permanecem obrigatórios. Testes de homologação não geram o novo evento comercial na CAPI.
 - `META_CUSTOM_SCHEDULE_ENABLED`: **default OFF**. Somente o literal `true` habilita a adição. Não acrescenta dados pessoais, segredos ou cookies.
+
+## Revisão da implementação
+- O teste isolado de autenticação (`scripts/crm-dual-auth-smoke.mjs`) foi adaptado de forma equivalente ao PR #68 para que `server-only` não impeça a execução fora do compilador Next.js.
+- Os arquivos de patch externos `0005`/`0006` não foram recebidos diretamente: a lógica de isolamento da CAPI foi implementada sobre os arquivos do PR #69; o smoke foi reproduzido a partir do diff verificável do PR #68.
+- Antes do merge, confirmar execução verde de CI do HEAD atual e revisar o diff.
 
 ## Como validar SEM publicar a campanha
 1. Revisar o PR, executar `npm test` (ou comando padrão do projeto), `npx tsc --noEmit` e `npm run build` em branch de Preview. Não fazer deploy de produção sem aprovação.
