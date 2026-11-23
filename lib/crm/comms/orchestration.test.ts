@@ -203,7 +203,7 @@ test('agendamento: com confirmação e lembretes desligados não toca no banco',
 const whatsappConfig = (overrides: Partial<WhatsappConfig> = {}): WhatsappConfig => ({
   buttonReady: true, businessPhone: null, cloudReady: true, autoReply: true,
   verifyToken: 't', appSecret: 's', phoneNumberId: '123', accessToken: 'tok',
-  freeTier: 1000, replyAllowlist: 'ALL', issues: [], ...overrides,
+  freeTier: 1000, replyAllowlist: 'ALL', humanContact: null, issues: [], ...overrides,
 })
 
 const incoming = (overrides: Record<string, unknown> = {}) => ({
@@ -280,6 +280,17 @@ test('WhatsApp: caminho completo responde com os dados reais e sem template pago
   assert.equal(payload.to, '5531991234567')
   assert.ok(payload.text.body.includes('https://meet.google.com/abc-defg-hij'))
   assert.ok(payload.text.body.includes('Ana'))
+})
+
+test('WhatsApp: com atendimento humano configurado, a resposta indica o número comercial uma vez', async () => {
+  const pool = fakePool()
+  const { fetcher, sent } = fakeFetch(200, { messages: [{ id: 'wamid.resp' }] })
+  const human = whatsappConfig({ humanContact: { e164Digits: '5531988887777', display: '+55 31 98888-7777' } })
+  assert.equal(await handleIncomingMessage(replyDeps(pool, fetcher, human), incoming()), 'sent')
+  assert.equal(sent.length, 1)
+  const body = JSON.parse(String(sent[0].init.body)).text.body as string
+  assert.equal(body.split('https://wa.me/5531988887777').length - 1, 1)
+  assert.ok(body.includes('https://meet.google.com/abc-defg-hij'), 'o link do Meet continua')
 })
 
 test('WhatsApp: aparelho NÃO autorizado não recebe resposta nem toca o banco', async () => {

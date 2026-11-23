@@ -1,4 +1,5 @@
 import { googleCalendarTemplateUrl } from '../calendar-links'
+import type { BrazilianPhone } from '../whatsapp'
 
 /**
  * Modelos dos e-mails transacionais. Funções puras: o mesmo conteúdo em teste e em produção.
@@ -160,17 +161,26 @@ export function renderMeetingEmail(kind: EmailKind, input: MeetingEmailInput): R
   return { subject: copy.subject, html, text }
 }
 
-/** Resposta automática do Modo B (WhatsApp). Texto puro: a Cloud API não aceita HTML. */
-export function renderWhatsappAutoReply(input: MeetingEmailInput): string {
+/**
+ * Resposta automática do Modo B (WhatsApp). Texto puro: a Cloud API não aceita HTML.
+ * humanContact: atendimento humano (número comercial). O número da API não tem aplicativo, então a
+ * resposta indica onde falar com a equipe; null mantém o texto original.
+ */
+export function renderWhatsappAutoReply(input: MeetingEmailInput, humanContact: BrazilianPhone | null = null): string {
   const start = new Date(input.startAt)
   const meet = input.meetUrl && MEET_URL.test(input.meetUrl) ? input.meetUrl : null
+  const human = humanContact
+    ? ['', 'Este número envia apenas confirmações automáticas.',
+      'Para falar com a nossa equipe: https://wa.me/' + humanContact.e164Digits]
+    : []
   return [
     'Olá, ' + firstName(input.name) + '! 👋', '',
     'Seu diagnóstico estratégico com a Cassiellos está confirmado! ✅', '',
     '📅 Data: ' + dateLong.format(start),
     '🕒 Horário: ' + timeShort.format(start) + ' (horário de Brasília)',
     '💻 Google Meet: ' + (meet ?? 'o link chega em seguida'), '',
-    'Nossa equipe estará preparada para conhecer melhor seu negócio e identificar oportunidades de crescimento.', '',
+    'Nossa equipe estará preparada para conhecer melhor seu negócio e identificar oportunidades de crescimento.',
+    ...human, '',
     'Até breve!', 'Equipe Cassiellos',
   ].join('\n')
 }
