@@ -104,7 +104,7 @@ export async function handleIncomingMessage(
   const body = renderWhatsappAutoReply({
     name: meeting.name, startAt: meeting.startAt, endAt: meeting.endAt,
     meetUrl: meeting.meetingUrl, meetingTitle: 'Diagnóstico estratégico · Cassiellos',
-  })
+  }, deps.config.humanContact)
   const result = await sendCloudTextMessage(deps.fetch, {
     phoneNumberId: deps.config.phoneNumberId, accessToken: deps.config.accessToken,
   }, { to: message.from, body })

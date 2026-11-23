@@ -463,6 +463,31 @@ test('WhatsApp: resposta automática usa os dados reais da reunião', () => {
   assert.ok(body.includes('14:30'))
   assert.ok(body.includes('https://meet.google.com/abc-defg-hij'))
   assert.ok(body.includes('Equipe Cassiellos'))
+  assert.ok(!body.includes('wa.me'), 'sem atendimento humano configurado, o texto fica como antes')
+})
+
+test('WhatsApp: resposta automática com atendimento humano traz o wa.me do número comercial', () => {
+  const human = parseBrazilianWhatsapp('+55 (31) 98888-7777')
+  const body = renderWhatsappAutoReply(MEETING, human)
+  assert.ok(body.includes('Este número envia apenas confirmações automáticas.'))
+  assert.ok(body.includes('Para falar com a nossa equipe: https://wa.me/5531988887777'))
+  assert.ok(body.indexOf('wa.me') < body.indexOf('Até breve!'), 'a linha vem antes da despedida')
+  assert.equal(body.split('\n').filter((line) => line === '').length,
+    renderWhatsappAutoReply(MEETING).split('\n').filter((line) => line === '').length + 1)
+})
+
+test('config: atendimento humano opcional, validado e exibido só no formato público', () => {
+  const env = { ...PROD, COMMS_WHATSAPP_CLOUD: 'true',
+    WHATSAPP_VERIFY_TOKEN: 'v', WHATSAPP_APP_SECRET: 's', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_ACCESS_TOKEN: 't' }
+  assert.equal(readWhatsappConfig(env).humanContact, null)
+  assert.ok(!readWhatsappConfig(env).issues.includes('HUMAN_CONTACT_INVALID'))
+  const ok = readWhatsappConfig({ ...env, COMMS_WHATSAPP_HUMAN_CONTACT: '31 98888-7777' })
+  assert.equal(ok.humanContact?.e164Digits, '5531988887777')
+  const bad = readWhatsappConfig({ ...env, COMMS_WHATSAPP_HUMAN_CONTACT: '123' })
+  assert.equal(bad.humanContact, null)
+  assert.ok(bad.issues.includes('HUMAN_CONTACT_INVALID'))
+  assert.equal(publicCommsStatus({ ...env, COMMS_WHATSAPP_HUMAN_CONTACT: '31 98888-7777' }).whatsapp.humanContact,
+    '+55 (31) 98888-7777')
 })
 
 /* ------------------------------------------------------------- mascaramento */

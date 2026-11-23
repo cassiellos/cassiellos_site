@@ -27,6 +27,9 @@ import { normalizeWhatsappSender } from './whatsapp-cloud'
  * - COMMS_WHATSAPP_AUTO_REPLY=true .. resposta automática do Modo B (exige COMMS_WHATSAPP_CLOUD).
  * - COMMS_WHATSAPP_REPLY_ALLOWLIST .. falha fechada: vazia = ninguém, lista = aparelhos autorizados;
  *   'ALL' libera geral somente após homologação final aprovada.
+ * - COMMS_WHATSAPP_HUMAN_CONTACT .... opcional: número do atendimento humano (o comercial). Quando
+ *   válido, a resposta automática ganha uma linha com o link wa.me desse número — o número da API não
+ *   tem aplicativo e ninguém lê as conversas dele. Ausente = texto original; inválido = sem a linha.
  * - WHATSAPP_VERIFY_TOKEN / WHATSAPP_APP_SECRET / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN.
  * - COMMS_WHATSAPP_FREE_TIER ........ trava conservadora de mensagens de serviço por mês.
  *
@@ -132,12 +135,15 @@ export type WhatsappConfig = {
   freeTier: number
   /** 'ALL' ou números brasileiros normalizados (55 + DDD + telefone); [] = ninguém. */
   replyAllowlist: 'ALL' | string[]
+  /** Atendimento humano indicado na resposta automática; null = sem a linha. */
+  humanContact: BrazilianPhone | null
   issues: WhatsappIssue[]
 }
 
 export type WhatsappIssue =
   | 'ENV_NOT_SUPPORTED' | 'PREVIEW_NOT_ENABLED' | 'BUTTON_OFF' | 'NUMBER_MISSING' | 'NUMBER_INVALID'
   | 'CLOUD_OFF' | 'CLOUD_CREDENTIALS_MISSING' | 'AUTO_REPLY_OFF' | 'REPLY_ALLOWLIST_EMPTY'
+  | 'HUMAN_CONTACT_INVALID'
 
 /** Falha fechada: sem lista explícita, nenhuma resposta automática é autorizada. */
 export function parseReplyAllowlist(raw: string | undefined): 'ALL' | string[] {
@@ -183,6 +189,9 @@ export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
   if (on(env.COMMS_WHATSAPP_AUTO_REPLY) && replyAllowlist !== 'ALL' && replyAllowlist.length === 0) {
     issues.push('REPLY_ALLOWLIST_EMPTY')
   }
+  const humanRaw = env.COMMS_WHATSAPP_HUMAN_CONTACT?.trim() || ''
+  const humanContact = humanRaw ? parseBrazilianWhatsapp(humanRaw) : null
+  if (humanRaw && !humanContact) issues.push('HUMAN_CONTACT_INVALID')
 
   const cloudReady = supported && cloudOn && credentialsOk
   return {
@@ -196,6 +205,7 @@ export function readWhatsappConfig(env: Env = process.env): WhatsappConfig {
     accessToken: accessToken || null,
     freeTier: cap(env.COMMS_WHATSAPP_FREE_TIER, WHATSAPP_DEFAULT_FREE_TIER),
     replyAllowlist,
+    humanContact,
     issues,
   }
 }
@@ -216,6 +226,7 @@ export function publicCommsStatus(env: Env = process.env) {
       cloudReady: whatsapp.cloudReady, autoReply: whatsapp.autoReply,
       freeTier: whatsapp.freeTier, issues: whatsapp.issues,
       replyScope: whatsapp.replyAllowlist === 'ALL' ? 'ALL' : whatsapp.replyAllowlist.length,
+      humanContact: whatsapp.humanContact?.display ?? null,
     },
   }
 }
