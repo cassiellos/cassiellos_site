@@ -8,7 +8,7 @@ import { getMetaPixelConfig, getMetaCustomScheduleEnabled } from '@/lib/marketin
 import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
-import { getGtmFormConfig } from '@/lib/tracking/gtm-config'
+import { getGtmFormConfigForSlug } from '@/lib/tracking/gtm-config'
 import { getEntryNoticeConfig } from '@/lib/privacy/entry-notice-config'
 import PublicFlow from './public-flow'
 import './public-flow.css'
@@ -27,9 +27,9 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
   const cfg=getTurnstileConfig()
   const pixel=getMetaPixelConfig()
   // Mensuração do funil: "test" no ambiente de testes (modo de teste ou allowlist ativa); só "live" conta como real.
-  // GTM do formulário: desligado salvo TRACKING_GTM_ENABLED=true + GTM_FORM_CONTAINER_ID válido.
+  // GTM do formulário: desligado salvo TRACKING_GTM_ENABLED=true + GTM_FORM_CONTAINER_ID válido E slug exatamente do escopo (F2).
   const trackingMode=funnelModeFor({bookingMode:getCrmBookingMode(),allowlistActive:bookingAccessConfig().restrictedToAllowedEmail})
-  const gtm=getGtmFormConfig()
+  const gtm=getGtmFormConfigForSlug(doc.slug)
   // Aviso de entrada: desligado salvo CONSENT_ENTRY_NOTICE_ENABLED=true (chave exclusiva; não concede consentimento).
   const entryNotice=getEntryNoticeConfig()
   return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.publishedMeta?.title||doc.title}

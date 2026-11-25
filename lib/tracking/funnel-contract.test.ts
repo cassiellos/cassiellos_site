@@ -89,7 +89,7 @@ describe('contrato de eventos do funil (dataLayer → GA4)', () => {
 
 describe('mapeamento determinístico dos eventos existentes do /agendar', () => {
   it('todo evento antigo tem destino definido, e erros seguem a etapa em que ocorreram', () => {
-    const legacy = { form: 'odontologia', mode: 'live' }
+    const legacy = { form: 'hamburguerias', mode: 'live' }
     const expected: Record<string, string> = {
       booking_form_view: 'form_view', booking_form_start: 'form_start', booking_step_completed: 'form_step_complete',
       booking_form_submit: 'lead_submit_attempt', booking_lead_registered: 'generate_lead',
@@ -111,9 +111,9 @@ describe('mapeamento determinístico dos eventos existentes do /agendar', () => 
 
   it('copia só parâmetros permitidos (state e days_ahead não viram parâmetro) e rejeita entradas inválidas', () => {
     const mapped = mapLegacyFunnelEvent({
-      name: 'booking_meeting_confirmed', form: 'odontologia', mode: 'test', state: 'confirmed', days_ahead: 3, email: 'a@b.com',
+      name: 'booking_meeting_confirmed', form: 'hamburguerias', mode: 'test', state: 'confirmed', days_ahead: 3, email: 'a@b.com',
     })
-    assert.deepEqual(mapped?.params, { form_id: 'odontologia', environment_mode: 'test', funnel_stage: 'conclusion' })
+    assert.deepEqual(mapped?.params, { form_id: 'hamburguerias', environment_mode: 'test', funnel_stage: 'conclusion' })
     assert.equal(mapLegacyFunnelEvent({ name: 'outro', form: 'x', mode: 'live' }), null)
     assert.equal(mapLegacyFunnelEvent(null), null)
     assert.equal(mapLegacyFunnelEvent({ name: 'booking_form_view', form: 'x', mode: 'qualquer' }), null)
@@ -170,7 +170,7 @@ describe('mapeamento determinístico dos eventos existentes do /agendar', () => 
   })
 
   it('legado do /agendar: step_order passa quando válido', () => {
-    const mapped = mapLegacyFunnelEvent({ name: 'booking_step_completed', form: 'x', mode: 'live', step: 'q_nome', step_index: 1, step_order: 1 })
+    const mapped = mapLegacyFunnelEvent({ name: 'booking_step_completed', form: 'hamburguerias', mode: 'live', step: 'q_nome', step_index: 1, step_order: 1 })
     assert.equal(mapped?.params.step_order, 1)
   })
 })

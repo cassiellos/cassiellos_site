@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { toDataLayerEvent } from './funnel-contract'
 import { beforeEach, describe, it } from 'node:test'
 import { GTM_SCRIPT_ID, resetGoogleTagManagerForTests, startGoogleTagManager } from './gtm-runtime'
 import { setAnalyticsConsent, setMarketingConsent } from '../privacy/consent-client'
@@ -108,7 +109,7 @@ describe('Google Tag Manager do formulário com Consent Mode v2', () => {
     assert.equal(cookies.has('_fbp'), true, 'só os cookies do Google são removidos aqui')
     assert.ok(cookies.has('cassiellos_consent'))
     const before = layer().length
-    win.dispatchEvent(new CustomEvent('cassiellos:funnel', { detail: { name: 'booking_form_view', form: 'odontologia', mode: 'live' } }))
+    win.dispatchEvent(new CustomEvent('cassiellos:funnel', { detail: { name: 'booking_form_view', form: 'hamburguerias', mode: 'live' } }))
     assert.equal(layer().length, before)
   })
 
@@ -116,10 +117,10 @@ describe('Google Tag Manager do formulário com Consent Mode v2', () => {
     stop = startGoogleTagManager('GTM-ABC1234')
     setAnalyticsConsent(true)
     win.dispatchEvent(new CustomEvent('cassiellos:funnel', {
-      detail: { name: 'booking_lead_registered', form: 'odontologia', mode: 'test', state: 'confirmed', email: 'a@b.com' },
+      detail: { name: 'booking_lead_registered', form: 'hamburguerias', mode: 'test', state: 'confirmed', email: 'a@b.com' },
     }))
     const events = layer().filter(entry => (entry as { event?: string }).event === 'generate_lead')
-    assert.deepEqual(events, [{ event: 'generate_lead', form_id: 'odontologia', environment_mode: 'test', funnel_stage: 'capture' }])
+    assert.deepEqual(events, [toDataLayerEvent('generate_lead', { form_id: 'hamburguerias', environment_mode: 'test', funnel_stage: 'capture' })])
     assert.equal(JSON.stringify(layer()).includes('a@b.com'), false)
   })
 

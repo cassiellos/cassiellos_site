@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
 import { pushTrackingEvent } from './datalayer-client'
+import { toDataLayerEvent } from './funnel-contract'
 import { setAnalyticsConsent } from '../privacy/consent-client'
 
 /*
@@ -62,10 +63,10 @@ describe('dataLayer do funil no navegador', () => {
     }
     assert.equal(pushTrackingEvent('form_step_complete', input), true)
     assert.equal(pushTrackingEvent('form_step_complete', input), false)
-    assert.deepEqual(layer(), [{
-      event: 'form_step_complete', form_id: 'hamburguerias', environment_mode: 'live', form_version: 'v2',
+    assert.deepEqual(layer(), [toDataLayerEvent('form_step_complete', {
+      form_id: 'hamburguerias', environment_mode: 'live', form_version: 'v2',
       flow_variant: 'cover', step_id: 'q_whats', step_index: 3, step_type: 'question',
-    }])
+    })])
     const everything = JSON.stringify([layer(), calls, [...store.values()]])
     for (const leak of ['maria', '99876', 'Minha resposta']) assert.equal(everything.includes(leak), false, leak)
     assert.equal(calls.filter(c => c.kind === 'local').length, 1)
