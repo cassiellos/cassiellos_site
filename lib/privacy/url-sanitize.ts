@@ -18,6 +18,20 @@ export const CLICK_ID_PARAMS: readonly string[] = [
 export const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
 export type UtmKey = typeof UTM_KEYS[number]
 
+/**
+ * Parâmetros de atribuição estendidos (padrão UTM v2, proposta). Formato estrito: valor fora do formato é descartado.
+ * - utm_id, adset_id, ad_id: ID de plataforma. Meta usa 15 a 20 dígitos; aceita também "chave-número" (ex.: cid-22334455667,
+ *   regra 6 do padrão v1). Número curto sem chave (telefone, CPF, CNPJ, CEP) é descartado.
+ * - utm_source_platform: nome curto da plataforma em minúsculas (ex.: meta, google).
+ * - placement: posicionamento legível (ex.: Instagram_Reels).
+ */
+export const EXTENDED_ATTRIBUTION_KEYS = ['utm_id', 'utm_source_platform', 'adset_id', 'ad_id', 'placement'] as const
+export type ExtendedAttributionKey = typeof EXTENDED_ATTRIBUTION_KEYS[number]
+
+const PLATFORM_ID = /^(?:\d{15,20}|[a-z]{1,8}-\d{8,20})$/
+const PLATFORM_NAME = /^[a-z][a-z0-9_-]{1,29}$/
+const PLACEMENT = /^[A-Za-z][A-Za-z0-9 _.-]{1,59}$/
+
 const MAX_UTM_LENGTH = 200
 const EMAIL_LIKE = /[^\s@/?#&=]+@[^\s@/?#&=]+\.[a-z]{2,}/i
 // "%40" (arroba codificada) também denuncia e-mail em parâmetros duplamente codificados.
@@ -29,6 +43,24 @@ export function sanitizeUtmValue(value: unknown): string {
   const text = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
   if (!text || EMAIL_LIKE.test(text) || ENCODED_AT.test(text)) return ''
   return text.slice(0, MAX_UTM_LENGTH)
+}
+
+/** Valor de um parâmetro estendido, higienizado e conferido contra o formato da chave. Vazio quando inválido. */
+export function sanitizeExtendedValue(key: ExtendedAttributionKey, value: unknown): string {
+  const base = sanitizeUtmValue(value)
+  if (!base) return ''
+  switch (key) {
+    case 'utm_id':
+    case 'adset_id':
+    case 'ad_id':
+      return PLATFORM_ID.test(base) ? base : ''
+    case 'utm_source_platform': {
+      const lower = base.toLowerCase()
+      return PLATFORM_NAME.test(lower) ? lower : ''
+    }
+    case 'placement':
+      return PLACEMENT.test(base) ? base : ''
+  }
 }
 
 export function isClickIdParam(name: string): boolean {
@@ -69,4 +101,28 @@ export function analyticsUrl(raw: string): string {
   for (const [key, value] of Object.entries(utmFromSearch(url.search))) kept.set(key, value)
   const query = kept.toString()
   return url.origin + url.pathname + (query ? '?' + query : '')
+}
+
+/**
+ * Atribuição enviada pelo navegador no cadastro/agendamento: UTMs, parâmetros estendidos e, só com consentimento de
+ * marketing, o fbclid. Parâmetro repetido na URL: vale a PRIMEIRA ocorrência (URLSearchParams.get), as demais são ignoradas.
+ * Outros identificadores de clique (gclid, gbraid, wbraid, msclkid, ttclid…) e qualquer parâmetro fora da lista nunca saem
+ * do navegador por aqui. O servidor repete a higienização (lib/crm/attribution).
+ */
+export function attributionFromSearch(search: string, options: { allowFbclid: boolean }): Record<string, string> {
+  const params = new URLSearchParams(search)
+  const result: Record<string, string> = {}
+  for (const key of UTM_KEYS) {
+    const value = sanitizeUtmValue(params.get(key))
+    if (value) result[key] = value.slice(0, 180)
+  }
+  for (const key of EXTENDED_ATTRIBUTION_KEYS) {
+    const value = sanitizeExtendedValue(key, params.get(key))
+    if (value) result[key] = value
+  }
+  if (options.allowFbclid) {
+    const fbclid = params.get('fbclid')
+    if (fbclid) result.fbclid = fbclid.slice(0, 180)
+  }
+  return result
 }
