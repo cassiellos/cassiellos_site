@@ -1,4 +1,4 @@
-import { EXTENDED_ATTRIBUTION_KEYS, sanitizeExtendedValue, sanitizeUtmValue, UTM_KEYS } from '../privacy/url-sanitize'
+import { EXTENDED_ATTRIBUTION_KEYS, sanitizeExtendedValue, sanitizeUtmField, UTM_KEYS } from '../privacy/url-sanitize'
 
 /**
  * Atribuição do cadastro (padrão: docs/marketing/padrao-utm.md, decisões U1–U5).
@@ -18,7 +18,7 @@ export function sanitizeAttribution(
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return attribution
   const input = raw as Record<string, unknown>
   for (const key of UTM_KEYS) {
-    const safe = clean(sanitizeUtmValue(input[key]), ATTRIBUTION_MAX_LENGTH)
+    const safe = clean(sanitizeUtmField(key, input[key]), ATTRIBUTION_MAX_LENGTH)
     if (safe) attribution[key] = safe
   }
   for (const key of EXTENDED_ATTRIBUTION_KEYS) {

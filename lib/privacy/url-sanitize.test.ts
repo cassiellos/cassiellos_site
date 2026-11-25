@@ -3,18 +3,21 @@ import { describe, it } from 'node:test'
 import { CLICK_ID_PARAMS, analyticsUrl, isClickIdParam, originAndPath, sanitizeUtmValue, utmFromSearch } from './url-sanitize'
 import { isCrmScopePath } from './scope'
 
-const LANDING = 'https://cassiellos.com.br/contato?utm_source=google&utm_medium=cpc&utm_campaign=22334455667' +
+const LANDING = 'https://cassiellos.com.br/contato?utm_source=google&utm_medium=cpc&utm_campaign=cid-22334455667' +
   '&utm_term=agencia+de+marketing&gclid=Cj0KCQjw-SECRET&fbclid=IwAR-SECRET&msclkid=abc&gbraid=0AA&lang=en#form'
 
 describe('privacidade — funções base (sem efeito até ligar as chaves dos grupos)', () => {
   it('analyticsUrl: remove identificadores, outros parâmetros e fragmento; mantém UTMs', () => {
-    assert.equal(analyticsUrl(LANDING), 'https://cassiellos.com.br/contato?utm_source=google&utm_medium=cpc&utm_campaign=22334455667&utm_term=agencia+de+marketing')
+    assert.equal(analyticsUrl(LANDING), 'https://cassiellos.com.br/contato?utm_source=google&utm_medium=cpc&utm_campaign=cid-22334455667&utm_term=agencia+de+marketing')
     assert.equal(analyticsUrl('https://cassiellos.com.br/'), 'https://cassiellos.com.br/')
   })
   it('UTM: e-mail descartado; IDs numéricos preservados; controles e tamanho', () => {
     assert.equal(sanitizeUtmValue('maria@clinica.com.br'), '')
     assert.equal(sanitizeUtmValue('lista-maria%40clinica.com'), '')
-    assert.equal(sanitizeUtmValue('22334455667'), '22334455667')
+    // F4: número de 9 a 14 dígitos sozinho tem cara de telefone/CPF/CNPJ e cai; só passa com chave de ID explícita (padrão v1, regra 6)
+    assert.equal(sanitizeUtmValue('22334455667'), '')
+    assert.equal(sanitizeUtmValue('cid-22334455667'), 'cid-22334455667')
+    assert.equal(sanitizeUtmValue('120200000000000'), '120200000000000', 'ID de plataforma de 15 a 20 dígitos passa')
     assert.equal(sanitizeUtmValue('  black_friday\u0000 '), 'black_friday')
     assert.equal(sanitizeUtmValue('x'.repeat(250)).length, 200)
     assert.deepEqual(utmFromSearch('?utm_source=newsletter&utm_content=joao@ex.com&utm_medium=email'), { utm_source: 'newsletter', utm_medium: 'email' })
