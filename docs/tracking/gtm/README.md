@@ -42,3 +42,5 @@ vinculação da conta do Google Ads.
 O arquivo é válido como JSON e foi checado por script (nomes únicos, todo gatilho e variável referenciado existe),
 mas só o GTM confirma a importação. Se a importação acusar incompatibilidade, a causa mais provável é o formato de
 alguma tag Google nova; nesse caso criar a tag manualmente seguindo o inventário.
+
+> **Correções F1–F4** (parâmetros residuais, escopo exclusivo, lead novo, privacidade das UTMs): ver `correcoes-f1-f4.md` (variáveis atualizadas e roteiro de conferência no GTM Preview).
