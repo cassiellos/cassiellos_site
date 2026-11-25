@@ -1,7 +1,9 @@
 # Container GTM do formulário — rascunho
 
-Arquivo: `cassiellos-formulario-gtm-RASCUNHO.json` (gerado a partir do contrato de eventos; **não foi importado nem
-publicado**).
+Arquivo: `cassiellos-formulario-gtm-RASCUNHO.json` (gerado a partir do contrato de eventos). **Em 25/11/2026 foi
+importado, sem publicar,** no contêiner `GTM-T7JCRBW4` ("Formularios CRM - crm.cassiellos.com.br", espaço de trabalho
+Default, 56 itens pendentes) com o ID de medição `G-ZTYQ9NHWEN` (propriedade GA4 565800067, fluxo 16412511258). O arquivo
+deste repositório já traz esse ID e `conversionId` numérico (`"0"`) nas 3 tags Ads pausadas.
 
 **Nome do container:** `Cassiellos | Formulário Hamburguerias | GTM` (tipo Web). Um único container por rota: ele
 é carregado só em `/formularios/[slug]` (e nas jornadas do `/agendar` que usam o mesmo componente), nunca junto de
@@ -26,12 +28,13 @@ de consentimento por tag.
 1. Criar o container novo com o nome acima (tipo Web).
 2. Administrador → Importar container → escolher o arquivo → **espaço de trabalho novo** → "Mesclar" → "Substituir
    tags, gatilhos e variáveis conflitantes" só se o container estiver vazio.
-3. Trocar `G-XXXXXXXXXX` pelo ID real do fluxo GA4 na tag de configuração e nas 19 tags de evento (ou criar uma
+3. (Já feito neste arquivo: `G-ZTYQ9NHWEN`.) Em outra propriedade, trocar esse ID na tag de configuração e nas 19 tags de evento (ou criar uma
    variável de constante e apontar todas para ela).
 4. Visão geral de consentimento → conferir que todas as tags GA4 pedem `analytics_storage`.
 5. Pré-visualizar (GTM Preview) com o checklist da seção 10 de `../funil-formularios.md`. **Só então** publicar.
 
-As tags `ADS | …` continuam pausadas até a decisão sobre conversão primária, o texto jurídico dos sinais `ad_*` e a
+O GTM recusa a importação se `conversionId` das tags Ads não for numérico: o valor `"0"` é só um marcador e as tags
+continuam pausadas. As tags `ADS | …` continuam pausadas até a decisão sobre conversão primária, o texto jurídico dos sinais `ad_*` e a
 vinculação da conta do Google Ads.
 
 ## Limites desta validação

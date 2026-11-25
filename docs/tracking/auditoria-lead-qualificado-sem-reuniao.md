@@ -49,7 +49,7 @@ Três tabelas pequenas: (1) um registro por lead qualificado com `diagnostico`, 
 | `H_SEM_TENTATIVA_DE_AGENDAMENTO` | o visitante nunca reservou um horário | ver abaixo |
 
 **O caso `H` é o que o CRM sozinho não explica.** Pode ser abandono, calendário que não carregou (a falha 503 não deixava
-rastro antes dos registros operacionais, ver `operacao-logs-e-neon.md`), token de agendamento expirado ou ausência de
+rastro antes dos registros operacionais, ver `operacao-logs-e-neon.md`, que chega com o PR 3, o último a ser mesclado), token de agendamento expirado ou ausência de
 horário livre na janela pública. A consulta 3 testa só a última hipótese (janela, antecedência, bloqueios,
 capacidade diária). Para as demais seria preciso ler os **registros de execução da Vercel** das rotas
 `/api/booking/calendar`, `/availability` e `/confirm` na hora do lead (apenas status HTTP e horário). Isso é uma
