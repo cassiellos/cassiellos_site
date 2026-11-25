@@ -5,7 +5,7 @@ import { describe, it } from 'node:test'
 
 /**
  * Consentimento do formulário público.
- * - Entrada: aviso de primeira camada com "Recusar tudo", "Escolher" e "Aceitar tudo" (mesmo peso, sem pré-seleção),
+ * - Entrada: aviso de primeira camada com dois botões de mesmo peso e link de preferências (sem pré-seleção),
  *   que não bloqueia o formulário nem grava nada sem clique. A decisão de "entrada limpa" anterior (nenhum aviso ao abrir)
  *   foi substituída de propósito: sem escolha o visitante não autoriza nada, e sem aviso ele nunca escolhe.
  * - O aviso detalhado (ConsentNotice) continua montado uma única vez, só por interação explícita no rodapé.
@@ -32,11 +32,14 @@ describe('Regressão — formulário público: escolha de consentimento clara na
     assert.match(source, /\{!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner marketingEnabled=\{Boolean\(metaPixelId\)\} suppressed=\{showPrivacyPreferences\}\/>\}/)
   })
 
-  it('o aviso de entrada oferece Recusar, Aceitar métricas e Personalizar com o mesmo peso e só grava ao clicar', () => {
+  it('o aviso oferece dois botões de mesmo peso e link de preferências, e só grava ao clicar', () => {
     const buttons = [...banner.matchAll(/<button type="button" className="cpf-entry-choice" data-choice="(\w+)" onClick=\{[^}]*\}>([^<]+)<\/button>/g)]
-    assert.deepEqual(buttons.map(m => [m[1], m[2]]), [['reject', 'Recusar'], ['metrics', 'Aceitar métricas'], ['customize', 'Personalizar']])
-    // Nenhum botão com classe ou estilo próprio: o mesmo peso visual para as três escolhas.
-    assert.equal([...banner.matchAll(/className="cpf-entry-choice"/g)].length, 3)
+    assert.deepEqual(buttons.map(m => [m[1], m[2]]), [['reject', 'Recusar'], ['metrics', 'Aceitar métricas']])
+    // Os dois botões principais têm a mesma classe e peso visual.
+    assert.equal([...banner.matchAll(/className="cpf-entry-choice"/g)].length, 2)
+    assert.match(banner, /className="cpf-entry-preferences-link" data-choice="customize"/)
+    assert.match(banner, />Preferências de cookies<\/button>/)
+    assert.match(css, /cpf-entry-consent-actions\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/)
     assert.equal(/Aceitar tudo|Recusar tudo/.test(banner), false, 'métricas e marketing não se misturam em um botão só')
     // Nada pré-selecionado e nenhuma gravação fora de um onClick (montar, rolar ou digitar nunca vale como aceite).
     assert.equal(/aria-pressed|defaultChecked|checked=/.test(banner), false)
@@ -45,11 +48,11 @@ describe('Regressão — formulário público: escolha de consentimento clara na
     assert.match(banner, /const choose = \(action: EntryConsentAction\) => setConsentChoices\(entryConsentChoices\(action, marketingEnabled\)\)/)
     const effect = banner.slice(banner.indexOf('useEffect('), banner.indexOf('}, [])'))
     assert.equal(/setConsentChoices|setAnalyticsConsent|setMarketingConsent/.test(effect), false, 'o efeito de montagem só lê o cookie')
-    // "Personalizar" só abre o aviso detalhado; não grava nada.
+    // O link de preferências só abre o aviso detalhado; não grava nada.
     assert.match(banner, /data-choice="customize" onClick=\{\(\) => setCustomizing\(true\)\}/)
   })
 
-  it('em "Personalizar" o painel detalhado não some ao decidir só as métricas (marketing ainda precisa aparecer)', () => {
+  it('nas preferências o painel detalhado não some ao decidir só as métricas (marketing ainda precisa aparecer)', () => {
     const hidden = banner.indexOf('if (suppressed || consent === undefined) return null')
     const customizing = banner.indexOf('if (customizing) {')
     const pending = banner.indexOf('if (!entryConsentPending(consent)) return null')
@@ -66,7 +69,7 @@ describe('Regressão — formulário público: escolha de consentimento clara na
   })
 
   it('aviso compacto: reserva o espaço na altura das telas e some por completo depois da escolha', () => {
-    // Sem título; nome acessível pelo aria-label; só duas ligações (Cookies e Privacidade).
+    // Sem título; nome acessível pelo aria-label; políticas e preferências acessíveis.
     assert.match(banner, /role="region" aria-label="Privacidade nesta página"/)
     assert.equal(/<h2/.test(banner), false)
     // A reserva só mede e publica uma variável de CSS e é desfeita ao desmontar (nada lido, gravado ou enviado).
