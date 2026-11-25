@@ -5,7 +5,7 @@
  * - Nenhum dado pessoal: nunca respostas, texto digitado, nome, e-mail, telefone, datas/horários escolhidos ou links.
  *   Só identificadores técnicos de etapa, códigos de erro e o modo do ambiente. Qualquer valor fora da lista permitida,
  *   com "@", espaços, barras ou sequência longa de dígitos é descartado.
- * - Só os parâmetros desta lista existem: form_id, form_version, step_id, step_index, step_type, funnel_stage,
+ * - Só os parâmetros desta lista existem: form_id, form_version, step_id, step_index, step_order, step_type, funnel_stage,
  *   flow_variant, validation_error_code, environment_mode.
  * - `generate_lead` e `booking_meeting_confirmed` só existem DEPOIS da confirmação positiva do servidor.
  * - Cada marco tem chave de deduplicação (escopo: a aba): atualização da página, reenvio ou resposta idempotente do
@@ -56,6 +56,8 @@ export type TrackingParams = {
   form_version?: string
   step_id?: string
   step_index?: number
+  /** Ordem fixa da etapa no desenho do fluxo (igual para todos os visitantes, mesmo com ramificações). */
+  step_order?: number
   step_type?: StepType
   funnel_stage?: FunnelStage
   flow_variant?: FlowVariant
@@ -114,6 +116,9 @@ export function sanitizeTrackingParams(input: Record<string, unknown>): Tracking
   if (stepId) params.step_id = stepId
   if (typeof input.step_index === 'number' && Number.isInteger(input.step_index) && input.step_index >= 0 && input.step_index <= 50) {
     params.step_index = input.step_index
+  }
+  if (typeof input.step_order === 'number' && Number.isInteger(input.step_order) && input.step_order >= 0 && input.step_order <= 50) {
+    params.step_order = input.step_order
   }
   if (typeof input.step_type === 'string' && STEP_TYPES.has(input.step_type)) params.step_type = input.step_type as StepType
   if (typeof input.funnel_stage === 'string' && STAGES.has(input.funnel_stage)) params.funnel_stage = input.funnel_stage as FunnelStage
@@ -203,8 +208,42 @@ export function mapLegacyFunnelEvent(detail: unknown): { name: TrackingEventName
     environment_mode: raw.mode,
     step_id: raw.step,
     step_index: raw.step_index,
+    step_order: raw.step_order,
     funnel_stage: LEGACY_STAGE_TO_FUNNEL_STAGE[stage] ?? DEFAULT_FUNNEL_STAGE[name],
     validation_error_code: raw.code,
   })
   return params ? { name, params } : null
+}
+
+type OrderableStep = { id: string; type: string; next?: string; branches?: { to: string }[] }
+
+/**
+ * Ordem fixa das etapas de um fluxo, calculada só com o desenho (ids), nunca com respostas:
+ * profundidade a partir do início (menor caminho) e, em empate, a ordem em que a etapa foi declarada.
+ * Assim "limited" (que pode ser alcançada de mais de uma pergunta) ocupa sempre a mesma posição no relatório,
+ * enquanto `step_index` mostra a posição no caminho que o visitante realmente percorreu.
+ */
+export function flowStepOrder(start: string, steps: OrderableStep[]): Record<string, number> {
+  const byId = new Map(steps.map((step, index) => [step.id, { step, index }]))
+  const depth = new Map<string, number>()
+  const queue: string[] = []
+  if (byId.has(start)) { depth.set(start, 0); queue.push(start) }
+  while (queue.length) {
+    const id = queue.shift()!
+    const entry = byId.get(id)!
+    const targets = entry.step.type === 'question'
+      ? [entry.step.next, ...(entry.step.branches ?? []).map(branch => branch.to)] : []
+    for (const target of targets) {
+      if (typeof target === 'string' && byId.has(target) && !depth.has(target)) {
+        depth.set(target, depth.get(id)! + 1)
+        queue.push(target)
+      }
+    }
+  }
+  const ranked = steps
+    .map((step, index) => ({ id: step.id, depth: depth.get(step.id) ?? 1000, index }))
+    .sort((a, b) => a.depth - b.depth || a.index - b.index)
+  const order: Record<string, number> = {}
+  ranked.forEach((item, rank) => { order[item.id] = rank })
+  return order
 }

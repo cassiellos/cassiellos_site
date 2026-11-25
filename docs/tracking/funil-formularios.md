@@ -72,9 +72,15 @@ O tempo entre etapas é calculado no relatório (agregado), nunca enviado como p
 
 ## 4. Parâmetros permitidos
 
-`form_id`, `form_version` (`v<N>`), `step_id`, `step_index`, `step_type`, `funnel_stage`
+`form_id`, `form_version` (`v<N>`), `step_id`, `step_index`, `step_order`, `step_type`, `funnel_stage`
 (`entry|questions|capture|calendar|conclusion`), `flow_variant` (`cover|plain`), `validation_error_code`
 (código técnico em maiúsculas, nunca texto livre), `environment_mode` (`live|test`).
+
+**Como identificar cada etapa, inclusive com ramificações.** `step_id` é o identificador técnico da etapa (nome fixo no
+desenho do fluxo, nunca o texto da pergunta nem a resposta). `step_order` é a **posição fixa da etapa no desenho do fluxo**
+(0 = primeira), igual para todos os visitantes; é com ele que o funil do GA4 sai na ordem certa. `step_index` é a posição
+no **caminho que aquele visitante percorreu** (muda se ele voltar ou seguir uma ramificação). Etapas de desfecho
+alcançáveis por mais de uma pergunta (por exemplo "limited") têm um único `step_id` e um único `step_order`.
 
 `sanitizeTrackingParams` descarta qualquer outro campo e qualquer valor com `@`, espaços ou sequência de 6 ou mais
 dígitos.
@@ -97,7 +103,8 @@ dígitos.
 2. Retenção de dados em 14 meses; sinais do Google **desligados** até a política ser atualizada; coleta de dados de
    anúncios desligada.
 3. Dimensões personalizadas (escopo de evento): `form_id`, `form_version`, `step_id`, `step_type`, `funnel_stage`,
-   `flow_variant`, `validation_error_code`, `environment_mode`. Métrica personalizada: `step_index`.
+   `flow_variant`, `validation_error_code`, `environment_mode`. Métricas personalizadas (escopo de evento, padrão):
+   `step_order` e `step_index` (para ordenar e para ver a posição real percorrida).
 4. Eventos-chave: `generate_lead` e `booking_meeting_confirmed`.
 5. Filtro/segmento permanente `environment_mode = live` nas explorações e no Looker Studio.
 6. Vincular a conta do Google Ads (sem alterar metas, lances ou conversões primárias).

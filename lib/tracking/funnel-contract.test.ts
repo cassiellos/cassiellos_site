@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  DEFAULT_FUNNEL_STAGE, TRACKING_EVENTS, formVersionLabel, isTrackingEvent, mapLegacyFunnelEvent,
+  DEFAULT_FUNNEL_STAGE, TRACKING_EVENTS, flowStepOrder, formVersionLabel, isTrackingEvent, mapLegacyFunnelEvent,
   sanitizeTrackingParams, trackingDedupeKey,
 } from './funnel-contract'
 import { FUNNEL_EVENTS } from '../crm/funnel-events'
+import { HAMBURGUERIAS_CHRONOS_DRAFT } from '../crm/form-builder/hamburguerias'
 
 const base = { form_id: 'hamburguerias', environment_mode: 'live' }
 
@@ -116,5 +117,60 @@ describe('mapeamento determinístico dos eventos existentes do /agendar', () => 
     assert.equal(mapLegacyFunnelEvent({ name: 'outro', form: 'x', mode: 'live' }), null)
     assert.equal(mapLegacyFunnelEvent(null), null)
     assert.equal(mapLegacyFunnelEvent({ name: 'booking_form_view', form: 'x', mode: 'qualquer' }), null)
+  })
+
+  it('step_order: inteiro de 0 a 50, aceito no contrato; texto, negativo ou fracionado é descartado', () => {
+    assert.equal(sanitizeTrackingParams({ ...base, step_order: 4 })?.step_order, 4)
+    assert.equal(sanitizeTrackingParams({ ...base, step_order: 0 })?.step_order, 0)
+    for (const bad of [-1, 51, 1.5, '3', null, NaN]) {
+      assert.equal(sanitizeTrackingParams({ ...base, step_order: bad })?.step_order, undefined, String(bad))
+    }
+  })
+
+  it('flowStepOrder: posição fixa por etapa, igual para todos os caminhos e sem usar respostas', () => {
+    const order = flowStepOrder(HAMBURGUERIAS_CHRONOS_DRAFT.start, HAMBURGUERIAS_CHRONOS_DRAFT.steps)
+    const ids = HAMBURGUERIAS_CHRONOS_DRAFT.steps.map(step => step.id)
+    // Todas as etapas têm posição, sem repetição, de 0 até n-1.
+    assert.deepEqual(Object.keys(order).sort(), [...ids].sort())
+    assert.deepEqual(Object.values(order).sort((a, b) => a - b), ids.map((_, i) => i))
+    // A primeira etapa é a posição 0 e as perguntas seguem a ordem do fluxo.
+    assert.equal(order[HAMBURGUERIAS_CHRONOS_DRAFT.start], 0)
+    const questions = HAMBURGUERIAS_CHRONOS_DRAFT.steps.filter(step => step.type === 'question')
+    let previous = -1
+    let id: string | undefined = HAMBURGUERIAS_CHRONOS_DRAFT.start
+    while (id) {
+      const step = HAMBURGUERIAS_CHRONOS_DRAFT.steps.find(item => item.id === id)
+      if (!step || step.type !== 'question') break
+      assert.ok(order[step.id] > previous, step.id + ' vem depois da anterior')
+      previous = order[step.id]
+      id = step.next
+    }
+    assert.ok(questions.length >= 5)
+  })
+
+  it('flowStepOrder com ramificação: o destino alcançável por dois caminhos tem uma posição só', () => {
+    const steps = [
+      { id: 'a', type: 'question', next: 'b', branches: [{ to: 'fim_limitado' }] },
+      { id: 'b', type: 'question', next: 'fim_ok', branches: [{ to: 'fim_limitado' }] },
+      { id: 'fim_ok', type: 'result' },
+      { id: 'fim_limitado', type: 'result' },
+      { id: 'solta', type: 'result' },
+    ]
+    const order = flowStepOrder('a', steps)
+    assert.equal(order.a, 0)
+    assert.equal(order.b, 1)
+    // fim_limitado é alcançada já a partir de "a" (profundidade 1), fim_ok só de "b" (profundidade 2).
+    assert.ok(order.fim_limitado < order.fim_ok)
+    // Etapa inalcançável fica por último, sem quebrar.
+    assert.equal(order.solta, 4)
+    // Início inexistente não derruba o cálculo.
+    assert.deepEqual(Object.keys(flowStepOrder('x', steps)).length, 5)
+    // Ciclo não trava.
+    assert.equal(flowStepOrder('a', [{ id: 'a', type: 'question', next: 'a' }]).a, 0)
+  })
+
+  it('legado do /agendar: step_order passa quando válido', () => {
+    const mapped = mapLegacyFunnelEvent({ name: 'booking_step_completed', form: 'x', mode: 'live', step: 'q_nome', step_index: 1, step_order: 1 })
+    assert.equal(mapped?.params.step_order, 1)
   })
 })

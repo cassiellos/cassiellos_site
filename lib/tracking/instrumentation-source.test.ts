@@ -85,6 +85,13 @@ describe('instrumentação do formulário — garantias no código', () => {
     assert.match(compact(flow), /serverMode/)
   })
 
+  it('toda etapa com step_id sai também com a posição fixa (step_order) calculada só pelo desenho do fluxo', () => {
+    const c = compact(flow)
+    assert.match(c, /conststepOrder=useMemo\(\(\)=>flowStepOrder\(flow\.start,flow\.steps\),\[flow\]\)/)
+    assert.match(c, /typeofextra\.step_id==='string'\?stepOrder\[extra\.step_id\]:undefined/)
+    assert.match(c, /\.\.\.\(order===undefined\?\{\}:\{step_order:order\}\)/)
+  })
+
   it('GTM só liga com a chave expressa (padrão desligado) e o id vem da configuração do servidor', () => {
     assert.match(compact(page), /gtmContainerId=\{gtm\.enabled\?gtm\.containerId:null\}/)
     assert.equal(/GTM-[A-Z0-9]{4,}/.test(flow + calendar + page), false, 'nenhum ID de container fixo no código')

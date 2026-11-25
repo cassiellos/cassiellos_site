@@ -165,6 +165,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -342,6 +357,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -537,6 +567,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -714,6 +759,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -909,6 +969,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -1086,6 +1161,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -1281,6 +1371,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -1458,6 +1563,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -1653,6 +1773,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -1830,6 +1965,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -2025,6 +2175,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -2202,6 +2367,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -2397,6 +2577,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -2574,6 +2769,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -2769,6 +2979,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -2946,6 +3171,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -3141,6 +3381,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -3327,6 +3582,21 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
                     "value": "step_type"
                   },
                   {
@@ -3504,6 +3774,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{DLV | step_index}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "step_order"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV | step_order}}"
                   }
                 ]
               },
@@ -4373,6 +4658,33 @@
         "accountId": "0",
         "containerId": "0",
         "variableId": "104",
+        "name": "DLV | step_order",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "step_order"
+          }
+        ],
+        "fingerprint": "0",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "105",
         "name": "DLV | step_type",
         "type": "v",
         "parameter": [
@@ -4399,7 +4711,7 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "variableId": "105",
+        "variableId": "106",
         "name": "DLV | funnel_stage",
         "type": "v",
         "parameter": [
@@ -4426,7 +4738,7 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "variableId": "106",
+        "variableId": "107",
         "name": "DLV | flow_variant",
         "type": "v",
         "parameter": [
@@ -4453,7 +4765,7 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "variableId": "107",
+        "variableId": "108",
         "name": "DLV | validation_error_code",
         "type": "v",
         "parameter": [
@@ -4480,7 +4792,7 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "variableId": "108",
+        "variableId": "109",
         "name": "DLV | environment_mode",
         "type": "v",
         "parameter": [
