@@ -299,7 +299,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         </span>
       </footer>
       {!previewOnly&&<aside className="cpf-privacy-minimal" id="cpf-privacy-preferences" aria-label="Preferências de privacidade">
-        {showPrivacyPreferences&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>}
+        {showPrivacyPreferences&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)} openOnMount onClose={()=>setShowPrivacyPreferences(false)}/>}
       </aside>}
     </div>
     {/* Escolha clara ao entrar (LGPD): primeira camada com Recusar tudo / Escolher / Aceitar tudo, sem bloquear o formulário. */}

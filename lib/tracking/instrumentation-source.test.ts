@@ -120,3 +120,13 @@ describe('instrumentação do formulário — garantias no código', () => {
     }
   })
 })
+
+describe('revogação pelo rodapé — garantias no código', () => {
+  const notice = read('components/privacy/consent-notice.tsx')
+  it('"Preferências de cookies" monta o aviso já aberto (quem já escolheu precisa conseguir revogar) e volta ao estado fechado', () => {
+    assert.match(compact(flow), /<ConsentNoticemarketingEnabled=\{Boolean\(metaPixelId\)\}openOnMountonClose=\{\(\)=>setShowPrivacyPreferences\(false\)\}\/>/)
+    assert.match(compact(notice), /useState\(openOnMount\)/)
+    assert.match(compact(notice), /constfocusOnOpen=useRef\(openOnMount\)/)
+    assert.equal((notice.match(/setOpen\(false\)/g) ?? []).length, 1, 'todo fechamento passa por close(), que avisa o rodapé')
+  })
+})
