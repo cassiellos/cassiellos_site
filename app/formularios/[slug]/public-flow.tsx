@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, type FormEvent } from 'react'
 import type { FlowDefinition, FlowStep, FlowResult } from '@/lib/crm/form-builder/flow'
 import { TURNSTILE_BOOKING_ACTION } from '@/lib/crm/turnstile'
 import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
@@ -8,15 +8,16 @@ import { isValidWebPresence } from '@/lib/crm/booking-forms'
 import MetaPixel from '@/components/marketing/meta-pixel'
 import InlineBookingCalendar from './inline-booking-calendar'
 import ConsentNotice from '@/components/privacy/consent-notice'
+import ConsentEntryBanner from '@/components/privacy/consent-entry-banner'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 import GoogleTagManager from '@/components/tracking/google-tag-manager'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
-import { DEFAULT_FUNNEL_STAGE, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
+import { DEFAULT_FUNNEL_STAGE, flowStepOrder, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean;trackingMode?:'live'|'test';gtmContainerId?:string|null}
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean;trackingMode?:'live'|'test';gtmContainerId?:string|null;entryNoticeEnabled?:boolean}
 // Apenas apresentação: preserva os textos do CRM, destacando a promessa como na referência.
 function coverHeadline(text: string) {
   const match=text.match(/^(.*?)(vender mais!?)(\s*)$/iu)
@@ -27,7 +28,7 @@ function coverCtaLabel(text: string) {
   return text.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,prefix: string,letter: string)=>
     prefix+letter.toLocaleUpperCase('pt-BR'))
 }
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false,trackingMode='test',gtmContainerId=null}:PublicFlowProps){
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false,trackingMode='test',gtmContainerId=null,entryNoticeEnabled=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   // Mesmo padrão aprovado no /agendar: nunca interromper a primeira pergunta com avisos de cookies.
@@ -52,11 +53,15 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   // depois do cadastro, segue a classificação do servidor (leadMode = crm.leads.is_test).
   const [leadMode,setLeadMode]=useState<'live'|'test'|null>(null)
   const mode:TrackingMode=previewOnly?'preview':leadMode??(trackingMode==='live'&&email&&isTestEmailDomain(email)?'test':trackingMode)
+  // Posição fixa de cada etapa no desenho do fluxo (igual para todos, mesmo com ramificações): entra como `step_order`
+  // sempre que o evento traz um `step_id`, para o relatório ordenar o funil sem depender do caminho de cada visitante.
+  const stepOrder=useMemo(()=>flowStepOrder(flow.start,flow.steps),[flow])
   function track(name:TrackingEventName,extra:Record<string,unknown>={},ref?:string|null){
     // A mensuração nunca pode atrapalhar o preenchimento nem o envio.
     try{
+      const order=typeof extra.step_id==='string'?stepOrder[extra.step_id]:undefined
       pushTrackingEvent(name,{form_id:slug,form_version:formVersionLabel(version),flow_variant:flow.cover?'cover':'plain',
-        environment_mode:mode,funnel_stage:DEFAULT_FUNNEL_STAGE[name],...extra},ref)
+        environment_mode:mode,funnel_stage:DEFAULT_FUNNEL_STAGE[name],...(order===undefined?{}:{step_order:order}),...extra},ref)
     }catch{/* sem efeito sobre o formulário */}
   }
   const current=flow.steps.find(x=>x.id===visited[visited.length-1])
@@ -84,6 +89,19 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     return ()=>window.removeEventListener(CONSENT_CHANGE_EVENT,view)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[current?.id,coverOpen,status])
+  // Verificação de segurança (Turnstile) que falha ou trava deixa o botão de envio desativado: ninguém clica, o servidor
+  // nunca é chamado e nada é registrado. Aqui sai só o código técnico (uma vez por código), para separar "verificação
+  // fora do ar" de abandono. Sem dado pessoal; a prévia e a falta de consentimento não emitem.
+  useEffect(()=>{
+    if(previewOnly||status!=='ready'||current?.type!=='result')return
+    const at={step_id:current.id,step_index:visited.length-1,step_type:'contact',funnel_stage:'capture'}
+    if(!turnstileSiteKey){track('lead_submit_error',{...at,validation_error_code:'SECURITY_CHECK_UNAVAILABLE'});return}
+    if(tokenState==='error'){track('lead_submit_error',{...at,validation_error_code:'TURNSTILE_ERROR'});return}
+    if(token)return
+    const timer=window.setTimeout(()=>track('lead_submit_error',{...at,validation_error_code:'TURNSTILE_TIMEOUT'}),20000)
+    return ()=>window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[current?.id,tokenState,token,status])
   function next(step:Extract<FlowStep,{type:'question'}>,answer:string){
     // Só ids técnicos da etapa e códigos de erro vão para a mensuração; a resposta nunca.
     const at={step_id:step.id,step_index:visited.length-1,step_type:'question',funnel_stage:'questions'}
@@ -198,7 +216,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     <div className="cpf-shell">
       <div className="cpf-topline"><span>{flow.cover?'DIAGNÓSTICO PARA HAMBURGUERIAS':'FORMULÁRIO PERSONALIZADO'}</span><span>{coverOpen?'INÍCIO':status==='complete'?'CONCLUÍDO':String(currentStep).padStart(2,'0')+' / '+String(totalSteps).padStart(2,'0')}</span></div>
       <div className="cpf-progress"><span style={{width:(status==='complete'?100:coverOpen?0:Math.min(99,currentStep/totalSteps*100))+'%'}}/></div>
-      {/* Aviso opcional não aparece ao abrir o formulário. O visitante pode acessar as escolhas no rodapé. */}
+      {/* A escolha de cookies fica no aviso de entrada (fim do componente) e em "Preferências de cookies" no rodapé. */}
       <section className="cpf-card" aria-live="polite">
         {status==='calendar'?<InlineBookingCalendar formSlug={slug}
           bookingToken={bookingToken} email={email} bookingEnabled={bookingEnabled}
@@ -281,8 +299,10 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         </span>
       </footer>
       {!previewOnly&&<aside className="cpf-privacy-minimal" id="cpf-privacy-preferences" aria-label="Preferências de privacidade">
-        {showPrivacyPreferences&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)}/>}
+        {showPrivacyPreferences&&<ConsentNotice marketingEnabled={Boolean(metaPixelId)} openOnMount onClose={()=>setShowPrivacyPreferences(false)}/>}
       </aside>}
     </div>
+    {/* Escolha clara ao entrar (LGPD): primeira camada com Recusar tudo / Escolher / Aceitar tudo, sem bloquear o formulário. */}
+    {!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner marketingEnabled={Boolean(metaPixelId)} suppressed={showPrivacyPreferences}/>}
   </main>
 }

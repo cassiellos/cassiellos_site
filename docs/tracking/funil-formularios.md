@@ -13,7 +13,7 @@ autorizaram "métricas", e o Google Tag Manager só carrega com `TRACKING_GTM_EN
 | --- | --- |
 | A campanha ativa é do **Meta Ads** ("SC \| C01 \| VENDAS \| HAMBURGUERIAS \| AGENDAMENTOS", otimizada para `Cassiellos_Scheduled`) e leva a `/formularios/hamburguerias`. A conta do Google Ads não tem campanha ativa ou pausada. | A premissa "cliques do Google Ads" precisa ser corrigida: o funil é medido contra o Meta. |
 | Nenhum GA4 nem GTM da Cassiellos existe (só ativos de clientes). | Há o que criar, mas criar conta/propriedade exige autorização. |
-| O consentimento só aparece pelo link do rodapé em `/formularios` (decisão de "entrada limpa" travada por testes). | Quem nunca abriu as preferências não autoriza nada: Pixel, CAPI (Lead/Schedule), Vercel Analytics e AnalyticsFlow ficam sem dado. **É a principal explicação provável para "40 cliques e nenhum dado".** |
+| No patch 0007 o consentimento só aparece pelo link do rodapé em `/formularios` (decisão de "entrada limpa" travada por testes). **Revisado no PR de camadas** (`camadas-de-medicao.md`): aviso discreto na primeira visita, sem bloquear o formulário. | Quem nunca abriu as preferências não autoriza nada: Pixel, CAPI (Lead/Schedule), Vercel Analytics e AnalyticsFlow ficam sem dado. É uma **explicação provável da falta de dado de medição**, não prova de que a falta de consentimento explica a falta de reuniões (ver `camadas-de-medicao.md`, seção 6). |
 | O Vercel Web Analytics está desligado no projeto `cassiellos-crm`. | Sem contagem própria de visualizações. |
 | O contador global (`site-interaction-tracker`) tratava **cada pergunta respondida** como `form_submit`/`cta_click`. | Contagem de "envios" inflada e sem relação com leads reais. Corrigido: `/agendar` e `/formularios` têm métricas próprias (`ownsFunnelMetrics`). |
 
@@ -72,9 +72,15 @@ O tempo entre etapas é calculado no relatório (agregado), nunca enviado como p
 
 ## 4. Parâmetros permitidos
 
-`form_id`, `form_version` (`v<N>`), `step_id`, `step_index`, `step_type`, `funnel_stage`
+`form_id`, `form_version` (`v<N>`), `step_id`, `step_index`, `step_order`, `step_type`, `funnel_stage`
 (`entry|questions|capture|calendar|conclusion`), `flow_variant` (`cover|plain`), `validation_error_code`
 (código técnico em maiúsculas, nunca texto livre), `environment_mode` (`live|test`).
+
+**Como identificar cada etapa, inclusive com ramificações.** `step_id` é o identificador técnico da etapa (nome fixo no
+desenho do fluxo, nunca o texto da pergunta nem a resposta). `step_order` é a **posição fixa da etapa no desenho do fluxo**
+(0 = primeira), igual para todos os visitantes; é com ele que o funil do GA4 sai na ordem certa. `step_index` é a posição
+no **caminho que aquele visitante percorreu** (muda se ele voltar ou seguir uma ramificação). Etapas de desfecho
+alcançáveis por mais de uma pergunta (por exemplo "limited") têm um único `step_id` e um único `step_order`.
 
 `sanitizeTrackingParams` descarta qualquer outro campo e qualquer valor com `@`, espaços ou sequência de 6 ou mais
 dígitos.
@@ -82,7 +88,13 @@ dígitos.
 ## 5. Consent Mode v2 e LGPD
 
 * `consent default` com os quatro sinais **negados** é empurrado antes de qualquer script do Google.
-* O visitante escolhe no aviso do CRM (cookie `cassiellos_consent`). `analytics_storage` acompanha "métricas".
+* O **aviso de entrada** só aparece com a chave exclusiva `CONSENT_ENTRY_NOTICE_ENABLED=true` (desligada por padrão; ela não concede consentimento).
+* O visitante escolhe no **aviso de entrada** da primeira visita (Recusar, Aceitar métricas e Personalizar, com o mesmo
+  peso) ou depois em "Preferências de cookies", no rodapé (cookie `cassiellos_consent`, 180 dias). O aviso não bloqueia
+  o formulário, não marca nada previamente e só grava depois de um clique. `analytics_storage` acompanha "métricas";
+  "Aceitar métricas" **nunca** liga marketing.
+* Modo **básico** do Consent Mode: sem aceite de métricas o GTM não carrega e nada é enviado ao Google. O modo avançado
+  (pings sem cookies) não foi adotado e depende de parecer jurídico.
 * **`ad_storage`, `ad_user_data` e `ad_personalization` ficam negados** enquanto o texto de marketing cobrir só o Meta.
   Eles só passam a seguir a escolha de marketing quando a política de privacidade e o aviso citarem o Google
   (`consentModeFrom(..., { googleAdsSignals: true })`).
@@ -97,7 +109,8 @@ dígitos.
 2. Retenção de dados em 14 meses; sinais do Google **desligados** até a política ser atualizada; coleta de dados de
    anúncios desligada.
 3. Dimensões personalizadas (escopo de evento): `form_id`, `form_version`, `step_id`, `step_type`, `funnel_stage`,
-   `flow_variant`, `validation_error_code`, `environment_mode`. Métrica personalizada: `step_index`.
+   `flow_variant`, `validation_error_code`, `environment_mode`. Métricas personalizadas (escopo de evento, padrão):
+   `step_order` e `step_index` (para ordenar e para ver a posição real percorrida).
 4. Eventos-chave: `generate_lead` e `booking_meeting_confirmed`.
 5. Filtro/segmento permanente `environment_mode = live` nas explorações e no Looker Studio.
 6. Vincular a conta do Google Ads (sem alterar metas, lances ou conversões primárias).
@@ -135,8 +148,9 @@ Marcar cada item com evidência (print do GTM Preview/Tag Assistant, DebugView, 
 - [ ] Desktop e celular; recarregar, voltar/avançar do navegador e troca de etapa não duplicam eventos.
 - [ ] Pergunta intermediária **não** gera `generate_lead` nem `form_submit` no contador global.
 - [ ] Envio duplo (duplo clique): um `lead_submit_attempt`, no máximo um `generate_lead`.
-- [ ] Erro de API (400/403/409/429/5xx), Turnstile pendente e rede fora: `lead_submit_error`/`booking_*_error` com
-      código, **sem** `generate_lead`/`booking_meeting_confirmed`.
+- [ ] Erro de API (400/403/409/429/5xx), Turnstile com erro (`TURNSTILE_ERROR`), travado (`TURNSTILE_TIMEOUT`, 20 s) ou
+      ausente (`SECURITY_CHECK_UNAVAILABLE`) e rede fora: `lead_submit_error`/`booking_*_error` com código,
+      **sem** `generate_lead`/`booking_meeting_confirmed`.
 - [ ] Reunião só é contada depois da resposta positiva; reabrir link já confirmado não conta de novo.
 - [ ] Nenhum dado pessoal no `dataLayer`, nas requisições do GA4 nem no `sessionStorage`.
 - [ ] Prévia do painel não emite. Testes e e-mails de teste saem como `environment_mode=test`.

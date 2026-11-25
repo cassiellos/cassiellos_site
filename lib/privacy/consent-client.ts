@@ -36,6 +36,11 @@ function writeConsent(update: Partial<ConsentChoices>): void {
   window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT))
 }
 
+/** Grava mais de uma categoria de uma vez (um único evento de mudança). Só chamar a partir de um clique do visitante. */
+export function setConsentChoices(update: Partial<ConsentChoices>): void {
+  writeConsent(update)
+}
+
 export function setAnalyticsConsent(granted: boolean): void {
   writeConsent({ analytics: granted })
 }

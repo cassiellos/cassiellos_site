@@ -7,12 +7,12 @@ publicado**).
 é carregado só em `/formularios/[slug]` (e nas jornadas do `/agendar` que usam o mesmo componente), nunca junto de
 outro container concorrente.
 
-## Inventário (51 itens)
+## Inventário (56 itens)
 
 | Tipo | Quantidade | Nome / padrão |
 | --- | --- | --- |
 | Pasta | 4 | `DLV \| Variáveis do dataLayer`, `TRG \| Gatilhos do funil`, `GA4 \| Eventos do funil`, `ADS \| Conversões (PAUSADAS até autorização)` |
-| Variável | 9 | `DLV \| form_id`, `form_version`, `step_id`, `step_index`, `step_type`, `funnel_stage`, `flow_variant`, `validation_error_code`, `environment_mode` (dataLayer v2, sem valor padrão) |
+| Variável | 10 | `DLV \| form_id`, `form_version`, `step_id`, `step_index`, `step_order`, `step_type`, `funnel_stage`, `flow_variant`, `validation_error_code`, `environment_mode` (dataLayer v2, sem valor padrão) |
 | Gatilho | 19 | `TRG \| Evento \| <evento>` (evento personalizado igual ao nome do evento) |
 | Tag GA4 | 20 | `GA4 \| Configuração \| Google tag` (1) + `GA4 \| Evento \| <evento>` (19), todas com consentimento `analytics_storage` obrigatório |
 | Tag Ads | 3 | `ADS \| Conversion Linker`, `ADS \| Conversão \| Reunião confirmada`, `ADS \| Conversão \| Lead válido` — **pausadas**, IDs de modelo |

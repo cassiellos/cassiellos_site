@@ -9,6 +9,7 @@ import { getCrmBookingMode } from '@/lib/crm/booking-mode'
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
 import { getGtmFormConfig } from '@/lib/tracking/gtm-config'
+import { getEntryNoticeConfig } from '@/lib/privacy/entry-notice-config'
 import PublicFlow from './public-flow'
 import './public-flow.css'
 
@@ -29,9 +30,12 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
   // GTM do formulário: desligado salvo TRACKING_GTM_ENABLED=true + GTM_FORM_CONTAINER_ID válido.
   const trackingMode=funnelModeFor({bookingMode:getCrmBookingMode(),allowlistActive:bookingAccessConfig().restrictedToAllowedEmail})
   const gtm=getGtmFormConfig()
+  // Aviso de entrada: desligado salvo CONSENT_ENTRY_NOTICE_ENABLED=true (chave exclusiva; não concede consentimento).
+  const entryNotice=getEntryNoticeConfig()
   return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.publishedMeta?.title||doc.title}
     description={doc.publishedMeta?.description||doc.description} version={doc.publishedVersion} flow={doc.published}
     turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null} metaPixelId={pixel.enabled?pixel.pixelId:null}
     customScheduleEnabled={pixel.enabled && getMetaCustomScheduleEnabled()}
-    trackingMode={trackingMode} gtmContainerId={gtm.enabled?gtm.containerId:null}/>
+    trackingMode={trackingMode} gtmContainerId={gtm.enabled?gtm.containerId:null}
+    entryNoticeEnabled={entryNotice.enabled}/>
 }

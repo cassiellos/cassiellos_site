@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ConsentState } from '@/lib/privacy/consent'
 import {
   CONSENT_CHANGE_EVENT, CONSENT_OPEN_EVENT, getConsent, openConsentPreferences, setAnalyticsConsent, setMarketingConsent,
@@ -16,11 +16,20 @@ import {
  *   (`marketingEnabled`); com o Pixel desligado o aviso é exatamente o da Etapa 3.
  * O texto jurídico das políticas continua dependendo de aprovação.
  */
-export default function ConsentNotice({ marketingEnabled = false }: { marketingEnabled?: boolean }) {
-  const [open, setOpen] = useState(false)
+export default function ConsentNotice({ marketingEnabled = false, openOnMount = false, onClose }: {
+  marketingEnabled?: boolean
+  /** O botão "Preferências de cookies" do rodapé monta o aviso já aberto: sem isso, quem já escolheu não consegue revogar. */
+  openOnMount?: boolean
+  /** Avisa quem monta o aviso quando ele se fecha, para o botão do rodapé voltar ao estado "fechado". */
+  onClose?: () => void
+}) {
+  const [open, setOpen] = useState(openOnMount)
   const [current, setCurrent] = useState<ConsentState | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
-  const focusOnOpen = useRef(false)
+  const focusOnOpen = useRef(openOnMount)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose })
+  const close = useCallback(() => { setOpen(false); onCloseRef.current?.() }, [])
 
   useEffect(() => {
     const pending = (consent: ConsentState | null) =>
@@ -32,14 +41,14 @@ export default function ConsentNotice({ marketingEnabled = false }: { marketingE
     }
     if (pending(sync())) setOpen(true)
     const onOpen = () => { sync(); focusOnOpen.current = true; setOpen(true) }
-    const onChange = () => { if (!pending(sync())) setOpen(false) }
+    const onChange = () => { if (!pending(sync())) close() }
     window.addEventListener(CONSENT_OPEN_EVENT, onOpen)
     window.addEventListener(CONSENT_CHANGE_EVENT, onChange)
     return () => {
       window.removeEventListener(CONSENT_OPEN_EVENT, onOpen)
       window.removeEventListener(CONSENT_CHANGE_EVENT, onChange)
     }
-  }, [marketingEnabled])
+  }, [marketingEnabled, close])
 
   useEffect(() => {
     if (open && focusOnOpen.current) {
@@ -56,7 +65,7 @@ export default function ConsentNotice({ marketingEnabled = false }: { marketingE
   if (!marketingEnabled) {
     const choose = (granted: boolean) => {
       setAnalyticsConsent(granted)
-      setOpen(false)
+      close()
     }
     return <section className="consent-notice" aria-labelledby="consent-notice-title" data-consent-ui="">
       <div>
@@ -112,7 +121,7 @@ export default function ConsentNotice({ marketingEnabled = false }: { marketingE
       {' · '}
       <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
       {analytics !== null && marketing !== null && <>{' · '}
-        <button type="button" className="consent-preferences-button" onClick={() => setOpen(false)}>Fechar</button></>}
+        <button type="button" className="consent-preferences-button" onClick={close}>Fechar</button></>}
     </p>
   </section>
 }

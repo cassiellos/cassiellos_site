@@ -85,6 +85,23 @@ describe('instrumentação do formulário — garantias no código', () => {
     assert.match(compact(flow), /serverMode/)
   })
 
+  it('toda etapa com step_id sai também com a posição fixa (step_order) calculada só pelo desenho do fluxo', () => {
+    const c = compact(flow)
+    assert.match(c, /conststepOrder=useMemo\(\(\)=>flowStepOrder\(flow\.start,flow\.steps\),\[flow\]\)/)
+    assert.match(c, /typeofextra\.step_id==='string'\?stepOrder\[extra\.step_id\]:undefined/)
+    assert.match(c, /\.\.\.\(order===undefined\?\{\}:\{step_order:order\}\)/)
+  })
+
+  it('falha ou travamento do Turnstile deixa rastro só com o código técnico (o botão desativado esconderia a perda)', () => {
+    const c = compact(flow)
+    assert.match(c, /if\(previewOnly\|\|status!=='ready'\|\|current\?\.type!=='result'\)return/)
+    for (const code of ['SECURITY_CHECK_UNAVAILABLE', 'TURNSTILE_ERROR', 'TURNSTILE_TIMEOUT']) {
+      assert.ok(c.includes("track('lead_submit_error',{...at,validation_error_code:'" + code + "'})"), code)
+    }
+    // O temporizador é limpo ao sair da etapa ou ao obter o token.
+    assert.match(c, /window\.clearTimeout\(timer\)/)
+  })
+
   it('GTM só liga com a chave expressa (padrão desligado) e o id vem da configuração do servidor', () => {
     assert.match(compact(page), /gtmContainerId=\{gtm\.enabled\?gtm\.containerId:null\}/)
     assert.equal(/GTM-[A-Z0-9]{4,}/.test(flow + calendar + page), false, 'nenhum ID de container fixo no código')
@@ -101,5 +118,15 @@ describe('instrumentação do formulário — garantias no código', () => {
       assert.equal(/dataLayer\s*[.\[]|\bgtag\(|\bfbq\(.*'(Lead|Schedule)'/.test(source) && !/trackMetaConversion/.test(source), false)
       assert.equal(/window\.dataLayer/.test(source), false)
     }
+  })
+})
+
+describe('revogação pelo rodapé — garantias no código', () => {
+  const notice = read('components/privacy/consent-notice.tsx')
+  it('"Preferências de cookies" monta o aviso já aberto (quem já escolheu precisa conseguir revogar) e volta ao estado fechado', () => {
+    assert.match(compact(flow), /<ConsentNoticemarketingEnabled=\{Boolean\(metaPixelId\)\}openOnMountonClose=\{\(\)=>setShowPrivacyPreferences\(false\)\}\/>/)
+    assert.match(compact(notice), /useState\(openOnMount\)/)
+    assert.match(compact(notice), /constfocusOnOpen=useRef\(openOnMount\)/)
+    assert.equal((notice.match(/setOpen\(false\)/g) ?? []).length, 1, 'todo fechamento passa por close(), que avisa o rodapé')
   })
 })
