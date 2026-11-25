@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { readMarketingConsent, trackMetaConversion, trackMetaCustomBooking } from '@/lib/marketing/meta-client'
 import { buildIcs, googleCalendarTemplateUrl } from '@/lib/crm/calendar-links'
+import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
+import { DEFAULT_FUNNEL_STAGE, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
 
 type Slot = { startAt: string; endAt: string; localTime: string }
 type CalendarWindow = { today: string; lastDate: string; closedDates: string[] }
@@ -22,6 +24,10 @@ type Props = {
   previewOnly?: boolean
   bookingEnabled?: boolean
   customScheduleEnabled?: boolean
+  /** Mensuração do funil: "preview" (padrão seguro) nunca emite. Só ids técnicos e códigos; nada pessoal. */
+  trackingMode?: TrackingMode
+  formVersion?: string
+  flowVariant?: 'cover' | 'plain'
 }
 
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -60,6 +66,7 @@ export function calendarDays(month: string): (string | null)[] {
  */
 export default function InlineBookingCalendar({
   formSlug, bookingToken, email, previewOnly = false, bookingEnabled = true, customScheduleEnabled = false,
+  trackingMode = 'preview', formVersion, flowVariant,
 }: Props) {
   const [calendar, setCalendar] = useState<CalendarWindow | null>(null)
   const [month, setMonth] = useState('')
@@ -78,8 +85,27 @@ export default function InlineBookingCalendar({
   const [reloadCalendar, setReloadCalendar] = useState(0)
   const [reloadSlots, setReloadSlots] = useState(0)
   const inFlight = useRef(false)
+  const attempts = useRef(0)
   const lastConsent = useRef<boolean | null>(null)
   const days = useMemo(() => calendarDays(month), [month])
+  function track(name: TrackingEventName, extra: Record<string, unknown> = {}, ref?: string | null) {
+    // A mensuração nunca pode atrapalhar a escolha do horário nem a confirmação.
+    try {
+      pushTrackingEvent(name, {
+        form_id: formSlug, form_version: formVersion, flow_variant: flowVariant, environment_mode: trackingMode,
+        step_type: 'calendar', funnel_stage: DEFAULT_FUNNEL_STAGE[name], ...extra,
+      }, ref)
+    } catch { /* sem efeito sobre o calendário */ }
+  }
+
+  // booking_calendar_view: a etapa de agendamento foi exibida (ou, se o consentimento vier agora, a etapa atual).
+  useEffect(() => {
+    const view = () => track('booking_calendar_view')
+    view()
+    window.addEventListener(CONSENT_CHANGE_EVENT, view)
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, view)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -96,8 +122,12 @@ export default function InlineBookingCalendar({
     }).then(result => {
       if (controller.signal.aborted) return
       setCalendar(result);setMonth(result.today.slice(0, 7))
-    }).catch(() => {
-      if (!controller.signal.aborted) setCalendarError('Não foi possível carregar a agenda. Tente novamente.')
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      track('booking_calendar_load_error', {
+        validation_error_code: error instanceof Error && error.message === 'CALENDAR_UNAVAILABLE' ? 'CALENDAR_UNAVAILABLE' : 'NETWORK_ERROR',
+      })
+      setCalendarError('Não foi possível carregar a agenda. Tente novamente.')
     }).finally(() => {
       if (!controller.signal.aborted) setLoadingCalendar(false)
     })
@@ -120,9 +150,15 @@ export default function InlineBookingCalendar({
       if (!isRecord(data) || !Array.isArray(data.slots)) throw Error('UNAVAILABLE')
       return data.slots.filter(isSlot)
     }).then(list => {
-      if (!controller.signal.aborted) setSlots(list)
+      if (controller.signal.aborted) return
+      setSlots(list)
+      // A data e os horários nunca vão para a mensuração; a referência só diferencia os dias na deduplicação.
+      track(list.length > 0 ? 'booking_slots_loaded' : 'booking_no_slots', {}, day)
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return
+      track('booking_calendar_load_error', {
+        validation_error_code: error instanceof Error && /^[A-Z_]{3,40}$/.test(error.message) ? error.message : 'NETWORK_ERROR',
+      })
       setSlotsError(error instanceof Error && error.message === 'TOO_MANY_REQUESTS'
         ? 'Muitas consultas em sequência. Aguarde alguns minutos e tente novamente.'
         : 'Não foi possível consultar os horários. Tente novamente.')
@@ -178,6 +214,8 @@ export default function InlineBookingCalendar({
       confirming || inFlight.current || confirmed || mustReview) return
     inFlight.current = true
     setConfirming(true);setConfirmError('')
+    attempts.current += 1
+    track('booking_submit_attempt', {}, chosen.startAt + ':' + attempts.current)
     try {
       const response = await fetch('/api/booking/confirm', {
         method:'POST',cache:'no-store',credentials:'same-origin',
@@ -199,6 +237,8 @@ export default function InlineBookingCalendar({
         googleMeetUrl:meetUrl,invitationRequested:value.invitationRequested===true,
       }
       setConfirmed(meeting)
+      // booking_meeting_confirmed: SÓ depois da confirmação positiva do servidor; repetição idempotente não conta de novo.
+      if (value.alreadyConfirmed !== true) track('booking_meeting_confirmed', {}, meeting.bookingRequestId)
       const schedule = isRecord(value.tracking) && isRecord(value.tracking.schedule) ? value.tracking.schedule : null
       if (value.alreadyConfirmed !== true && schedule && schedule.eventName === 'Schedule') {
         trackMetaConversion('Schedule',schedule.eventId,{content_name:formSlug})
@@ -219,6 +259,7 @@ export default function InlineBookingCalendar({
         BOOKING_ALREADY_REGISTERED:'Já existe uma reserva registrada para este cadastro. Fale com a equipe.',
         BOOKING_DISABLED:'A agenda não está disponível neste momento.',
       }
+      track('booking_confirmation_error', { validation_error_code: code })
       setConfirmError(messages[code] ?? 'Não foi possível confirmar o horário. Consulte nossa equipe antes de tentar novamente.')
       if (code === 'SLOT_UNAVAILABLE' || code === 'INVALID_SLOT') {
         setChosen(null);setReloadSlots(n=>n+1)
@@ -309,7 +350,7 @@ export default function InlineBookingCalendar({
             ? <button key={date} type="button" className="cpf-calendar-day"
                 disabled={!pickable(date)||confirming} aria-label={dateLabel(date)}
                 aria-pressed={date===day} data-selected={date===day}
-                onClick={()=>{setDay(date);setChosen(null);setConfirmError('')}}>
+                onClick={()=>{track('booking_date_selected');setDay(date);setChosen(null);setConfirmError('')}}>
                 {Number(date.slice(-2))}
               </button>
             : <span key={'blank-'+index} aria-hidden="true"/>)}
@@ -329,7 +370,7 @@ export default function InlineBookingCalendar({
           {slots.map(slot=><button key={slot.startAt} type="button"
             disabled={confirming||mustReview||!bookingEnabled} data-selected={chosen?.startAt===slot.startAt}
             aria-pressed={chosen?.startAt===slot.startAt}
-            onClick={()=>{setChosen(slot);setConfirmError('')}}>{slot.localTime}</button>)}
+            onClick={()=>{track('booking_slot_selected',{},slot.startAt);setChosen(slot);setConfirmError('')}}>{slot.localTime}</button>)}
         </div>}
       </div>
     </div>}

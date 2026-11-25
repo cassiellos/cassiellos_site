@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { track } from '@vercel/analytics'
 import { requiresAnalyticsConsent } from '@/lib/privacy/analytics-policy'
+import { ownsFunnelMetrics } from '@/lib/privacy/scope'
 import { CONSENT_CHANGE_EVENT, analyticsAllowed } from '@/lib/privacy/consent-client'
 import { trackAnalyticsFlow } from '@/lib/privacy/flow-client'
 
@@ -64,8 +65,9 @@ export default function SiteInteractionTracker() {
 
       const button = target.closest('button')
       if (!(button instanceof HTMLButtonElement) || button.disabled || button.closest('form')) return
-      // No /agendar o progresso é medido pelos eventos do funil; cliques de interface (calendário, horários) não.
-      if (window.location.pathname.startsWith('/agendar')) return
+      // No /agendar e no /formularios o progresso é medido pelos eventos do funil; cliques de interface
+      // (alternativas, capa, calendário, horários) não.
+      if (ownsFunnelMetrics(window.location.pathname)) return
       track('site_button_click', {
         kind: button.classList.contains('btn') ? 'cta' : 'interface',
         page: window.location.pathname,
@@ -74,9 +76,9 @@ export default function SiteInteractionTracker() {
     }
 
     const onSubmit = (event: Event) => {
-      // O funil /agendar tem uma pergunta por <form>: o envio real é registrado pelos eventos do funil
-      // (lib/crm/funnel-events), não a cada pergunta respondida.
-      if (window.location.pathname.startsWith('/agendar')) return
+      // Os funis /agendar e /formularios têm uma pergunta por <form>: o envio real é registrado pelos eventos do
+      // funil (lib/crm/funnel-events e lib/tracking), não a cada pergunta respondida.
+      if (ownsFunnelMetrics(window.location.pathname)) return
       if (event.target instanceof HTMLFormElement && allowedHere()) trackAnalyticsFlow('form_submit', 'form:site')
     }
 

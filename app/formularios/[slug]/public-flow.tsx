@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, type FormEvent } from 'react'
+import { useState, useRef, useEffect, type FormEvent } from 'react'
 import type { FlowDefinition, FlowStep, FlowResult } from '@/lib/crm/form-builder/flow'
 import { TURNSTILE_BOOKING_ACTION } from '@/lib/crm/turnstile'
 import TurnstileWidget from '@/app/agendar/[slug]/turnstile-widget'
@@ -9,9 +9,14 @@ import MetaPixel from '@/components/marketing/meta-pixel'
 import InlineBookingCalendar from './inline-booking-calendar'
 import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
+import GoogleTagManager from '@/components/tracking/google-tag-manager'
+import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
+import { isTestEmailDomain } from '@/lib/crm/booking-mode'
+import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
+import { DEFAULT_FUNNEL_STAGE, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean}
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean;trackingMode?:'live'|'test';gtmContainerId?:string|null}
 // Apenas apresentação: preserva os textos do CRM, destacando a promessa como na referência.
 function coverHeadline(text: string) {
   const match=text.match(/^(.*?)(vender mais!?)(\s*)$/iu)
@@ -22,7 +27,7 @@ function coverCtaLabel(text: string) {
   return text.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,prefix: string,letter: string)=>
     prefix+letter.toLocaleUpperCase('pt-BR'))
 }
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false}:PublicFlowProps){
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false,trackingMode='test',gtmContainerId=null}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   // Mesmo padrão aprovado no /agendar: nunca interromper a primeira pergunta com avisos de cookies.
@@ -43,24 +48,59 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   const [complete,setComplete]=useState<Confirmation|null>(null)
   const [website,setWebsite]=useState('')
   const idempotencyKey=useRef<string>('')
+  // Mensuração do funil (dataLayer). Modo: prévia nunca emite; "live" só vale para e-mail que não seja de teste e,
+  // depois do cadastro, segue a classificação do servidor (leadMode = crm.leads.is_test).
+  const [leadMode,setLeadMode]=useState<'live'|'test'|null>(null)
+  const mode:TrackingMode=previewOnly?'preview':leadMode??(trackingMode==='live'&&email&&isTestEmailDomain(email)?'test':trackingMode)
+  function track(name:TrackingEventName,extra:Record<string,unknown>={},ref?:string|null){
+    // A mensuração nunca pode atrapalhar o preenchimento nem o envio.
+    try{
+      pushTrackingEvent(name,{form_id:slug,form_version:formVersionLabel(version),flow_variant:flow.cover?'cover':'plain',
+        environment_mode:mode,funnel_stage:DEFAULT_FUNNEL_STAGE[name],...extra},ref)
+    }catch{/* sem efeito sobre o formulário */}
+  }
   const current=flow.steps.find(x=>x.id===visited[visited.length-1])
   const totalSteps=flow.steps.filter(s=>s.type==='question').length+1
   const currentStep=Math.min(visited.length,totalSteps)
   const phoneEntry=current?.type==='question'&&current.field==='phone'
   const phoneCompleted=phoneEntry&&validateBrazilianMobilePhone(freeText).ok
   const canBack=visited.length>1&&status==='ready'
+  // form_view: ao carregar ou, se o consentimento vier depois, no momento do aceite (a deduplicação evita repetição).
+  useEffect(()=>{
+    const view=()=>track('form_view',flow.cover?{step_type:'cover'}:{})
+    view()
+    window.addEventListener(CONSENT_CHANGE_EVENT,view)
+    return ()=>window.removeEventListener(CONSENT_CHANGE_EVENT,view)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[])
+  // form_step_view: cada pergunta (e a etapa de contato) realmente exibida, uma vez por etapa e sessão.
+  useEffect(()=>{
+    if(coverOpen||status!=='ready'||!current)return
+    const questionStep=current.type==='question'
+    const view=()=>track('form_step_view',{step_id:current.id,step_index:visited.length-1,
+      step_type:questionStep?'question':'contact',funnel_stage:questionStep?'questions':'capture'})
+    view()
+    window.addEventListener(CONSENT_CHANGE_EVENT,view)
+    return ()=>window.removeEventListener(CONSENT_CHANGE_EVENT,view)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[current?.id,coverOpen,status])
   function next(step:Extract<FlowStep,{type:'question'}>,answer:string){
-    if(step.required&&answer.trim().length<2){setError('Preencha esta resposta para continuar.');return}
-    if(step.input==='select'&&!step.options.includes(answer)){setError('Selecione uma alternativa válida.');return}
+    // Só ids técnicos da etapa e códigos de erro vão para a mensuração; a resposta nunca.
+    const at={step_id:step.id,step_index:visited.length-1,step_type:'question',funnel_stage:'questions'}
+    const invalid=(code:string,message:string)=>{track('form_validation_error',{...at,validation_error_code:code});setError(message)}
+    track('form_start',at)
+    if(step.required&&answer.trim().length<2){invalid('REQUIRED','Preencha esta resposta para continuar.');return}
+    if(step.input==='select'&&!step.options.includes(answer)){invalid('INVALID_OPTION','Selecione uma alternativa válida.');return}
     if(step.field==='phone'){
       const phone=validateBrazilianMobilePhone(answer)
-      if(!phone.ok){setError(phone.message);return}
+      if(!phone.ok){invalid('INVALID_PHONE',phone.message);return}
     }
-    if(step.field==='website'&&!isValidWebPresence(answer)){setError('Informe o @ do Instagram ou um site válido.');return}
+    if(step.field==='website'&&!isValidWebPresence(answer)){invalid('INVALID_WEBSITE','Informe o @ do Instagram ou um site válido.');return}
     const to=step.branches.find(b=>b.answer===answer)?.to||step.next
     if(!flow.steps.some(s=>s.id===to)||visited.includes(to)){
-      setError('O caminho configurado está indisponível.');return
+      invalid('PATH_UNAVAILABLE','O caminho configurado está indisponível.');return
     }
+    track('form_step_complete',at)
     setAnswers(a=>({...a,[step.id]:answer.trim()}))
     if(step.field==='name')setName(answer.trim())
     if(step.field==='phone')setWhatsapp(nextPhoneInput('',answer.trim()))
@@ -68,6 +108,8 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   }
   function back(){
     if(!canBack)return
+    track('form_step_back',{step_id:visited[visited.length-1],step_index:visited.length-1,
+      step_type:current?.type==='question'?'question':'contact',funnel_stage:current?.type==='question'?'questions':'capture'})
     const removed=visited[visited.length-2]
     setVisited(h=>h.slice(0,-1))
     setAnswers(old=>{const a={...old};delete a[removed];return a})
@@ -86,13 +128,18 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         actionLabel:current.actionLabel,actionHref:current.actionHref})
       setStatus('complete');setError('');return
     }
-    if(!token||!turnstileSiteKey){setError('Conclua a verificação de segurança para continuar.');return}
+    const contactAt={step_id:current.id,step_index:visited.length-1,step_type:'contact',funnel_stage:'capture'}
+    const invalid=(code:string,message:string)=>{track('form_validation_error',{...contactAt,validation_error_code:code});setError(message)}
+    if(!token||!turnstileSiteKey){invalid('SECURITY_CHECK_PENDING','Conclua a verificação de segurança para continuar.');return}
     const emailResult=validateEmailAddress(email)
-    if(!emailResult.ok){setError(emailResult.message);return}
+    if(!emailResult.ok){invalid('INVALID_EMAIL',emailResult.message);return}
     const phoneResult=validateBrazilianMobilePhone(whatsapp)
-    if(!phoneResult.ok){setError(phoneResult.message);return}
+    if(!phoneResult.ok){invalid('INVALID_PHONE',phoneResult.message);return}
     if(!idempotencyKey.current)idempotencyKey.current=crypto.randomUUID()
+    // Uma tentativa por inscrição (a chave de idempotência é a mesma em novas tentativas).
+    track('lead_submit_attempt',contactAt,idempotencyKey.current)
     setStatus('sending');setError('')
+    let failureCode='NETWORK_ERROR'
     try{
       const marketing=readMarketingConsent()
       const attribution:Record<string,string>={}
@@ -107,7 +154,9 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         body:JSON.stringify({name,email,whatsapp,answers,version,turnstileToken:token,
           idempotencyKey:idempotencyKey.current,contactRequest:true,attribution,marketing,website}),
       })
+      failureCode='INVALID_RESPONSE'
       const data=await response.json()
+      if(!response.ok){failureCode=typeof data?.error==='string'?data.error:'HTTP_'+response.status}
       if(!response.ok)throw Error(data.error==='FORM_UPDATED'?'Este formulário foi atualizado. Recarregue a página para continuar.':
         data.error==='TOO_MANY_REQUESTS'?'Muitas tentativas. Tente novamente mais tarde.':
         'Não foi possível enviar agora. Confira seus dados e tente novamente.')
@@ -116,6 +165,10 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       if(data?.reused!==true && data?.tracking?.lead?.eventName==='Lead'){
         trackMetaConversion('Lead',data.tracking.lead.eventId,{content_name:slug})
       }
+      // generate_lead: SÓ depois da resposta positiva do servidor e apenas para cadastro novo (reenvio não conta).
+      const serverMode=data?.leadMode==='live'||data?.leadMode==='test'?data.leadMode as 'live'|'test':null
+      if(serverMode)setLeadMode(serverMode)
+      if(data?.ok===true&&data?.reused!==true)track('generate_lead',{...contactAt,environment_mode:previewOnly?'preview':serverMode??mode},idempotencyKey.current)
       if(data.outcome==='qualified'&&data.inlineBooking===true){
         // Inscrição já salva e validada. A próxima tela é o calendário nesta MESMA página.
         // O token assinado vale só para o lead/submissão atuais, sem repetir cadastro.
@@ -128,6 +181,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
         setStatus('complete')
       }
     }catch(e){
+      track('lead_submit_error',{...contactAt,validation_error_code:failureCode})
       setError(e instanceof Error?e.message:'Não foi possível enviar.')
       setStatus('ready')
       setToken(null);setResetSignal(n=>n+1)
@@ -135,6 +189,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
   }
   return <main className="cassiellos-public-flow" data-chronos={Boolean(flow.cover)} data-screen={coverOpen?'cover':status==='calendar'?'calendar':status==='complete'?'complete':current?.type==='result'?'contact':'question'}>
     {!previewOnly&&<MetaPixel pixelId={metaPixelId}/>}
+    {!previewOnly&&<GoogleTagManager containerId={gtmContainerId}/>}
     <header className="cpf-header">{previewOnly
       ? <div className="cpf-brand"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></div>
       : <a href="/" aria-label="Agência Cassiellos, início"><img src="/brand/cassiellos-symbol-signal-red.svg" alt=""/> <strong>Cassiellos</strong></a>}
@@ -147,12 +202,13 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       <section className="cpf-card" aria-live="polite">
         {status==='calendar'?<InlineBookingCalendar formSlug={slug}
           bookingToken={bookingToken} email={email} bookingEnabled={bookingEnabled}
-          previewOnly={previewOnly} customScheduleEnabled={!previewOnly && customScheduleEnabled}/>:
+          previewOnly={previewOnly} customScheduleEnabled={!previewOnly && customScheduleEnabled}
+          trackingMode={mode} formVersion={formVersionLabel(version)} flowVariant={flow.cover?'cover':'plain'}/>:
         coverOpen&&flow.cover?<div className="cpf-cover">
           <h1>{coverHeadline(flow.cover.headline)}</h1>
           <ul>{flow.cover.bullets.map((bullet,i)=><li key={i}>{bullet}</li>)}</ul>
           <p className="cpf-cover-qualifier"><em>{flow.cover.qualifier.replace(/^→\s*/, '')}</em></p>
-          <button type="button" className="cpf-primary" onClick={()=>setCoverOpen(false)}>{coverCtaLabel(flow.cover.cta)} <span aria-hidden="true">→</span></button>
+          <button type="button" className="cpf-primary" onClick={()=>{track('form_cover_cta_click',{step_type:'cover'});track('form_start',{step_type:'cover'});setCoverOpen(false)}}>{coverCtaLabel(flow.cover.cta)} <span aria-hidden="true">→</span></button>
         </div>:status==='complete'&&complete?<div className="cpf-result">
           <div className="cpf-success">{previewOnly?'✓ Simulação concluída':'✓ Envio recebido'}</div>
           <h1>{complete.title}</h1><p>{complete.description}</p>

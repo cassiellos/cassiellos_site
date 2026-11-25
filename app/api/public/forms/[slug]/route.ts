@@ -90,7 +90,10 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string
     const bookingToken=bookingEnabled?createBookingGrant({
       leadId:saved.leadId,submissionId:saved.submissionId,formSlug:doc.slug,
     }):null
+    // leadMode: classificação do servidor (crm.leads.is_test) para o rastreamento do funil: só "live" conta como real.
+    // Reenvio idempotente (reused) não informa o modo: o navegador mantém o modo da página.
     return send({ok:true,reused:saved.reused,
+      ...(!saved.reused&&typeof saved.isTest==='boolean'?{leadMode:saved.isTest?'test':'live'}:{}),
       ...(inlineBooking?{inlineBooking:true,bookingEnabled,bookingToken}:{}),
       ...(leadEventId?{tracking:{lead:{eventName:'Lead',eventId:leadEventId}}}:{}),outcome:result.result.outcome,
       title:result.result.title,description:result.result.description,
