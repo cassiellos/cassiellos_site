@@ -9,7 +9,7 @@ import { daysAhead, type FunnelEventName, type FunnelMode } from '@/lib/crm/funn
 import { emitFunnel } from '@/lib/crm/funnel-client'
 import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
-import { sanitizeUtmValue, UTM_KEYS } from '@/lib/privacy/url-sanitize'
+import { attributionFromSearch } from '@/lib/privacy/url-sanitize'
 import ConsentNotice from '@/components/privacy/consent-notice'
 import { readMarketingConsent, trackChronosEvent, trackMetaConversion, trackMetaCustomBooking } from '@/lib/marketing/meta-client'
 import type { ChronosCustomEvent, ChronosDispatchMode } from '@/lib/marketing/meta'
@@ -485,14 +485,7 @@ export default function BookingExperience({
       // Atribuição do cadastro (padrão UTM: docs/marketing/padrao-utm.md). UTM com aparência de e-mail é
       // descartado; o servidor repete a higienização. fbclid só com consentimento de marketing
       // (decisão G2; o servidor confere de novo).
-      const attribution: Record<string, string> = {}
-      const params = new URLSearchParams(window.location.search)
-      for (const key of UTM_KEYS) {
-        const value = sanitizeUtmValue(params.get(key)).slice(0, 180)
-        if (value) attribution[key] = value
-      }
-      const fbclid = params.get('fbclid')
-      if (fbclid && marketingChoice.consent) attribution.fbclid = fbclid.slice(0, 180)
+      const attribution = attributionFromSearch(window.location.search, { allowFbclid: marketingChoice.consent })
       const answers: Record<string, string> = {}
       for (const field of form.fields) answers[field.name] = attendee[field.name]
       const response = await fetch('/api/booking/leads', {

@@ -12,6 +12,7 @@ import ConsentEntryBanner from '@/components/privacy/consent-entry-banner'
 import { readMarketingConsent, trackMetaConversion } from '@/lib/marketing/meta-client'
 import GoogleTagManager from '@/components/tracking/google-tag-manager'
 import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
+import { attributionFromSearch } from '@/lib/privacy/url-sanitize'
 import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
 import { DEFAULT_FUNNEL_STAGE, flowStepOrder, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
@@ -160,12 +161,7 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     let failureCode='NETWORK_ERROR'
     try{
       const marketing=readMarketingConsent()
-      const attribution:Record<string,string>={}
-      const params=new URLSearchParams(window.location.search)
-      for(const key of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid']){
-        const value=params.get(key)
-        if(value && (key!=='fbclid' || marketing.consent))attribution[key]=value
-      }
+      const attribution=attributionFromSearch(window.location.search,{allowFbclid:marketing.consent})
       const response=await fetch('/api/public/forms/'+encodeURIComponent(slug),{
         method:'POST',credentials:'same-origin',cache:'no-store',
         headers:{'Content-Type':'application/json'},
