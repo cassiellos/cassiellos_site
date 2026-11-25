@@ -3,21 +3,23 @@ import type { ConsentChoices, ConsentState } from './consent'
 /**
  * Regras puras do aviso de consentimento da ENTRADA do formulário (primeira camada).
  *
- * - O aviso aparece enquanto faltar alguma escolha relevante; uma vez decidido, nunca mais abre sozinho
- *   (as preferências continuam acessíveis no rodapé).
- * - "Recusar tudo" e "Aceitar tudo" têm o mesmo peso e só gravam quando o visitante clica: ver o aviso,
- *   rolar a página ou preencher o formulário nunca vale como aceite.
- * - Categorias que não existem na página (marketing sem Meta Pixel) não são decididas por ninguém:
- *   ficam como estão (`null`), exatamente como no aviso detalhado.
+ * Três escolhas de mesmo peso: "Recusar", "Aceitar métricas" e "Personalizar".
+ * - O aviso aparece enquanto a escolha de MÉTRICAS não existir. Marketing é uma decisão à parte e nunca segura nem
+ *   fecha este aviso: ela só é tomada em "Personalizar" ou nas preferências do rodapé.
+ * - "Aceitar métricas" liga SOMENTE métricas; nunca marketing (nem o Meta Pixel, nem a API de Conversões).
+ * - "Recusar" recusa tudo o que é opcional na página (métricas e, se o Meta Pixel existir nela, marketing).
+ * - Nada é gravado sem clique: ver o aviso, rolar a página ou preencher o formulário nunca vale como aceite.
+ * - Depois de decidido, o aviso nunca reabre sozinho (as preferências seguem no rodapé e a revogação vale na hora).
+ * - Categorias que não existem na página (marketing sem Meta Pixel) nunca são gravadas.
  */
-export function entryConsentPending(consent: ConsentState | null, marketingEnabled: boolean): boolean {
-  return !consent || consent.analytics === null || (marketingEnabled && consent.marketing === null)
+export function entryConsentPending(consent: ConsentState | null): boolean {
+  return !consent || consent.analytics === null
 }
 
-export type EntryConsentAction = 'accept-all' | 'reject-all'
+export type EntryConsentAction = 'reject' | 'accept-metrics'
 
-/** Escolhas gravadas por cada botão da primeira camada ("Escolher" não grava nada: abre o aviso detalhado). */
+/** Escolhas gravadas por cada botão da primeira camada ("Personalizar" não grava nada: abre o aviso detalhado). */
 export function entryConsentChoices(action: EntryConsentAction, marketingEnabled: boolean): Partial<ConsentChoices> {
-  const granted = action === 'accept-all'
-  return marketingEnabled ? { analytics: granted, marketing: granted } : { analytics: granted }
+  if (action === 'accept-metrics') return { analytics: true }
+  return marketingEnabled ? { analytics: false, marketing: false } : { analytics: false }
 }

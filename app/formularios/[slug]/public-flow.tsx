@@ -89,6 +89,19 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
     return ()=>window.removeEventListener(CONSENT_CHANGE_EVENT,view)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[current?.id,coverOpen,status])
+  // Verificação de segurança (Turnstile) que falha ou trava deixa o botão de envio desativado: ninguém clica, o servidor
+  // nunca é chamado e nada é registrado. Aqui sai só o código técnico (uma vez por código), para separar "verificação
+  // fora do ar" de abandono. Sem dado pessoal; a prévia e a falta de consentimento não emitem.
+  useEffect(()=>{
+    if(previewOnly||status!=='ready'||current?.type!=='result')return
+    const at={step_id:current.id,step_index:visited.length-1,step_type:'contact',funnel_stage:'capture'}
+    if(!turnstileSiteKey){track('lead_submit_error',{...at,validation_error_code:'SECURITY_CHECK_UNAVAILABLE'});return}
+    if(tokenState==='error'){track('lead_submit_error',{...at,validation_error_code:'TURNSTILE_ERROR'});return}
+    if(token)return
+    const timer=window.setTimeout(()=>track('lead_submit_error',{...at,validation_error_code:'TURNSTILE_TIMEOUT'}),20000)
+    return ()=>window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[current?.id,tokenState,token,status])
   function next(step:Extract<FlowStep,{type:'question'}>,answer:string){
     // Só ids técnicos da etapa e códigos de erro vão para a mensuração; a resposta nunca.
     const at={step_id:step.id,step_index:visited.length-1,step_type:'question',funnel_stage:'questions'}

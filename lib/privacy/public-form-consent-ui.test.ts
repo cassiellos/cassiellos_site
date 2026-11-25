@@ -32,19 +32,29 @@ describe('Regressão — formulário público: escolha de consentimento clara na
     assert.match(source, /\{!previewOnly&&<ConsentEntryBanner marketingEnabled=\{Boolean\(metaPixelId\)\} suppressed=\{showPrivacyPreferences\}\/>\}/)
   })
 
-  it('o aviso de entrada oferece três escolhas de mesmo peso e só grava ao clicar', () => {
-    const buttons = [...banner.matchAll(/<button type="button" className="cpf-entry-choice" data-choice="(\w+)"/g)].map(m => m[1])
-    assert.deepEqual(buttons, ['reject', 'customize', 'accept'])
-    assert.match(banner, /Recusar tudo/)
-    assert.match(banner, /Aceitar tudo/)
-    assert.match(banner, />Escolher</)
+  it('o aviso de entrada oferece Recusar, Aceitar métricas e Personalizar com o mesmo peso e só grava ao clicar', () => {
+    const buttons = [...banner.matchAll(/<button type="button" className="cpf-entry-choice" data-choice="(\w+)" onClick=\{[^}]*\}>([^<]+)<\/button>/g)]
+    assert.deepEqual(buttons.map(m => [m[1], m[2]]), [['reject', 'Recusar'], ['metrics', 'Aceitar métricas'], ['customize', 'Personalizar']])
+    // Nenhum botão com classe ou estilo próprio: o mesmo peso visual para as três escolhas.
+    assert.equal([...banner.matchAll(/className="cpf-entry-choice"/g)].length, 3)
+    assert.equal(/Aceitar tudo|Recusar tudo/.test(banner), false, 'métricas e marketing não se misturam em um botão só')
     // Nada pré-selecionado e nenhuma gravação fora de um onClick (montar, rolar ou digitar nunca vale como aceite).
     assert.equal(/aria-pressed|defaultChecked|checked=/.test(banner), false)
     const writes = [...banner.matchAll(/setConsentChoices\(|setAnalyticsConsent\(|setMarketingConsent\(/g)]
     assert.equal(writes.length, 1)
-    assert.match(banner, /const choose = \(action: 'accept-all' \| 'reject-all'\) => setConsentChoices\(entryConsentChoices\(action, marketingEnabled\)\)/)
+    assert.match(banner, /const choose = \(action: EntryConsentAction\) => setConsentChoices\(entryConsentChoices\(action, marketingEnabled\)\)/)
     const effect = banner.slice(banner.indexOf('useEffect('), banner.indexOf('}, [])'))
     assert.equal(/setConsentChoices|setAnalyticsConsent|setMarketingConsent/.test(effect), false, 'o efeito de montagem só lê o cookie')
+    // "Personalizar" só abre o aviso detalhado; não grava nada.
+    assert.match(banner, /data-choice="customize" onClick=\{\(\) => setCustomizing\(true\)\}/)
+  })
+
+  it('em "Personalizar" o painel detalhado não some ao decidir só as métricas (marketing ainda precisa aparecer)', () => {
+    const hidden = banner.indexOf('if (suppressed || consent === undefined) return null')
+    const customizing = banner.indexOf('if (customizing) {')
+    const pending = banner.indexOf('if (!entryConsentPending(consent)) return null')
+    assert.ok(hidden >= 0 && customizing > hidden && pending > customizing, 'o painel detalhado é decidido antes da checagem de pendência')
+    assert.match(css, /\[data-consent-layer=details\]:empty\{display:none\}/)
   })
 
   it('o aviso de entrada não bloqueia nem cobre o formulário de forma permanente', () => {

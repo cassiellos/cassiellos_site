@@ -92,6 +92,16 @@ describe('instrumentação do formulário — garantias no código', () => {
     assert.match(c, /\.\.\.\(order===undefined\?\{\}:\{step_order:order\}\)/)
   })
 
+  it('falha ou travamento do Turnstile deixa rastro só com o código técnico (o botão desativado esconderia a perda)', () => {
+    const c = compact(flow)
+    assert.match(c, /if\(previewOnly\|\|status!=='ready'\|\|current\?\.type!=='result'\)return/)
+    for (const code of ['SECURITY_CHECK_UNAVAILABLE', 'TURNSTILE_ERROR', 'TURNSTILE_TIMEOUT']) {
+      assert.ok(c.includes("track('lead_submit_error',{...at,validation_error_code:'" + code + "'})"), code)
+    }
+    // O temporizador é limpo ao sair da etapa ou ao obter o token.
+    assert.match(c, /window\.clearTimeout\(timer\)/)
+  })
+
   it('GTM só liga com a chave expressa (padrão desligado) e o id vem da configuração do servidor', () => {
     assert.match(compact(page), /gtmContainerId=\{gtm\.enabled\?gtm\.containerId:null\}/)
     assert.equal(/GTM-[A-Z0-9]{4,}/.test(flow + calendar + page), false, 'nenhum ID de container fixo no código')

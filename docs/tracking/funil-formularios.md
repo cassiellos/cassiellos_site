@@ -13,7 +13,7 @@ autorizaram "métricas", e o Google Tag Manager só carrega com `TRACKING_GTM_EN
 | --- | --- |
 | A campanha ativa é do **Meta Ads** ("SC \| C01 \| VENDAS \| HAMBURGUERIAS \| AGENDAMENTOS", otimizada para `Cassiellos_Scheduled`) e leva a `/formularios/hamburguerias`. A conta do Google Ads não tem campanha ativa ou pausada. | A premissa "cliques do Google Ads" precisa ser corrigida: o funil é medido contra o Meta. |
 | Nenhum GA4 nem GTM da Cassiellos existe (só ativos de clientes). | Há o que criar, mas criar conta/propriedade exige autorização. |
-| O consentimento só aparece pelo link do rodapé em `/formularios` (decisão de "entrada limpa" travada por testes). | Quem nunca abriu as preferências não autoriza nada: Pixel, CAPI (Lead/Schedule), Vercel Analytics e AnalyticsFlow ficam sem dado. **É a principal explicação provável para "40 cliques e nenhum dado".** |
+| No patch 0007 o consentimento só aparece pelo link do rodapé em `/formularios` (decisão de "entrada limpa" travada por testes). **Revisado no PR de camadas** (`camadas-de-medicao.md`): aviso discreto na primeira visita, sem bloquear o formulário. | Quem nunca abriu as preferências não autoriza nada: Pixel, CAPI (Lead/Schedule), Vercel Analytics e AnalyticsFlow ficam sem dado. É uma **explicação provável da falta de dado de medição**, não prova de que a falta de consentimento explica a falta de reuniões (ver `camadas-de-medicao.md`, seção 6). |
 | O Vercel Web Analytics está desligado no projeto `cassiellos-crm`. | Sem contagem própria de visualizações. |
 | O contador global (`site-interaction-tracker`) tratava **cada pergunta respondida** como `form_submit`/`cta_click`. | Contagem de "envios" inflada e sem relação com leads reais. Corrigido: `/agendar` e `/formularios` têm métricas próprias (`ownsFunnelMetrics`). |
 
@@ -88,7 +88,12 @@ dígitos.
 ## 5. Consent Mode v2 e LGPD
 
 * `consent default` com os quatro sinais **negados** é empurrado antes de qualquer script do Google.
-* O visitante escolhe no aviso do CRM (cookie `cassiellos_consent`). `analytics_storage` acompanha "métricas".
+* O visitante escolhe no **aviso de entrada** da primeira visita (Recusar, Aceitar métricas e Personalizar, com o mesmo
+  peso) ou depois em "Preferências de cookies", no rodapé (cookie `cassiellos_consent`, 180 dias). O aviso não bloqueia
+  o formulário, não marca nada previamente e só grava depois de um clique. `analytics_storage` acompanha "métricas";
+  "Aceitar métricas" **nunca** liga marketing.
+* Modo **básico** do Consent Mode: sem aceite de métricas o GTM não carrega e nada é enviado ao Google. O modo avançado
+  (pings sem cookies) não foi adotado e depende de parecer jurídico.
 * **`ad_storage`, `ad_user_data` e `ad_personalization` ficam negados** enquanto o texto de marketing cobrir só o Meta.
   Eles só passam a seguir a escolha de marketing quando a política de privacidade e o aviso citarem o Google
   (`consentModeFrom(..., { googleAdsSignals: true })`).
@@ -142,8 +147,9 @@ Marcar cada item com evidência (print do GTM Preview/Tag Assistant, DebugView, 
 - [ ] Desktop e celular; recarregar, voltar/avançar do navegador e troca de etapa não duplicam eventos.
 - [ ] Pergunta intermediária **não** gera `generate_lead` nem `form_submit` no contador global.
 - [ ] Envio duplo (duplo clique): um `lead_submit_attempt`, no máximo um `generate_lead`.
-- [ ] Erro de API (400/403/409/429/5xx), Turnstile pendente e rede fora: `lead_submit_error`/`booking_*_error` com
-      código, **sem** `generate_lead`/`booking_meeting_confirmed`.
+- [ ] Erro de API (400/403/409/429/5xx), Turnstile com erro (`TURNSTILE_ERROR`), travado (`TURNSTILE_TIMEOUT`, 20 s) ou
+      ausente (`SECURITY_CHECK_UNAVAILABLE`) e rede fora: `lead_submit_error`/`booking_*_error` com código,
+      **sem** `generate_lead`/`booking_meeting_confirmed`.
 - [ ] Reunião só é contada depois da resposta positiva; reabrir link já confirmado não conta de novo.
 - [ ] Nenhum dado pessoal no `dataLayer`, nas requisições do GA4 nem no `sessionStorage`.
 - [ ] Prévia do painel não emite. Testes e e-mails de teste saem como `environment_mode=test`.

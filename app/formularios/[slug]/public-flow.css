@@ -74,12 +74,13 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 /* Aviso de consentimento da entrada (primeira camada). Não é modal: fica "grudado" no fim da tela enquanto não houver
    escolha e, ao rolar até o fim, assume o lugar normal depois do rodapé. Nada cobre o formulário de forma permanente. */
 .cassiellos-public-flow .cpf-entry-consent{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:18px;
-  max-width:710px;width:calc(100% - 24px);margin:0 auto 12px;padding:14px 18px;background:#fff;border:1px solid #cfd8e3;border-radius:14px;
-  box-shadow:0 10px 30px rgba(21,36,56,.16);color:#344254}
+  max-width:710px;width:calc(100% - 24px);margin:0 auto 12px;padding:12px 16px;background:#fff;border:1px solid #d5dde7;border-radius:12px;
+  box-shadow:0 4px 16px rgba(21,36,56,.10);color:#344254}
+.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details]:empty{display:none}
 .cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details]{display:block;padding:0;border:0;background:transparent;box-shadow:none}
-.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details] .consent-notice{margin:0;box-shadow:0 10px 30px rgba(21,36,56,.16);max-height:70vh;overflow:auto}
+.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details] .consent-notice{margin:0;box-shadow:0 4px 16px rgba(21,36,56,.10);max-height:70vh;overflow:auto}
 .cassiellos-public-flow .cpf-entry-consent-text{min-width:0}
-.cassiellos-public-flow .cpf-entry-consent h2{font-size:14px;line-height:1.4;margin:0 0 4px;font-weight:800;color:#152438}
+.cassiellos-public-flow .cpf-entry-consent h2{font-size:13px;line-height:1.4;margin:0 0 3px;font-weight:800;color:#152438}
 .cassiellos-public-flow .cpf-entry-consent p{font-size:12px;line-height:1.55;margin:0;color:#5b6776}
 .cassiellos-public-flow .cpf-entry-consent p a{color:#ce3449;text-decoration:underline}
 .cassiellos-public-flow .cpf-entry-consent-actions{display:flex;flex:none;gap:8px}
