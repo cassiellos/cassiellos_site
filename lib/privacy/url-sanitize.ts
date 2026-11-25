@@ -126,3 +126,48 @@ export function attributionFromSearch(search: string, options: { allowFbclid: bo
   }
   return result
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// page_location / page_referrer enviados ao GA4 (pela variável do GTM; o texto da variável fica em
+// docs/tracking/gtm/page-location-sanitizado.js e é testado contra estas funções).
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Identificadores de clique do Google. Hoje NUNCA vão ao GA4 (sinais de anúncios negados e sem campanha no Google Ads).
+ *  Só passam quando a opção `allowGoogleClickIds` for ligada, o que exige: texto de privacidade citando o Google Ads,
+ *  consentimento de anúncios concedido e vínculo GA4 × Google Ads (ver docs/marketing/padrao-utm-v2.md, seção 6.4). */
+export const GOOGLE_CLICK_ID_PARAMS = ['gclid', 'gbraid', 'wbraid', 'gad_source', 'gad_campaignid'] as const
+const CLICK_ID_VALUE = /^[A-Za-z0-9_-]{6,200}$/
+
+/**
+ * URL enviada ao GA4 como page_location: origem + caminho + SOMENTE as chaves de atribuição válidas (UTMs e parâmetros
+ * estendidos, com o mesmo formato estrito do cadastro). Tudo o mais é removido: fbclid, msclkid, ttclid, _gl, outros
+ * identificadores de clique, qualquer parâmetro desconhecido (podem conter e-mail, telefone, nome) e o fragmento (#).
+ * Parâmetro repetido: vale a primeira ocorrência. Devolve a entrada inalterada se não for uma URL http(s).
+ */
+export function ga4PageLocation(raw: string, options: { allowGoogleClickIds?: boolean } = {}): string {
+  let url: URL
+  try { url = new URL(raw) } catch { return raw }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return raw
+  const kept = new URLSearchParams()
+  for (const key of UTM_KEYS) {
+    const value = sanitizeUtmValue(url.searchParams.get(key))
+    if (value) kept.set(key, value.slice(0, 180))
+  }
+  for (const key of EXTENDED_ATTRIBUTION_KEYS) {
+    const value = sanitizeExtendedValue(key, url.searchParams.get(key))
+    if (value) kept.set(key, value)
+  }
+  if (options.allowGoogleClickIds) {
+    for (const key of GOOGLE_CLICK_ID_PARAMS) {
+      const value = url.searchParams.get(key)
+      if (value && CLICK_ID_VALUE.test(value)) kept.set(key, value)
+    }
+  }
+  const query = kept.toString()
+  return url.origin + url.pathname + (query ? '?' + query : '')
+}
+
+/** Origem de referência para o GA4 (page_referrer): origem + caminho, sem consulta nem fragmento. Vazio se não for http(s). */
+export function ga4PageReferrer(raw: string): string {
+  return originAndPath(raw)
+}
