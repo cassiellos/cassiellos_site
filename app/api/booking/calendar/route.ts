@@ -5,6 +5,7 @@ import { addDays } from '@/lib/crm/availability/holidays'
 import { closedDates, localDate } from '@/lib/crm/availability/engine'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { dbErrorKind, opsLog } from '@/lib/crm/ops-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,9 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const today = localDate(now)
     return json({ today, lastDate: addDays(today, rules.settings.windowDays), closedDates: closedDates(rules, now) }, 200)
-  } catch {
+  } catch (error) {
+    // Calendário que não carrega = visitante qualificado sem como agendar. Registro mínimo, sem dados do visitante.
+    opsLog({ stage: 'booking_calendar', code: 'AVAILABILITY_UNAVAILABLE', status: 503, dbKind: dbErrorKind(error), form })
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
 }

@@ -19,6 +19,7 @@ import { deliverAfterEvent, enqueueMeetingNotifications } from '@/lib/crm/push/s
 import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { clientIpFrom, clientUserAgentFrom, dispatchScheduleToMeta, pgCapiStore, readCapiConfig } from '@/lib/crm/meta-capi'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
+import { dbErrorKind, opsCodeFrom, opsLog } from '@/lib/crm/ops-log'
 import { readEmailConfig } from '@/lib/crm/comms/config'
 import { scheduleMeetingEmails } from '@/lib/crm/comms/send'
 
@@ -73,7 +74,13 @@ export async function POST(request: NextRequest) {
     if (!data || typeof data !== 'object') return json({ error: 'INVALID_REQUEST' }, 400)
   } catch { return json({ error: 'INVALID_REQUEST' }, 400) }
 
+  // Registro operacional mínimo (lib/crm/ops-log.ts): só código técnico e categoria do erro; nada do visitante.
+  let unexpectedLogged = false
   const result = await confirmBookingRequest({
+    onUnexpectedError: error => {
+      unexpectedLogged = true
+      opsLog({ stage: 'booking_confirm', code: 'BOOKING_REQUIRES_REVIEW', status: 503, dbKind: dbErrorKind(error) })
+    },
     pool: getCrmPool(),
     verifySession: verifyBookingGrant,
     getForm: getBookingForm,
@@ -88,6 +95,10 @@ export async function POST(request: NextRequest) {
     limits: { exemptMailboxes: parseLimitExemptMailboxes() },
     loadRules: () => loadAvailabilityRules(getCrmPool()),
   }, { bookingToken: data.bookingToken, startAt: data.startAt, pageOrigin: origin })
+  if (result.status >= 400 && !unexpectedLogged) {
+    const code = (result.body as { error?: unknown } | null)?.error
+    opsLog({ stage: 'booking_confirm', code: opsCodeFrom(code), status: result.status })
+  }
   const confirmedMeeting = confirmedMeetingFrom(result)
   // Etapa 5 (Web Push): só reunião NOVA (201). Desligado por padrão (PWA_PUSH_ENABLED); nunca afeta a confirmação.
   await queueThenDeliver(confirmedMeeting, {

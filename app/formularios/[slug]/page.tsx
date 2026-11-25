@@ -10,6 +10,7 @@ import { bookingAccessConfig } from '@/lib/crm/booking-access'
 import { funnelModeFor } from '@/lib/crm/funnel-events'
 import { getGtmFormConfig } from '@/lib/tracking/gtm-config'
 import { getEntryNoticeConfig } from '@/lib/privacy/entry-notice-config'
+import { dbErrorKind, opsLog } from '@/lib/crm/ops-log'
 import PublicFlow from './public-flow'
 import './public-flow.css'
 
@@ -22,7 +23,12 @@ export const metadata:Metadata={
 export default async function FlowPage({params}:{params:Promise<{slug:string}>}){
   if(!isCrmRuntimeEnabled() && process.env.NODE_ENV==='production')notFound()
   const {slug}=await params
-  const doc=await getPublishedFlow(getCrmPool(),slug)
+  let doc:Awaited<ReturnType<typeof getPublishedFlow>>
+  try{doc=await getPublishedFlow(getCrmPool(),slug)}catch(error){
+    // Registro operacional mínimo: a página do formulário não abriu. Só a categoria do erro; o slug da URL não é registrado.
+    opsLog({stage:'form_page',code:'FORM_PAGE_UNAVAILABLE',dbKind:dbErrorKind(error)})
+    throw error
+  }
   if(!doc?.published)notFound()
   const cfg=getTurnstileConfig()
   const pixel=getMetaPixelConfig()
