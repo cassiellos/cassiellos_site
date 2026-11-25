@@ -15,6 +15,7 @@ import { CONSENT_CHANGE_EVENT } from '@/lib/privacy/consent-client'
 import { attributionFromSearch } from '@/lib/privacy/url-sanitize'
 import { isTestEmailDomain } from '@/lib/crm/booking-mode'
 import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
+import { isNewLeadResponse } from '@/lib/tracking/lead-outcome'
 import { DEFAULT_FUNNEL_STAGE, flowStepOrder, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
@@ -179,10 +180,11 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       if(data?.reused!==true && data?.tracking?.lead?.eventName==='Lead'){
         trackMetaConversion('Lead',data.tracking.lead.eventId,{content_name:slug})
       }
-      // generate_lead: SÓ depois da resposta positiva do servidor e apenas para cadastro novo (reenvio não conta).
+      // generate_lead: SÓ depois da confirmação do servidor de que um lead NOVO foi registrado (`leadOutcome==='new'`).
+      // Repetição idempotente (`reused`) e recadastro de e-mail já existente (`resubmitted`) não contam (F3).
       const serverMode=data?.leadMode==='live'||data?.leadMode==='test'?data.leadMode as 'live'|'test':null
       if(serverMode)setLeadMode(serverMode)
-      if(data?.ok===true&&data?.reused!==true)track('generate_lead',{...contactAt,environment_mode:previewOnly?'preview':serverMode??mode},idempotencyKey.current)
+      if(isNewLeadResponse(data))track('generate_lead',{...contactAt,environment_mode:previewOnly?'preview':serverMode??mode},idempotencyKey.current)
       if(data.outcome==='qualified'&&data.inlineBooking===true){
         // Inscrição já salva e validada. A próxima tela é o calendário nesta MESMA página.
         // O token assinado vale só para o lead/submissão atuais, sem repetir cadastro.
