@@ -4,7 +4,8 @@
  * - Identificadores de clique (gclid, fbclid, msclkid…) identificam um clique/visitante
  *   específico: não são enviados a ferramentas de análise nem ao n8n.
  * - Parâmetros UTM comerciais (utm_source, utm_medium, utm_campaign, utm_content, utm_term)
- *   são preservados para os relatórios, mas um valor com aparência de e-mail é descartado.
+ *   são preservados para os relatórios, mas um valor com formato de dado pessoal (e-mail, telefone, CPF, CNPJ, CEP, IP, URL,
+ *   código opaco longo, sequência numérica sem chave de ID) é descartado; origem e meio aceitam uma palavra só.
  * - Demais parâmetros de consulta e o fragmento (#) não são enviados às análises.
  * Funções puras: usadas no navegador e no servidor.
  */
@@ -28,26 +29,80 @@ export type UtmKey = typeof UTM_KEYS[number]
 export const EXTENDED_ATTRIBUTION_KEYS = ['utm_id', 'utm_source_platform', 'adset_id', 'ad_id', 'placement'] as const
 export type ExtendedAttributionKey = typeof EXTENDED_ATTRIBUTION_KEYS[number]
 
-const PLATFORM_ID = /^(?:\d{15,20}|[a-z]{1,8}-\d{8,20})$/
+/** Prefixos explícitos aceitos em IDs "chave-número" (padrão v1, regra 6). `tel-`, `cpf-` etc. NÃO são chaves de ID. */
+const ID_KEYS = 'cid|agid|asid|adid|ad|adset|cmp'
+const PLATFORM_ID = new RegExp('^(?:\\d{15,20}|(?:' + ID_KEYS + ')-\\d{8,20})$')
 const PLATFORM_NAME = /^[a-z][a-z0-9_-]{1,29}$/
 const PLACEMENT = /^[A-Za-z][A-Za-z0-9 _.-]{1,59}$/
+/** utm_source / utm_medium: UMA palavra (sem espaços), com letras, dígitos, "_", "." e "-" — nome de pessoa em texto livre não passa. */
+const SOURCE_MEDIUM_TOKEN = /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/
+
+/** Valores conhecidos de origem/meio (padrão v1/v2). Passam direto; valor desconhecido ainda precisa do formato acima e dos filtros de dados pessoais. */
+export const KNOWN_UTM_SOURCES: readonly string[] = [
+  'meta', 'facebook', 'instagram', 'google', 'whatsapp', 'email', 'site', 'direct', 'youtube', 'linkedin', 'tiktok', 'bing',
+]
+export const KNOWN_UTM_MEDIUMS: readonly string[] = [
+  'paid_social', 'cpc', 'organic_social', 'referral', 'email', 'messaging', 'organic', 'social', 'display', 'video',
+]
 
 const MAX_UTM_LENGTH = 200
 const EMAIL_LIKE = /[^\s@/?#&=]+@[^\s@/?#&=]+\.[a-z]{2,}/i
 // "%40" (arroba codificada) também denuncia e-mail em parâmetros duplamente codificados.
 const ENCODED_AT = /%40/i
 
-/** Valor UTM seguro para relatório: texto curto, sem controles e sem e-mail. */
-export function sanitizeUtmValue(value: unknown): string {
+// ── Dados pessoais reconhecíveis por formato (F4). Cada regra tem espelho EXATO em docs/tracking/gtm/*.js. ──────────────
+// IDs numéricos legítimos vêm sempre com chave explícita ("cid-123…__asid-123…__ad-123…"); são retirados antes dos testes.
+const KEYED_ID = new RegExp('(^|[^a-z0-9])(?:' + ID_KEYS + ')-\\d{6,20}(?!\\d)', 'gi')
+const URL_LIKE = /https?:|www\.|:\/\/|^\/\//i
+const IPV4 = /(?:^|\D)\d{1,3}(?:\.\d{1,3}){3}(?:\D|$)/
+const OPAQUE_TOKEN = /(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{32,}/
+// 9–14 dígitos seguidos = telefone (com/sem +55), CPF, CNPJ; 15–20 dígitos seguidos = ID de plataforma (Meta) e passa; 21+ não é ID.
+const DIGIT_RUN = /(?:^|\D)\d{9,14}(?:\D|$)|\d{21,}/
+const DIGIT_SEQUENCE = /\+?\d(?:[ ().\/-]{0,2}\d)*/g
+const FORMATTED_SHORT_NUMBER = /\d{5}-\d{3,4}/
+
+/**
+ * true quando o texto tem formato de dado pessoal: e-mail ou "@", telefone (com ou sem DDD/+55, com separadores), CPF, CNPJ,
+ * CEP formatado, qualquer sequência de 9 a 14 dígitos sem chave de ID (IDs de plataforma de 15–20 dígitos passam), endereço IP, URL e códigos opacos longos (hash, token).
+ * LIMITE CONHECIDO: nomes próprios e outros dados em texto livre (campanha, conteúdo, termo) NÃO são reconhecíveis por
+ * expressão regular; a defesa é o conjunto de regras acima + o formato de uma palavra em origem/meio + a lista fechada de chaves.
+ */
+export function looksLikePersonalData(text: string): boolean {
+  if (text.indexOf('@') >= 0 || ENCODED_AT.test(text) || EMAIL_LIKE.test(text)) return true
+  const rest = text.replace(KEYED_ID, '$1 ')
+  if (URL_LIKE.test(rest) || IPV4.test(rest) || OPAQUE_TOKEN.test(rest) || DIGIT_RUN.test(rest) || FORMATTED_SHORT_NUMBER.test(rest)) return true
+  const sequences = rest.match(DIGIT_SEQUENCE) || []
+  // Com separadores (espaço, parênteses, ponto, barra, hífen): 10+ dígitos somados = telefone/CPF/CNPJ formatado.
+  for (const sequence of sequences) if (!/^\+?\d+$/.test(sequence) && sequence.replace(/\D/g, '').length >= 10) return true
+  return false
+}
+
+function cleanText(value: unknown): string {
   if (typeof value !== 'string') return ''
   const text = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
-  if (!text || EMAIL_LIKE.test(text) || ENCODED_AT.test(text)) return ''
+  if (!text || text.indexOf('@') >= 0 || EMAIL_LIKE.test(text) || ENCODED_AT.test(text)) return ''
   return text.slice(0, MAX_UTM_LENGTH)
+}
+
+/** Valor de texto livre seguro para relatório: curto, sem controles e sem formato de dado pessoal. */
+export function sanitizeUtmValue(value: unknown): string {
+  const text = cleanText(value)
+  return text && !looksLikePersonalData(text) ? text : ''
+}
+
+/** Valor de UMA chave UTM: texto livre (campanha, conteúdo, termo) ou, em origem e meio, uma palavra conhecida/bem formada. */
+export function sanitizeUtmField(key: UtmKey, value: unknown): string {
+  const text = sanitizeUtmValue(value)
+  if (!text) return ''
+  if (key === 'utm_source') return KNOWN_UTM_SOURCES.includes(text) || SOURCE_MEDIUM_TOKEN.test(text) ? text : ''
+  if (key === 'utm_medium') return KNOWN_UTM_MEDIUMS.includes(text) || SOURCE_MEDIUM_TOKEN.test(text) ? text : ''
+  return text
 }
 
 /** Valor de um parâmetro estendido, higienizado e conferido contra o formato da chave. Vazio quando inválido. */
 export function sanitizeExtendedValue(key: ExtendedAttributionKey, value: unknown): string {
-  const base = sanitizeUtmValue(value)
+  // Os IDs têm 15–20 dígitos por definição: não passam pelo filtro de sequência numérica, só pelo formato estrito da chave.
+  const base = cleanText(value)
   if (!base) return ''
   switch (key) {
     case 'utm_id':
@@ -59,7 +114,7 @@ export function sanitizeExtendedValue(key: ExtendedAttributionKey, value: unknow
       return PLATFORM_NAME.test(lower) ? lower : ''
     }
     case 'placement':
-      return PLACEMENT.test(base) ? base : ''
+      return PLACEMENT.test(base) && !looksLikePersonalData(base) ? base : ''
   }
 }
 
@@ -84,7 +139,7 @@ export function utmFromSearch(search: string): Partial<Record<UtmKey, string>> {
   const params = new URLSearchParams(search)
   const result: Partial<Record<UtmKey, string>> = {}
   for (const key of UTM_KEYS) {
-    const value = sanitizeUtmValue(params.get(key))
+    const value = sanitizeUtmField(key, params.get(key))
     if (value) result[key] = value
   }
   return result
@@ -113,7 +168,7 @@ export function attributionFromSearch(search: string, options: { allowFbclid: bo
   const params = new URLSearchParams(search)
   const result: Record<string, string> = {}
   for (const key of UTM_KEYS) {
-    const value = sanitizeUtmValue(params.get(key))
+    const value = sanitizeUtmField(key, params.get(key))
     if (value) result[key] = value.slice(0, 180)
   }
   for (const key of EXTENDED_ATTRIBUTION_KEYS) {
@@ -150,7 +205,7 @@ export function ga4PageLocation(raw: string, options: { allowGoogleClickIds?: bo
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return raw
   const kept = new URLSearchParams()
   for (const key of UTM_KEYS) {
-    const value = sanitizeUtmValue(url.searchParams.get(key))
+    const value = sanitizeUtmField(key, url.searchParams.get(key))
     if (value) kept.set(key, value.slice(0, 180))
   }
   for (const key of EXTENDED_ATTRIBUTION_KEYS) {

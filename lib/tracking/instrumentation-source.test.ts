@@ -55,7 +55,7 @@ describe('instrumentação do formulário — garantias no código', () => {
 
   it('lead só é contado depois da resposta positiva do servidor, e nunca em reaproveitamento', () => {
     const c = compact(flow)
-    assert.match(c, /if\(data\?\.ok===true&&data\?\.reused!==true\)track\('generate_lead'/)
+    assert.match(c, /if\(isNewLeadResponse\(data\)\)track\('generate_lead'/)
     const submitIndex = flow.indexOf("track('lead_submit_attempt'")
     const fetchIndex = flow.indexOf('fetch(', submitIndex)
     const leadIndex = flow.indexOf("track('generate_lead'")
