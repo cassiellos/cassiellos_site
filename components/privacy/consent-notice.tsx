@@ -70,7 +70,7 @@ export default function ConsentNotice({ marketingEnabled = false, openOnMount = 
     return <section className="consent-notice" aria-labelledby="consent-notice-title" data-consent-ui="">
       <div>
         <h2 id="consent-notice-title" ref={heading} tabIndex={-1}>Métricas de uso desta página</h2>
-        <p>Utilizamos métricas opcionais para entender como nosso formulário é utilizado e melhorar sua experiência.
+        <p>Utilizamos métricas opcionais, incluindo cookies do Google Analytics quando essa ferramenta está habilitada, para entender como nosso formulário é utilizado e melhorar sua experiência.
           Você pode aceitar ou recusar essas métricas sem impedir seu agendamento.</p>
         <p className="consent-notice-links">
           {analytics !== null && <span>Escolha atual: {analytics ? 'métricas aceitas' : 'métricas recusadas'}. </span>}
@@ -91,7 +91,7 @@ export default function ConsentNotice({ marketingEnabled = false, openOnMount = 
     <h2 id="consent-notice-title" ref={heading} tabIndex={-1}>Cookies e métricas desta página</h2>
     <div className="consent-category" role="group" aria-labelledby="consent-analytics-title">
       <h3 id="consent-analytics-title">Métricas de uso</h3>
-      <p>Utilizamos métricas opcionais para entender como nosso formulário é utilizado e melhorar sua experiência.
+      <p>Utilizamos métricas opcionais, incluindo cookies do Google Analytics quando essa ferramenta está habilitada, para entender como nosso formulário é utilizado e melhorar sua experiência.
         Você pode aceitar ou recusar essas métricas sem impedir seu agendamento.</p>
       {analytics !== null && <p className="consent-current">Escolha atual: {analytics ? 'métricas aceitas' : 'métricas recusadas'}.</p>}
       <div className="consent-notice-actions">

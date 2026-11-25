@@ -62,7 +62,7 @@ export default function ConsentEntryBanner({ marketingEnabled = false, suppresse
   return <section ref={noticeRef} className="cpf-entry-consent" role="region" aria-label="Privacidade nesta página" data-consent-ui="" data-consent-layer="entry">
     <div className="cpf-entry-consent-text">
       <p>
-        Usamos métricas opcionais para melhorar este formulário
+        Usamos cookies opcionais de métricas para melhorar este formulário
         {marketingEnabled ? '; marketing só se você ativar em Personalizar' : ''}.
         {' '}Recusar não impede o formulário nem o agendamento.{' '}
         <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Cookies</a>

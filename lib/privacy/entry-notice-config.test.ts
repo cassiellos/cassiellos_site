@@ -25,10 +25,11 @@ describe('chave exclusiva do aviso de entrada', () => {
     assert.equal(/consent-client|cassiellos_consent|analytics_storage|ad_storage|ad_user_data|ad_personalization|gtag|dataLayer|fbq|setConsent/.test(src), false)
     assert.equal(/import /.test(src), false, 'sem dependências: não há como a chave alterar o estado de consentimento')
   })
-  it('a página repassa a chave e o fluxo só monta o aviso quando ela está ligada', () => {
+  it('a página repassa a chave apenas no escopo do GTM e o fluxo só monta o aviso quando ela está ligada', () => {
     const page = read('app/formularios/[slug]/page.tsx')
     assert.match(page, /getEntryNoticeConfig\(\)/)
-    assert.match(page, /entryNoticeEnabled=\{entryNotice\.enabled\}/)
+    assert.match(page, /const gtm=getGtmFormConfigForSlug\(doc\.slug\)/)
+    assert.match(page, /entryNoticeEnabled=\{entryNotice\.enabled&&gtm\.enabled\}/)
     const flow = read('app/formularios/[slug]/public-flow.tsx')
     assert.match(flow, /entryNoticeEnabled=false/, 'o padrão do componente também é desligado')
     assert.match(flow, /\{!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner /)

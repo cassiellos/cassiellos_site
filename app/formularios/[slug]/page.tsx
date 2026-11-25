@@ -37,5 +37,5 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
     turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null} metaPixelId={pixel.enabled?pixel.pixelId:null}
     customScheduleEnabled={pixel.enabled && getMetaCustomScheduleEnabled()}
     trackingMode={trackingMode} gtmContainerId={gtm.enabled?gtm.containerId:null}
-    entryNoticeEnabled={entryNotice.enabled}/>
+    entryNoticeEnabled={entryNotice.enabled&&gtm.enabled}/>
 }
