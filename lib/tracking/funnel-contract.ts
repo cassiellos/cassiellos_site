@@ -64,6 +64,26 @@ export type TrackingParams = {
   validation_error_code?: string
 }
 
+/**
+ * Parâmetros OPCIONAIS do contrato (tudo além de `form_id` e `environment_mode`, que todo evento traz).
+ * O dataLayer do GTM é um modelo de dados que MESCLA cada push: o que um evento não repete continua valendo no
+ * evento seguinte (um erro de validação "vazava" para o lead; o `step_id` de uma pergunta, para o calendário).
+ * Por isso todo push reinicializa TODAS estas chaves (F1); a lista é a única fonte e é conferida por teste contra o tipo.
+ */
+export const OPTIONAL_TRACKING_PARAM_KEYS = [
+  'form_version', 'step_id', 'step_index', 'step_order', 'step_type', 'funnel_stage', 'flow_variant', 'validation_error_code',
+] as const satisfies readonly (keyof TrackingParams)[]
+
+/**
+ * Objeto empurrado ao dataLayer: `event` + os parâmetros pertinentes + `undefined` explícito em cada parâmetro opcional
+ * que ESTE evento não tem. No modelo do GTM, `undefined` apaga o valor herdado; a tag do GA4 omite parâmetro indefinido.
+ */
+export function toDataLayerEvent(name: TrackingEventName, params: TrackingParams): Record<string, unknown> {
+  const reset: Record<string, undefined> = {}
+  for (const key of OPTIONAL_TRACKING_PARAM_KEYS) reset[key] = undefined
+  return { event: name, ...reset, ...params }
+}
+
 /** Etapa do funil de cada evento quando quem chama não informa outra (etapas de pergunta × contato). */
 export const DEFAULT_FUNNEL_STAGE: Record<TrackingEventName, FunnelStage> = {
   form_view: 'entry',
@@ -87,6 +107,20 @@ export const DEFAULT_FUNNEL_STAGE: Record<TrackingEventName, FunnelStage> = {
   booking_confirmation_error: 'conclusion',
 }
 
+/**
+ * ESCOPO EXCLUSIVO desta implantação (F2): só o formulário publicado em /formularios/hamburguerias mede e carrega o GTM.
+ * Correspondência EXATA do slug canônico (o de `crm.form_flows.slug`, sem decodificar, sem maiúsculas/minúsculas, sem prefixo):
+ * "hamburguerias-2", "hamburgueria", "Hamburguerias", "hamburguerias/x" ou "hamburguerias " ficam de fora.
+ * Ampliar o escopo exige mudar esta lista (revisão de código) e nova autorização; nenhuma variável de ambiente o amplia.
+ */
+export const TRACKING_SCOPE_PATHS: readonly string[] = ['/formularios/hamburguerias']
+const FORM_PATH_PREFIX = '/formularios/'
+
+/** true somente para o slug cuja rota (`/formularios/<slug>`) é exatamente uma das rotas do escopo. */
+export function isTrackingScopeForm(slug: unknown): boolean {
+  return typeof slug === 'string' && slug.length > 0 && TRACKING_SCOPE_PATHS.includes(FORM_PATH_PREFIX + slug)
+}
+
 const SAFE_TOKEN = /^[a-z0-9][a-z0-9_:-]{0,63}$/i
 const LONG_DIGITS = /\d{6,}/
 const VERSION = /^v\d{1,4}$/
@@ -104,9 +138,10 @@ export function isTrackingEvent(name: unknown): name is TrackingEventName {
   return typeof name === 'string' && (TRACKING_EVENTS as readonly string[]).includes(name)
 }
 
-/** Parâmetros permitidos, já higienizados. null = evento descartado (formulário ou modo inválido). */
+/** Parâmetros permitidos, já higienizados. null = evento descartado (formulário fora do escopo, ou formulário/modo inválido). */
 export function sanitizeTrackingParams(input: Record<string, unknown>): TrackingParams | null {
   const formId = safeToken(input.form_id)
+  if (!formId || !isTrackingScopeForm(formId)) return null
   const mode = typeof input.environment_mode === 'string' && MODES.has(input.environment_mode)
     ? input.environment_mode as TrackingMode : null
   if (!formId || !mode) return null

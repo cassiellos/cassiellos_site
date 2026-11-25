@@ -1,7 +1,7 @@
 import { analyticsAllowed } from '../privacy/consent-client'
 import { trackAnalyticsFlow } from '../privacy/flow-client'
 import {
-  sanitizeTrackingParams, trackingDedupeKey, type TrackingEventName, type TrackingParams,
+  sanitizeTrackingParams, toDataLayerEvent, trackingDedupeKey, type TrackingEventName, type TrackingParams,
 } from './funnel-contract'
 
 /**
@@ -9,6 +9,8 @@ import {
  * - Sem consentimento de métricas do CRM: nada é enviado, nada é guardado (nem a chave de deduplicação).
  * - Prévia do painel (`environment_mode = preview`): nunca emite.
  * - Só os parâmetros do contrato (lib/tracking/funnel-contract) chegam ao dataLayer; o resto é descartado.
+ * - Só o formulário do escopo (`isTrackingScopeForm`) emite; qualquer outro `form_id` é descartado (F2).
+ * - Cada push reinicializa os parâmetros opcionais ausentes (nada herdado do evento anterior; F1).
  * - Deduplicação por marco, na memória da página e no sessionStorage da aba (guarda só um resumo da chave).
  * - `generate_lead` de visitante real também vira UM `form_submit` no AnalyticsFlow (o mesmo critério do /agendar),
  *   substituindo a contagem antiga por pergunta respondida.
@@ -61,7 +63,8 @@ export function pushTrackingEvent(
     markSent(key)
   }
   window.dataLayer = window.dataLayer || []
-  window.dataLayer.push({ event: name, ...params })
+  // F1: cada push reinicializa os parâmetros opcionais que este evento não tem (o modelo do GTM mescla pushes).
+  window.dataLayer.push(toDataLayerEvent(name, params))
   window.dispatchEvent(new CustomEvent(TRACK_EVENT, { detail: { name, ...params } }))
   if (name === 'generate_lead' && params.environment_mode === 'live') {
     trackAnalyticsFlow('form_submit', 'form:' + params.form_id)
