@@ -65,6 +65,19 @@ describe('Regressão — formulário público: escolha de consentimento clara na
     assert.equal(/cpf-entry-consent[^{]*\{[^}]*(pointer-events:none|backdrop-filter)/.test(css), false)
   })
 
+  it('aviso compacto: reserva o espaço na altura das telas e some por completo depois da escolha', () => {
+    // Sem título; nome acessível pelo aria-label; só duas ligações (Cookies e Privacidade).
+    assert.match(banner, /role="region" aria-label="Privacidade nesta página"/)
+    assert.equal(/<h2/.test(banner), false)
+    // A reserva só mede e publica uma variável de CSS e é desfeita ao desmontar (nada lido, gravado ou enviado).
+    assert.match(banner, /setProperty\('--cpf-entry-notice-h'/)
+    assert.match(banner, /removeProperty\('--cpf-entry-notice-h'\)/)
+    // Toda altura mínima ligada à janela desconta o aviso e, sem aviso, a variável vale 0px (tela idêntica à de antes).
+    const heights = [...css.matchAll(/min-height:calc\(100svh - [0-9]+px[^;]*\)/g)].map(m => m[0])
+    assert.ok(heights.length >= 5)
+    assert.ok(heights.every(h => h.endsWith('- var(--cpf-entry-notice-h,0px))')), heights.filter(h => !h.endsWith('- var(--cpf-entry-notice-h,0px))')).join(' | '))
+  })
+
   it('mantém PageView e conversões da Meta dependentes de consentimento', () => {
     assert.match(source, /<MetaPixel pixelId=\{metaPixelId\}\/>/)
     assert.match(pixel, /marketingAllowed\(\)/)
