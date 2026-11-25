@@ -10,6 +10,7 @@ import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { isHomologActive } from '@/lib/crm/homolog-mode'
 import { simulatedBusyIntervals } from '@/lib/crm/homolog-calendar'
 import { dbErrorKind, opsLog } from '@/lib/crm/ops-log'
+import { retryTransient } from '@/lib/crm/db-retry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
   // Business hours, holidays, policies, manual blocks and exceptions (no Google call).
   let rules: AvailabilityRules
   try {
-    rules = await loadAvailabilityRules(getCrmPool())
+    rules = await retryTransient(() => loadAvailabilityRules(getCrmPool()))
   } catch (error) {
     // Registro operacional mínimo: só categoria do erro, sem dados do visitante (lib/crm/ops-log.ts).
     opsLog({ stage: 'booking_availability', code: 'AVAILABILITY_UNAVAILABLE', status: 503, dbKind: dbErrorKind(error), form })

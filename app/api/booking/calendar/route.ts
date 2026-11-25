@@ -6,6 +6,7 @@ import { closedDates, localDate } from '@/lib/crm/availability/engine'
 import { loadAvailabilityRules } from '@/lib/crm/availability/store'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { dbErrorKind, opsLog } from '@/lib/crm/ops-log'
+import { retryTransient } from '@/lib/crm/db-retry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   const form = request.nextUrl.searchParams.get('form') ?? ''
   if (!getBookingForm(form)) return json({ error: 'INVALID_REQUEST' }, 400)
   try {
-    const rules = await loadAvailabilityRules(getCrmPool())
+    const rules = await retryTransient(() => loadAvailabilityRules(getCrmPool()))
     const now = new Date()
     const today = localDate(now)
     return json({ today, lastDate: addDays(today, rules.settings.windowDays), closedDates: closedDates(rules, now) }, 200)
