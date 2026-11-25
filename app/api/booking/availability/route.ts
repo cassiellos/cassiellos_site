@@ -9,6 +9,8 @@ import { readGoogleBusyIntervals } from '@/lib/crm/google-calendar'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { isHomologActive } from '@/lib/crm/homolog-mode'
 import { simulatedBusyIntervals } from '@/lib/crm/homolog-calendar'
+import { dbErrorKind, opsLog } from '@/lib/crm/ops-log'
+import { retryTransient } from '@/lib/crm/db-retry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,8 +47,10 @@ export async function GET(request: NextRequest) {
   // Business hours, holidays, policies, manual blocks and exceptions (no Google call).
   let rules: AvailabilityRules
   try {
-    rules = await loadAvailabilityRules(getCrmPool())
-  } catch {
+    rules = await retryTransient(() => loadAvailabilityRules(getCrmPool()))
+  } catch (error) {
+    // Registro operacional mínimo: só categoria do erro, sem dados do visitante (lib/crm/ops-log.ts).
+    opsLog({ stage: 'booking_availability', code: 'AVAILABILITY_UNAVAILABLE', status: 503, dbKind: dbErrorKind(error), form })
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
   if (!isOpenDate(date, rules)) {
@@ -57,10 +61,14 @@ export async function GET(request: NextRequest) {
   let allowed: boolean
   try {
     allowed = await allowAvailabilityLookup(request)
-  } catch {
+  } catch (error) {
+    opsLog({ stage: 'booking_availability', code: 'AVAILABILITY_UNAVAILABLE', status: 503, dbKind: dbErrorKind(error), form })
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
-  if (!allowed) return json({ error: 'TOO_MANY_REQUESTS' }, 429)
+  if (!allowed) {
+    opsLog({ stage: 'booking_availability', code: 'TOO_MANY_REQUESTS', status: 429, form })
+    return json({ error: 'TOO_MANY_REQUESTS' }, 429)
+  }
 
   try {
     // Homologação isolada: agenda simulada, sem Google (lib/crm/homolog-mode.ts).
@@ -85,7 +93,9 @@ export async function GET(request: NextRequest) {
       timeZone: CRM_BOOKING_TIME_ZONE,
       slotMinutes: rules.settings.slotMinutes,
     }, 200)
-  } catch {
+  } catch (error) {
+    // Falha ao consultar o Google Agenda ou o banco: antes não deixava rastro nenhum.
+    opsLog({ stage: 'booking_availability', code: 'AVAILABILITY_UNAVAILABLE', status: 503, dbKind: dbErrorKind(error), form })
     return json({ error: 'AVAILABILITY_UNAVAILABLE' }, 503)
   }
 }

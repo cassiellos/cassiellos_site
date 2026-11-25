@@ -58,6 +58,15 @@ export type ConfirmDeps = {
   loadRules?: () => Promise<AvailabilityRules>
   /** Homologação do Meta Pixel ativa nesta requisição (ver IntakeDeps.metaHomologation): 1 Schedule por liberação. */
   metaHomologation?: { claim: (input: { event: 'Schedule'; leadId: string; eventId: string }) => Promise<boolean> } | null
+  /**
+   * Aviso de falha inesperada (banco, Google, rede) que termina em BOOKING_REQUIRES_REVIEW. Serve só para o registro
+   * operacional da rota (categoria do erro, sem dados do visitante). Nunca muda a resposta; erro dentro dele é ignorado.
+   */
+  onUnexpectedError?: (error: unknown) => void
+}
+
+function notifyUnexpected(deps: ConfirmDeps, error: unknown): void {
+  try { deps.onUnexpectedError?.(error) } catch { /* o registro nunca pode afetar a confirmação */ }
 }
 
 /**
@@ -181,7 +190,7 @@ export async function confirmBookingRequest(
     let latestBusy: BusyInterval[]
     try {
       latestBusy = await deps.readBusy(day)
-    } catch { return { status: 503, body: { error: 'BOOKING_REQUIRES_REVIEW' } } }
+    } catch (error) { notifyUnexpected(deps, error); return { status: 503, body: { error: 'BOOKING_REQUIRES_REVIEW' } } }
     const stillFree = listAvailableSlots(day, latestBusy, rules).some(item =>
       item.startAt === normalizedStart && item.endAt === finishAt)
     if (!stillFree) {
@@ -234,8 +243,9 @@ export async function confirmBookingRequest(
             ? { tracking: { schedule: { eventName: 'Schedule', eventId: saved.scheduleEventId, homologation: true } } } : {}),
       },
     }
-  } catch {
+  } catch (error) {
     // Do not issue a second calendar request after ambiguous partial completion.
+    notifyUnexpected(deps, error)
     return { status: 503, body: { error: 'BOOKING_REQUIRES_REVIEW' } }
   }
 }

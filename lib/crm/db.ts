@@ -15,8 +15,13 @@ import { crmDatabaseUrl } from './homolog-mode'
 export const CRM_DB_LIMITS = {
   /** Conexões simultâneas por instância da função. */
   maxConnections: 3,
-  /** Tempo máximo para abrir uma conexão (inclui TLS e autenticação). */
-  connectionTimeoutMs: 5_000,
+  /**
+   * Tempo máximo para abrir uma conexão (inclui TLS e autenticação). 10 s é o valor recomendado na documentação do
+   * Neon: depois de 5 minutos sem uso a computação do plano gratuito é suspensa e a primeira conexão pode levar mais
+   * que os 5 s anteriores (um timeout de conexão derrubou a página do formulário em 24/11/2026). As leituras
+   * idempotentes do funil público usam também nova tentativa (lib/crm/db-retry.ts).
+   */
+  connectionTimeoutMs: 10_000,
   /** Conexões ociosas são encerradas após este tempo. */
   idleTimeoutMs: 10_000,
   /** Limite no cliente para cada consulta. */
