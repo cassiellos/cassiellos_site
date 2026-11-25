@@ -17,7 +17,7 @@ import { pushTrackingEvent } from '@/lib/tracking/datalayer-client'
 import { DEFAULT_FUNNEL_STAGE, flowStepOrder, formVersionLabel, type TrackingEventName, type TrackingMode } from '@/lib/tracking/funnel-contract'
 
 type Confirmation = Pick<FlowResult,'title'|'description'|'actionLabel'|'actionHref'|'outcome'>
-type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean;trackingMode?:'live'|'test';gtmContainerId?:string|null}
+type PublicFlowProps = {slug:string;title:string;description:string;version:number;flow:FlowDefinition;turnstileSiteKey:string|null;metaPixelId:string|null;customScheduleEnabled?:boolean;previewOnly?:boolean;trackingMode?:'live'|'test';gtmContainerId?:string|null;entryNoticeEnabled?:boolean}
 // Apenas apresentação: preserva os textos do CRM, destacando a promessa como na referência.
 function coverHeadline(text: string) {
   const match=text.match(/^(.*?)(vender mais!?)(\s*)$/iu)
@@ -28,7 +28,7 @@ function coverCtaLabel(text: string) {
   return text.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,prefix: string,letter: string)=>
     prefix+letter.toLocaleUpperCase('pt-BR'))
 }
-export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false,trackingMode='test',gtmContainerId=null}:PublicFlowProps){
+export default function PublicFlow({slug,title,description,version,flow,turnstileSiteKey,metaPixelId,customScheduleEnabled=false,previewOnly=false,trackingMode='test',gtmContainerId=null,entryNoticeEnabled=false}:PublicFlowProps){
   const [visited,setVisited]=useState<string[]>([flow.start])
   const [coverOpen,setCoverOpen]=useState(Boolean(flow.cover))
   // Mesmo padrão aprovado no /agendar: nunca interromper a primeira pergunta com avisos de cookies.
@@ -303,6 +303,6 @@ export default function PublicFlow({slug,title,description,version,flow,turnstil
       </aside>}
     </div>
     {/* Escolha clara ao entrar (LGPD): primeira camada com Recusar tudo / Escolher / Aceitar tudo, sem bloquear o formulário. */}
-    {!previewOnly&&<ConsentEntryBanner marketingEnabled={Boolean(metaPixelId)} suppressed={showPrivacyPreferences}/>}
+    {!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner marketingEnabled={Boolean(metaPixelId)} suppressed={showPrivacyPreferences}/>}
   </main>
 }

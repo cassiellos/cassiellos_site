@@ -88,6 +88,7 @@ dígitos.
 ## 5. Consent Mode v2 e LGPD
 
 * `consent default` com os quatro sinais **negados** é empurrado antes de qualquer script do Google.
+* O **aviso de entrada** só aparece com a chave exclusiva `CONSENT_ENTRY_NOTICE_ENABLED=true` (desligada por padrão; ela não concede consentimento).
 * O visitante escolhe no **aviso de entrada** da primeira visita (Recusar, Aceitar métricas e Personalizar, com o mesmo
   peso) ou depois em "Preferências de cookies", no rodapé (cookie `cassiellos_consent`, 180 dias). O aviso não bloqueia
   o formulário, não marca nada previamente e só grava depois de um clique. `analytics_storage` acompanha "métricas";

@@ -29,7 +29,7 @@ describe('Regressão — formulário público: escolha de consentimento clara na
   it('monta o aviso de entrada só fora da prévia, uma única vez, e o esconde enquanto o do rodapé está aberto', () => {
     const matches = [...source.matchAll(/<ConsentEntryBanner\b/g)]
     assert.equal(matches.length, 1)
-    assert.match(source, /\{!previewOnly&&<ConsentEntryBanner marketingEnabled=\{Boolean\(metaPixelId\)\} suppressed=\{showPrivacyPreferences\}\/>\}/)
+    assert.match(source, /\{!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner marketingEnabled=\{Boolean\(metaPixelId\)\} suppressed=\{showPrivacyPreferences\}\/>\}/)
   })
 
   it('o aviso de entrada oferece Recusar, Aceitar métricas e Personalizar com o mesmo peso e só grava ao clicar', () => {
@@ -79,6 +79,6 @@ describe('Regressão — formulário público: escolha de consentimento clara na
     assert.match(source, /if\(previewOnly\)\{/)
     assert.match(source, /\{!previewOnly&&<MetaPixel/)
     assert.match(source, /\{!previewOnly&&<aside className="cpf-privacy-minimal"/)
-    assert.match(source, /\{!previewOnly&&<ConsentEntryBanner/)
+    assert.match(source, /\{!previewOnly&&entryNoticeEnabled&&<ConsentEntryBanner/)
   })
 })

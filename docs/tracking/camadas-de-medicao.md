@@ -97,6 +97,12 @@ aviso também não é medida (registrá-la no servidor seria coleta nova).
   cookie próprio `cassiellos_consent`, 180 dias). Três botões de mesmo tamanho, cor e peso: Recusar, Aceitar métricas,
   Personalizar. Não é modal, não toma o foco, não marca nada, só grava depois de um clique e nunca reabre sozinho.
   Não bloqueia o formulário nem o agendamento.
+* **Chave exclusiva do aviso (`CONSENT_ENTRY_NOTICE_ENABLED`).** O aviso só é renderizado com `CONSENT_ENTRY_NOTICE_ENABLED=true`
+  (exatamente "true"); **desligada por padrão**, de modo que publicar o código não exibe um aviso ainda não aprovado pelo jurídico.
+  A chave controla só a **exibição**: não concede nem dispensa consentimento, não toca no cookie `cassiellos_consent`, nos sinais do
+  Consent Mode, no GTM, no Meta Pixel nem na API de Conversões. Com a chave desligada, o consentimento continua só pelo botão
+  "Preferências de cookies" do rodapé e nada é rastreado sem ele. Ligar ou desligar exige novo deploy (variável da Vercel);
+  o desligamento mais rápido de emergência continua sendo o Instant Rollback.
 * **Métricas × marketing separados.** "Aceitar métricas" liga só GTM/GA4. Meta Pixel e API de Conversões só ligam com
   marketing aceito em "Personalizar" ou em "Preferências de cookies" (rodapé). "Recusar" recusa ambos.
 * **Consent Mode v2, modo básico.** Quatro sinais `denied` antes de qualquer script do Google; o GTM só carrega depois
