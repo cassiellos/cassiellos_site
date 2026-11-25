@@ -141,7 +141,7 @@ não identifica ninguém.
 | --- | --- | --- | --- |
 | `npm test` (964 testes; 950 no patch 0007) | Testes unitários com `window`/`document` simulados e verificações no código-fonte | Contrato dos 19 eventos, sanitização, regras de consentimento, ausência de dados pessoais, ordem de `step_order` | Comportamento em navegador real, rede, GTM ou GA4 |
 | Navegador real (Playwright, Chromium, 80 verificações, `scripts/tracking/e2e-formulario-navegador.cjs`) | Formulário real servido localmente, banco local descartável; GTM, Meta, Turnstile e APIs de envio/agenda **simulados** | `dataLayer` real, cookies, banner, revogação, nenhum evento sem consentimento, caminho até a reunião confirmada, erros, ramificação `limited`, Turnstile | Recebimento pelo GA4; integração real com Neon/Google/Meta/Turnstile |
-| GTM Preview e GA4 DebugView | **Não executados** | n/d | Ainda não existem GTM/GA4 da Cassiellos (aceite dos termos do Google pendente) e não há URL de preview pública (acesso ao GitHub bloqueado) |
+| GTM Preview e GA4 DebugView | **Não executados** | n/d | Desde 25/11/2026 existem a propriedade GA4 e o contêiner GTM da Cassiellos (rascunho importado, **sem publicar**; ver `evidencias-simulado-x-ga4.md`), mas ainda não há URL de preview com `TRACKING_GTM_ENABLED` e `GTM_FORM_CONTAINER_ID` (ramos ainda não publicados no GitHub: token inválido na sessão) |
 
 **Os 950 (agora 964) testes automatizados não são testes de navegador, consentimento real ou recebimento pelo GA4.**
 Nenhum evento chegou ao GA4 nesta entrega.
