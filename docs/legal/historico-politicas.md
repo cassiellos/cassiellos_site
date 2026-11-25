@@ -14,6 +14,13 @@ Fonte única da versão: `LEGAL_POLICY_VERSION` em `lib/legal/policy.ts`. A mesm
 | **v3 — 30/10/2026** (`LEGAL_POLICY_VERSION = 2026-10-30`) | Preview (`feature/mini-crm-shark-scale`) | Ver a lista abaixo; aprovada pelo responsável em 30/10/2026 (D5, rev. 3) | Publicada no Preview com este commit. A main não foi alterada |
 | **v4 — 03/11/2026** (`LEGAL_POLICY_VERSION = 2026-11-03`) | Preview (`feature/mini-crm-shark-scale`) | Seção 11: etapas do formulário (eventos Chronos), evento Schedule e API de Conversões da Meta; aviso de cookies e Política de Cookies alinhados | Aprovada pelo titular em 03/11/2026 e publicada no Preview. A main não foi alterada |
 
+| **v5 — 25/11/2026** (`LEGAL_POLICY_VERSION = 2026-11-25`) | CRM | GA4/GTM no formulário de hamburguerias; cookies analíticos, finalidade, escolha e revogação | Atualização autorizada pelo responsável; revisão jurídica formal recomendada |
+
+O que muda na v5:
+- transparência sobre o GA4 e GTM, cookies analíticos, medição de etapas e consentimento;
+- recusa e revogação mantidas; marketing segue separado;
+- aviso de entrada compacto com as cores do formulário, sem alterar o fluxo comercial.
+
 O que muda na v4:
 - seção 11 passa a cobrir Meta Pixel e API de Conversões da Meta;
 - quatro etapas do formulário registradas pelo Pixel (exibição, primeira interação, envio aceito, etapa de horário), no máximo uma vez por sessão;

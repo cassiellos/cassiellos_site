@@ -10,7 +10,8 @@
 
 // v4 aprovada pelo titular em 03/11/2026 e publicada no Preview nesta data; v3: 2026-10-30.
 // Base legal e conteúdo técnico revisados; abertura comercial é autorizada separadamente.
-export const LEGAL_POLICY_VERSION = '2026-11-03'
+// v5: transparência sobre GA4 e GTM no formulário de hamburguerias, publicação prevista em 25/11/2026.
+export const LEGAL_POLICY_VERSION = '2026-11-25'
 
 export type DataProtectionOfficer = { name: string; email: string }
 
