@@ -5,6 +5,11 @@ import { getPublishedFlow } from '@/lib/crm/form-builder/store'
 import { isCrmRuntimeEnabled } from '@/lib/crm/runtime-env'
 import { getTurnstileConfig } from '@/lib/crm/turnstile'
 import { getMetaPixelConfig, getMetaCustomScheduleEnabled } from '@/lib/marketing/meta'
+import { getCrmBookingMode } from '@/lib/crm/booking-mode'
+import { bookingAccessConfig } from '@/lib/crm/booking-access'
+import { funnelModeFor } from '@/lib/crm/funnel-events'
+import { getGtmFormConfigForSlug } from '@/lib/tracking/gtm-config'
+import { getEntryNoticeConfig } from '@/lib/privacy/entry-notice-config'
 import PublicFlow from './public-flow'
 import './public-flow.css'
 
@@ -21,8 +26,16 @@ export default async function FlowPage({params}:{params:Promise<{slug:string}>})
   if(!doc?.published)notFound()
   const cfg=getTurnstileConfig()
   const pixel=getMetaPixelConfig()
+  // Mensuração do funil: "test" no ambiente de testes (modo de teste ou allowlist ativa); só "live" conta como real.
+  // GTM do formulário: desligado salvo TRACKING_GTM_ENABLED=true + GTM_FORM_CONTAINER_ID válido E slug exatamente do escopo (F2).
+  const trackingMode=funnelModeFor({bookingMode:getCrmBookingMode(),allowlistActive:bookingAccessConfig().restrictedToAllowedEmail})
+  const gtm=getGtmFormConfigForSlug(doc.slug)
+  // Aviso de entrada: desligado salvo CONSENT_ENTRY_NOTICE_ENABLED=true (chave exclusiva; não concede consentimento).
+  const entryNotice=getEntryNoticeConfig()
   return <PublicFlow key={doc.id+'-'+doc.publishedVersion} slug={doc.slug} title={doc.publishedMeta?.title||doc.title}
     description={doc.publishedMeta?.description||doc.description} version={doc.publishedVersion} flow={doc.published}
     turnstileSiteKey={cfg.status==='ready'?cfg.siteKey:null} metaPixelId={pixel.enabled?pixel.pixelId:null}
-    customScheduleEnabled={pixel.enabled && getMetaCustomScheduleEnabled()}/>
+    customScheduleEnabled={pixel.enabled && getMetaCustomScheduleEnabled()}
+    trackingMode={trackingMode} gtmContainerId={gtm.enabled?gtm.containerId:null}
+    entryNoticeEnabled={entryNotice.enabled}/>
 }

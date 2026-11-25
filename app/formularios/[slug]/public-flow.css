@@ -71,6 +71,28 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
   .cassiellos-public-flow .cpf-privacy-minimal{padding-bottom:20px}
 }
 
+/* Aviso de consentimento da entrada (primeira camada). Não é modal: fica "grudado" no fim da tela enquanto não houver
+   escolha e, ao rolar até o fim, assume o lugar normal depois do rodapé. Nada cobre o formulário de forma permanente. */
+.cassiellos-public-flow .cpf-entry-consent{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:14px;
+  max-width:880px;width:calc(100% - 24px);margin:0 auto 8px;padding:8px 10px 8px 14px;background:#fff;border:1px solid #d5dde7;border-radius:12px;
+  box-shadow:0 2px 12px rgba(21,36,56,.10);color:#344254}
+.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details]:empty{display:none}
+.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details]{display:block;padding:0;border:0;background:transparent;box-shadow:none}
+.cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details] .consent-notice{margin:0;box-shadow:0 4px 16px rgba(21,36,56,.10);max-height:70vh;overflow:auto}
+.cassiellos-public-flow .cpf-entry-consent-text{min-width:0}
+.cassiellos-public-flow .cpf-entry-consent p{font-size:12px;line-height:1.45;margin:0;color:#5b6776}
+.cassiellos-public-flow .cpf-entry-consent p a{color:#ce3449;text-decoration:underline}
+.cassiellos-public-flow .cpf-entry-consent-actions{display:flex;flex:none;gap:6px}
+.cassiellos-public-flow .cpf-entry-choice{border:1px solid #b9c4d1;background:#fff;color:#233044;border-radius:8px;font:700 12.5px/1.2 inherit;padding:8px 12px;min-height:36px;min-width:44px;cursor:pointer;white-space:nowrap}
+.cassiellos-public-flow .cpf-entry-choice:hover,.cassiellos-public-flow .cpf-entry-choice:focus-visible{border-color:#e84659;outline:2px solid #e8465933;outline-offset:1px}
+@media(max-width:640px){
+  .cassiellos-public-flow .cpf-entry-consent{flex-direction:column;align-items:stretch;gap:8px;width:calc(100% - 16px);margin-bottom:6px;padding:10px 12px}
+  .cassiellos-public-flow .cpf-entry-consent p{font-size:11.5px;line-height:1.4}
+  .cassiellos-public-flow .cpf-entry-consent-actions{display:grid;grid-template-columns:repeat(3,1fr)}
+  .cassiellos-public-flow .cpf-entry-consent-actions{gap:6px}
+  .cassiellos-public-flow .cpf-entry-choice{padding:8px 4px;min-height:40px;font-size:12px}
+}
+
 
 /* ===============================================================
    SHARK SCALE | CHRONOS CLEAN
@@ -122,7 +144,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
 .cassiellos-public-flow[data-chronos=true] .cpf-shell{
   width:100%;
   max-width:900px;
-  min-height:calc(100svh - 70px);
+  min-height:calc(100svh - 70px - var(--cpf-entry-notice-h,0px));
   padding:0 clamp(20px,3vw,38px);
   margin:0 auto;
   display:flex;
@@ -198,7 +220,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   flex-direction:column;
   align-items:flex-start;
   gap:0;
-  min-height:calc(100svh - 110px);
+  min-height:calc(100svh - 110px - var(--cpf-entry-notice-h,0px));
   padding:clamp(100px,16svh,180px) 0 23px;
 }
 .cassiellos-public-flow[data-chronos=true] .cpf-cover h1{
@@ -267,7 +289,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   display:flex;
   flex-direction:column;
   align-items:stretch;
-  min-height:calc(100svh - 145px);
+  min-height:calc(100svh - 145px - var(--cpf-entry-notice-h,0px));
   padding:clamp(74px,13svh,130px) 0 22px;
 }
 .cassiellos-public-flow[data-chronos=true] .cpf-step-marker{
@@ -498,7 +520,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   margin-top:22px;
 }
 .cassiellos-public-flow[data-chronos=true] .cpf-result{
-  min-height:calc(100svh - 120px);
+  min-height:calc(100svh - 120px - var(--cpf-entry-notice-h,0px));
   justify-content:center;
   align-items:flex-start;
   padding-top:40px;
@@ -567,13 +589,13 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-shell{
     max-width:none;
-    min-height:calc(100svh - 64px);
+    min-height:calc(100svh - 64px - var(--cpf-entry-notice-h,0px));
     padding:0 17px;
     margin:0;
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-progress{height:2px}
   .cassiellos-public-flow[data-chronos=true] .cpf-cover{
-    min-height:calc(100svh - 93px);
+    min-height:calc(100svh - 93px - var(--cpf-entry-notice-h,0px));
     padding:clamp(90px,16svh,138px) 0 20px;
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-cover h1{
@@ -605,7 +627,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-question,
   .cassiellos-public-flow[data-chronos=true] .cpf-contact{
-    min-height:calc(100svh - 120px);
+    min-height:calc(100svh - 120px - var(--cpf-entry-notice-h,0px));
     padding:clamp(55px,11svh,96px) 0 18px;
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-step-marker{
@@ -647,7 +669,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-result{
     padding:60px 0 28px;
-    min-height:calc(100svh - 110px);
+    min-height:calc(100svh - 110px - var(--cpf-entry-notice-h,0px));
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-footer{
     padding:8px 0 16px;
@@ -677,7 +699,7 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
    Isolado em [data-chronos] para não impactar outros sites, Agendar ou o editor. */
 .cassiellos-public-flow[data-chronos=true] .cpf-cover{
   padding-top:clamp(170px,29svh,340px);
-  min-height:calc(100svh - 115px);
+  min-height:calc(100svh - 115px - var(--cpf-entry-notice-h,0px));
 }
 .cassiellos-public-flow[data-chronos=true] .cpf-cover h1{
   max-width:700px;
@@ -745,11 +767,11 @@ body:has(.cassiellos-public-flow[data-chronos=true]){background:#fff!important}
     width:29px;height:27px;
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-shell{
-    min-height:calc(100svh - 67px);
+    min-height:calc(100svh - 67px - var(--cpf-entry-notice-h,0px));
     padding:0 15px;
   }
   .cassiellos-public-flow[data-chronos=true] .cpf-cover{
-    min-height:calc(100svh - 107px);
+    min-height:calc(100svh - 107px - var(--cpf-entry-notice-h,0px));
     padding-top:clamp(155px,29svh,285px);
     padding-bottom:18px;
   }

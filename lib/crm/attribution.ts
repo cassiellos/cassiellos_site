@@ -1,10 +1,11 @@
-import { sanitizeUtmValue, UTM_KEYS } from '../privacy/url-sanitize'
+import { EXTENDED_ATTRIBUTION_KEYS, sanitizeExtendedValue, sanitizeUtmField, UTM_KEYS } from '../privacy/url-sanitize'
 
 /**
  * Atribuição do cadastro (padrão: docs/marketing/padrao-utm.md, decisões U1–U5).
  * Usa a estrutura existente (`form_submissions.answers.attribution`): nenhum campo novo é gravado.
  * - utm_*: higienizados (valor com aparência de e-mail é descartado), sem alterar maiúsculas/minúsculas
  *   (U4: campanhas ativas não mudam de agrupamento sem auditoria).
+ * - utm_id, utm_source_platform, adset_id, ad_id, placement: formato estrito (lib/privacy/url-sanitize); fora do formato é descartado.
  * - fbclid: preservado como antes (sem uso atual; decisão da Etapa 4). gclid não é coletado.
  */
 export const ATTRIBUTION_MAX_LENGTH = 180
@@ -17,7 +18,11 @@ export function sanitizeAttribution(
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return attribution
   const input = raw as Record<string, unknown>
   for (const key of UTM_KEYS) {
-    const safe = clean(sanitizeUtmValue(input[key]), ATTRIBUTION_MAX_LENGTH)
+    const safe = clean(sanitizeUtmField(key, input[key]), ATTRIBUTION_MAX_LENGTH)
+    if (safe) attribution[key] = safe
+  }
+  for (const key of EXTENDED_ATTRIBUTION_KEYS) {
+    const safe = clean(sanitizeExtendedValue(key, input[key]), ATTRIBUTION_MAX_LENGTH)
     if (safe) attribution[key] = safe
   }
   const fbclid = clean(input.fbclid, ATTRIBUTION_MAX_LENGTH)

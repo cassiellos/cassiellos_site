@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { leadOutcomeOf } from '@/lib/tracking/lead-outcome'
 import { getCrmPool } from '@/lib/crm/db'
 import { getPublishedFlow } from '@/lib/crm/form-builder/store'
 import { routeFlow } from '@/lib/crm/form-builder/flow'
@@ -90,7 +91,12 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{slug:string
     const bookingToken=bookingEnabled?createBookingGrant({
       leadId:saved.leadId,submissionId:saved.submissionId,formSlug:doc.slug,
     }):null
-    return send({ok:true,reused:saved.reused,
+    // leadMode: classificação do servidor (crm.leads.is_test) para o rastreamento do funil: só "live" conta como real.
+    // Reenvio idempotente (reused) não informa o modo: o navegador mantém o modo da página.
+    // leadOutcome (F3): "new" (lead novo), "resubmitted" (e-mail já existente, nenhum lead novo) ou "reused" (mesma chave
+    // de idempotência). Só "new" gera generate_lead no navegador; `reused` segue como antes para a deduplicação da Meta.
+    return send({ok:true,reused:saved.reused,leadOutcome:leadOutcomeOf(saved),
+      ...(!saved.reused&&typeof saved.isTest==='boolean'?{leadMode:saved.isTest?'test':'live'}:{}),
       ...(inlineBooking?{inlineBooking:true,bookingEnabled,bookingToken}:{}),
       ...(leadEventId?{tracking:{lead:{eventName:'Lead',eventId:leadEventId}}}:{}),outcome:result.result.outcome,
       title:result.result.title,description:result.result.description,
