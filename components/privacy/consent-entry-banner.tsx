@@ -8,13 +8,13 @@ import ConsentNotice from './consent-notice'
 
 /**
  * Primeira camada do consentimento do formulário público (/formularios): aparece na primeira visita, em formato compacto
- * (uma faixa baixa, sem título), com três escolhas de mesmo peso — "Recusar", "Aceitar métricas" e "Personalizar". Nada é pré-selecionado e nada é gravado sem clique.
+ * (uma faixa baixa, sem título), com dois botões de mesmo peso — "Recusar" e "Aceitar métricas" — e um link de preferências. Nada é pré-selecionado e nada é gravado sem clique.
  *
  * - Não bloqueia: não é um modal, não rouba o foco e não cobre o formulário de forma permanente (fica "grudado" no fim
  *   da tela e, ao rolar até o fim, assume seu lugar normal depois do rodapé). O formulário funciona com qualquer escolha.
  * - Métricas e marketing são separados: "Aceitar métricas" nunca liga marketing. Marketing (Meta Pixel e API de Conversões,
- *   quando existirem na página) só é decidido em "Personalizar" ou em "Preferências de cookies", no rodapé.
- * - "Personalizar" abre o aviso detalhado (uma categoria por vez).
+ *   quando existirem na página) só é decidido nas preferências de cookies, acessíveis pelo aviso ou pelo rodapé.
+ * - O link de preferências abre o aviso detalhado (uma categoria por vez).
  * - Depois de decidido nunca reabre sozinho; as preferências podem ser alteradas ou revogadas no rodapé, com efeito imediato.
  * - Texto proposto, sujeito à aprovação jurídica (o aviso detalhado e as políticas continuam sendo os textos aprovados).
  */
@@ -46,7 +46,7 @@ export default function ConsentEntryBanner({ marketingEnabled = false, suppresse
   // `undefined` = ainda não leu o cookie (render do servidor/hidratação): nada aparece, sem salto de layout.
   if (suppressed || consent === undefined) return null
 
-  // Em "Personalizar" o aviso detalhado é quem decide quando fechar (só depois de métricas E marketing decididos, ou
+  // Nas preferências o aviso detalhado é quem decide quando fechar (só depois de métricas E marketing decididos, ou
   // só de métricas quando a página não tem Meta Pixel): decidir métricas primeiro não pode fazer o painel sumir antes
   // de o visitante ver a escolha de marketing.
   if (customizing) {
@@ -63,17 +63,18 @@ export default function ConsentEntryBanner({ marketingEnabled = false, suppresse
     <div className="cpf-entry-consent-text">
       <p>
         Usamos cookies opcionais de métricas para melhorar este formulário
-        {marketingEnabled ? '; marketing só se você ativar em Personalizar' : ''}.
+        {marketingEnabled ? '; marketing só se você autorizar nas preferências' : ''}.
         {' '}Recusar não impede o formulário nem o agendamento.{' '}
         <a href="/politica-de-cookies" target="_blank" rel="noopener noreferrer">Cookies</a>
         {' · '}
         <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+        {' · '}
+        <button type="button" className="cpf-entry-preferences-link" data-choice="customize" onClick={() => setCustomizing(true)}>Preferências de cookies</button>
       </p>
     </div>
     <div className="cpf-entry-consent-actions">
       <button type="button" className="cpf-entry-choice" data-choice="reject" onClick={() => choose('reject')}>Recusar</button>
       <button type="button" className="cpf-entry-choice" data-choice="metrics" onClick={() => choose('accept-metrics')}>Aceitar métricas</button>
-      <button type="button" className="cpf-entry-choice" data-choice="customize" onClick={() => setCustomizing(true)}>Personalizar</button>
     </div>
   </section>
 }

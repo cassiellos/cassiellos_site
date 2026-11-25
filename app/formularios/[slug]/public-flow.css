@@ -81,7 +81,9 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 .cassiellos-public-flow .cpf-entry-consent[data-consent-layer=details] .consent-notice{margin:0;box-shadow:0 4px 16px rgba(21,36,56,.10);max-height:70vh;overflow:auto}
 .cassiellos-public-flow .cpf-entry-consent-text{min-width:0}
 .cassiellos-public-flow .cpf-entry-consent p{font-size:12px;line-height:1.45;margin:0;color:#5b6776}
-.cassiellos-public-flow .cpf-entry-consent p a{color:#1d4e9c;text-decoration:underline}
+.cassiellos-public-flow .cpf-entry-consent p a,.cassiellos-public-flow .cpf-entry-preferences-link{color:#1d4e9c;text-decoration:underline}
+.cassiellos-public-flow .cpf-entry-preferences-link{display:inline-block;min-height:24px;border:0;background:transparent;padding:2px 0;font:inherit;cursor:pointer;text-align:left;vertical-align:middle}
+.cassiellos-public-flow .cpf-entry-preferences-link:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
 .cassiellos-public-flow .cpf-entry-consent-actions{display:flex;flex:none;gap:6px}
 .cassiellos-public-flow .cpf-entry-choice{border:1px solid #93b9ef;background:#f4f8ff;color:#1d4e9c;border-radius:7px;font-family:inherit;font-size:12px;font-weight:600;line-height:1.2;padding:7px 10px;min-height:36px;min-width:44px;cursor:pointer;white-space:nowrap}
 .cassiellos-public-flow .cpf-entry-choice:hover,.cassiellos-public-flow .cpf-entry-choice:focus-visible{border-color:var(--cpf-blue,#3b82f6);background:#eaf2ff;outline:2px solid #3b82f655;outline-offset:1px}
@@ -92,7 +94,7 @@ body:has(.cassiellos-public-flow) .nav,body:has(.cassiellos-public-flow) .foot,b
 @media(max-width:640px){
   .cassiellos-public-flow .cpf-entry-consent{flex-direction:column;align-items:stretch;gap:6px;width:calc(100% - 16px);margin-bottom:6px;padding:7px 8px}
   .cassiellos-public-flow .cpf-entry-consent p{font-size:11.5px;line-height:1.4}
-  .cassiellos-public-flow .cpf-entry-consent-actions{display:grid;grid-template-columns:repeat(3,1fr)}
+  .cassiellos-public-flow .cpf-entry-consent-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .cassiellos-public-flow .cpf-entry-consent-actions{gap:6px}
   .cassiellos-public-flow .cpf-entry-choice{padding:7px 3px;min-height:40px;font-size:12px;white-space:normal}
 }
